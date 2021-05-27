@@ -3,13 +3,13 @@
  */
 package org.iplantc.service.apps.resources;
 
+import org.iplantc.service.apps.model.Software;
+import org.restlet.representation.Representation;
+
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Response;
-
-import org.iplantc.service.apps.model.Software;
-import org.restlet.representation.Representation;
 
 /**
  * Returns a collection of {@link Software} records for the authenticated user. Search
@@ -21,8 +21,8 @@ import org.restlet.representation.Representation;
 public interface SoftwareCollection {
     
 	@GET
-	public Response getSoftwareCollection();
+    Response getSoftwareCollection();
 	
 	@POST
-	public Response addSoftware(Representation input);
+    Response addSoftware(Representation input);
 }

@@ -1,9 +1,9 @@
 package org.iplantc.service.common.dao;
 
-import java.util.List;
-
 import org.iplantc.service.common.exceptions.EntityEventPersistenceException;
 import org.iplantc.service.common.model.AgaveEntityEvent;
+
+import java.util.List;
 
 public interface EntityEventDao<T extends AgaveEntityEvent, V extends Enum> {
 
@@ -14,7 +14,7 @@ public interface EntityEventDao<T extends AgaveEntityEvent, V extends Enum> {
 	 * @return
 	 * @throws EntityEventPersistenceException
 	 */
-	public abstract T getEntityEventByUuid(String uuid)
+    T getEntityEventByUuid(String uuid)
 			throws EntityEventPersistenceException;
 
 	/**
@@ -24,7 +24,7 @@ public interface EntityEventDao<T extends AgaveEntityEvent, V extends Enum> {
 	 * @return
 	 * @throws EntityEventPersistenceException
 	 */
-	public abstract List<T> getEntityEventByEntityUuid(String uuid)
+    List<T> getEntityEventByEntityUuid(String uuid)
 			throws EntityEventPersistenceException;
 
 	/**
@@ -37,8 +37,8 @@ public interface EntityEventDao<T extends AgaveEntityEvent, V extends Enum> {
 	 * @return
 	 * @throws EntityEventPersistenceException
 	 */
-	public abstract List<T> getEntityEventByEntityUuid(String uuid, int limit,
-			int offset) throws EntityEventPersistenceException;
+    List<T> getEntityEventByEntityUuid(String uuid, int limit,
+                                       int offset) throws EntityEventPersistenceException;
 
 	/**
 	 * Fetches an {@link EntityEvent} for the given parent uuid. This serves as a
@@ -49,8 +49,8 @@ public interface EntityEventDao<T extends AgaveEntityEvent, V extends Enum> {
 	 * @return the matching {@link EntityEvent} or null of none can be found
 	 * @throws EntityEventPersistenceException
 	 */
-	public abstract T getByEntityUuidAndEntityEventUuid(String entityUuid,
-			String entityEventUuid) throws EntityEventPersistenceException;
+    T getByEntityUuidAndEntityEventUuid(String entityUuid,
+                                        String entityEventUuid) throws EntityEventPersistenceException;
 
 	/**
 	 * Gets the {@link EntityEvent} for the specified software id and software status
@@ -60,8 +60,8 @@ public interface EntityEventDao<T extends AgaveEntityEvent, V extends Enum> {
 	 * @return
 	 * @throws EntityEventPersistenceException
 	 */
-	public abstract List<T> getAllEntityEventWithStatusForEntityUuid(
-			String eventUuid, V eventType)
+    List<T> getAllEntityEventWithStatusForEntityUuid(
+            String eventUuid, V eventType)
 			throws EntityEventPersistenceException;
 
 	/**
@@ -69,7 +69,7 @@ public interface EntityEventDao<T extends AgaveEntityEvent, V extends Enum> {
 	 * @param event
 	 * @throws EntityEventPersistenceException
 	 */
-	public abstract void persist(T event)
+    void persist(T event)
 			throws EntityEventPersistenceException;
 
 	/**
@@ -78,7 +78,7 @@ public interface EntityEventDao<T extends AgaveEntityEvent, V extends Enum> {
 	 * @param event
 	 * @throws EntityEventPersistenceException
 	 */
-	public abstract void delete(T event) throws EntityEventPersistenceException;
+    void delete(T event) throws EntityEventPersistenceException;
 
 	/**
 	 * Deletes all {@link AgaveEntityEvent} for the given entity uuid
@@ -86,7 +86,7 @@ public interface EntityEventDao<T extends AgaveEntityEvent, V extends Enum> {
 	 * @param entityUuid
 	 * @throws EntityEventPersistenceException
 	 */
-	public abstract void deleteByEntityId(String entityUuid)
+    void deleteByEntityId(String entityUuid)
 			throws EntityEventPersistenceException;
 
 }

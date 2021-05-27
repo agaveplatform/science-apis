@@ -6,8 +6,8 @@
 	"description": "Example storage sytem accessible via sftp.",
 	"site": "example.com",
 	"storage": {
-		"host": "docker.example.com",
-		"port": 10022,
+		"host": "${sftp.host}",
+		"port": ${sftp.port},
 		"protocol": "SFTP",
 		"rootDir": "/",
 		"homeDir": "/home/testuser",

@@ -1,9 +1,7 @@
 package org.iplantc.service.transfer;
 
-import java.io.File;
-import java.util.Date;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -13,6 +11,7 @@ import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.jobs.model.FileBean;
+import org.iplantc.service.jobs.model.JSONTestDataUtil;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.util.DataLocator;
@@ -20,21 +19,16 @@ import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.jobs.model.JSONTestDataUtil;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.util.Date;
+import java.util.List;
 
 /**
  * Verifies that job data can be found at any time once the job has started to run.
@@ -42,6 +36,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * @author dooley
  *
  */
+@Test(groups={"integration"})
 public class DataLocatorTest
 {
 	public static final String SYSTEM_OWNER = "testuser";
@@ -50,15 +45,15 @@ public class DataLocatorTest
 	public static final String SYSTEM_UNSHARED_USER = "dan";
 	public static final String SYSTEM_INTERNAL_USERNAME = "test_user";
 
-	public static String EXECUTION_SYSTEM_TEMPLATE_DIR = "src/test/resources/systems/execution";
-	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "src/test/resources/systems/storage";
-	public static String SOFTWARE_SYSTEM_TEMPLATE_DIR = "src/test/resources/software";
+	public static String EXECUTION_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/execution";
+	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/storage";
+	public static String SOFTWARE_SYSTEM_TEMPLATE_DIR = "target/test-classes/software";
 
 	protected JSONTestDataUtil jtd;
 	protected JSONObject jsonTree;
 
-	private SystemDao systemDao = new SystemDao();
-	private SystemManager systemManager = new SystemManager();
+	private final SystemDao systemDao = new SystemDao();
+	private final SystemManager systemManager = new SystemManager();
 	private Job job;
 
 	@BeforeMethod
@@ -107,13 +102,13 @@ public class DataLocatorTest
 		// stage data to execution system if it started running
 		if (job.isArchiveOutput())
 		{
-			stageData(job.getArchiveSystem(), "src/test/resources/data", job.getArchivePath());
+			stageData(job.getArchiveSystem(), "target/test-classes/data", job.getArchivePath());
 		}
 
 		// stage data to archive system if archived
 		if (!StringUtils.isEmpty(job.getWorkPath()))
 		{
-			stageData(exeSystem, "src/test/resources/data", job.getWorkPath());
+			stageData(exeSystem, "target/test-classes/data", job.getWorkPath());
 		}
 
 		try {
@@ -145,7 +140,7 @@ public class DataLocatorTest
 		RemoteDataClient dataClient = null;
 		try {
 			dataClient = system.getRemoteDataClient();
-			dataClient.put("src/test/resources/data", remotePath);
+			dataClient.put("target/test-classes/data", remotePath);
 		} finally {
 			try { dataClient.disconnect(); } catch (Exception e) {}
 		}

@@ -9,6 +9,7 @@ import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.systems.dao.BatchQueueDao;
 import org.iplantc.service.systems.model.BatchQueue;
+import org.testng.annotations.Test;
 
 /**
  * Migration class to assign valid agavea uuid to all entities of the given class.
@@ -16,6 +17,7 @@ import org.iplantc.service.systems.model.BatchQueue;
  * @author dooley
  *
  */
+@Test(groups={"broken"})
 public class BatchQueueUUIDBackfill {
 
     /**
@@ -27,7 +29,7 @@ public class BatchQueueUUIDBackfill {
     
     public void main(String[] args) {
         JndiSetup helper = new JndiSetup();
-        helper.init();
+        JndiSetup.init();
         
         BatchQueueDao dao = new BatchQueueDao();
         try {

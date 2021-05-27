@@ -1,15 +1,14 @@
 package org.iplantc.service.tags;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Convenience class to set up the environment and obtain test data.
@@ -22,8 +21,8 @@ public class TestDataHelper {
 	public static String TEST_USER = "testuser";
 	public static String TEST_SHAREUSER = "testshare";
 	public static String TEST_OTHERUSER = "testother";
-	public static String TEST_TAG = "src/test/resources/tags/tag.json";
-	public static String TEST_TAGS = "src/test/resources/tags/multiple_tags.json";
+	public static String TEST_TAG = "target/test-classes/tags/tag.json";
+	public static String TEST_TAGS = "target/test-classes/tags/multiple_tags.json";
 	
 	public static final String TEST_INTERNAL_USERNAME = "test_user";
 	

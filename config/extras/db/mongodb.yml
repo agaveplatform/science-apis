@@ -1,32 +1,41 @@
 ##############################################################
 #  OPTIONAL: Persistent MongoDB instance
 #############################################################
+version: '3.3'
 
-mongodb:
-  image: agaveapi/mongodb:2.6
-  command: --smallfiles
-  mem_limit: 1024m
-  restart: always
-  environment:
-    - MONGODB_PASS=password
-  volumes_from:
-    - mongodbvol_master
-  ports:
-    - '27017:27017'
-    - '28017:28017'
-  tags:
-    - staging
-    - db
+volumes:
+  mongo_data:
 
-mongodbvol-master:
-  image: ubuntu
-  command: sleep 2147483647
-  mem_limit: 64m
-  volumes:
-    - /var/lib/mongodb:/var/lib/mongodb
-  tags:
-    - staging
-    - db
+networks:
+  services:
+
+services:
+
+  mongodb:
+    image: agaveplatform/mongodb:4.2.8
+    hostname: mongodb
+    environment:
+      - MONGODB_ADMIN_PASS=changeit
+      - MONGODB_PASSWORD=password
+      - MONGODB_USERNAME=agaveuser
+      - MONGODB_DATABASE=api
+      - JOURNALING=no
+    volumes:
+      - mongo_data:/data
+    ports:
+      - '27017:27017'
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - services
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
 
 ##############################################################

@@ -1,6 +1,211 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 2.2.22 - 2018-08-02
+
+103 files changed, 226 insertions(+), 751 deletions(-)
+
+CIC-745 Fix monitors initialization settings to avoid email storm.
+
+CIC-756 Updated administrator access lists.
+
+CIC-770 Instrumented transfer tasks and other functions.
+
+## 2.2.21 - 2018-06-22
+
+16 files changed, 652 insertions(+), 875 deletions(-)
+
+CIC-720 Fix bugs and add instrumentation to MaverickSFTP and MaverickSSHSubmissionClient.
+
+## 2.2.20 - 2018-05-29
+
+28 files changed, 321 insertions(+), 423 deletions(-)
+
+Added slt-world-admin
+
+Removed stats service from build--its image will no longer be pushed to DockerHub.
+
+Removed defunct authentication-related references and code.
+
+CIC-632 Added systemroles index
+
+Added jacoco plugin for code coverage analsis
+
+Implemented miscellaneous bug fixes and error statement enhancements
+
+## 2.2.19 - 2018-04-10
+
+628 files changed, 129 insertions(+), 45976 deletions(-)
+
+Updating and reconfigured the apache httpd in our production environment.
+
+Deprecated the Transforms service.
+
+Removed authentication-related dead code.
+
+Minor logging improvements.
+
+## 2.2.18 - 2018-03-20
+
+2 files changed, 186 insertions(+), 201 deletions(-)
+
+Rolled back new mongodb client api calls in metadata.
+
+Improved UUIDEntityLookup query and error handling.
+
+## 2.2.17 - 2018-03-06
+
+Bug fix for 2.2.16 LogicalFileDao.findBySystemAndPath() changes.
+
+## 2.2.16 - 2018-02-27 (aborted--don't ever use)
+
+Performance improvements and mongodb client usage changes to metadata.
+
+Addition of the indexed path_hash column to the logical_files table to
+improve performance of LogicalFileDao.findBySystemAndPath().
+
+## 2.2.15 - 2018-02-13
+
+Performance enhancements to metadata and files listings, including added instrumentation,
+index creation, query modification, and an upgraded mongodb client.
+
+## 2.2.14 - 2018-01-05
+
+Dummy version to avoid docker idiosyncrasy involving pulls when using different docker versions
+
+## 2.2.13 - 2018-01-04
+
+58 files changed, 116 insertions(+), 119 deletions(-)
+
+Introduce CommonResourceException to improve accuracy of error messages
+
+Remove unused src/test/docker reference from POM file
+
+CIC-418 Fix NPE in cloned systems
+
+CIC 401 Fix uninitialized iplant.default.apps.dir setting
+
+Add tacc.cloud to trusted domains in postits service configuration
+
+Change DNS names from agaveapi.co to tacc.cloud
+
+## 2.2.12 - 2017-11-28
+
+7 files changed, 1487 insertions(+), 156 deletions(-)
+
+CIC-437 Configure files service instances with multiple tenants
+
+Upgrade to MongoDB 3.4
+
+## 2.2.11 - 2017-10-27
+
+7 files changed, 1487 insertions(+), 156 deletions(-)
+
+CIC-408 Instrument JobRequestNotificationProcessor
+
+AH-235 Remove extraneous instrumentation 
+
+## 2.2.10 - 2017-10-11
+
+8 files changed, 105 insertions(+), 126 deletions(-)
+
+AH-235 Instrument code for more debugging
+
+## 2.2.9 - 2017-10-05
+
+3 files changed, 70 insertions(+), 208 deletions(-)
+
+AH-235 Instrument code for more debugging
+
+## 2.2.8 - 2017-10-04
+
+5 files changed, 112 insertions(+), 122 deletions(-)
+
+AH-235 Instrument code for debugging
+
+## 2.2.7 - 2017-10-04
+
+10 files changed, 196 insertions(+), 29 deletions(-)
+
+CIC-381 Improve transfer timeout calculation
+
+## 2.2.6 - 2017-08-28
+
+- 24 files changed, 234 insertions(+), 161 deletions(-)
+
+- CIC-333 Fix type in swagger definition file
+
+- CIC-340 Increase SFTP connection timeout
+
+- CIC-341 Improve log record format
+
+## 2.2.5 - 2017-08-21
+
+- 6 files changed, 179 insertions(+), 184 deletions(-)
+
+- CIC-288 Inconsistent copy behavior when using file import
+
+## 2.2.4 - 2017-07-17
+
+- 19 files changed, 228 insertions(+), 47 deletions(-)
+
+- CIC-237 Increase the number of quartz threads available job workers.
+
+- CIC-234 Fix a syntax error in a PHP file.
+
+## 2.2.3 - 2017-07-09
+
+- 11 files changed, 932 insertions(+), 378 deletions(-)
+
+- AD-2091 Instrument the Job polling queries.
+
+## 2.2.2 - 2017-07-05
+
+- 8 files changed, 363 insertions(+), 673 deletions(-)
+
+- AD-2078 Minor cleanup related to iRODS.
+- AD-2079 upgraded Jargon to 4.2.0.0-RELEASE.
+- AD-2082 Remove infinite loop from IRODS client.
+
+## 2.2.1 - 2017-06-20
+
+- 5 files changed, 685 deletions(-)
+
+- AD-2073 Fix problem with FTP file transfers when source server uses legacy protocol.
+
+## 2.2.0 - 2017-05-30
+
+- 481 files changed, 2022 insertions(+), 14127 deletions(-)
+
+- AD-1351 Fix indexed file lookup
+    Files get new UUIDs each time they are indexed.  The fix uses the remote system pathname instead of the Agave pathname.
+- AD-1348 Bulletoproofed common Settings file
+    Eliminate the possibility of runtime exceptions when loading service.properties in common-core.  Fix all cases 
+    of resource streams being left open anywhere in the application.
+- AD-1346 Improved logging and cleaned up file processing
+    Added over one hundred logging statements to FileManagementResource; insert try/catch blocks with logging on code that 
+    could throw uncaught exceptions; removed dead code.
+- AD-1342 Classification of unit and integration tests
+    Used testng groups to classify all tests as either unit, integration or system; marked all broken tests as such;
+    activated approximately 60 unit tests for inclusion in build; cleaned up testng.xml files.
+- AD-1331 Remove sonar, c3p0 and soapui artifacts
+    Remove plugins, libraries and references to unused 3rd party software.
+- AD-744 Updated Java compiler to 1.8
+    Change all maven build files to reference Java 8; compile all Agave Java code with Java 8; migrate all runtime environments 
+    to Java 8; replace conflicting 3rd party software that relies on Java 7; upgrade all docker images to use Java 8 and the
+    latest version of Tomcat 8.0; tune all docker compose files (develop, staging and production) to invoke JVM 8 with proper 
+    memory and garbage collector options; increase memory and processor resource in production VMs. 
+- AD-1330 Remove reportng from Agave
+    Remove an unneeded and unused report formatter for testng output. 
+- AD-1328 Review sftp and related changes from 3/8/17
+    Include and enhance prior developer's debugging statements and changes to MaverickSFTP. The latter changes include
+    increasing buffer size limits used by instances of SftpClient increased from 2MB to 500MB.
+- AD-1317 Remove double buffering in URLCopy
+    URLCopy now checks to see if the input or output streams it uses are already buffered. If so, it does not wrap 
+    them in another buffered stream object.
+- Updated License
+
+
 ## 2.1.11 - 2017-04-06
 
 ### Added
@@ -710,7 +915,7 @@ All notable changes to this project will be documented in this file.
 - MONITORS: Fixing event propagation on login failure.
 - SYSTEMS: Fixing collection listing of batch queues. The limit and offset parameters were juxtaposed.
 - SYSTEMS: Fixing logging for second leg of relay transfer so destination and protocols are properly logged.
-- SYSTEMS: Updating worker url on relay transfer operations to point to https://worker.prod.agaveapi.co
+- SYSTEMS: Updating worker url on relay transfer operations to point to https://worker.prod.tacc.cloud
 - MONITORS: Fixed race condition resulting in `lastCheck` object in serialized monitor POSTed in a web hook request always being the check from the previous run. Now the check that just ran will always be included.
 - JOBS: Fixing template MACRO replacement in a couple situations where String.replaceAll() was used swapped out for StringUtils.replace(), but the regex values were not updated to reflect the string matching vs regex matching. 
 

@@ -1,13 +1,5 @@
 package org.iplantc.service.transfer.performance;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
-
 import org.apache.commons.io.FilenameUtils;
 import org.codehaus.plexus.util.FileUtils;
 import org.iplantc.service.systems.model.StorageSystem;
@@ -22,6 +14,10 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
+
 //import org.apache.commons.io.FileUtils;
 
 /**
@@ -30,9 +26,9 @@ import org.testng.annotations.Test;
 @Test(groups= {"streaming","performance"})
 public class RemoteDataClientStreamingBufferSizeTest extends BaseTransferTestCase {
 
-	protected static String LOCAL_BINARY_FILE = "src/test/resources/bufferdata.bin";
+	protected static String LOCAL_BINARY_FILE = "target/test-classes/bufferdata.bin";
 
-	private Map<String, RemoteDataClient> clientMap = new HashMap<String, RemoteDataClient>();
+	private final Map<String, RemoteDataClient> clientMap = new HashMap<String, RemoteDataClient>();
 	
 	public RemoteDataClientStreamingBufferSizeTest() {}
 
@@ -49,7 +45,7 @@ public class RemoteDataClientStreamingBufferSizeTest extends BaseTransferTestCas
 			json.remove("id");
 			json.put("id", this.getClass().getSimpleName());
 			
-			StorageSystem system = (StorageSystem) StorageSystem.fromJSON(json);
+			StorageSystem system = StorageSystem.fromJSON(json);
 			
 			clientMap.put(protocol, system.getRemoteDataClient());
 		}

@@ -1,13 +1,13 @@
 package org.iplantc.service.transfer.irods4;
 
-import java.io.IOException;
-import java.io.InputStream;
-
 import org.apache.log4j.Logger;
 import org.globus.ftp.RestartData;
 import org.iplantc.service.transfer.RemoteInputStream;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.irods.jargon.core.exception.JargonException;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 public class IRODS4InputStream extends RemoteInputStream<IRODS4> {
 	private static final Logger	log	= Logger.getLogger(IRODS4InputStream.class);
@@ -47,7 +47,7 @@ public class IRODS4InputStream extends RemoteInputStream<IRODS4> {
 
 		try
 		{
-			rep = ((org.iplantc.service.transfer.irods4.IRODS4)client).length(this.targetFile);
+			rep = client.length(this.targetFile);
 		}
 		catch (Exception e)
 		{
@@ -59,9 +59,9 @@ public class IRODS4InputStream extends RemoteInputStream<IRODS4> {
 
 	public void abort()
 	{
-		try { input.close(); } catch (Exception e) {};
-		try { client.disconnect(); } catch (Exception e) {}
-		log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  
+		try { input.close(); } catch (Exception e) {}
+        try { client.disconnect(); } catch (Exception e) {}
+		log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()
 				+ " aborting IRODS4 input stream connection for thread");
 	}
 
@@ -70,7 +70,7 @@ public class IRODS4InputStream extends RemoteInputStream<IRODS4> {
 	public void close() throws IOException
 	{
 		abort();
-		log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  
+		log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()
 				+ " closing IRODS4 input stream connection for thread");
 	}
 

@@ -1,11 +1,5 @@
 package org.iplantc.service.io.manager.actions;
 
-import static org.iplantc.service.io.model.enumerations.FileOperationType.*;
-
-import org.iplantc.service.io.exceptions.FileProcessingException;
-import org.iplantc.service.io.model.enumerations.FileOperationType;
-import org.iplantc.service.systems.model.RemoteSystem;
-
 public class FileOperationFactory {
 
 	public FileOperationFactory() {}

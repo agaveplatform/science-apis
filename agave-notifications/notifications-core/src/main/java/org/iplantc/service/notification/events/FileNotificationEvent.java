@@ -3,8 +3,8 @@
  */
 package org.iplantc.service.notification.events;
 
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.Criteria;
@@ -16,8 +16,7 @@ import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 
 /**
  * @author dooley
@@ -71,16 +70,6 @@ public class FileNotificationEvent extends AbstractEventFilter {
 			body = "${TYPE} ${PATH} on ${SYSTEM} was downloaded by ${OWNER}.";
 		} else if (StringUtils.equalsIgnoreCase(event, "upload")) {
 			body = "A new file/folder was uploaded to ${PATH} on ${SYSTEM} by ${OWNER}.";
-		} else if (StringUtils.equalsIgnoreCase(event, "TRANSFORMING")) { 
-		    body = "A file/folder at ${PATH} on ${SYSTEM} has begun transformation to ${FORMAT}.";
-		} else if (StringUtils.equalsIgnoreCase(event, "TRANSFORMING_FAILED")) { 
-		    body = "Transformation of ${PATH} on ${SYSTEM} to ${FORMAT} format failed."; 
-		} else if (StringUtils.equalsIgnoreCase(event, "TRANSFORMING_COMPLETED")) { 
-		    body = "Transformation of ${PATH} on ${SYSTEM} to ${FORMAT} format completed successfully."; 
-		} else if (StringUtils.equalsIgnoreCase(event, "PREPROCESSING")) { 
-		    body = "Preprocessing has begun for ${PATH} on ${SYSTEM}";
-		} else if (StringUtils.equalsIgnoreCase(event, "TRANSFORMING_QUEUED")) {
-		    body = "${PATH} on ${SYSTEM} has been successfully queued for transformation to ${FORMAT} format.";
 		} else if (StringUtils.equalsIgnoreCase(event, "STAGING")) { 
             body = "A file/folder at ${PATH} on ${SYSTEM} has begun staging.";
         } else if (StringUtils.equalsIgnoreCase(event, "STAGING_FAILED")) { 
@@ -259,7 +248,7 @@ public class FileNotificationEvent extends AbstractEventFilter {
             
             Map<String, Object> row = (Map<String, Object>)session
             		.createSQLQuery(sql)
-            		.setString("uuid", uuid.toString())
+            		.setString("uuid", uuid)
             		.setResultTransformer(Criteria.ALIAS_TO_ENTITY_MAP)
             		.uniqueResult();
 

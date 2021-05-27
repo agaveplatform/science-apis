@@ -1,11 +1,11 @@
 package org.iplantc.service.profile;
 
-import java.util.Collection;
-
 import org.iplantc.service.profile.model.InternalUser;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
+
+import java.util.Collection;
 
 
 /**
@@ -41,7 +41,7 @@ public class ModelTestCommon
 				se.printStackTrace();
 		}
 
-		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
+//		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 
 		Assert.assertTrue(exceptionFlag == exceptionThrown, exceptionMsg);
 	}

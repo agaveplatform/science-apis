@@ -1,8 +1,7 @@
 package org.iplantc.service.transfer.operations;
 
-import java.io.File;
-import java.io.IOException;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -15,14 +14,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.mockito.Mockito;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.io.IOException;
 
+@Test(groups={"integration"})
 public class BaseRemoteDataClientOperationTest extends BaseTransferTestCase{
     
     protected String systemJsonFilePath = null;
@@ -59,7 +56,7 @@ public class BaseRemoteDataClientOperationTest extends BaseTransferTestCase{
         ObjectNode json = readObjectNode();
         json.remove("id");
         json.put("id", this.getClass().getSimpleName());
-        system = (StorageSystem)StorageSystem.fromJSON(new JSONObject(json.toString()));
+        system = StorageSystem.fromJSON(new JSONObject(json.toString()));
         system.setOwner(SYSTEM_USER);
         String homeDir = system.getStorageConfig().getHomeDir();
         homeDir = StringUtils.isEmpty(homeDir) ? "" : homeDir;

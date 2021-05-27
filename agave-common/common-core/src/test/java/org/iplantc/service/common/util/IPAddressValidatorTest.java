@@ -1,7 +1,8 @@
 package org.iplantc.service.common.util;
 
 import org.testng.Assert;
-import org.testng.annotations.*;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
 
 /**
  * IPAddress validator Testing
@@ -9,17 +10,11 @@ import org.testng.annotations.*;
  * @author mkyong
  *
  */
+@Test(groups={"unit"})
 public class IPAddressValidatorTest {
 
-	private IPAddressValidator ipAddressValidator;
-
-	@BeforeClass
-	public void initData() {
-		ipAddressValidator = new IPAddressValidator();
-	}
-
 	@DataProvider
-	public Object[][] ValidIPAddressProvider() {
+	public Object[][] validIPAddressProvider() {
 		return new Object[][] { new Object[] { "1.1.1.1" },
 				new Object[] { "255.255.255.255" },
 				new Object[] { "192.168.1.1" }, new Object[] { "10.10.1.1" },
@@ -28,7 +23,7 @@ public class IPAddressValidatorTest {
 	}
 
 	@DataProvider
-	public Object[][] InvalidIPAddressProvider() {
+	public Object[][] invalidIPAddressProvider() {
 		return new Object[][] { new Object[] { "10.10.10" },
 				new Object[] { "10.10" }, new Object[] { "10" },
 				new Object[] { "a.a.a.a" }, new Object[] { "10.0.0.a" },
@@ -40,17 +35,15 @@ public class IPAddressValidatorTest {
 				new Object[] { "10.10.10" }, };
 	}
 
-	@Test(dataProvider = "ValidIPAddressProvider")
-	public void ValidIPAddressTest(String ip) {
-		boolean valid = ipAddressValidator.validate(ip);
-		System.out.println("IPAddress is valid : " + ip + " , " + valid);
-		Assert.assertEquals(true, valid);
+	@Test(dataProvider = "validIPAddressProvider")
+	public void validate(String ip) {
+		boolean valid = new IPAddressValidator().validate(ip);
+		Assert.assertTrue(valid);
 	}
 
-	@Test(dataProvider = "InvalidIPAddressProvider", dependsOnMethods = "ValidIPAddressTest")
-	public void InValidIPAddressTest(String ip) {
-		boolean valid = ipAddressValidator.validate(ip);
-		System.out.println("IPAddress is valid : " + ip + " , " + valid);
-		Assert.assertEquals(false, valid);
+	@Test(dataProvider = "invalidIPAddressProvider")
+	public void validateReturnsFalseOnInvalidIPAddress(String ip) {
+		boolean valid = new IPAddressValidator().validate(ip);
+		Assert.assertFalse(valid);
 	}
 }

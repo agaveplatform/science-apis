@@ -33,7 +33,7 @@ auth-switch -t agave.dev -u testuser -d http://api.example.com -S
 ### Register systems
 ###########################################################
   
-SYSTEMS_FOLDER=agave-systems/systems-core/src/test/resources/systems
+SYSTEMS_FOLDER=agave-systems/systems-core/target/test-classes/systems
 
 ############### STORAGE - SFTP ######################
 systems-addupdate -d -F $SYSTEMS_FOLDER/storage/storage.example.com.json
@@ -95,7 +95,7 @@ UPLOAD_FOLDER_UUID=$(files-list -d -v -l 1 --filter=_links.metadata -S irods4-pa
 
 # Create persistent notifications on the UUID of the upload folder we just retrieved.
 # these notifications will always fail and get persisted in the failed attempt queue
-notifications-addupdate  -d -U 'http://httpbin.org/status/500' -E "*" -P  -I 0 -R NONE -D 0 -L 0  -S  -A  $UPLOAD_FOLDER_UUID
+notifications-addupdate  -d -U 'http://httpbin:8000/status/500' -E "*" -P  -I 0 -R NONE -D 0 -L 0  -S  -A  $UPLOAD_FOLDER_UUID
  
 #################### Transfer data between system ########################
 # First, make a destination folder to keep things clean for later if/when we publish the system

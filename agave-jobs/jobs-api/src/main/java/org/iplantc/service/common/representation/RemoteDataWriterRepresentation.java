@@ -1,12 +1,5 @@
 package org.iplantc.service.common.representation;
 
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Writer;
-import java.util.Date;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
@@ -22,6 +15,9 @@ import org.restlet.data.Range;
 import org.restlet.data.Request;
 import org.restlet.resource.WriterRepresentation;
 
+import java.io.*;
+import java.util.Date;
+
 public class RemoteDataWriterRepresentation extends WriterRepresentation
 {
 	private static final Logger log = Logger.getLogger(RemoteDataWriterRepresentation.class);
@@ -29,8 +25,8 @@ public class RemoteDataWriterRepresentation extends WriterRepresentation
 	private InputStream in;
 	private RemoteSystem system;
 	private RemoteDataClient remoteDataClient;
-	private String localPath;
-	private String remotePath;
+	private final String localPath;
+	private final String remotePath;
 	private TransferTask transferTask = null;
 
 	public RemoteDataWriterRepresentation(RemoteSystem system,

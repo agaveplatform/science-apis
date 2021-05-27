@@ -1,20 +1,10 @@
 package org.iplantc.service.monitor.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.UniqueConstraint;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.Filters;
@@ -27,15 +17,14 @@ import org.iplantc.service.monitor.dao.MonitorCheckDao;
 import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.util.ServiceUtils;
 import org.iplantc.service.profile.dao.InternalUserDao;
+import org.iplantc.service.profile.exceptions.ProfileException;
 import org.iplantc.service.profile.model.InternalUser;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.joda.time.DateTime;
-import org.testng.log4testng.Logger;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.util.Date;
 
 @Entity
 @Table(name = "monitors", uniqueConstraints=
@@ -102,7 +91,7 @@ public class Monitor
 	}
 
 	/**
-	 * @param nonce the uuid to set
+	 * @param uuid the uuid to set
 	 */
 	public void setUuid(String uuid) throws MonitorException
 	{
@@ -255,7 +244,7 @@ public class Monitor
 	}
 
 	/**
-	 * @param nextCheckTime
+	 * @param nextUpdateTime the next time the monitor will be run
 	 */
 	public void setNextUpdateTime(Date nextUpdateTime) {
 		this.nextUpdateTime = nextUpdateTime;
@@ -307,6 +296,15 @@ public class Monitor
 		this.created = created;
 	}
 
+	public static RemoteSystem getMonitorSystem(String systemId) {
+		try {
+			return new SystemDao().findBySystemId(systemId);
+		}
+		catch (Throwable e) {
+			return null;
+		}
+	}
+
 	public static Monitor fromJSON(JsonNode json, Monitor monitor, String username)
 	throws MonitorException
 	{
@@ -323,7 +321,7 @@ public class Monitor
 			}
 			else
 			{
-				RemoteSystem system = new SystemDao().findBySystemId(json.get("target").asText());
+				RemoteSystem system = getMonitorSystem(json.get("target").asText());
 
 				if (system == null) {
 					throw new MonitorException("Invalid 'target' value. "
@@ -373,7 +371,11 @@ public class Monitor
 							+ "If provided, internalUsername must be the username of a valid internal user.");
 				}
 
-				InternalUser iternalUser = new InternalUserDao().getInternalUserByAPIUserAndUsername(username, internalUsername);
+				InternalUser iternalUser = null;
+				try {
+					iternalUser = new InternalUserDao().getInternalUserByAPIUserAndUsername(username, internalUsername);
+				} catch (ProfileException ignored) {}
+
 				if (iternalUser == null)
 	        	{
 	        		throw new MonitorException(
@@ -437,7 +439,7 @@ public class Monitor
 			
 			if (json.has("active"))
 			{
-				if (json.get("active").isBoolean()) {
+				if (ServiceUtils.isBooleanOrNumericBoolean(json.get("active"))) {
 					monitor.setActive(json.get("active").asBoolean());
 				} else {
 					throw new MonitorException("Invalid 'active' value. "
@@ -479,36 +481,42 @@ public class Monitor
 				.put("active", isActive());
 
 				ObjectNode lastCheckObject = mapper.createObjectNode();
-				MonitorCheck lastCheck = new MonitorCheckDao().getLastMonitorCheck(getId());
-				if (lastCheck != null)
-				{
-					lastCheckObject
-						.put("id", lastCheck.getUuid())
-						.put("result", lastCheck.getResult().name())
-						.put("message", lastCheck.getMessage())
-						.put("type", lastCheck.getCheckType().name())
-						.put("created", new DateTime(lastCheck.getCreated()).toString());
+
+				try {
+					MonitorCheck lastCheck = new MonitorCheckDao().getLastMonitorCheck(getId());
+					if (lastCheck != null) {
+						lastCheckObject
+								.put("id", lastCheck.getUuid())
+								.put("result", lastCheck.getResult().name())
+								.put("message", lastCheck.getMessage())
+								.put("type", lastCheck.getCheckType().name())
+								.put("created", new DateTime(lastCheck.getCreated()).toString());
+					}
+
+					json.set("lastCheck", lastCheckObject);
+				}
+				catch (MonitorException e) {
+					log.error("Failed to look up last monitor check for monitor " + getUuid(), e);
+					json.putNull("lastCheck");
 				}
 
-				json.put("lastCheck", lastCheckObject);
-
 				ObjectNode linksObject = mapper.createObjectNode();
-				linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+				linksObject.set("self", mapper.createObjectNode()
 		    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + getUuid()));
-				linksObject.put("checks", (ObjectNode)mapper.createObjectNode()
+				linksObject.set("checks", mapper.createObjectNode()
 			    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + getUuid() + "/checks"));
 				if (!StringUtils.isEmpty(internalUsername)) {
-		    		linksObject.put("internalUser", mapper.createObjectNode()
+		    		linksObject.set("internalUser", mapper.createObjectNode()
 		    			.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + getOwner() + "/users/" + getInternalUsername()));
 		    	}
-				linksObject.put("notifications", mapper.createObjectNode()
+				linksObject.set("notifications", mapper.createObjectNode()
 						.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + "?associatedUuid=" + getUuid()));
-				linksObject.put("owner", mapper.createObjectNode()
+				linksObject.set("owner", mapper.createObjectNode()
 						.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + getOwner()));
-				linksObject.put("system", (ObjectNode)mapper.createObjectNode()
+				linksObject.set("system", mapper.createObjectNode()
 			    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_SYSTEM_SERVICE) + getSystem().getSystemId()));
 
-				json.put("_links", linksObject);
+				json.set("_links", linksObject);
 		}
 		catch (Exception e)
 		{

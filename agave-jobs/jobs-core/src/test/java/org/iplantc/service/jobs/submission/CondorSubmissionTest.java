@@ -1,56 +1,45 @@
 package org.iplantc.service.jobs.submission;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-
-import org.apache.commons.io.FilenameUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
-import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.model.JSONTestDataUtil;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.jobs.queue.AbstractJobWatch;
-import org.iplantc.service.jobs.queue.ArchiveWatch;
-import org.iplantc.service.jobs.queue.MonitoringWatch;
-import org.iplantc.service.jobs.queue.StagingWatch;
-import org.iplantc.service.jobs.queue.SubmissionWatch;
+import org.iplantc.service.jobs.queue.*;
 import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.SystemArgumentException;
-import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
+import org.iplantc.service.systems.model.enumerations.SchedulerType;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteDataClientFactory;
-import org.json.JSONException;
 import org.json.JSONObject;
+import org.quartz.JobDataMap;
+import org.quartz.JobExecutionContext;
+import org.quartz.impl.JobExecutionContextImpl;
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.util.Date;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests end to end integration of a job submission by manually pushing
  * through each stage of each queue.
  */
+@Test(groups={"integration", "condor", "submission"})
 public class CondorSubmissionTest extends AbstractJobSubmissionTest
 {
-	private SystemManager systemManager = new SystemManager();
+	private final SystemManager systemManager = new SystemManager();
 	private Software software;
 	
 	
@@ -63,10 +52,10 @@ public class CondorSubmissionTest extends AbstractJobSubmissionTest
 		clearJobs();
 		
 		jtd = JSONTestDataUtil.getInstance();
-		
-		initSystems();
-		
-		initSoftware();
+
+//		initSystems();
+//
+//		initSoftware();
 	}
 	
 	/* (non-Javadoc)
@@ -111,34 +100,38 @@ public class CondorSubmissionTest extends AbstractJobSubmissionTest
         systemDao.persist(executionSystem);
 	}
 	
-	@DataProvider(name="submitJobProvider")
-	public Object[][] submitJobProvider() throws Exception
+//	@DataProvider(name="submitJobProvider")
+//	protected Object[][] submitJobProvider() throws Exception
+//	{
+//		List<Software> testApps = SoftwareDao.getUserApps(SYSTEM_OWNER, false);
+//
+//		Object[][] testData = new Object[testApps.size()][3];
+//		for(int i=0; i< testApps.size(); i++) {
+//			testData[i] = new Object[] { testApps.get(i), "Submission to " + testApps.get(i).getExecutionSystem().getSystemId() + " failed.", false };
+//		}
+//
+//		return testData;
+//	}
+	
+//	@BeforeMethod
+//	private void beforeMethod() throws IOException {
+//		// create job work directory on local system and put input file there
+//
+//	}
+//
+//	@AfterMethod
+//	private void afterMethod() {
+//		// create job work directory on local system and put input file there
+//		//FileUtils.deleteQuietly(workDir);
+//	}
+//
+	@Test// (dataProvider="submitJobProvider")
+	public void submitJob() throws Exception //(Software software, String message, boolean shouldThrowException) throws Exception
 	{
-		List<Software> testApps = SoftwareDao.getUserApps(SYSTEM_OWNER, false);
-		
-		Object[][] testData = new Object[testApps.size()][3];
-		for(int i=0; i< testApps.size(); i++) {
-			testData[i] = new Object[] { testApps.get(i), "Submission to " + testApps.get(i).getExecutionSystem().getSystemId() + " failed.", false };
-		}
-		
-		return testData;
-	}
-	
-	@BeforeMethod
-	private void beforeMethod() throws IOException {
-		// create job work directory on local system and put input file there
-		
-	}
-	
-	@AfterMethod
-	private void afterMethod() {
-		// create job work directory on local system and put input file there
-		//FileUtils.deleteQuietly(workDir);
-	}
-	
-	@Test (groups={"submission"}, dataProvider="submitJobProvider")
-	public void submitJob(Software software, String message, boolean shouldThrowException) throws Exception
-	{
+		initSystems();
+
+		initSoftware();
+
 		ObjectMapper mapper = new ObjectMapper();
 		
 		RemoteDataClient remoteDataClient = null;
@@ -146,28 +139,32 @@ public class CondorSubmissionTest extends AbstractJobSubmissionTest
 		job = new Job();
 		job.setName( software.getExecutionSystem().getName() + " test");
 		job.setArchiveOutput(true);
-		job.setArchivePath("archive/job-1-"+System.currentTimeMillis());
+		job.setArchivePath("ef-"+System.currentTimeMillis());
 		job.setArchiveSystem(storageSystem);
 		job.setCreated(new Date());
-		job.setMemoryPerNode((double)4);
+		job.setMemoryPerNode((double)1);
 		job.setOwner(software.getOwner());
 		job.setProcessorsPerNode((long)1);
-		job.setMaxRunTime("1:00:00");
+		job.setMaxRunTime("0:05:00");
 		job.setSoftwareName(software.getUniqueName());
-		job.setStatus(JobStatusType.PENDING, "Job accepted and queued for submission.");
+		job.setSystem(executionSystem.getSystemId());
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(SchedulerType.CONDOR);
+		job.setBatchQueue(executionSystem.getBatchQueues().iterator().next().getName());
+//		job.setStatus(JobStatusType.PENDING, "Job accepted and queued for submission.");
 		job.setSystem(software.getExecutionSystem().getSystemId());
 		
 		//job.setWorkPath("iplant/job-1-open-science-grid-test/wc-1.00");
 		
 		ObjectNode jsonInputs = mapper.createObjectNode();
 		for(SoftwareInput input: software.getInputs()) {
-			jsonInputs.put(input.getKey(), input.getDefaultValueAsJsonArray());
+			jsonInputs.set(input.getKey(), input.getDefaultValueAsJsonArray());
 		}
 		job.setInputsAsJsonObject(jsonInputs);
 		
 		ObjectNode jsonParameters = mapper.createObjectNode();
 		for (SoftwareParameter parameter: software.getParameters()) {
-			jsonParameters.put(parameter.getKey(), parameter.getDefaultValueAsJsonArray());
+			jsonParameters.set(parameter.getKey(), parameter.getDefaultValueAsJsonArray());
 		}
 		job.setParametersAsJsonObject(jsonParameters);
 		
@@ -175,13 +172,21 @@ public class CondorSubmissionTest extends AbstractJobSubmissionTest
 		
 		// set the localsystem id to the job system so it will run
 		//Settings.LOCAL_SYSTEM_ID = job.getSystem();
-		
+
+		JobDataMap map = new JobDataMap();
+		map.put("uuid", job.getUuid());
+		JobExecutionContext ctx = mock(JobExecutionContextImpl.class);
+		when(ctx.getMergedJobDataMap()).thenReturn(map);
+
 		// move data to the system
 		try 
 		{
 			StagingWatch stagingWatch = new StagingWatch();
-			stagingWatch.execute(null);
-			Assert.assertEquals(job.getStatus(), JobStatusType.STAGED, 
+
+			stagingWatch.execute(ctx);
+			Job stagedJob = JobDao.getByUuid(job.getUuid());
+			Assert.assertNotNull(stagedJob, "Job should be present after staging");
+			Assert.assertEquals(stagedJob.getStatus(), JobStatusType.STAGED,
 					"Job status was not STAGED after StagingWatch completed.");
 			
 			remoteDataClient = new SystemDao().findBySystemId(job.getSystem()).getRemoteDataClient(job.getInternalUsername());
@@ -193,15 +198,21 @@ public class CondorSubmissionTest extends AbstractJobSubmissionTest
 			Assert.fail("Failed to stage job input data to " + job.getSystem(), e);
 		}
 		finally {
-			try { remoteDataClient.disconnect(); } catch (Exception e) {}
+			try {
+				if (remoteDataClient != null) {
+					remoteDataClient.disconnect();
+				}
+			} catch (Exception ignored) {}
 		}
 		
 		// submit the job after the data was staged
 		try 
 		{
 			SubmissionWatch submissionWatch = new SubmissionWatch();
-			submissionWatch.execute(null);
-			Assert.assertEquals(job.getStatus(), JobStatusType.QUEUED, 
+			submissionWatch.execute(ctx);
+			Job submittedJob = JobDao.getByUuid(job.getUuid());
+			Assert.assertNotNull(submittedJob, "Job should be present after submission");
+			Assert.assertEquals(submittedJob.getStatus(), JobStatusType.QUEUED,
 					"Job status was not QUEUED after SubmissionWatch completed.");
 		} 
 		catch (Exception e) {
@@ -212,8 +223,10 @@ public class CondorSubmissionTest extends AbstractJobSubmissionTest
 		try 
 		{
 			MonitoringWatch condorWatch = new MonitoringWatch();
-			condorWatch.execute(null);
-			Assert.assertEquals(job.getStatus(), JobStatusType.CLEANING_UP, 
+			condorWatch.execute(ctx);
+			Job monitoredJob = JobDao.getByUuid(job.getUuid());
+			Assert.assertNotNull(monitoredJob, "Job should be present after monitoring");
+			Assert.assertEquals(monitoredJob.getStatus(), JobStatusType.CLEANING_UP,
 					"Job status was not CLEANING_UP after JobStatusWatch completed.");
 		} 
 		catch (Exception e) {
@@ -224,8 +237,10 @@ public class CondorSubmissionTest extends AbstractJobSubmissionTest
 		try 
 		{
 			AbstractJobWatch archiveWatch = new ArchiveWatch();
-			archiveWatch.execute(null);
-			Assert.assertEquals(job.getStatus(), JobStatusType.FINISHED, 
+			archiveWatch.execute(ctx);
+			Job archivedJob = JobDao.getByUuid(job.getUuid());
+			Assert.assertNotNull(archivedJob, "Job should be present after archiving");
+			Assert.assertEquals(archivedJob.getStatus(), JobStatusType.FINISHED,
 					"Job status was not FINISHED after ArchiveWatch completed.");
 			
 			remoteDataClient = job.getArchiveSystem().getRemoteDataClient(job.getInternalUsername());
@@ -237,7 +252,7 @@ public class CondorSubmissionTest extends AbstractJobSubmissionTest
 			Assert.fail("Failed to archive job data to " + job.getArchiveSystem().getSystemId(), e);
 		} 
 		finally {
-			try { remoteDataClient.disconnect(); } catch (Exception e) {}
+			try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
 		}
 		
 		
@@ -338,11 +353,11 @@ Assert.assertTrue("not implemented yet",false)
 			dao.remove(s);
 		}
 
-		for(Software software: SoftwareDao.getUserApps("sterry1", true)) {
+		for(Software software: SoftwareDao.getUserApps("testuser", true)) {
 			SoftwareDao.delete(software);
 		}
 
-		for(Job job: JobDao.getJobs("sterry1")) {
+		for(Job job: JobDao.getJobs("testuser")) {
 			JobDao.delete(job);
 		}
 
@@ -352,42 +367,42 @@ Assert.assertTrue("not implemented yet",false)
         gSqlData.cleanAllTablesByRecord()
 
 		// load up a storage system
-		String irodsString = FileUtils.readFileToString(new File("src/test/resources/systems/storage/data.iplantcollaborative.org.json"));
+		String irodsString = FileUtils.readFileToString(new File("target/test-classes/systems/storage/data.iplantcollaborative.org.json"));
 		JSONObject irodsJson = new JSONObject(irodsString);
-		RemoteSystem irods = sysManager.parseSystem(irodsJson, "sterry1");
+		RemoteSystem irods = sysManager.parseSystem(irodsJson, "testuser");
 		irods.setAvailable(true);
 		irods.setGlobalDefault(true);
 		irods.setPubliclyAvailable(true);
 		systemDao.persist(irods);
 
 		// load up a compute system
-		String condorString = FileUtils.readFileToString(new File("src/test/resources/systems/execution/condor.opensciencegrid.org.json"));
+		String condorString = FileUtils.readFileToString(new File("target/test-classes/systems/execution/condor.opensciencegrid.org.json"));
 		JSONObject condorJson = new JSONObject(condorString);
-		RemoteSystem condor = sysManager.parseSystem(condorJson, "sterry1");
+		RemoteSystem condor = sysManager.parseSystem(condorJson, "testuser");
 		condor.setAvailable(true);
 		condor.setGlobalDefault(true);
 		condor.setPubliclyAvailable(true);
 		systemDao.persist(condor);
 
-		String wcString = FileUtils.readFileToString(new File("src/test/resources/software/wc-iplant-condor.tacc.utexas.edu.json"));
+		String wcString = FileUtils.readFileToString(new File("target/test-classes/software/wc-iplant-condor.tacc.utexas.edu.json"));
 		JSONObject wcJson = new JSONObject(wcString);
 		Software software = Software.fromJSON(wcJson);
-		software.setOwner("sterry1");
+		software.setOwner("testuser");
 		SoftwareDao.persist(software);
 
 		Job job = new Job();
 		job.setName("SteveTest");
-		job.setOwner("sterry1");
+		job.setOwner("testuser");
 		job.setSystem(software.getSystem().getSystemId());
 		job.setSoftwareName(software.getUniqueName());
 		job.setProcessorCount(1);
 		job.setMemoryRequest(1);
 		job.setArchiveOutput(true);
-		job.setArchivePath("/sterry1/jobs/condor");
+		job.setArchivePath("/testuser/jobs/condor");
 		job.setStatus(JobStatusType.PENDING);
 		job.setUpdateToken("7d7e5472e5159d726d905b4c06009c2f");
         JSONObject jsonobj = new JSONObject();
-        jsonobj.put("query1","sterry1/applications/wc-1.00/read1.fq");
+        jsonobj.put("query1","testuser/applications/wc-1.00/read1.fq");
 		job.setInputs(jsonobj.toString());
         jsonobj = new JSONObject();
         jsonobj.put("printLongestLine","1");

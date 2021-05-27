@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.jobs.callbacks;
 
-import java.util.Date;
-
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.ObjectNotFoundException;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -14,6 +12,8 @@ import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.joda.time.DateTime;
+
+import java.util.Date;
 
 /**
  * @author dooley
@@ -180,6 +180,6 @@ public class JobCallback {
         return String.format("Job %s received callback with status %s on %s",
                 job == null ? "null" : job.getUuid(),
                 status == null ? "unknown" : status.name(),
-                new DateTime(created).toString());
+                new DateTime(created));
     }
 }

@@ -3,55 +3,35 @@
  */
 package org.iplantc.service.transfer.ftp;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.io.StringReader;
+import com.google.common.io.Files;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+import org.codehaus.plexus.util.FileUtils;
+import org.globus.ftp.*;
+import org.globus.ftp.exception.*;
+import org.globus.ftp.vanilla.Command;
+import org.globus.ftp.vanilla.FTPControlChannel;
+import org.globus.ftp.vanilla.FTPServerFacade;
+import org.globus.ftp.vanilla.Reply;
+import org.globus.net.ServerSocketFactory;
+import org.iplantc.service.transfer.RemoteFileInfo;
+import org.iplantc.service.transfer.RemoteInputStream;
+import org.iplantc.service.transfer.RemoteTransferListener;
+import org.iplantc.service.transfer.exceptions.InvalidTransferException;
+import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.iplantc.service.transfer.model.RemoteFilePermission;
+import org.iplantc.service.transfer.model.enumerations.PermissionType;
+
+import java.io.*;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
-
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.codehaus.plexus.util.FileUtils;
-import org.globus.ftp.Buffer;
-import org.globus.ftp.DataSink;
-import org.globus.ftp.DataSource;
-import org.globus.ftp.FTPClient;
-import org.globus.ftp.FeatureList;
-import org.globus.ftp.FileRandomIO;
-import org.globus.ftp.HostPort;
-import org.globus.ftp.HostPort6;
-import org.globus.ftp.MlsxEntry;
-import org.globus.ftp.Session;
-import org.globus.ftp.exception.ClientException;
-import org.globus.ftp.exception.FTPException;
-import org.globus.ftp.exception.FTPReplyParseException;
-import org.globus.ftp.exception.ServerException;
-import org.globus.ftp.exception.UnexpectedReplyCodeException;
-import org.globus.ftp.vanilla.Command;
-import org.globus.ftp.vanilla.FTPControlChannel;
-import org.globus.ftp.vanilla.FTPServerFacade;
-import org.globus.ftp.vanilla.Reply;
-import org.globus.net.ServerSocketFactory;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteFileInfo;
-import org.iplantc.service.transfer.RemoteInputStream;
-import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.model.RemoteFilePermission;
-import org.iplantc.service.transfer.model.enumerations.PermissionType;
-
-import com.google.common.io.Files;
 
 /**
  * Class playing with alternative settings and multiple flavors of 
@@ -61,7 +41,7 @@ import com.google.common.io.Files;
  */
 public class FTP2 extends FTP 
 {
-	private static Logger log = Logger.getLogger(FTPClient.class);
+	private static final Logger log = Logger.getLogger(FTPClient.class);
 
 	public static final String ANONYMOUS_USER = "anonymous";
 	public static final String ANONYMOUS_PASSWORD = "guest";
@@ -77,7 +57,7 @@ public class FTP2 extends FTP
 	protected String systemType;
     protected static final int MAX_BUFFER_SIZE = 1048576;
     protected boolean bPassive = true;
-    private Map<String, RemoteFileInfo> fileInfoCache = new ConcurrentHashMap<String, RemoteFileInfo>();
+    private final Map<String, RemoteFileInfo> fileInfoCache = new ConcurrentHashMap<String, RemoteFileInfo>();
 
     private boolean disconnected = true;
     
@@ -538,7 +518,8 @@ public class FTP2 extends FTP
 				} 
 				else if (localDir.isFile()) 
 				{
-					throw new RemoteDataException("cannot overwrite non-directory: " + localDir.getName() + " with directory " + remotedir);
+					String msg = "Cannot overwrite non-directory " + localdir + " with directory " + remotedir;
+					throw new InvalidTransferException(msg);
 				}
 				else {
 					localDir = new File(localDir, FilenameUtils.getName(remotedir));
@@ -829,8 +810,8 @@ public class FTP2 extends FTP
 		{
 			// can't put dir to file
 			if (localFile.isDirectory() && !isDirectory(dest)) {
-				throw new RemoteDataException("cannot overwrite non-directory: " + 
-						remotedir + " with directory " + localFile.getName());
+				String msg = "Cannot overwrite non-directory " + remotedir + " with directory " + localFile.getPath();
+				throw new InvalidTransferException(msg);
 			} 
 			dest += (StringUtils.isEmpty(dest) ? "" : "/") + localFile.getName();
 			mkdir(dest);
@@ -1363,7 +1344,7 @@ public class FTP2 extends FTP
 	
 	private class ByteArrayDataSink implements DataSink {
 
-        private ByteArrayOutputStream received;
+        private final ByteArrayOutputStream received;
 
         public ByteArrayDataSink() {
             this.received = new ByteArrayOutputStream(1000);
@@ -1427,11 +1408,7 @@ public class FTP2 extends FTP
             // check file exists
             if (!doesExist(path)) return false;
 
-            if (path.startsWith(rootDir)) {
-                return true;
-            } else {
-                return false;
-            }
+            return path.startsWith(rootDir);
         } catch (Exception e) {
             return false;
         }
@@ -1443,11 +1420,7 @@ public class FTP2 extends FTP
         try {
             path = resolvePath(path);
 
-            if (path.startsWith(rootDir)) {
-                return true;
-            } else {
-                return false;
-            }
+            return path.startsWith(rootDir);
         } catch (Exception e) {
             return false;
         }
@@ -2030,11 +2003,10 @@ public class FTP2 extends FTP
 		else if (!rootDir.equals(other.rootDir)) return false;
 		if (username == null)
 		{
-			if (other.username != null) return false;
+            return other.username == null;
 		}
-		else if (!username.equals(other.username)) return false;
-		return true;
-	}
+		else return username.equals(other.username);
+    }
 	
 //	@Override
 //	public boolean equals(Object o)

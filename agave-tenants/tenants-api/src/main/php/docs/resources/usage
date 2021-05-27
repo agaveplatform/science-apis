@@ -86,7 +86,7 @@
         "path": "/usage/hours"
       }
     ],
-    "basePath": "http://agaveapi.co",
+    "basePath": "https://agaveplatform.org",
     "models": {
         "MultipleUsageResponse": {
             "id": "MultipleUsageResponse",

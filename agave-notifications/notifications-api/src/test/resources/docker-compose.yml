@@ -1,0 +1,93 @@
+version: '2'
+
+volumes: {}
+
+services:
+
+  test-proxy:
+    image: traefik:v2.4
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+    ports:
+      - 8000:80
+      - 8443:443
+      - 28443:8080
+    restart: on-failure
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    labels:
+      - "traefik.enable=true"
+
+  requestbin:
+    image: agaveplatform/requestbin:2.0.0
+    hostname: requestbin
+    restart: on-failure
+    ports:
+      - '5101:5000'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.requestbin.rule=Host(`requestbin`)"
+      - "traefik.http.routers.requestbin.entrypoints=web"
+      - "traefik.http.routers.requestbin.tls=false"
+      - "traefik.http.routers.requestbin-secure.rule=Host(`requestbin`)"
+      - "traefik.http.routers.requestbin-secure.entrypoints=websecure"
+      - "traefik.http.routers.requestbin-secure.tls=true"
+
+
+  httpbin:
+    image: agaveplatform/httpbin:latest
+    hostname: httpbin
+    restart: on-failure
+    ports:
+      - '8200:8000'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpbin.rule=Host(`httpbin`)"
+      - "traefik.http.routers.httpbin.entrypoints=web"
+      - "traefik.http.routers.httpbin.tls=false"
+      - "traefik.http.routers.httpbin-secure.rule=Host(`httpbin`)"
+      - "traefik.http.routers.httpbin-secure.entrypoints=websecure"
+      - "traefik.http.routers.httpbin-secure.tls=true"
+
+  httpd:
+    image: agaveplatform/apache-dev:latest
+    hostname: docker.example.com
+    restart: on-failure
+    ports:
+      - '10080:80'
+      - '10443:443'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpd.rule=Host(`httpd`)"
+      - "traefik.http.routers.httpd.entrypoints=web"
+      - "traefik.http.routers.httpd.tls=false"
+      - "traefik.http.routers.httpd.service=httpd"
+      - "traefik.http.routers.httpd-secure.rule=Host(`httpd`)"
+      - "traefik.http.routers.httpd-secure.entrypoints=websecure"
+      - "traefik.http.routers.httpd-secure.service=httpd"
+      - "traefik.http.routers.httpd-secure.tls=true"
+      - "traefik.http.services.httpd.loadbalancer.server.port=80"
+
+  redis:
+    image: redis:alpine
+    restart: on-failure
+
+  maildev:
+    image: agaveplatform/maildev:latest
+    ports:
+      - "25:25"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.maildev.rule=Host(`maildev`)"
+      - "traefik.http.routers.maildev.entrypoints=web"
+      - "traefik.http.routers.maildev.tls=false"
+      - "traefik.http.routers.maildev-secure.rule=Host(`maildev`)"
+      - "traefik.http.routers.maildev-secure.entrypoints=websecure"
+      - "traefik.http.routers.maildev-secure.tls=true"
+      - "traefik.http.services.maildev.loadbalancer.server.port=80"

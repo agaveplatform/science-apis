@@ -15,10 +15,10 @@
  */
 package org.globus.ftp.dc;
 
+import org.globus.ftp.Buffer;
+
 import java.io.IOException;
 import java.io.InputStream;
-
-import org.globus.ftp.Buffer;
 
 public class StreamImageDCReader implements DataChannelReader {
 

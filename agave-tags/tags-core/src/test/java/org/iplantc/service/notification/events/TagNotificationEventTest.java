@@ -2,7 +2,6 @@ package org.iplantc.service.notification.events;
 
 import org.iplantc.service.common.clients.RequestBin;
 import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.notification.events.MonitorNotificationEvent;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.notification.model.NotificationAttempt;
 import org.iplantc.service.tags.AbstractTagTest;
@@ -13,8 +12,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
-
+@Test(groups={"integration"})
 public class TagNotificationEventTest extends AbstractTagTest
 {
 	@BeforeMethod
@@ -41,7 +39,7 @@ public class TagNotificationEventTest extends AbstractTagTest
 			
 			RequestBin requestBin = RequestBin.getInstance();
 			
-			Notification notification = new Notification(tag.getUuid(), tag.getOwner(), TagEventType.UPDATED.name(), requestBin.toString() + "?name=${TAG_NAME}&status=${EVENT}", false);
+			Notification notification = new Notification(tag.getUuid(), tag.getOwner(), TagEventType.UPDATED.name(), requestBin + "?name=${TAG_NAME}&status=${EVENT}", false);
 			EventFilter event = new TagNotificationEvent(new AgaveUUID(tag.getUuid()), notification, TagEventType.UPDATED.name(), tag.getOwner());
 			event.setCustomNotificationMessageContextData(tag.toJSON().toString());
 			NotificationAttempt attempt = NotificationMessageProcessor.createNotificationAttemptFromEvent(event);
@@ -54,7 +52,7 @@ public class TagNotificationEventTest extends AbstractTagTest
 			Assert.assertTrue(processedAttempt.isSuccess(), "Email notification attempt should not fail.");
 			Assert.assertTrue(notification.isSuccess(), "Notification failed to update to true after sending");
 			
-			Assert.assertEquals(((ArrayNode)requestBin.getRequests()).size(), 1, "Requestbin should have 1 request after monitor fires.");
+			Assert.assertEquals(requestBin.getRequests().size(), 1, "Requestbin should have 1 request after monitor fires.");
 		} 
 		catch (Exception e) {
 			Assert.fail("Test failed unexpectedly");
@@ -68,7 +66,7 @@ public class TagNotificationEventTest extends AbstractTagTest
 		{
 			Tag tag = createTag();
 			dao.persist(tag);
-			Notification notification = new Notification(tag.getUuid(), tag.getOwner(), "RESULT_CHANGE", "dooley@tacc.utexas.edu", false);
+			Notification notification = new Notification(tag.getUuid(), tag.getOwner(), "RESULT_CHANGE", "help@agaveplatform.org", false);
 			MonitorNotificationEvent event = new MonitorNotificationEvent(new AgaveUUID(tag.getUuid()), notification, "RESULT_CHANGE", tag.getOwner());
 			event.setCustomNotificationMessageContextData(tag.toJSON().toString());
 			

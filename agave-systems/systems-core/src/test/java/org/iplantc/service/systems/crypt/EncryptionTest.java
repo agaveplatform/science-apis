@@ -1,12 +1,13 @@
 package org.iplantc.service.systems.crypt;
 
-import java.math.BigInteger;
-import java.security.SecureRandom;
-
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.math.BigInteger;
+import java.security.SecureRandom;
+
+@Test(groups={"unit"})
 public class EncryptionTest {
 
 	@DataProvider(name="authConfigPasswordEncryption")

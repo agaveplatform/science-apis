@@ -36,3 +36,4 @@ fabfile.pyc
 
 # maven and eclipse malformed output test folders
 test-output
+!/src/test/resources/docker-compose.yml

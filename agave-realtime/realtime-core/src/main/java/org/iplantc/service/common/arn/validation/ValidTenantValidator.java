@@ -1,12 +1,12 @@
 package org.iplantc.service.common.arn.validation;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
-
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.arn.constraints.ValidTenant;
 import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.exceptions.TenantException;
+
+import javax.validation.ConstraintValidator;
+import javax.validation.ConstraintValidatorContext;
 
 public class ValidTenantValidator implements ConstraintValidator<ValidTenant, String> {
 	
@@ -32,7 +32,7 @@ public class ValidTenantValidator implements ConstraintValidator<ValidTenant, St
         	constraintContext.disableDefaultConstraintViolation();
         	constraintContext
                 .buildConstraintViolationWithTemplate( "{org.iplantc.service.common.arn.validation.ValidTenant.message}" )
-                .addPropertyNode( "tenant" )
+                .addNode( "tenant" )
                 .addConstraintViolation();
         }
         

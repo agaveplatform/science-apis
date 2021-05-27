@@ -1,10 +1,5 @@
 package org.iplantc.service.common.representation;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Writer;
-
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.iplantc.service.transfer.RemoteDataClient;
@@ -12,14 +7,19 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.restlet.data.MediaType;
 import org.restlet.representation.WriterRepresentation;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Writer;
+
 public class RemoteDataWriterRepresentation extends WriterRepresentation
 {
 	private static final Logger log = Logger.getLogger(RemoteDataWriterRepresentation.class);
 	
 	private InputStream in;
-	private RemoteDataClient remoteClient;
-	private String localPath;
-	private String remotePath;
+	private final RemoteDataClient remoteClient;
+	private final String localPath;
+	private final String remotePath;
 	
 	public RemoteDataWriterRepresentation(RemoteDataClient client, String localPath, String remotePath, MediaType type) {
 		super(type);

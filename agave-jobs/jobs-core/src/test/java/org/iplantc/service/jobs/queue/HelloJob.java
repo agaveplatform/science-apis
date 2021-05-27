@@ -3,13 +3,7 @@
  */
 package org.iplantc.service.jobs.queue;
 
-import java.util.Date;
-
-import org.quartz.DisallowConcurrentExecution;
-import org.quartz.InterruptableJob;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.UnableToInterruptJobException;
+import org.quartz.*;
 
 /**
  * @author dooley
@@ -24,7 +18,7 @@ public class HelloJob implements InterruptableJob {
 	@Override
 	public void execute(JobExecutionContext context)
 			throws JobExecutionException {
-		System.out.println("Hello job " + (new Date()).toString());
+//		System.out.println("Hello job " + (new Date()).toString());
 	}
 
 	@Override

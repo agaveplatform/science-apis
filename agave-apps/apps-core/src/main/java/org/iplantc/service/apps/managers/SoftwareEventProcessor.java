@@ -3,9 +3,8 @@
  */
 package org.iplantc.service.apps.managers;
 
-import java.io.IOException;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
@@ -22,8 +21,8 @@ import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.json.JSONException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * Handles sending and propagation of events on {@link Software} objects.
@@ -34,7 +33,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class SoftwareEventProcessor {
 	private static final Logger log = Logger.getLogger(SoftwareEventProcessor.class);
 	
-	private ObjectMapper mapper = new ObjectMapper();
+	private final ObjectMapper mapper = new ObjectMapper();
 	private SoftwareEventDao entityEventDao;
 	private SoftwareDao dao;
 	
@@ -65,10 +64,10 @@ public class SoftwareEventProcessor {
 	}
 
 	/**
-	 * @param dao the historyDao to set
+	 * @param dao the dao to set
 	 */
-	public void setEntityEventDao(SoftwareEventDao entityEventDao) {
-		this.entityEventDao = entityEventDao;
+	public void setEntityEventDao(SoftwareEventDao dao) {
+		this.entityEventDao = dao;
 	}
 	
 	/**
@@ -76,8 +75,10 @@ public class SoftwareEventProcessor {
 	 * {@link RemoteSystem}. This could be a CRUD operation or a change
 	 * to the credentials.
 	 * 
-	 * @param software
-	 * @param event
+	 * @param software the software upon which the event was created
+	 * @param eventType the event type to create
+	 * @param description the textual description of the event
+	 * @param createdBy the principal who generated the event
 	 * @return the {@link SoftwareEvent} updated with the association to the {@link Software}
 	 */
 	public SoftwareEvent processSoftwareContentEvent(Software software, SoftwareEventType eventType, String description, String createdBy) {
@@ -95,7 +96,7 @@ public class SoftwareEventProcessor {
 			
 			ObjectNode json = mapper.createObjectNode();
 			try {
-			    json.put("app", mapper.readTree(software.toJSON()));
+			    json.set("app", mapper.readTree(software.toJSON()));
 			} catch (Throwable e) {
 			    log.error(String.format("Failed to serialize app "
 			            + "%s to json for %s event notification", 
@@ -126,12 +127,10 @@ public class SoftwareEventProcessor {
 	 * {@link Software}. Permission changes are not propagated to the associated
 	 * resources.
 	 * 
-	 * @param software
-	 * @param permission
-	 * @param event
-	 * @return the {@link SoftwareEvent}
-	 * 
-	 * @throws SoftwareEventProcessingException
+	 * @param software the software for which the event was created
+	 * @param softwarePermission the permission that was set
+	 * @param createdBy the principal to attribute the event
+	 * @return the {@link SoftwareEvent} created
 	 */
 	public SoftwareEvent processPermissionEvent(Software software, SoftwarePermission softwarePermission, String createdBy) 
 	{
@@ -513,7 +512,7 @@ public class SoftwareEventProcessor {
 	 */
 	protected int fireNotification(String associatedUuid, String eventStatus, String createdBy, String json) {
 		try {
-            return NotificationManager.process(associatedUuid, eventStatus, createdBy, json == null ? null : json.toString());
+            return NotificationManager.process(associatedUuid, eventStatus, createdBy, json);
         }
         catch (Throwable e) {
             log.error(String.format("Failed to send app notification "

@@ -3,14 +3,14 @@
  */
 package org.iplantc.service.apps.queue.actions;
 
-import java.nio.channels.ClosedByInterruptException;
-
 import org.iplantc.service.common.exceptions.DependencyException;
 import org.iplantc.service.common.exceptions.DomainException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.transfer.URLCopy;
+
+import java.nio.channels.ClosedByInterruptException;
 
 /**
  * @author dooley
@@ -31,35 +31,35 @@ public interface WorkerAction<T> {
      * @throws JobException
      * @throws JobDependencyException 
      */
-    public void run() 
+    void run()
     throws SystemUnavailableException, SystemUnknownException, ClosedByInterruptException, DomainException, DependencyException, PermissionException;
     
-    public boolean isStopped();
+    boolean isStopped();
 
     /**
      * @param stopped the stopped to set
      */
-    public void setStopped(boolean stopped);
+    void setStopped(boolean stopped);
 
     /**
      * @return the entity upon which the worker is acting
      */
-    public T getEntity();
+    T getEntity();
 
     /**
      * @param entity the the entity upon which the worker is acting
      */
-    public void setEntity(T entity);
+    void setEntity(T entity);
 
     /**
      * @return the urlCopy
      */
-    public URLCopy getUrlCopy();
+    URLCopy getUrlCopy();
 
     /**
      * @param urlCopy the urlCopy to set
      */
-    public void setUrlCopy(URLCopy urlCopy);
+    void setUrlCopy(URLCopy urlCopy);
 
     /**
      * Throws an exception if {@link #isStopped()} returns true

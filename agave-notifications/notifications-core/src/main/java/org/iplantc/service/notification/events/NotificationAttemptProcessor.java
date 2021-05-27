@@ -3,14 +3,12 @@
  */
 package org.iplantc.service.notification.events;
 
-import java.util.Date;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.MessageClientFactory;
 import org.iplantc.service.common.messaging.MessageQueueClient;
-import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.dao.FailedNotificationAttemptQueue;
 import org.iplantc.service.notification.dao.NotificationDao;
@@ -19,17 +17,12 @@ import org.iplantc.service.notification.exceptions.MissingNotificationException;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.exceptions.NotificationPolicyViolationException;
 import org.iplantc.service.notification.managers.NotificationManager;
-import org.iplantc.service.notification.model.Notification;
-import org.iplantc.service.notification.model.NotificationAttempt;
-import org.iplantc.service.notification.model.NotificationAttemptBackoffCalculator;
-import org.iplantc.service.notification.model.NotificationAttemptResponse;
-import org.iplantc.service.notification.model.NotificationPolicy;
+import org.iplantc.service.notification.model.*;
 import org.iplantc.service.notification.model.enumerations.NotificationStatusType;
 import org.iplantc.service.notification.providers.NotificationAttemptProvider;
 import org.iplantc.service.notification.providers.NotificationAttemptProviderFactory;
-import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 
 /**
  * @author dooley
@@ -97,9 +90,9 @@ public class NotificationAttemptProcessor {
 			}
 			
 			// process the attempt and save the timestamps
-			getAttempt().setStartTime(new Date());
+			getAttempt().setStartTime(Instant.now());
 			NotificationAttemptResponse response = getNotificationAttemptProvider().publish();
-			getAttempt().setEndTime(new Date());
+			getAttempt().setEndTime(Instant.now());
 			
 			// save the response for the decision making step
 			getAttempt().setResponse(response);
@@ -151,7 +144,6 @@ public class NotificationAttemptProcessor {
 	{
 		// get a client to process the attempt
 		return NotificationAttemptProviderFactory.getInstance(getAttempt());
-					
 	}
 
 
@@ -175,6 +167,7 @@ public class NotificationAttemptProcessor {
 					
 				// if it's active, then set it to completed
 				if (NotificationStatusType.ACTIVE == getNotification().getStatus()) {
+					getNotification().setStatus(NotificationStatusType.COMPLETE);
 					NotificationManager.updateStatus(getAttempt().getNotificationId(), 
 							NotificationStatusType.COMPLETE);
 				}
@@ -213,10 +206,9 @@ public class NotificationAttemptProcessor {
 			attempt.setAttemptNumber(attempt.getAttemptNumber() + 1);
 			
 			// set the next scheduled attempt time.
-			DateTime nextScheduledAttempt = new DateTime();
-			nextScheduledAttempt.plusSeconds(secondsUntilNextScheduledAttempt);
+			Instant nextScheduledAttempt = Instant.now().plusSeconds(secondsUntilNextScheduledAttempt);
 			
-			attempt.setScheduledTime(nextScheduledAttempt.toDate());
+			attempt.setScheduledTime(nextScheduledAttempt);
 			setAttempt(attempt);
 			
 			pushNotificationAttemptToRetryQueue(getAttempt(), secondsUntilNextScheduledAttempt);
@@ -252,6 +244,18 @@ public class NotificationAttemptProcessor {
 		else {
 			log.debug("Skipping persistence of failed attempt " + attempt.getUuid() + 
 					" due to notification " + attempt.getNotificationId() + " policy.");
+		}
+
+		// if it's active, then set it to completed
+		if (NotificationStatusType.ACTIVE == getNotification().getStatus()) {
+			try {
+				getNotification().setStatus(NotificationStatusType.FAILED);
+				NotificationManager.updateStatus(getAttempt().getNotificationId(),
+						NotificationStatusType.FAILED);
+			} catch (NotificationException e) {
+				log.error("Failed to update status of notification " + attempt.getNotificationId() +
+						" after failure of attempt " + attempt.getUuid());
+			}
 		}
 	}
 	
@@ -367,283 +371,5 @@ public class NotificationAttemptProcessor {
 		this.notification = notification;
 	}
 
-//	/**
-//	 * Publishes the notification message to multiple realtime channels. Channels
-//	 * include in the broadcast are. This effectively sends the notification to a 
-//	 * catchall channel for the notification owner, the source resource on which the
-//	 * event occurred, and a channel defined by the user.
-//	 * <ul>
-//	 * <li>{@link Notification#getTenantId()}/{@link Notification#getOwner()}</li>
-//	 * <li>{@link Notification#getTenantId()}/{@link Notification#getAssociatedUuid()}</li>
-//	 * <li>{@link Notification#getTenantId()}/{@link Notification#getOwner()}/{@code Notification#getCallbackUrl()#getPath()}</li>
-//	 * </ul>
-//	 * @throws NotificationException
-//	 */
-//	protected void pushRealtimeMessage() throws NotificationException 
-//	{
-//		NotificationAttemptResponse response = new NotificationAttemptResponse();
-//        
-//
-//	    try {
-//	        URL callbackUrl = new URL(this.attempt.getCallbackUrl());
-//            
-//	        ObjectMapper mapper = new ObjectMapper();
-//    	    
-//    	    ChannelMessageBody channelMessageBody = new ChannelMessageBody(attempt.getEventName(), 
-//    	                                                    attempt.getOwner(), 
-//    	                                                    attempt.getAssociatedUuid(),
-//    	                                                    mapper.readTree(attempt.getContent()));
-//                    
-//            ChannelMessage ownerChannelMessage = new ChannelMessage(
-//            		attempt.getTenantId() + "/" + attempt.getOwner(), 
-//                    channelMessageBody);
-//            ChannelMessage resourceChannelMessage = new ChannelMessage(
-//            		attempt.getTenantId() + "/" + attempt.getAssociatedUuid(), 
-//                    channelMessageBody);
-//            
-//            RealtimeMessageItems items = new RealtimeMessageItems(Arrays.asList(
-//                    ownerChannelMessage, resourceChannelMessage)); 
-//                 
-//            try 
-//            {
-//                String userProvidedChannelName = callbackUrl.getPath();
-//                
-//                if (StringUtils.isNotEmpty(userProvidedChannelName) &&
-//                        !StringUtils.equals(callbackUrl.getPath(), "/")) 
-//                {
-//                    items.getItems().add(new ChannelMessage(
-//                    		attempt.getTenantId() + "/" + attempt.getOwner() + resolveMacros(userProvidedChannelName, true), 
-//                            channelMessageBody));
-//                }
-//                
-//            } catch (Exception e) {
-//                log.debug("[" + attempt.getUuid + "] Failed to add " + event + " notification realtime message to " + notification.getCallbackUrl());
-//            }
-//            
-//            // now send the message. Failed attempts will return the approprate response
-//            // code from the server.
-//            RealtimeClient pushpin = RealtimeClientFactory.getInstance(attempt);
-//            responseCode = pushpin.publish();
-//	    }
-//	    catch (NotificationException e) {
-//	        throw e;
-//	    }
-//	    catch (NotImplementedException e) {
-//			throw e;
-//		}
-//	    catch (Exception e) {
-//	    	throw new NotificationException("Error publishing message to realtime channels", e);
-//	    }
-//        
-//	}
-		
-//	/**
-//	 * Processes the notification into a SMS and sends via Twilio's REST API.
-//	 * 
-//	 * @return responseCode
-//	 * @throws NotificationException
-//	 */
-//	protected void smsCallback() throws NotificationException
-//	{
-//		responseCode = 500;
-//		try 
-//		{
-//			SmsClient smsClient = SmsClientFactory.getInstance(Settings.SMS_PROVIDER);
-//			responseCode = smsClient.publish(notification, event, getEmailSubject(), attemptUuid);
-//		}
-//		catch (NotificationException | NotImplementedException e) {
-//			throw e;
-//		}
-//		catch (Exception e) {
-//			log.error("Failed to send " + event + " notification sms to " + notification.getCallbackUrl(), e);
-//		}
-//	}
-//	
-//	/**
-//	 * Sends an email notification when the trigger callback url is an email address.
-//	 * This will delegate the subject and message creation to the concrete implementation
-//	 * classes. Generally speaking there will be velocity templates for each resource
-//	 * that could potentially have a trigger associated with it.
-//	 * 
-//	 * @return
-//	 * @throws NotificationException
-//	 */
-//	protected void sendEmail() throws NotificationException
-//	{	
-//		responseCode = 500;
-//		try 
-//		{	
-//			String subject = getEmailSubject();
-//			String body = getEmailBody();
-//			String htmlBody = getHtmlEmailBody();
-//			
-//			Map<String, String> customHeaders = new HashMap<String, String>();
-//			customHeaders.put("User-Agent", "Agave-Hookbot/"+ org.iplantc.service.common.Settings.getContainerId());
-//			customHeaders.put("X-Agave-Delivery", attemptUuid);
-//			customHeaders.put("X-Agave-Notification", notification.getUuid());
-//            
-//			EmailMessage.send(null, notification.getCallbackUrl(), subject, body, htmlBody, customHeaders);
-//			log.debug("[" + attemptUuid + "] Successfully sent " + event + " notification email to " + notification.getCallbackUrl());
-//			responseCode = 200;
-//		}
-//		catch (Throwable e) {
-//			log.error("[" + attemptUuid + "] Failed to send " + event + " notification email to " + notification.getCallbackUrl(), e);
-//		}
-//	}
-//	
-//	/**
-//	 * Sends a POST to the notification's callbackUrl. All macros will be resolved
-//	 * by the concrete implementation classes. Post body will be empty.
-//	 * 
-//	 * @return responseStatus of the call
-//	 * @throws NotificationException
-//	 */
-//	protected void postCallback() throws NotificationException
-//	{
-//	    try 
-//		{
-//			URL url = new URL(notification.getCallbackUrl());
-//			URI escapedUri = new URI(url.getProtocol(), 
-//									url.getUserInfo(), 
-//									url.getHost(), 
-//									url.getPort(), 
-//									resolveMacros(url.getPath(), false), 
-//									resolveMacros(url.getQuery(), true), 
-//									url.getRef());
-//			
-//			CloseableHttpClient httpclient = null;
-//			if (escapedUri.getScheme().equalsIgnoreCase("https"))
-//			{
-//				SSLContext sslContext = new SSLContextBuilder()
-//						.loadTrustMaterial(null, new TrustStrategy() {
-//
-//		                    public boolean isTrusted(
-//		                            final X509Certificate[] chain, final String authType) throws CertificateException {
-//		                        return true;
-//		                    }
-//
-//		                })
-//						.useTLS()
-//						.build();
-//			    
-//			    SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(
-//			    		sslContext,
-//			    		new String[]{"TLSv1", "TLSv1.1", "TLSv1.2"},   
-//			    	    null,
-//			    		SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-//			    
-//			    httpclient = HttpClients.custom()
-//			    		.setSSLSocketFactory(sslsf)
-//			    		.setRedirectStrategy(LaxRedirectStrategy.INSTANCE)
-//			    		.build();
-//			}
-//			else
-//			{
-//				httpclient = HttpClients.custom()
-//						.setRedirectStrategy(LaxRedirectStrategy.INSTANCE)
-//			    		.build();
-//			}
-//			
-//			HttpPost httpPost = new HttpPost(escapedUri);
-//			CloseableHttpResponse response = null;
-//			RequestConfig config = RequestConfig.custom()
-//												.setConnectTimeout(20000)
-//												.setSocketTimeout(10000)
-//												.build();
-//			httpPost.setConfig(config);
-//			
-//			if (!StringUtils.isEmpty(getCustomNotificationMessageContextData())) {
-//			    httpPost.setEntity(new StringEntity(getCustomNotificationMessageContextData()));
-////			    httpPost.setHeader("Content-Type", "application/json");
-//			}
-//			
-//			httpPost.setHeader("Content-Type", "application/json");
-//			httpPost.setHeader("User-Agent", "Agave-Hookbot/"+ org.iplantc.service.common.Settings.getContainerId());
-//			httpPost.setHeader("X-Agave-Delivery", attemptUuid);
-//			httpPost.setHeader("X-Agave-Notification", notification.getUuid());
-//			
-//			long callstart = System.currentTimeMillis();
-//			try
-//			{
-//				if (escapedUri.getUserInfo() != null) 
-//				{
-//					String userInfo = escapedUri.getUserInfo();
-//					String[] authTokens = userInfo.split(":");
-//					String username = authTokens[0];
-//					String password = authTokens.length > 1 ? authTokens[1] : "";
-//					
-//				    HttpHost targetHost = new HttpHost(escapedUri.getHost(), escapedUri.getPort(), escapedUri.getScheme());
-//				    CredentialsProvider credsProvider = new BasicCredentialsProvider();
-//				    credsProvider.setCredentials(
-//				            new AuthScope(targetHost.getHostName(), targetHost.getPort()),
-//				            new UsernamePasswordCredentials(username, password));
-//		
-//				    // Create AuthCache instance
-//				    AuthCache authCache = new BasicAuthCache();
-//				    // Generate BASIC scheme object and add it to the local auth cache
-//				    BasicScheme basicAuth = new BasicScheme();
-//				    authCache.put(targetHost, basicAuth);
-//		
-//				    // Add AuthCache to the execution context
-//				    HttpClientContext context = HttpClientContext.create();
-//				    context.setCredentialsProvider(credsProvider);
-//				    context.setAuthCache(authCache);
-//				    
-//				    response = httpclient.execute(targetHost, httpPost, context);
-//				}
-//				else
-//				{
-//					response = httpclient.execute(httpPost);
-//				}
-//				
-//				responseCode = response.getStatusLine().getStatusCode();
-//				if (responseCode >= 200 && responseCode < 300) {
-//					log.debug("[" + attemptUuid + "] Successfully sent " + event + " notification webhook to " + notification.getCallbackUrl());
-//				} else {
-//					log.error("[" + attemptUuid + "] Failed to send " + event + " notification webhook to " + notification.getCallbackUrl() + 
-//							". Server responded with: " + responseCode + " - " + response.getStatusLine().getReasonPhrase());
-//				}
-//				
-//				//HttpEntity entity = response.getEntity();
-//				//byte[] bis = StreamUtils.getBytes(entity.getContent());
-//				//System.out.println(new String(bis));
-//			} 
-//			catch (ConnectTimeoutException e) {
-//				responseCode = 408;
-//				log.debug("[" + attemptUuid + "] Failed to send " + event + " notification webhook to " + notification.getCallbackUrl() +
-//						". Remote call to " + escapedUri.toString() + " timed out after " + 
-//						(System.currentTimeMillis() - callstart) + " milliseconds.", e);
-//			} 
-//			catch (SSLException e) {
-//				responseCode = 404;
-//				notification.setTerminated(true);
-//				if (StringUtils.equalsIgnoreCase(escapedUri.getScheme(), "https")) {
-//					throw new NotificationException("Failed to send " + event + " notification webhook to " + notification.getCallbackUrl() +
-//							". Remote call to " + escapedUri.toString() + " failed due to the remote side not supporting SSL.", e);
-//				} else {
-//					throw new NotificationException("Failed to send " + event + " notification webhook to " + notification.getCallbackUrl() +
-//							". Remote call to " + escapedUri.toString() + " failed due a server side SSL failure.", e);
-//				}
-//			} 
-//			catch (Exception e) {
-//				responseCode = 500;
-//				log.debug("Failed to send " + event + " notification webhook to " + notification.getCallbackUrl() +
-//						". Remote call to " + escapedUri.toString() + " failed after " + 
-//						(System.currentTimeMillis() - callstart) + " milliseconds.", e);
-//			} 
-//			finally {
-//		        try { response.close(); } catch (Exception e) {}
-//		    }	
-//		}
-//		catch (NotificationException e) {
-//			throw e;
-//		}
-//		catch(Exception e) {
-//			log.error("[" + attemptUuid + "] Failed to send " + event + " notification email to " + notification.getCallbackUrl() +
-//					" due to internal server error.", e);
-//			responseCode = 500;
-//		}
-//	}
-	
 
 }

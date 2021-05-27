@@ -16,8 +16,8 @@
 		}
 	],
 	"login": {
-		"host": "docker.example.com",
-		"port": 10133,
+		"host": "${slurm.host}",
+		"port": ${slurm.port},
 		"protocol": "SSH",
 		"auth":{
          "username":"testuser",
@@ -26,8 +26,8 @@
       }
 	},
 	"storage":{
-      "host":"docker.example.com",
-      "port":10133,
+		"host": "${slurm.host}",
+		"port": ${slurm.port},
       "protocol":"SFTP",
       "rootDir":"/",
       "homeDir":"/home/testuser",

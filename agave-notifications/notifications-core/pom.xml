@@ -4,23 +4,18 @@
 	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc.agave</groupId>
+		<groupId>org.agaveplatform</groupId>
 		<artifactId>notifications</artifactId>
-		<version>2.1.11</version>
+		<version>2.2.27</version>
 	</parent>
 	<artifactId>notifications-core</artifactId>
-	<name>iPlant Agave API Notification Service Core</name>
+	<name>Agave Platform Notification Service Core</name>
 	<description>Core classes for Agave Notifications Service</description>
 	<packaging>jar</packaging>
 
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-notifications.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-notifications.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-notifications</url>
-	</scm>
-
 	<properties>
 		<force.check.version>false</force.check.version>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
 	<build>
@@ -30,16 +25,25 @@
 				<directory>src/main/resources</directory>
 			</resource>
 		</resources>
+
 		<testResources>
 			<testResource>
 				<filtering>true</filtering>
 				<directory>src/test/resources</directory>
 			</testResource>
 		</testResources>
+
 		<plugins>
+			<!-- Starts and stops integration test containers with Docker Compose -->
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+			</plugin>
+
+			<!-- Performs a wait and rediness check for integration test container startup -->
+			<plugin>
+				<groupId>org.agaveplatform.ops</groupId>
+				<artifactId>await-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>
@@ -47,11 +51,21 @@
 	<dependencies>
 		<dependency>
 			<groupId>${project.groupId}</groupId>
+			<artifactId>protos-java</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
 			<artifactId>common-core</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		<!-- <dependency> <groupId>bad.robot</groupId> <artifactId>simple-http</artifactId> 
-			<version>1.0-jdk6</version> </dependency> -->
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>common-core</artifactId>
+			<version>${project.version}</version>
+			<type>test-jar</type>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>javax.mail</groupId>
 			<artifactId>mail</artifactId>
@@ -89,11 +103,5 @@
 			<version>${sendgrid-java.version}</version>
 		</dependency>
 
-		<!-- MongoDB -->
-		<dependency>
-			<groupId>org.mongodb</groupId>
-			<artifactId>mongo-java-driver</artifactId>
-			<version>${mongo-java-driver.version}</version>
-		</dependency>
 	</dependencies>
 </project>

@@ -1,22 +1,16 @@
 package org.iplantc.service.jobs.search;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.search.AgaveResourceSearchFilter;
 import org.iplantc.service.common.search.SearchTerm;
-import org.iplantc.service.jobs.dao.AbstractDaoTest;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.jobs.search.JobSearchFilter;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class JobSearchFilterTest extends AbstractDaoTest
+import java.util.*;
+
+@Test(groups={"unit"})
+public class JobSearchFilterTest
 {
     
     private String alternateCase(String val) {
@@ -40,11 +34,6 @@ public class JobSearchFilterTest extends AbstractDaoTest
 		JobSearchFilter jobSearchFilter = new JobSearchFilter();
 		for (String key: jobSearchFilter.getSearchTermMappings().keySet())
 		{
-//		    // handle sets and ranges independently
-//		    if (StringUtils.endsWithIgnoreCase(key, "between") 
-//                    || StringUtils.endsWithIgnoreCase(key, "in") 
-//                    || StringUtils.endsWithIgnoreCase(key, "nin")) continue;
-//            
             testData.add(new Object[]{ key, true, "Exact terms should be accepted" });
 			testData.add(new Object[]{ key.toUpperCase(), true, "Uppercase terms should be accepted" });
 			testData.add(new Object[]{ alternateCase(key), true, "Mixed case terms should be accepted" });
@@ -118,6 +107,7 @@ public class JobSearchFilterTest extends AbstractDaoTest
 		JobSearchFilter jobSearchFilter = new JobSearchFilter();
 		for (String key: jobSearchFilter.getSearchTermMappings().keySet())
 		{
+			if (!key.equals("status")) continue;
 		    // handle sets and ranges independently
 		    if (StringUtils.endsWithIgnoreCase(key, "between") 
                     || StringUtils.endsWithIgnoreCase(key, "in") 
@@ -171,7 +161,8 @@ public class JobSearchFilterTest extends AbstractDaoTest
 		Object filteredList = searchTerms.get(filteredSearchTerm);
 		if (filteredSearchTerm.getOperator().isSetOperator()) {
 			Assert.assertTrue(filteredList instanceof List, "Comma separated list of values was not filtered into a list when the set operation was provided");
-		
+			Assert.assertEquals(((List)filteredList).size(), value.split(",").length, "Invalid number of search values returned after filtering");
+
 			for(Object o: (List)filteredList) {
 			    if (StringUtils.startsWithIgnoreCase(filteredSearchTerm.getSearchField(), "maxruntime")) {
 			        Assert.assertEquals(o.getClass(), Integer.class, "filtered maxruntime list did not resolve to integer values");
@@ -184,7 +175,7 @@ public class JobSearchFilterTest extends AbstractDaoTest
 		}
 	}
 	
-	public void _filterInvalidSearchCriteria(String testField, boolean shouldExistAfterFiltering, String message) throws Exception
+	protected void _filterInvalidSearchCriteria(String testField, boolean shouldExistAfterFiltering, String message) throws Exception
 	{
 		JobSearchFilter jobSearchFilter = new JobSearchFilter();
 		Map<String, String> searchCriteria = new HashMap<String, String>();

@@ -3,10 +3,10 @@
  */
 package org.iplantc.service.common.util;
 
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
+
+import java.util.regex.Pattern;
 
 /**
  * @author dooley
@@ -17,9 +17,15 @@ public class TimeUtils {
 	/**
 	 * 
 	 */
-	public TimeUtils() {
-	}
-	
+	public TimeUtils() {}
+
+	/**
+	 * Validates a string as a valid requested job time. Valid values are of
+	 * the form HHHH:MM:DD.
+	 *
+	 * @param value the string to validate
+	 * @return true if valid, false otherwise
+	 */
 	public static boolean isValidRequestedJobTime(String value)
 	{
 		if (StringUtils.isEmpty(value)) 
@@ -43,13 +49,13 @@ public class TimeUtils {
 			
 			if (NumberUtils.toInt(tod1[0]) == NumberUtils.toInt(tod2[0])) {
 				if (NumberUtils.toInt(tod1[1]) == NumberUtils.toInt(tod2[1]))
-					return new Integer(NumberUtils.toInt(tod1[2])).compareTo(new Integer(NumberUtils.toInt(tod2[2])));
+					return Integer.valueOf(NumberUtils.toInt(tod1[2])).compareTo(NumberUtils.toInt(tod2[2]));
 				else
-					return new Integer(NumberUtils.toInt(tod1[1])).compareTo(new Integer(NumberUtils.toInt(tod2[1])));
+					return Integer.valueOf(NumberUtils.toInt(tod1[1])).compareTo(NumberUtils.toInt(tod2[1]));
 			}
 			else 
 			{
-				return new Integer(NumberUtils.toInt(tod1[0])).compareTo(new Integer(NumberUtils.toInt(tod2[0])));
+				return Integer.valueOf(NumberUtils.toInt(tod1[0])).compareTo(NumberUtils.toInt(tod2[0]));
 			}
 		}
 		
@@ -59,7 +65,7 @@ public class TimeUtils {
 	 * Converts a string time value in HHH:MM:SS format into a millisecond long value.
 	 * 
 	 * @param maxTime
-	 * @return
+	 * @return milliseconds value of maxTime
 	 * @throws IllegalArgumentException
 	 */
 	public static int getMillisecondsForMaxTimeValue(String maxTime) throws IllegalArgumentException

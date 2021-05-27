@@ -1,16 +1,15 @@
 package org.iplantc.service.profile;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.POJONode;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.POJONode;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Convenience class to set up the environment and obtain test data.
@@ -20,7 +19,7 @@ import com.fasterxml.jackson.databind.node.POJONode;
  */
 public class TestDataHelper {
 	
-	public static String TEST_INTERNAL_USER_FILE = "src/test/resources/internal_user.json";
+	public static String TEST_INTERNAL_USER_FILE = "target/test-classes/internal_users/internal_user.json";
 	
 	public static TestDataHelper testDataHelper;
 	
@@ -42,7 +41,11 @@ public class TestDataHelper {
 	    	return new JSONObject(json);
     	} 
     	finally {
-    		try { in.close(); } catch (Exception e) {}
+    		try {
+				if (in != null) {
+					in.close();
+				}
+			} catch (Exception ignored) {}
     	}
     }
 

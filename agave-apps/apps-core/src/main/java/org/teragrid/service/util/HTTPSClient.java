@@ -1,5 +1,8 @@
 package org.teragrid.service.util;
 
+import com.thoughtworks.xstream.core.util.Base64Encoder;
+
+import javax.net.ssl.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,23 +15,15 @@ import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.X509TrustManager;
-
-import com.thoughtworks.xstream.core.util.Base64Encoder;
-
 public class HTTPSClient {
-	private String				url;
-	private String				username;
-	private String				password;
-	private Map<String, String>	headers;
+	private final String				url;
+	private final String				username;
+	private final String				password;
+	private final Map<String, String>	headers;
 
 	// Create an anonymous class to trust all certificates.
 	// This is bad style, you should create a separate class.
-	private X509TrustManager	xtm	= new X509TrustManager() {
+	private final X509TrustManager	xtm	= new X509TrustManager() {
 
 										public void checkClientTrusted(
 												X509Certificate[] chain,
@@ -47,7 +42,7 @@ public class HTTPSClient {
 									};
 
 	// Create an class to trust all hosts
-	private HostnameVerifier	hnv	= new HostnameVerifier() {
+	private final HostnameVerifier	hnv	= new HostnameVerifier() {
 										public boolean verify(String hostname,
 												SSLSession session)
 										{

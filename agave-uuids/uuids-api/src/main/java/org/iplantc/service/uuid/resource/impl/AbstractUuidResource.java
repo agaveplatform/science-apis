@@ -1,24 +1,14 @@
 package org.iplantc.service.uuid.resource.impl;
 
-import java.io.InputStream;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.Callable;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLException;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.StatusLine;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpHead;
 import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLContextBuilder;
@@ -42,10 +32,16 @@ import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
 import org.restlet.util.Series;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.Callable;
 
 /**
  * @author dooley
@@ -69,12 +65,12 @@ public class AbstractUuidResource extends AbstractAgaveResource {
 	 * 
 	 * @param uuid
 	 * @return AgaveUUID object referenced in the path
-	 * @throws AgaveUUID
+	 * @throws UUIDException
 	 * @throws ResourceException
 	 */
 	protected AgaveUUID getAgaveUUIDInPath(String uuid) throws UUIDException {
 		
-		AgaveUUID agaveUuid = null;
+		AgaveUUID agaveUuid;
 		if (StringUtils.isEmpty(uuid)) {
 			throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
 					"No uuid provided");
@@ -97,7 +93,7 @@ public class AbstractUuidResource extends AbstractAgaveResource {
 	/**
 	 * Convenience class to log usage info per request
 	 * 
-	 * @param action
+	 * @param activityKey
 	 */
 	protected void logUsage(AgaveLogServiceClient.ActivityKeys activityKey) {
 		AgaveLogServiceClient.log(getServiceKey().name(), activityKey.name(),
@@ -134,7 +130,7 @@ public class AbstractUuidResource extends AbstractAgaveResource {
 
 		/** Access a URL, and see if you get a healthy response. */
 		@Override
-		public JsonNode call() throws Exception {
+		public JsonNode call() {
 			if (json == null) {
 				try {
 					return fetchResource(this.url, this.filter, this.headerMap);
@@ -176,28 +172,28 @@ public class AbstractUuidResource extends AbstractAgaveResource {
 	 * 
 	 * @param resourceUrl the url to the resource requested
 	 * @param filter the url filter to use on the remote request
-	 * @param headers the auth and client headers used to request the resource
+	 * @param headerMap the auth and client headers used to request the resource
 	 * @return JsonNode representation of the naked response
-	 * @throws UUIDResolutionException
+	 * @throws UUIDResolutionException if unable to resolve the uuid to a valid resource
 	 */
 	protected JsonNode fetchResource(String resourceUrl, String filter, Map<String,String> headerMap) throws UUIDResolutionException {
 		ObjectMapper mapper = new ObjectMapper();
-		JsonNode attemptResponse = null;
+		JsonNode attemptResponse;
 		try 
 		{
 			String filteredResourceUrl = resourceUrl;
 			if (StringUtils.isNotEmpty(filter)) {
 				if (StringUtils.contains(filteredResourceUrl, "?")) {
-					filteredResourceUrl += "&filter="+URLEncoder.encode(StringUtils.stripToEmpty(filter));
+					filteredResourceUrl += "&filter="+URLEncoder.encode(StringUtils.stripToEmpty(filter), "utf-8");
 				}
 				else {
-					filteredResourceUrl += "?filter="+URLEncoder.encode(StringUtils.stripToEmpty(filter));
+					filteredResourceUrl += "?filter="+URLEncoder.encode(StringUtils.stripToEmpty(filter), "utf-8");
 				}
 			}
 			
 			URI escapedUri = URI.create(filteredResourceUrl);
 			
-			CloseableHttpClient httpclient = null;
+			CloseableHttpClient httpclient;
 			if (escapedUri.getScheme().equalsIgnoreCase("https"))
 			{
 				SSLContext sslContext = new SSLContextBuilder()
@@ -231,45 +227,40 @@ public class AbstractUuidResource extends AbstractAgaveResource {
 			
 //			HttpHead httpGet = new HttpHead(escapedUri);
 			HttpGet httpGet = new HttpGet(escapedUri);
-			CloseableHttpResponse response = null;
+
+			// add the auth and client headers provided to this method
+
 			RequestConfig config = RequestConfig.custom()
 												.setConnectTimeout(30000)
 												.setSocketTimeout(30000)
 												.build();
 			httpGet.setConfig(config);
-			
-			// add the auth and client headers provided to this method
 			for (String headerName: headerMap.keySet()) {
 				httpGet.addHeader(headerName, headerMap.get(headerName));
 	        }
-	        
 			long callstart = System.currentTimeMillis();
-			
-			try
-			{
-				response = httpclient.execute(httpGet);
-				
+			try (CloseableHttpResponse response = httpclient.execute(httpGet)) {
+
 				InputStream in = null;
-				
+
 				try {
 					int statusCode = response.getStatusLine().getStatusCode();
 					HttpEntity entity = response.getEntity();
-					
+
 					long contentLength = entity.getContentLength();
-					
+
 					if (contentLength > 0 || contentLength == -1) {
 						in = entity.getContent();
 						attemptResponse = mapper.readTree(in);
 						// if successful, just return the result from the response
 						if (statusCode >= 200 && statusCode <= 300) {
 							if (attemptResponse.hasNonNull("result")) {
-								// calls to the files api will return an array. the first (and only 
+								// calls to the files api will return an array. the first (and only
 								// since we appended limit=1 to files api queries) object is
 								// always the one we're interested in.
 								if (attemptResponse.get("result").isArray()) {
-									return ((ArrayNode)attemptResponse.get("result")).get(0);
-								}
-								else {
+									return attemptResponse.get("result").get(0);
+								} else {
 									return attemptResponse.get("result");
 								}
 							} else {
@@ -278,21 +269,20 @@ public class AbstractUuidResource extends AbstractAgaveResource {
 						}
 						// if failed, just return the error message and status from teh response.
 						else {
-							if (attemptResponse.hasNonNull("version")) 
-								((ObjectNode)attemptResponse).remove("version");
-							if (attemptResponse.hasNonNull("result")) 
-								((ObjectNode)attemptResponse).remove("result");
-							
+							if (attemptResponse.hasNonNull("version"))
+								((ObjectNode) attemptResponse).remove("version");
+							if (attemptResponse.hasNonNull("result"))
+								((ObjectNode) attemptResponse).remove("result");
+
 							return attemptResponse;
 						}
 					}
 					// if no content is returned, return an empty object.
 					else {
-						
+
 						return mapper.createObjectNode();
 					}
-				}
-				catch (Exception e) {
+				} catch (Exception e) {
 					int statusCode = 0;
 					String message = null;
 					if (response != null) {
@@ -302,31 +292,28 @@ public class AbstractUuidResource extends AbstractAgaveResource {
 							message = statusLine.getReasonPhrase();
 						}
 					}
-					
+
 					throw new UUIDResolutionException("Failed to resolve " + resourceUrl +
 							". Server responded with: " + statusCode + " - " + message, e);
+				} finally {
+					try {
+						assert in != null;
+						in.close();
+					} catch (Exception ignore) {}
 				}
-				finally {
-					try {in.close();} catch (Exception e){}
-				}
-			} 
-			catch (ConnectTimeoutException e) {
-				throw new UUIDResolutionException("Failed to resolve " + resourceUrl + 
-						". Remote call to " + escapedUri.toString() + " timed out after " + 
+			} catch (ConnectTimeoutException e) {
+				throw new UUIDResolutionException("Failed to resolve " + resourceUrl +
+						". Remote call to " + escapedUri + " timed out after " +
 						(System.currentTimeMillis() - callstart) + " milliseconds.", e);
-			} 
-			catch (SSLException e) {
+			} catch (SSLException e) {
 				if (StringUtils.equalsIgnoreCase(escapedUri.getScheme(), "https")) {
 					throw new UUIDResolutionException("Failed to resolve " + resourceUrl +
-							". Remote call to " + escapedUri.toString() + " failed due to the remote side not supporting SSL.", e);
+							". Remote call to " + escapedUri + " failed due to the remote side not supporting SSL.", e);
 				} else {
-					throw new UUIDResolutionException("Failed to resolve " + resourceUrl + 
-							". Remote call to " + escapedUri.toString() + " failed due a server side SSL failure.");
+					throw new UUIDResolutionException("Failed to resolve " + resourceUrl +
+							". Remote call to " + escapedUri + " failed due a server side SSL failure.");
 				}
 			}
-			finally {
-		        try { response.close(); } catch (Exception e) {}
-		    }	
 		}
 		catch (UUIDResolutionException e) {
 			throw e;

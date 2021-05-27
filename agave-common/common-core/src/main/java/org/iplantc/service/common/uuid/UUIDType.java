@@ -68,11 +68,12 @@ public enum UUIDType {
 	ABACO_AGENT("060"),
 	ABACO_AGENT_EVENT("061"),
 	SCHEDULED_TRANSFER("062"),
-	SCHEDULED_TRANSFER_EVENT("063");
-	
-	private String code;
+	SCHEDULED_TRANSFER_EVENT("063"),
+	TRANSFER_UPDATE("064");
 
-	private UUIDType(String val) {
+	private final String code;
+
+	UUIDType(String val) {
 		this.code = val;
 	}
 

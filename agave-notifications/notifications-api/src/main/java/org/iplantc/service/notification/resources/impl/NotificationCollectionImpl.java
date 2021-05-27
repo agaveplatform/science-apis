@@ -1,31 +1,17 @@
-/**
- * 
- */
 package org.iplantc.service.notification.resources.impl;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifAdd;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifList;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifSearch;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.NOTIFICATIONS02;
-
-import java.util.List;
-import java.util.Map;
-
-import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.UUIDException;
@@ -46,14 +32,15 @@ import org.restlet.data.Status;
 import org.restlet.ext.fileupload.RestletFileUpload;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
-import org.testng.log4testng.Logger;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.util.List;
+import java.util.Map;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.*;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.NOTIFICATIONS02;
 
 /**
  * @author dooley
@@ -65,15 +52,14 @@ public class NotificationCollectionImpl extends AbstractNotificationCollection i
 {
 	private static final Logger log = Logger.getLogger(NotificationCollectionImpl.class);
 	protected NotificationDao dao = new NotificationDao();
-	protected NotificationPermissionManager pm = null;
+	protected NotificationPermissionManager pm;
 	
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.notification.resources.NotificationResource#getNotifications()
 	 */
 	@Override
 	@GET
-	public Response getNotifications(@PathParam("associatedUuid") String associatedUuid)
-	{	
+	public Response getNotifications(@PathParam("associatedUuid") String associatedUuid) throws ResourceException {
 		try
 		{	
 			Map<SearchTerm, Object>  searchCriteria = getQueryParameters();
@@ -120,7 +106,7 @@ public class NotificationCollectionImpl extends AbstractNotificationCollection i
                              .put("href", TenancyHelper.resolveURLToCurrentTenant(agaveUUID.getObjectReference()));
                     }
                 } 
-                catch (UUIDException e) {}
+                catch (UUIDException ignore) {}
                 
                 jsonApps.add(node);
                 
@@ -133,10 +119,7 @@ public class NotificationCollectionImpl extends AbstractNotificationCollection i
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to retrieve notifications.", e);
 		}
-		catch (ResourceException e) {
-			throw e;
-		} 
-		
+
 	}
 
 	/* (non-Javadoc)
@@ -155,8 +138,7 @@ public class NotificationCollectionImpl extends AbstractNotificationCollection i
 			@FormParam("policy.retryLimit") Integer retryLimit,
 			@FormParam("policy.retryRate") Integer retryRate,
 			@FormParam("policy.retryDelay") Integer retryDelay,
-			@FormParam("policy.saveOnFailure") Boolean saveOnFailure)
-	{
+			@FormParam("policy.saveOnFailure") Boolean saveOnFailure) throws ResourceException {
 		AgaveLogServiceClient.log(NOTIFICATIONS02.name(), 
 				NotifAdd.name(), 
 				getAuthenticatedUsername(), "", 
@@ -173,7 +155,7 @@ public class NotificationCollectionImpl extends AbstractNotificationCollection i
     		jsonNotification.put("status", status);
     		
     		NotificationPolicy policy = new NotificationPolicy();
-    		jsonNotification.put("policy", mapper.createObjectNode()
+    		jsonNotification.set("policy", mapper.createObjectNode()
     				.put("retryStrategy", StringUtils.isEmpty(retryStrategyType) ? policy.getRetryStrategyType().name() : retryStrategyType)
     				.put("retryLimit", retryLimit == null ? policy.getRetryLimit() : retryLimit)
     				.put("retryRate", retryRate == null ? policy.getRetryRate() : retryRate)
@@ -203,18 +185,10 @@ public class NotificationCollectionImpl extends AbstractNotificationCollection i
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 					e.getLocalizedMessage(), e);
 		}
-		catch (IllegalArgumentException e) {
+		catch (IllegalArgumentException | HibernateException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 					"Unable to save notification: " + e.getMessage(), e);
-	    } 
-		catch (HibernateException e) {
-			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					"Unable to save notification: " + e.getMessage(), e);
-	    }
-		catch (ResourceException e) {
-			throw e;
-		} 
-		catch (Exception e) {
+	    } catch (Exception e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to save notification: " + e.getMessage(), e);
 		}
@@ -226,7 +200,7 @@ public class NotificationCollectionImpl extends AbstractNotificationCollection i
 	@Override
 	@POST
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
-	public Response addNotification(Representation input)
+	public Response addNotification(Representation input) throws ResourceException
 	{
 		AgaveLogServiceClient.log(NOTIFICATIONS02.name(), 
 				NotifAdd.name(), 
@@ -299,9 +273,6 @@ public class NotificationCollectionImpl extends AbstractNotificationCollection i
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 					"Unable to process the notification json description.", e);
 		}
-		catch (ResourceException e) {
-			throw e;
-		} 
 		catch (Throwable e) {
 			e.printStackTrace();
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
@@ -315,7 +286,7 @@ public class NotificationCollectionImpl extends AbstractNotificationCollection i
 	@Override
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response addNotification(byte[] bytes)
+	public Response addNotification(byte[] bytes) throws ResourceException
 	{
 		AgaveLogServiceClient.log(NOTIFICATIONS02.name(), 
 				NotifAdd.name(), 
@@ -334,7 +305,7 @@ public class NotificationCollectionImpl extends AbstractNotificationCollection i
             	
         		Notification notification = null;
 				if (jsonNotification.isObject()) {
-					notification = Notification.fromJSON((ObjectNode)jsonNotification);
+					notification = Notification.fromJSON(jsonNotification);
 				} else {
 					throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 							"Notification should be a valid JSON object.");
@@ -379,11 +350,7 @@ public class NotificationCollectionImpl extends AbstractNotificationCollection i
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 					"Unable to process the notification json description. ", e);
 		}
-		catch (ResourceException e) {
-			throw e;
-		} 
 		catch (Throwable e) {
-			e.printStackTrace();
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to save notification: " + e.getMessage(), e);
 		}

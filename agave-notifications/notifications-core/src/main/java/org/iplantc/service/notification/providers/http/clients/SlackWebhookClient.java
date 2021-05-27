@@ -1,19 +1,15 @@
 package org.iplantc.service.notification.providers.http.clients;
 
-import java.io.IOException;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.model.NotificationAttempt;
 import org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType;
-import org.iplantc.service.notification.providers.http.clients.WebhookClient;
 
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
 
 public class SlackWebhookClient extends AbstractWebhookClient {
 	
@@ -35,7 +31,7 @@ public class SlackWebhookClient extends AbstractWebhookClient {
 	 * Filters the content into a JSON formatted incoming webhook body
 	 * suitable for posting to Slack. 
 	 * 
-	 * @see https://api.slack.com/incoming-webhooks
+	 * @see <a href="https://api.slack.com/incoming-webhooks" target="_blank">Incoming Webhooks</a>
 	 * @param content the original {@link NotificationAttempt#getContent()}
 	 * @return
 	 */

@@ -1,5 +1,21 @@
 package org.iplantc.service.jobs.model.scripts;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+import org.iplantc.service.apps.dao.SoftwareDao;
+import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.apps.model.SoftwareInput;
+import org.iplantc.service.apps.model.enumerations.ParallelismType;
+import org.iplantc.service.jobs.Settings;
+import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
+import org.iplantc.service.jobs.exceptions.JobProcessingException;
+import org.iplantc.service.jobs.managers.JobManager;
+import org.iplantc.service.jobs.model.Job;
+import org.iplantc.service.systems.model.ExecutionSystem;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -7,23 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.iplantc.service.apps.dao.SoftwareDao;
-import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.apps.model.SoftwareInput;
-import org.iplantc.service.jobs.Settings;
-import org.iplantc.service.jobs.exceptions.JobException;
-import org.iplantc.service.jobs.exceptions.JobProcessingException;
-import org.iplantc.service.jobs.managers.JobManager;
-import org.iplantc.service.jobs.model.Job;
-
-import com.fasterxml.jackson.databind.JsonNode;
 
 
 /**
@@ -32,13 +33,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 public class CondorSubmitScript extends AbstractSubmitScript {
 	private final static Logger log = Logger.getLogger(CondorSubmitScript.class);
 
-	public CondorSubmitScript(Job job)
-	{
-		super(job);
-	}
-
 	public enum CondorUniverse {
-		vanilla, standard, scheduler, local, java, vm, grid, docker;
+		vanilla, standard, scheduler, local, java, vm, grid, docker
 	}
 	
     String executable 				= "transfer_wrapper.sh";
@@ -57,13 +53,26 @@ public class CondorSubmitScript extends AbstractSubmitScript {
     
     static final String Queue = "queue 1";
 
+	/**
+	 * Default constructor used by all {@link SubmitScript}. Note that node count will be forced to 1
+	 * whenever the {@link Software#getParallelism()} is {@link ParallelismType#SERIAL} or null.
+	 *
+	 * @param job the job for which the submit script is being created
+	 * @param software the app being run by the job
+	 * @param executionSystem the system on which the app will be run
+	 */
+	public CondorSubmitScript(Job job, Software software, ExecutionSystem executionSystem)
+	{
+		super(job, software, executionSystem);
+	}
+
     /**
      * Creates a String representing a Condor Submit file
      *
      * @return String contents of a Condor Submit file
      */
     @Override
-    public String getScriptText() throws JobException
+    public String getScriptText() throws JobException, JobMacroResolutionException
     {
     	try {
 	        StringBuilder sb = new StringBuilder();

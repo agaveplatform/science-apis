@@ -1,23 +1,17 @@
 package org.iplantc.service.notification;
 
-import java.util.HashSet;
-import java.util.Set;
+import org.iplantc.service.common.restlet.resource.QuartzUtilityResource;
+import org.iplantc.service.notification.resources.impl.*;
 
 import javax.ws.rs.core.Application;
-
-import org.iplantc.service.common.restlet.resource.QuartzUtilityResource;
-import org.iplantc.service.notification.resources.impl.FireNotificationResourceImpl;
-import org.iplantc.service.notification.resources.impl.NotificationAttemptCollectionImpl;
-import org.iplantc.service.notification.resources.impl.NotificationAttemptResourceImpl;
-import org.iplantc.service.notification.resources.impl.NotificationCollectionImpl;
-import org.iplantc.service.notification.resources.impl.NotificationResourceImpl;
-import org.iplantc.service.notification.resources.impl.QuartzResourceImpl;
+import java.util.HashSet;
+import java.util.Set;
 
 
 public class NotificationApplication extends Application {
 
 	/**
-	 * @see javax.ws.rs.core.ApplicationConfig#getResourceClasses()
+	 * @see javax.ws.rs.core.Application#getClasses()
 	 */
 	@Override
     public Set<Class<?>> getClasses() {

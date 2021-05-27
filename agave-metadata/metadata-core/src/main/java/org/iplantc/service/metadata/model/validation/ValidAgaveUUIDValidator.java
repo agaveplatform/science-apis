@@ -1,12 +1,12 @@
 package org.iplantc.service.metadata.model.validation;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
-
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.model.validation.constraints.ValidAgaveUUID;
+
+import javax.validation.ConstraintValidator;
+import javax.validation.ConstraintValidatorContext;
 
 public class ValidAgaveUUIDValidator implements ConstraintValidator<ValidAgaveUUID, Object> {
 
@@ -22,7 +22,7 @@ public class ValidAgaveUUIDValidator implements ConstraintValidator<ValidAgaveUU
         
         boolean isValid = false;
         if (target == null) {
-            return false;
+            return true;
         }
         
         AgaveUUID uuid = null;
@@ -41,6 +41,7 @@ public class ValidAgaveUUIDValidator implements ConstraintValidator<ValidAgaveUU
         if (isValidUUIDType(uuid)) {
             try {
                 uuid.getObjectReference();
+                isValid = true;
             } catch (Exception e) {
                 constraintContext.disableDefaultConstraintViolation();
                 constraintContext.buildConstraintViolationWithTemplate( 
@@ -53,8 +54,8 @@ public class ValidAgaveUUIDValidator implements ConstraintValidator<ValidAgaveUU
         } else {
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate( 
-                        "The given uuid " + uuid.toString() + 
-                        " does not match the expected type " + uuidType.name() )
+                         uuid.toString() +
+                        " is not a valid " + this.uuidType.name().toLowerCase() + " id" )
                     .addConstraintViolation();
         }
         
@@ -70,10 +71,6 @@ public class ValidAgaveUUIDValidator implements ConstraintValidator<ValidAgaveUU
      * @return true if no {@link UUIDType} was provided in the annotation or the types match. false otherwise.
      */
     private boolean isValidUUIDType(AgaveUUID uuid) {
-        if (this.uuidType != null && this.uuidType != uuid.getResourceType()) {
-            return false;
-        }
-        
-        return true;
+        return this.uuidType == null || this.uuidType == uuid.getResourceType();
     }
 }

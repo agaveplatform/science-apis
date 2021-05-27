@@ -1,29 +1,31 @@
 package org.iplantc.service.jobs.queue.factory;
 
 
-import static org.quartz.TriggerBuilder.newTrigger;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
+import org.iplantc.service.common.persistence.HibernateUtil;
+import org.iplantc.service.jobs.queue.WorkerWatch;
+import org.quartz.*;
+import org.quartz.spi.JobFactory;
+import org.quartz.spi.TriggerFiredBundle;
 
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
-import org.iplantc.service.common.persistence.HibernateUtil;
-import org.iplantc.service.jobs.Settings;
-import org.iplantc.service.jobs.queue.WorkerWatch;
-import org.quartz.Job;
-import org.quartz.JobDetail;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SimpleTrigger;
-import org.quartz.spi.JobFactory;
-import org.quartz.spi.TriggerFiredBundle;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * Provides an implementation of the {@link JobFactory} interface
  * to maintain a priority queue of jobs across the jvm.
+ * 
+ * All synchronized methods and blocks in this class use this class's lock for serialization.  
+ * This is overly aggressive because it uses the same lock for all phase queues, 
+ * but this isn't worth fixing given that this code will be removed in the new jobs 
+ * design.  The previous version of this code had some methods synchronized on the class
+ * object and others on this instance object, which is not easy to reason about and is
+ * probably not what was intended.
  * 
  * @author dooley
  *
@@ -33,6 +35,10 @@ public abstract class AbstractJobProducerFactory implements JobFactory {
     
     private final Logger log = Logger.getLogger(getClass());
     
+    // These structures should be sets or maps for faster search.  Mixing concurrent data
+    // structures and synchronization is usually not necessary, and it's not clear using
+    // both types of concurrency control is needed here.  Notice that these fields leak
+    // outside this class in several ways, so concurrency considerations are complicated.
     protected static final ConcurrentLinkedDeque<String> stagingJobTaskQueue = new ConcurrentLinkedDeque<String>();
     protected static final ConcurrentLinkedDeque<String> monitoringJobTaskQueue = new ConcurrentLinkedDeque<String>();
     protected static final ConcurrentLinkedDeque<String> submissionJobTaskQueue = new ConcurrentLinkedDeque<String>();
@@ -40,41 +46,46 @@ public abstract class AbstractJobProducerFactory implements JobFactory {
     
     public AbstractJobProducerFactory() {}
 
-    public synchronized Job newJob(TriggerFiredBundle bundle, Scheduler scheduler) throws SchedulerException {
+    @Override
+    public Job newJob(TriggerFiredBundle bundle, Scheduler scheduler) throws SchedulerException {
 
-        JobDetail jobDetail = bundle.getJobDetail();
+    	// Synchronize on the class object of this class.  This uses the same monitor
+    	// as the "static synchronized" methods below.  See chapter 17.1 of the Java 7 
+    	// JLS for a precise specification on which monitor is used with static
+    	// synchronized.  
+    	synchronized (AbstractJobProducerFactory.class) { 
+    		JobDetail jobDetail = bundle.getJobDetail();
+    		if (log.isTraceEnabled()) log.trace(getClass().getSimpleName() + ": " + jobDetail.toString());
         
-        WorkerWatch worker = null;
+    		WorkerWatch worker = null;
         
-        try 
-        {
-            worker = getJobInstance();
+    		try 
+    		{
+    			worker = getJobInstance();
+    			if (log.isTraceEnabled()) log.trace("Job instance class: " + worker.getClass().getSimpleName());
             
-            String jobUuid = worker.selectNextAvailableJob();
+    			String jobUuid = worker.selectNextAvailableJob();
 
-            if (StringUtils.isNotEmpty(jobUuid))
-            {
-                if (!getTaskQueue().contains(jobUuid) && 
+    			if (StringUtils.isNotEmpty(jobUuid))
+    			{
+    				if (!getTaskQueue().contains(jobUuid) && 
                 		getTaskQueue().size() < getMaxTasks()) 
-                {
-                	getTaskQueue().add(jobUuid);
-                    produceWorker(worker.getClass(), jobDetail.getKey().getGroup(), jobUuid, scheduler);
-                }
-            }
+    				{
+    					getTaskQueue().add(jobUuid);
+    					produceWorker(worker.getClass(), jobDetail.getKey().getGroup(), jobUuid, scheduler);
+    				}
+    			}
 
-            return worker;
+    			return worker;
 
-        } catch (Throwable e) {
-            log.error("Failed to create new " +  jobDetail.getJobClass().getName() + " task", e);
-            return worker;
-        }
-        finally {
-        	try {
-        		HibernateUtil.flush();
-        		HibernateUtil.disconnectSession();
-        	}
-        	catch (Throwable e) {}
-        }
+    		} catch (Throwable e) {
+    			log.error("Failed to create new " +  jobDetail.getJobClass().getName() + " task", e);
+            	return worker;
+    		}
+    		finally {
+    			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+    		}
+    	} // synchronization
     }
     
     /**
@@ -97,7 +108,7 @@ public abstract class AbstractJobProducerFactory implements JobFactory {
             .storeDurably(false)
             .build();
 
-         SimpleTrigger trigger = (SimpleTrigger)newTrigger()
+        SimpleTrigger trigger = (SimpleTrigger)newTrigger()
                             .withIdentity(jobUuid, groupName + "Workers")
                             .startNow()
                             .build();
@@ -112,21 +123,13 @@ public abstract class AbstractJobProducerFactory implements JobFactory {
      * @param uuid
      */
     public static synchronized void releaseJob(String uuid) {
-        if (archivingJobTaskQueue.contains(uuid)) {
-            archivingJobTaskQueue.remove(uuid);
-        }
-        
-        if (monitoringJobTaskQueue.contains(uuid)) {
-            monitoringJobTaskQueue.remove(uuid);
-        }
-        
-        if (stagingJobTaskQueue.contains(uuid)) {
-            stagingJobTaskQueue.remove(uuid);
-        }
-        
-        if (submissionJobTaskQueue.contains(uuid)) {
-            submissionJobTaskQueue.remove(uuid);
-        }
+		archivingJobTaskQueue.remove(uuid);
+
+		monitoringJobTaskQueue.remove(uuid);
+
+		stagingJobTaskQueue.remove(uuid);
+
+		submissionJobTaskQueue.remove(uuid);
     }
     
     /**
@@ -139,33 +142,31 @@ public abstract class AbstractJobProducerFactory implements JobFactory {
     
     protected abstract int getMaxTasks();
     
-
-    
     /**
 	 * @return the stagingjobtaskqueue
 	 */
-	public static synchronized ConcurrentLinkedDeque<String> getStagingjobtaskqueue() {
+	public static ConcurrentLinkedDeque<String> getStagingjobtaskqueue() {
 		return stagingJobTaskQueue;
 	}
 
 	/**
 	 * @return the monitoringjobtaskqueue
 	 */
-	public static synchronized ConcurrentLinkedDeque<String> getMonitoringjobtaskqueue() {
+	public static ConcurrentLinkedDeque<String> getMonitoringjobtaskqueue() {
 		return monitoringJobTaskQueue;
 	}
 
 	/**
 	 * @return the submissionjobtaskqueue
 	 */
-	public static synchronized ConcurrentLinkedDeque<String> getSubmissionjobtaskqueue() {
+	public static ConcurrentLinkedDeque<String> getSubmissionjobtaskqueue() {
 		return submissionJobTaskQueue;
 	}
 
 	/**
 	 * @return the archivingjobtaskqueue
 	 */
-	public static synchronized ConcurrentLinkedDeque<String> getArchivingjobtaskqueue() {
+	public static ConcurrentLinkedDeque<String> getArchivingjobtaskqueue() {
 		return archivingJobTaskQueue;
 	}
 

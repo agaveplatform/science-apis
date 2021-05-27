@@ -1,10 +1,7 @@
 package org.iplantc.service.common.quartz.util.ui;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-
-import org.quartz.JobExecutionContext;
 
 /**
  * Created by silviu

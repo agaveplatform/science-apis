@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.jobs.dao;
 
-import java.util.List;
-
 import org.hibernate.CacheMode;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -13,6 +11,8 @@ import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.model.JobPermission;
+
+import java.util.List;
 
 /**
  * Model class for interacting with job permissions. Permissions are

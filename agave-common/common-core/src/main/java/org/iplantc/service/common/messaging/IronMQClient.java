@@ -3,23 +3,16 @@
  */
 package org.iplantc.service.common.messaging;
 
-import io.iron.ironmq.Client;
-import io.iron.ironmq.Cloud;
-import io.iron.ironmq.EmptyQueueException;
-import io.iron.ironmq.Messages;
-import io.iron.ironmq.Queue;
-import io.iron.ironmq.QueueModel;
-import io.iron.ironmq.Queues;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
+import io.iron.ironmq.*;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.exceptions.MessagingException;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author dooley
@@ -29,7 +22,7 @@ public class IronMQClient implements MessageQueueClient
 {
 	private static final Logger log = Logger.getLogger(IronMQClient.class);
 	
-	private Client client;
+	private final Client client;
 	private boolean stop = false; 
 	
 	public IronMQClient() {

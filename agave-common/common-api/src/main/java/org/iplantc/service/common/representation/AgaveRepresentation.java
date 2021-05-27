@@ -1,8 +1,13 @@
 package org.iplantc.service.common.representation;
 
 
-import java.io.IOException;
-
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.util.JsonPropertyFilter;
@@ -11,17 +16,8 @@ import org.restlet.Response;
 import org.restlet.data.CharacterSet;
 import org.restlet.data.Form;
 import org.restlet.data.MediaType;
-import org.restlet.representation.StringRepresentation;
 import org.restlet.data.Status;
-
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter.Lf2SpacesIndenter;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.common.base.CharMatcher;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
+import org.restlet.representation.StringRepresentation;
 
 /**
  * Wrapper class for all responses from the api
@@ -37,11 +33,11 @@ public abstract class AgaveRepresentation extends StringRepresentation {
 	 * Constructor for legacy services building their JSON responses
 	 * as {@link String} values. 
 	 * 
+	 * @param status the status of the api operation
+	 * @param message the message in the response wrapper
+	 * @param json the api operation response payload
 	 * @deprecated
-	 * @see {@link #AgaveRepresentation(String, String, JsonNode)
-	 * @param status
-	 * @param message
-	 * @param json
+	 * @see #AgaveRepresentation(String, String, JsonNode)
 	 */
 	protected AgaveRepresentation(String status, String message, String json) 
 	{	
@@ -56,9 +52,9 @@ public abstract class AgaveRepresentation extends StringRepresentation {
 	 * along the say, which reduces load on the server, memory utilization, 
 	 * and processing time. 
 	 * 
-	 * @param status
-	 * @param message
-	 * @param json
+	 * @param status the status of the api operation
+	 * @param message the message in the response wrapper
+	 * @param jsonNode the api operation response payload
 	 */
 	protected AgaveRepresentation(String status, String message, JsonNode jsonNode) 
 	{	
@@ -71,10 +67,10 @@ public abstract class AgaveRepresentation extends StringRepresentation {
 	 * Formats the response both successful and unsuccessful calls into a 
 	 * JSON wrapper object with attributes status, message, and result 
 	 * where result contains the JSON output of the call.
-	 * 
-	 * @param status
-	 * @param message
-	 * @param json
+	 *
+	 * @param status the status of the api operation
+	 * @param message the message in the response wrapper
+	 * @param json the api operation response payload
 	 */
 	protected String formatResponse(String status, String message, String json) {
 		try {
@@ -99,10 +95,10 @@ public abstract class AgaveRepresentation extends StringRepresentation {
     			}
     			
     			StringBuilder builder = new StringBuilder();
-    			builder.append("{\"status\":\"" + status + "\",");
-    			builder.append("\"message\":\"" + message + "\",");
-    			builder.append("\"version\":\"" + Settings.SERVICE_VERSION + "\",");
-    			builder.append("\"result\":" + json + "}");
+    			builder.append("{\"status\":\"").append(status).append("\",");
+    			builder.append("\"message\":\"").append(message).append("\",");
+    			builder.append("\"version\":\"").append(Settings.SERVICE_VERSION).append("\",");
+    			builder.append("\"result\":").append(json).append("}");
     			return builder.toString();
 		    }
 		}
@@ -112,10 +108,10 @@ public abstract class AgaveRepresentation extends StringRepresentation {
 	 * Formats the response both successful and unsuccessful calls into a 
 	 * JSON wrapper object with attributes status, message, and result 
 	 * where result contains the JSON output of the call.
-	 * 
-	 * @param status
-	 * @param message
-	 * @param jsonNode
+	 *
+	 * @param status the status of the api operation
+	 * @param message the message in the response wrapper
+	 * @param jsonNode the api operation response payload
 	 */
 	protected String formatResponse(String status, String message, JsonNode jsonNode) {
 		try
@@ -157,8 +153,12 @@ public abstract class AgaveRepresentation extends StringRepresentation {
 		catch (Exception e)
 		{
 		    if (isNaked()) {
-		        return jsonNode.toString();
-		    }
+				if (jsonNode != null) {
+					return jsonNode.toString();
+				} else {
+					return "";
+				}
+			}
 		    else
 		    {
     			status = status.replaceAll("\"", "\\\"");
@@ -170,11 +170,15 @@ public abstract class AgaveRepresentation extends StringRepresentation {
     			}
     			
     			StringBuilder builder = new StringBuilder();
-    			builder.append("{\"status\":\"" + status + "\",");
-    			builder.append("\"message\":\"" + message + "\",");
-    			builder.append("\"version\":\"" + Settings.SERVICE_VERSION + "\",");
-    			builder.append("\"result\":" + jsonNode.toString() + "}");
-    			return builder.toString();
+    			builder.append("{\"status\":\"").append(status).append("\",");
+    			builder.append("\"message\":\"").append(message).append("\",");
+    			builder.append("\"version\":\"").append(Settings.SERVICE_VERSION).append("\",");
+				if (jsonNode != null) {
+					builder.append("\"result\":").append(jsonNode).append("}");
+				} else {
+					builder.append("\"result\": null}");
+				}
+				return builder.toString();
 		    }
 		}
 	}
@@ -209,12 +213,12 @@ public abstract class AgaveRepresentation extends StringRepresentation {
 	 */
 	public boolean isNaked() {
 	    Form form = Request.getCurrent().getOriginalRef().getQueryAsForm();
-        return Boolean.valueOf(form.getFirstValue("naked"));
+        return Boolean.parseBoolean(form.getFirstValue("naked"));
 	}
 	
 	/**
 	 * Returns the response filter fields provided in the query header.
-	 * @return
+	 * @return the list of fields split and sanitized into an array of strings
 	 */
 	public String[] getJsonPathFilters() {
 		Form form = Request.getCurrent().getOriginalRef().getQueryAsForm();
@@ -226,7 +230,7 @@ public abstract class AgaveRepresentation extends StringRepresentation {
 			Splitter splitter = Splitter.on(CharMatcher.anyOf(",")).trimResults()
 			            .omitEmptyStrings();
 			Iterable<String> splitFilters = splitter.split(sFilters);
-			if (splitFilters == null || !splitFilters.iterator().hasNext()) {
+			if (!splitFilters.iterator().hasNext()) {
 				return new String[]{};
 			} else {
 				return Iterables.toArray(splitFilters, String.class);
@@ -237,11 +241,10 @@ public abstract class AgaveRepresentation extends StringRepresentation {
 	/**
 	 * Applies user-supplied path filters to the response json 
 	 * 
-	 * @param nakedJsonResponse
+	 * @param nakedJsonResponse the raw json request payload
 	 * @return the properly filetered response
-	 * @throws IOException
 	 */
-	public JsonNode filterOutput(JsonNode nakedJsonResponse) throws IOException {
+	public JsonNode filterOutput(JsonNode nakedJsonResponse) {
 		String[] sFilters = getJsonPathFilters();
 		try {
 			return new JsonPropertyFilter().getFilteredContent(

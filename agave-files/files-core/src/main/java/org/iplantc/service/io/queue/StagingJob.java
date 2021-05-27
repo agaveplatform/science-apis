@@ -1,25 +1,12 @@
 package org.iplantc.service.io.queue;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.URI;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.Date;
-
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.codehaus.plexus.util.FileUtils;
 import org.hibernate.StaleObjectStateException;
 import org.hibernate.UnresolvableObjectException;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uri.UrlPathEscaper;
-import org.iplantc.service.data.transform.FileTransform;
-import org.iplantc.service.data.transform.FileTransformFilter;
-import org.iplantc.service.data.transform.FileTransformProperties;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.dao.QueueTaskDao;
@@ -32,7 +19,7 @@ import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.StagingTask;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.io.model.enumerations.TransformTaskStatus;
+import org.iplantc.service.io.util.ServiceUtils;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
@@ -44,619 +31,556 @@ import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.AuthenticationException;
+import org.iplantc.service.transfer.exceptions.InvalidTransferException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.iplantc.service.transfer.exceptions.RemotePermissionException;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.JobExecutionException;
-import org.quartz.SchedulerException;
 import org.quartz.UnableToInterruptJobException;
+
+import javax.persistence.PersistenceException;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Date;
 
 /**
  * Handles the staging of data into the user's StorageSystem. This differs
  * from a transfer task in that the flow is always inward to the StorageSystem
  * so only one RemoteSystem need be defined.
- * 
- * @author dooley
  *
+ * @author dooley
  */
 //@DisallowConcurrentExecution
-public class StagingJob extends AbstractJobWatch<StagingTask> 
-{
-	private static final Logger log = Logger.getLogger(StagingJob.class);
-	
-	private TransferTask rootTask = null;
-	private URLCopy urlCopy;
-	private LogicalFile file = null;
-	
-	public StagingJob() {}
-	
-	/* (non-Javadoc)
-	 * @see org.iplantc.service.io.queue.WorkerWatch#doExecute()
-	 */
-	@Override
-	public void doExecute() throws JobExecutionException 
-	{
-		RemoteDataClient destClient = null;
-		RemoteDataClient sourceClient = null;
-		
-		try 
-		{	
-		    this.queueTask.setStatus(StagingTaskStatus.STAGING);
-			
-			QueueTaskDao.persist(this.queueTask);
-			
-			file = this.queueTask.getLogicalFile();
+public class StagingJob extends AbstractJobWatch<StagingTask> {
+    private static final Logger log = Logger.getLogger(StagingJob.class);
 
-			URI sourceUri = new URI(file.getSourceUri());
-			
-			// instantiate a client appropriate for the source uri
-			destClient = getDestinationRemoteDataClient(file);
-			
-			// fetch a client for the source
-			sourceClient = getSourceRemoteDataClient(this.queueTask.getOwner(), sourceUri);
-			
-			String srcUri = file.getSourceUri();
-			String srcAbsolutePath = null;
-			if (ApiUriUtil.isInternalURI(sourceUri)) { 
-				srcAbsolutePath = UrlPathEscaper.decode(ApiUriUtil.getAbsolutePath(this.queueTask.getOwner(), sourceUri));
-			}
-			else {
-				srcAbsolutePath = StringUtils.removeEnd(sourceUri.getPath(), "/");
-			}
-			sourceUri = new URI(file.getSourceUri());
-			if (destClient.doesExist(file.getAgaveRelativePathFromAbsolutePath())) 
-			{
-				if (destClient.isDirectory(file.getAgaveRelativePathFromAbsolutePath())) 
-				{
-					if (StringUtils.isEmpty(file.getAgaveRelativePathFromAbsolutePath())) {
-						file.setPath(srcAbsolutePath);
-					} else if (StringUtils.endsWith(file.getAgaveRelativePathFromAbsolutePath(), "/")) {
-						file.setPath(destClient.resolvePath(file.getAgaveRelativePathFromAbsolutePath() + FilenameUtils.getName(srcAbsolutePath)));
-					} else {
-						file.setPath(destClient.resolvePath(file.getAgaveRelativePathFromAbsolutePath() + File.separator + FilenameUtils.getName(srcAbsolutePath)));
-					}
-				}
-			}
-			else if (!destClient.doesExist(file.getAgaveRelativePathFromAbsolutePath() + (StringUtils.isEmpty(file.getAgaveRelativePathFromAbsolutePath()) ? ".." : "/..")))
-			{
-				throw new FileNotFoundException("Destination directory not found.");
-			}
-			
-			
-			String destUri = "agave://" + file.getSystem().getSystemId() + "/" + file.getAgaveRelativePathFromAbsolutePath();
-			
-//				rootTask = TransferTaskDao.findRootTransferTaskBySourceDestAndOwner(srcUri, destUri, file.getOwner());
-			
-//				if (rootTask == null)
-//				{
-				rootTask = new TransferTask(
-						file.getSourceUri(), 
-						destUri, 
-						file.getOwner(), 
-						null, 
-						null);
-				TransferTaskDao.persist(rootTask);
-//				}
-			
-			file.addContentEvent(new FileEvent(
-					FileEventType.STAGING, 
-					"Transfer in progress",
-					queueTask.getOwner(),
-					rootTask));
-			file.setStatus(StagingTaskStatus.STAGING);
-			
-			log.debug("Attempt " + this.queueTask.getRetryCount() + " to stage file " + file.getAgaveRelativePathFromAbsolutePath() + " for user " + file.getOwner());
-			
-			LogicalFileDao.persist(file);
-			
-			urlCopy = new URLCopy(sourceClient, destClient);
-			// will close connections on its own
-			
-			try 
-			{
-				String src;
-				if (ApiUriUtil.isInternalURI(sourceUri)) {
-					// this strips double paths and lends itself to unhandled decoding
-					src = ApiUriUtil.getPath(sourceUri);
-					// decode the path for use in the RemoteDataClient instances and 
-					// resolve the relative vs absolute path issue
-					src = UrlPathEscaper.decode(StringUtils.removeStart(src, "/"));
-					// if double slashes were there, ensure it starts with a slash
-					if (StringUtils.startsWith(sourceUri.getPath(), "//")) src = "/" + src;
-					
-				} else {
-					src = sourceUri.getRawPath();
-				}
-				
-				if (sourceUri.getRawQuery() != null) {
-					src += "?" + sourceUri.getRawQuery();
-				}
-				
-				rootTask = urlCopy.copy(src, file.getAgaveRelativePathFromAbsolutePath(), rootTask);
-				
-//				// set permissions on the parent folder. 
-//				if (destClient.isPermissionMirroringRequired()) {
-//					String parentPath = file.getAgaveRelativePathFromAbsolutePath();
-//					if (StringUtils.endsWith(parentPath, "/")) {
-//						parentPath = StringUtils.substringBeforeLast(parentPath, "/");
-//					}
-//					parentPath = FileUtils.getPath(parentPath);
-//					try {
-//						destClient.setOwnerPermission(destClient.getUsername(), parentPath, true);
-//					} catch (Throwable e) {}
-//					
-//					try {
-//						destClient.disconnect();
-//						destClient.authenticate();
-//						destClient.setOwnerPermission(file.getOwner(), parentPath, true);
-//					} catch (Throwable e) {}
-//				}
-				
-				log.info("Completed staging file " + this.queueTask.getLogicalFile().getAgaveRelativePathFromAbsolutePath() + " for user " + file.getOwner());
-				
-				// update the staging task as done
-				this.queueTask.setStatus(StagingTaskStatus.STAGING_COMPLETED);
-				QueueTaskDao.persist(this.queueTask);
-				
-				
-				// file will be untouched after staging, so just mark as completed
-				if (StringUtils.isEmpty(file.getNativeFormat()) || 
-						file.getNativeFormat().equals("raw")) 
-				{
-					// update the file task
-					file.setStatus(StagingTaskStatus.STAGING_COMPLETED.name());
-					file.addContentEvent(FileEventType.STAGING_COMPLETED, queueTask.getOwner());
-					
-					file.setStatus(TransformTaskStatus.TRANSFORMING_COMPLETED.name());
-					file.addContentEvent(new FileEvent(FileEventType.TRANSFORMING_COMPLETED,
-							"Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() +
-							" completed staging. You can access the raw file on " + file.getSystem().getName() + " at " + 
-							this.queueTask.getLogicalFile().getPath() + " or via the API at " + 
-							file.getPublicLink() + ".", 
-							queueTask.getOwner()));
-					
-					LogicalFileDao.persist(file);
-				}
-				else
-				{
-					file.setStatus(StagingTaskStatus.STAGING_COMPLETED.name());
-					file.addContentEvent(FileEventType.STAGING_COMPLETED, queueTask.getOwner());
-					file.addContentEvent(new FileEvent(FileEventType.PREPROCESSING, 
-							"Calculating transformation pipeline for file type " + 
-									file.getNativeFormat(),
-							queueTask.getOwner()));
-					LogicalFileDao.persist(file);
-				
-					// look up their transform by name
-					FileTransformProperties props = new FileTransformProperties();
-					FileTransform transform = props.getTransform(file.getNativeFormat());
-					
-					FileTransformFilter transformFilter = null;
-					
-					// no handler for this file, so mark it as raw and skip transform queue
-					if (transform == null) 
-					{
-						String message = "No transform found. Staging complete for file " + this.queueTask.getLogicalFile().getAgaveRelativePathFromAbsolutePath() + " for user " + file.getOwner();
-						log.info(message);
-						file.setNativeFormat("raw");
-						file.setStatus(TransformTaskStatus.TRANSFORMING_COMPLETED.name());
-						file.addContentEvent(new FileEvent(FileEventType.TRANSFORMING_FAILED, 
-								"Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() + 
-									" completed staging, but has failed encoding because the transform " +
-									"you specified was not found. You can access the raw file on " + 
-									file.getSystem().getName() + " at " + 
-									this.queueTask.getLogicalFile().getPath() + " or via the API at " + 
-									file.getPublicLink() + ".",
-								queueTask.getOwner()));
-						
-						LogicalFileDao.persist(file);
-					}
-					// no handler for this file, so mark it as raw and skip transform queue
-					else if (!transform.isEnabled()) 
-					{
-						log.debug("Transform " + transform.getId() + " is disabled. Staging complete for file " + this.queueTask.getLogicalFile().getAgaveRelativePathFromAbsolutePath() + " for user " + file.getOwner());
-						
-						file.setNativeFormat("raw");
-						file.setStatus(TransformTaskStatus.TRANSFORMING_COMPLETED.name());
-						
-						file.addContentEvent(new FileEvent(FileEventType.TRANSFORMING_COMPLETED, 
-								"Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() + 
-									" has completed successfully. You can access this file on " + 
-									file.getSystem().getName() + " at " + 
-									this.queueTask.getLogicalFile().getPath() + " or via the API at " + 
-									file.getPublicLink() + ".",
-								queueTask.getOwner()));
-						
-						LogicalFileDao.persist(file);
-					}
-					// kick off the transformation process
-					else 
-					{	
-						// store the transform name with the logical file for later reference
-						// filter can't be null since the transform would be disabled if there were
-						// no enabled filters.
-						transformFilter = transform.getEncodingChain().getFirstFilter();
-//						file.addEvent(TransformTaskStatus.TRANSFORMING_QUEUED, queueTask.getOwner());
-						file.setNativeFormat(transform.getId());
-					
-						log.debug("Submitting staged file " + this.queueTask.getLogicalFile().getAgaveRelativePathFromAbsolutePath() + " to the transform queue for user " + file.getOwner());
-					
-						// push the staged file into the transform queue
-						try {
-							String tmpFilePath = "scratch/" + file.getName() + "-" + System.currentTimeMillis();
-							QueueTaskDao.enqueueEncodingTask(file, file.getSystem(), file.getAgaveRelativePathFromAbsolutePath(), tmpFilePath, transform.getId(), transformFilter.getName(), this.queueTask.getOwner());
-						} catch (SchedulerException e) {
-							// no handler for this file, so mark it as raw and move on
-							String message = "Failed to submit file " + file.getAgaveRelativePathFromAbsolutePath() + " to the transform queue for owner " + file.getOwner();
-							log.info(message);
-							file.setStatus(TransformTaskStatus.TRANSFORMING_COMPLETED);
-							file.addContentEvent(new FileEvent(FileEventType.TRANSFORMING_COMPLETED, 
-									"Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() + 
-										" completed staging, but failed to encode because it could not " +
-										"be submitted to the transform queue. If this problem persists, please " +
-										"contact your api administrator for assistance. You may access the " +
-										"raw file on " + file.getSystem().getSystemId() + " at " + 
-										this.queueTask.getLogicalFile().getPath() + " or via the API at " + 
-										file.getPublicLink() + ".",
-									queueTask.getOwner()));
-							LogicalFileDao.persist(file);
-						}
-					}
-				}
-			} 
-			catch (Throwable e) 
-			{
-			    
-				// if the transfer failed, retry as many times as defined in 
-				// the service config file
-				if (this.queueTask.getRetryCount() < Settings.MAX_STAGING_RETRIES) {
-					log.info("Failed attempt " + this.queueTask.getRetryCount() + " to stage file " + this.queueTask.getLogicalFile().getPath() + " for user " + file.getOwner());
-					this.queueTask.setStatus(StagingTaskStatus.STAGING_QUEUED);
-					this.queueTask.setRetryCount(this.queueTask.getRetryCount() + 1);
-				} 
-				else 
-				{
-					String message = "Failed attempt " + this.queueTask.getRetryCount() + " to stage file " + this.queueTask.getLogicalFile().getPath() 
-							+ " for user " + file.getOwner() + ". The maximum number of retries has been reached.";
-					
-					log.error(message, e);
-					
-					file.setStatus(StagingTaskStatus.STAGING_FAILED);
-					file.addContentEvent(new FileEvent(FileEventType.STAGING_FAILED, 
-							"Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() + 
-							" failed after " + Settings.MAX_STAGING_RETRIES + 
-							" attempts with the following error message: " + e.getMessage() + 
-							". Please check the source url, " + sourceUri + " and make sure it is a " + 
-							" valid URI or path on your default system. If you feel there was an error and this problem persists, please " +
-							"contact your api administrator for assistance.",
-							queueTask.getOwner()));
-					LogicalFileDao.persist(file);
-					
-					this.queueTask.setStatus(StagingTaskStatus.STAGING_FAILED);
-				}
-				QueueTaskDao.persist(this.queueTask);
-			}
-		} 
-		catch (ClosedByInterruptException e) {
-			try {
-                file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
-                LogicalFileDao.persist(file);
-            } catch (Throwable t) {
-                log.error("Failed to update status of logical file " + file.getUuid() 
-                        + " to STAGING_FAILED after staging worker was interrupted "
-                        + "while processing staging task " + this.queueTask.getId(), t);
-            }
-            
-            try {
-                FileEvent event = new FileEvent(FileEventType.STAGING_FAILED, 
-            		"Your scheduled transfer of " + file.getSourceUri() + 
-					" failed to transfer on attempt " + (this.queueTask.getRetryCount() + 1) + 
-					" after the staging worker was interrupted." + 
-					" This transfer will be attempted " + (Settings.MAX_STAGING_RETRIES - this.queueTask.getRetryCount()) + 
-					" more times before being being abandonded.",
-					queueTask.getOwner());
-                FileEventProcessor.processAndSaveContentEvent(file, event);
-            } 
-            catch (LogicalFileException | FileEventProcessingException e1) {
-                log.error("Failed to send notification of failed staging task " + this.queueTask.getId(), e1);
-            }
-            
-			Thread.currentThread().interrupt();
-        }
-		catch (SystemUnknownException e) {
-			String message = "Unsupported protocol for queued file " + this.queueTask.getLogicalFile().getPath();
-			
-			log.error(message);
-			file.setStatus(StagingTaskStatus.STAGING_FAILED);
-			file.addContentEvent(new FileEvent(FileEventType.STAGING_FAILED, 
-					"Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() + 
-					" failed to because an unrecognized protocol " +
-					" was provided. Please check the source url, " + this.queueTask.getLogicalFile().getPath() + 
-					" and make sure it is a valid URI or path on your default system. If you feel there was an error and this problem persists, please " +
-					"contact your api administrator for assistance.",
-					queueTask.getOwner()));
-			LogicalFileDao.persist(file);
-			
-			this.queueTask.setStatus(StagingTaskStatus.STAGING_FAILED);
-			QueueTaskDao.persist(this.queueTask);
-		}
-		catch (SystemUnavailableException e) {
-			log.debug("Staging task paused while waiting for system availability. " + e.getMessage());
-			file.setStatus(StagingTaskStatus.STAGING_QUEUED.name());
-//				file.addEvent(new FileEvent(StagingTaskStatus.STAGING_QUEUED.name(), 
-//						"Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() + 
-//						" is paused waiting on one or more systems to become available.",
-//						queueTask.getOwner()));
-			LogicalFileDao.persist(file);
-			
-			this.queueTask.setStatus(StagingTaskStatus.STAGING_QUEUED);
-			this.queueTask.setLastUpdated(new Date());
-			QueueTaskDao.persist(this.queueTask);
-		}
-		catch (StaleObjectStateException | UnresolvableObjectException e) {
-			log.debug("Just avoided a file staging race condition from worker");
-		}
-		catch (Throwable e) 
-		{
-			try {
-				if (this.queueTask != null) 
-				{
-					LogicalFile file = this.queueTask.getLogicalFile();
-					String message = "Failed to submit file " + file.getPath() + " to the transform queue for owner " + file.getOwner();
-					log.info(message);
-					
-					if (this.queueTask.getRetryCount() < Settings.MAX_STAGING_RETRIES) 
-					{
-					    try {
-	                        file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
-	                        LogicalFileDao.persist(file);
-	                    } catch (Throwable t) {
-	                        log.error("Failed to update status of logical file " + file.getUuid() 
-	                                + " to STAGING_FAILED after error with staging task " + this.queueTask.getId(), t);
-	                    }
-	                    
-	                    try {
-	                        FileEvent event = new FileEvent(FileEventType.STAGING_FAILED, 
-	                    		"Your scheduled transfer of " + file.getSourceUri() + 
-								" failed to transfer on attempt " + (this.queueTask.getRetryCount() + 1) + 
-								" with the following error message: " + e.getMessage() + 
-								". This transfer will be attempted " + (Settings.MAX_STAGING_RETRIES - this.queueTask.getRetryCount()) + 
-								" more times before being being abandonded.",
-								queueTask.getOwner());
-	                        FileEventProcessor.processAndSaveContentEvent(file, event);
-	//                        event.setLogicalFile(file);
-	//                        FileEventDao.persist(event);
-	                    } catch (LogicalFileException | FileEventProcessingException e1) {
-	                        log.error("Failed to send notification of failed staging task " + this.queueTask.getId(), e1);
-	                    }
-						
-						// increment the retry counter and throw it back into queue
-						this.queueTask.setRetryCount(this.queueTask.getRetryCount() + 1);
-						this.queueTask.setStatus(StagingTaskStatus.STAGING_QUEUED);
-						QueueTaskDao.persist(this.queueTask);
-					} 
-					else 
-					{	
-					    try {
-	    					file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
-	    					LogicalFileDao.persist(file);
-					    } catch (Throwable t) {
-					        log.error("Failed to update status of logical file " + file.getUuid() 
-					                + " to STAGING_FAILED after error with staging task " + this.queueTask.getId(), t);
-					    }
-						
-						try {
-						    FileEvent event = new FileEvent(FileEventType.STAGING_FAILED, 
-		                            "Your scheduled transfer of " + file.getSourceUri() + 
-		                            " failed after " + Settings.MAX_STAGING_RETRIES + " attempts with the following message: " + 
-		                            e.getMessage() + ". If you feel there was an error and this problem persists, please " +
-		                            "contact your api administrator for assistance.",
-		                            queueTask.getOwner());
-						    FileEventProcessor.processAndSaveContentEvent(file, event);
-	//	                    event.setLogicalFile(file);
-	//	                    FileEventDao.persist(event);
-	                    } catch (LogicalFileException | FileEventProcessingException e1) {
-	                        log.error("Failed to send notification of failed staging task " + this.queueTask.getId(), e1);
-	                    }
-						
-						this.queueTask.setStatus(StagingTaskStatus.STAGING_FAILED);
-						QueueTaskDao.persist(this.queueTask);
-					}
-				} 
-				else 
-				{
-					log.info("Failed to submit unknown file",e);
-				}
-			}
-			catch (Throwable t) {
-				log.info("Failed to roll back failed staging task", e);
-			}
-			
-			try 
-			{
-				if (rootTask != null)
-				{
-					if (rootTask.getRootTask() != null) {
-						TransferTaskDao.cancelAllRelatedTransfers(rootTask.getRootTask().getId()); 
-					} else if (rootTask.getParentTask() != null) {
-						TransferTaskDao.cancelAllRelatedTransfers(rootTask.getParentTask().getId());
-					} else {
-						TransferTaskDao.cancelAllRelatedTransfers(rootTask.getId());
-					}
-				}
-			} catch (Throwable t) {}
-		}
-		finally
-		{
-		    try { sourceClient.disconnect(); } catch(Throwable e) {}
-			try { destClient.disconnect(); } catch(Throwable e) {}
-            setTaskComplete(true);
-            releaseJob();
-		}
-	}
-	
-	/**
-	 * Returns an authenticated {@link RemoteDataClient} for the given {@link LogicalFile}. 
-	 * Exceptions will be thrown rather than null returned if the {@link RemoteSystem} on 
-	 * which the data resides was not available.
-	 * @param logicalFile
-	 * @return
-	 * @throws AuthenticationException
-	 * @throws SystemUnavailableException
-	 * @throws SystemUnknownException
-	 * @throws RemoteDataException
-	 */
-	private RemoteDataClient getDestinationRemoteDataClient(LogicalFile logicalFile) 
-	throws AuthenticationException, SystemUnavailableException, SystemUnknownException, 
-	RemoteDataException
-	{
-		RemoteSystem system = null;
-        RemoteDataClient remoteDataClient = null;
-        
-        system = file.getSystem();
-        
-        if (system == null) 
-        {
-            throw new SystemUnknownException("No destination system was found for user " 
-            		+ logicalFile + " satisfying the URI.");
-        } 
-        else if (!system.isAvailable())
-        {
-            throw new SystemUnavailableException("The destination system is currently unavailable.");
-        } 
-        else if ( system.getStatus() != SystemStatusType.UP)
-        {
-            throw new SystemUnavailableException(system.getStatus().getExpression() );
-        }
-        else {
-        	try {
-				remoteDataClient = system.getRemoteDataClient(logicalFile.getInternalUsername());
-				remoteDataClient.authenticate();
-			} 
-        	catch (IOException e) {
-        		throw new RemoteDataException("Failed to connect to the remote destination system", e);
-        	}
-        	catch (RemoteCredentialException e) {
-				throw new AuthenticationException("Failed to authenticate to remote destination system ", e);
-			} 
-        }
-        
-        return remoteDataClient;
-	}
+    private TransferTask rootTask = null;
+    private URLCopy urlCopy;
 
-	/**
-	 * Validates a URI and returns an authenticated {@link RemoteDataClient}. Exceptions
-	 * will be thrown rather than null returned if a system was not available.
-	 * @param requestingUser
-	 * @param singleRawInputUri
-	 * @return
-	 * @throws AgaveNamespaceException
-	 * @throws AuthenticationException
-	 * @throws SystemUnavailableException
-	 * @throws SystemUnknownException
-	 * @throws RemoteDataException
-	 */
-	private RemoteDataClient getSourceRemoteDataClient(String requestingUser, URI singleRawInputUri) 
-	throws AgaveNamespaceException, AuthenticationException, SystemUnavailableException, SystemUnknownException, 
-	RemoteDataException
-	{
-		RemoteSystem system = null;
-        RemoteDataClient remoteDataClient = null;
-        
-        if (ApiUriUtil.isInternalURI(singleRawInputUri))
-        {
-    		try {
-        		system = ApiUriUtil.getRemoteSystem(requestingUser, singleRawInputUri);
-    		} catch (PermissionException e) {
-    			throw new AuthenticationException(e.getMessage(), e);
-    		}
-    		
-            if (system == null) 
-            {
-                throw new SystemUnknownException("No system was found for user " 
-                		+ requestingUser + " satisfying the source URI.");
-            } 
-            else if (!system.isAvailable())
-            {
-                throw new SystemUnavailableException("The source system is currently unavailable.");
-            } 
-            else if ( system.getStatus() != SystemStatusType.UP)
-            {
-                throw new SystemUnavailableException(system.getStatus().getExpression() );
-            }
-            else {
-            	try {
-					remoteDataClient = system.getRemoteDataClient(null);
-					remoteDataClient.authenticate();
-				} 
-            	catch (IOException e) {
-            		throw new RemoteDataException("Failed to connect to the remote source system", e);
-            	}
-            	catch (RemoteCredentialException e) {
-					throw new AuthenticationException("Failed to authenticate to remote source system ", e);
-				} 
-            }
-        }
-    	else {
-			try {
-				remoteDataClient = new RemoteDataClientFactory().getInstance(
-						requestingUser, null, singleRawInputUri);
-				
-				if (remoteDataClient == null) 
-	            {
-	                throw new SystemUnknownException("No system was found for user " 
-	                		+ requestingUser + " satisfying the source URI.");
-	            } 
-				else {
-					remoteDataClient.authenticate();
-				}
-			}
-			catch (SystemUnknownException e) {
-				throw e;
-			}
-			catch (FileNotFoundException e) {
-				throw new SystemUnknownException("No source system was found for user " 
-                		+ requestingUser + " satisfying the URI.");
-			}
-			catch (IOException e) {
-        		throw new RemoteDataException("Failed to connect to the remote source system", e);
-        	}
-        	catch (PermissionException | RemoteCredentialException e) {
-				throw new AuthenticationException("Failed to authenticate to remote source system. ", e);
-			}
-    	}
-            
-        return remoteDataClient;
-	}
+    public StagingJob() {}
 
-	/**
-	 * @return the rootTask
-	 */
-	public synchronized TransferTask getRootTask() {
-		return rootTask;
-	}
-
-	/**
-	 * @param rootTask the rootTask to set
-	 */
-	public synchronized void setRootTask(TransferTask rootTask) {
-		this.rootTask = rootTask;
-	}
-	
-	/**
-     * @param stopped the stopped to set
-	 * @throws UnableToInterruptJobException 
+    /* (non-Javadoc)
+     * @see org.iplantc.service.io.queue.WorkerWatch#doExecute()
      */
     @Override
-    public synchronized void setStopped(boolean stopped) 
-    throws UnableToInterruptJobException 
-    {
+    public void doExecute() throws JobExecutionException {
+        RemoteDataClient destClient = null;
+        RemoteDataClient sourceClient = null;
+
+        try {
+            getQueueTask().setStatus(StagingTaskStatus.STAGING);
+
+            QueueTaskDao.persist(getQueueTask());
+
+            // Tracing.
+            if (log.isDebugEnabled()) {
+                String msg = "Changed status of task " + queueTask.getId() +
+                        " to " + queueTask.getStatusAsString() + ".";
+                log.debug(msg);
+            }
+
+            LogicalFile file = getQueueTask().getLogicalFile();
+
+            URI sourceUri = new URI(file.getSourceUri());
+
+            // instantiate a client appropriate for the source uri
+            destClient = ServiceUtils.getDestinationRemoteDataClient(file);
+
+            // fetch a client for the source
+            sourceClient = getSourceRemoteDataClient(getQueueTask().getOwner(), sourceUri);
+
+            String destUri = "agave://" + file.getSystem().getSystemId() + "/" + file.getAgaveRelativePathFromAbsolutePath();
+
+			rootTask = new TransferTask(
+                    file.getSourceUri(),
+                    destUri,
+                    file.getOwner(),
+                    null,
+                    null);
+
+            TransferTaskDao.persist(rootTask);
+
+            // Tracing.
+            if (log.isDebugEnabled()) {
+                String msg = "Associated new transfer task with queue task " + queueTask.getId() +
+                        ": " + rootTask.toString();
+                log.debug(msg);
+            }
+
+
+            file.addContentEvent(new FileEvent(
+                    FileEventType.STAGING,
+                    "Transfer in progress",
+                    queueTask.getOwner(),
+                    rootTask));
+            file.setStatus(StagingTaskStatus.STAGING);
+
+            if (log.isDebugEnabled())
+                log.debug("Attempt " + getQueueTask().getRetryCount() +
+                        " to stage file " + file.getAgaveRelativePathFromAbsolutePath() +
+                        " (" + file.getUuid() +
+                        ") for user " + file.getOwner());
+
+            LogicalFileDao.persist(file);
+
+            urlCopy = new URLCopy(sourceClient, destClient);
+            // will close connections on its own
+
+            try {
+                String src;
+                if (ApiUriUtil.isInternalURI(sourceUri)) {
+                    // this strips double paths and lends itself to unhandled decoding
+                    src = ApiUriUtil.getPath(sourceUri);
+                    // decode the path for use in the RemoteDataClient instances and
+                    // resolve the relative vs absolute path issue
+                    src = UrlPathEscaper.decode(StringUtils.removeStart(src, "/"));
+                    // if double slashes were there, ensure it starts with a slash
+                    if (StringUtils.startsWith(sourceUri.getPath(), "//")) src = "/" + src;
+
+                } else {
+                    src = sourceUri.getRawPath();
+                }
+
+                if (sourceUri.getRawQuery() != null) {
+                    src += "?" + sourceUri.getRawQuery();
+                }
+
+                // Note that the copy command may create a target subdirectory.  This new directory
+                // was anticipated by the logical file processing code in {@link FileManagementResource#adjustDestinationPath}.
+                // This linkage is a hidden dependency between the two classes.
+                try {
+                    String resolvedDestPath = file.getAgaveRelativePathFromAbsolutePath();
+                    rootTask = urlCopy.copy(src, resolvedDestPath, rootTask);
+
+                    // check to see if the destination path was adjusted due to a streaming transfer receiving an
+                    // existing directory as the destPath. if so, the new root TransferTask#dest value will be longer,
+                    // so we need to update the logical file accordingly.
+                    if (!StringUtils.equals(destUri, rootTask.getDest())) {
+                        String appendedPath = StringUtils.replace(rootTask.getDest(), destUri, "");
+                        file.setPath(file.getPath() + appendedPath);
+                    }
+                } catch (RemotePermissionException|InvalidTransferException e) {
+                    // hard fail the transfer task if it cannot be retried
+                    getQueueTask().setRetryCount(Settings.MAX_STAGING_RETRIES);
+                    throw e;
+                } catch (Exception e) {
+                    String msg = "Copy from \"" + src + "\" to \"" +
+                            file.getAgaveRelativePathFromAbsolutePath() +
+                            "\" FAILED for transfer task: " + rootTask.toString();
+                    log.error(msg, e);
+                    throw e;
+                }
+
+                log.info("Completed staging file " + getQueueTask().getLogicalFile().getAgaveRelativePathFromAbsolutePath() + " for user " + file.getOwner());
+
+                // update the staging task as done
+                getQueueTask().setStatus(StagingTaskStatus.STAGING_COMPLETED);
+                try {
+                    QueueTaskDao.persist(getQueueTask());
+                } catch (Exception e) {
+                    String msg = "Unable to persist status change for queue task " + getQueueTask().getId() + ". " + e.getMessage();
+                    log.error(msg);
+                    throw e;
+                }
+
+                // file will be untouched after staging, so just mark as completed
+                // update the file task
+                file.setStatus(StagingTaskStatus.STAGING_COMPLETED.name());
+                //Agave will treat all files as "raw". The functionality to transform (encode) files has been decommissioned.
+                file.setNativeFormat("raw");
+
+                file.addContentEvent(new FileEvent(FileEventType.STAGING_COMPLETED,
+                        "Your scheduled transfer of " + getQueueTask().getLogicalFile().getSourceUri() +
+                                " completed staging. You can access the raw file on " + file.getSystem().getName() + " at " +
+                                getQueueTask().getLogicalFile().getPath() + " or via the API at " +
+                                file.getPublicLink() + ".",
+                        queueTask.getOwner()));
+
+                try {
+                    LogicalFileDao.persist(file);
+                } catch (Exception e) {
+                    String msg = "Unable to persist multiple status and other changes for logical file " +
+                            file.getAgaveRelativePathFromAbsolutePath() +
+                            " (" + file.getUuid() + ").";
+                    log.error(msg, e);
+                    throw e;
+                }
+            }
+            catch (RemotePermissionException|InvalidTransferException e ) {
+                String message = "Unable to complete transfer of " + getQueueTask().getLogicalFile().getSourceUri() +
+                        " to agave://" + getQueueTask().getLogicalFile().getSystem().getSystemId() + "//" +
+                        getQueueTask().getLogicalFile().getPath() + ". " + e.getMessage();
+
+                log.error(message, e);
+
+                file.setStatus(StagingTaskStatus.STAGING_FAILED);
+                file.addContentEvent(new FileEvent(FileEventType.STAGING_FAILED,
+                        "Your scheduled transfer of " + getQueueTask().getLogicalFile().getSourceUri() +
+                                " failed with the following error message: " + e.getMessage() +
+                                ". Please check the source url, " + sourceUri + " and make sure it is a " +
+                                " valid URI or path on your default system to which you have permissions. " +
+                                "If you feel there was an error and this problem persists, please " +
+                                "contact your platform administrator for assistance.",
+                        queueTask.getOwner()));
+
+                try {
+                    LogicalFileDao.persist(file);
+                } catch (Exception e1) {
+                    String msg = "Unable to persist status and changes for logical file " +
+                            file.getAgaveRelativePathFromAbsolutePath() +
+                            " (" + file.getUuid() + ").";
+                    log.error(msg, e1);
+                    throw e1;
+                }
+
+                getQueueTask().setStatus(StagingTaskStatus.STAGING_FAILED);
+
+                try {
+                    QueueTaskDao.persist(getQueueTask());
+                } catch (Exception e1) {
+                    String msg = "During retry processing, unable to persist queue task " + getQueueTask().getId() + ".";
+                    log.error(msg, e);
+                    throw e1;
+                }
+            }
+            catch (Throwable e) {
+
+                // if the transfer failed, retry as many times as defined in
+                // the service config file
+                if (getQueueTask().getRetryCount() < Settings.MAX_STAGING_RETRIES) {
+                    log.info("Failed attempt " + getQueueTask().getRetryCount() + " to stage file " + getQueueTask().getLogicalFile().getPath() + " for user " + file.getOwner());
+                    getQueueTask().setStatus(StagingTaskStatus.STAGING_QUEUED);
+                    getQueueTask().setRetryCount(getQueueTask().getRetryCount() + 1);
+                } else {
+                    String message = "Failed attempt " + getQueueTask().getRetryCount() + " to stage file " + getQueueTask().getLogicalFile().getPath()
+                            + " for user " + file.getOwner() + ". The maximum number of retries has been reached.";
+
+                    log.error(message, e);
+
+                    file.setStatus(StagingTaskStatus.STAGING_FAILED);
+                    file.addContentEvent(new FileEvent(FileEventType.STAGING_FAILED,
+                            "Your scheduled transfer of " + getQueueTask().getLogicalFile().getSourceUri() +
+                                    " failed after " + Settings.MAX_STAGING_RETRIES +
+                                    " attempts with the following error message: " + e.getMessage() +
+                                    ". Please check the source url, " + sourceUri + " and make sure it is a " +
+                                    " valid URI or path on your default system to which you have permissions. " +
+                                    "If you feel there was an error and this problem persists, please " +
+                                    "contact your platform administrator for assistance.",
+                            queueTask.getOwner()));
+
+                    try {
+                        LogicalFileDao.persist(file);
+                    } catch (Exception e1) {
+                        String msg = "After exhausting retries, unable to persist status and changes for logical file " +
+                                file.getAgaveRelativePathFromAbsolutePath() +
+                                " (" + file.getUuid() + ").";
+                        log.error(msg, e1);
+                        throw e1;
+                    }
+
+                    getQueueTask().setStatus(StagingTaskStatus.STAGING_FAILED);
+                }
+
+                try {
+                    QueueTaskDao.persist(getQueueTask());
+                }
+                catch (Exception e1) {
+                    String msg = "During retry processing, unable to persist queue task " + getQueueTask().getId() + ".";
+                    log.error(msg, e);
+                    throw e1;
+                }
+            }
+        }
+        catch (SystemUnknownException e) {
+            String message = "Unsupported protocol for queued file " + getQueueTask().getLogicalFile().getPath();
+
+            log.error(message, e);
+            file.setStatus(StagingTaskStatus.STAGING_FAILED);
+            file.addContentEvent(new FileEvent(FileEventType.STAGING_FAILED,
+                    "Your scheduled transfer of " + getQueueTask().getLogicalFile().getSourceUri() +
+                            " failed to because an unrecognized protocol " +
+                            " was provided. Please check the source url, " + getQueueTask().getLogicalFile().getPath() +
+                            " and make sure it is a valid URI or path on your default system" +
+                            " to which you have permissions. If you feel there was an error and this " +
+                            "problem persists, please contact your platform administrator for assistance.",
+                    queueTask.getOwner()));
+            try {
+                LogicalFileDao.persist(file);
+            } catch (Exception e1) {
+                String msg = "While processing SystemUnknownException, unable to persist status and changes for logical file " +
+                        file.getAgaveRelativePathFromAbsolutePath() +
+                        " (" + file.getUuid() + "). " + e1.getMessage();
+                log.error(msg);
+                throw e1;
+            }
+
+            getQueueTask().setStatus(StagingTaskStatus.STAGING_FAILED);
+            try {
+                QueueTaskDao.persist(getQueueTask());
+            } catch (Exception e1) {
+                String msg = "While processing SystemUnknownException, unable to persist queue task " + getQueueTask().getId() + ". " + e.getMessage();
+                log.error(msg);
+                throw e1;
+            }
+
+        }
+        catch (SystemUnavailableException e) {
+            log.info("Staging task failed due to system no longer being available. " + e.getMessage(), e);
+            file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
+            try {
+                LogicalFileDao.persist(file);
+            } catch (Exception e1) {
+                String msg = "While processing SystemUnavailableException, unable to persist status and changes for logical file " +
+                        file.getAgaveRelativePathFromAbsolutePath() +
+                        " (" + file.getUuid() + ").";
+                log.error(msg, e1);
+                throw e1;
+            }
+
+            getQueueTask().setStatus(StagingTaskStatus.STAGING_FAILED);
+            getQueueTask().setLastUpdated(new Date());
+            try {
+                QueueTaskDao.persist(getQueueTask());
+            } catch (Exception e1) {
+                String msg = "While processing SystemUnavailableException, unable to persist queue task " + getQueueTask().getId() + ".";
+                log.error(msg, e);
+                throw e1;
+            }
+        }
+        catch (PersistenceException | StaleObjectStateException | UnresolvableObjectException e) {
+            log.warn("Just avoided a file staging race condition from worker");
+        }
+        catch (Throwable e) {
+            // Who knows where this came from.
+            log.error(e.getClass().getSimpleName() + " caught", e);
+
+            try {
+                if (getQueueTask() != null) {
+                    LogicalFile file = getQueueTask().getLogicalFile();
+                    String message = "Failed to submit file " + file.getPath() + " to the transform queue for owner " + file.getOwner();
+                    log.info(message);
+
+                    if (getQueueTask().getRetryCount() < Settings.MAX_STAGING_RETRIES) {
+                        try {
+                            file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
+                            LogicalFileDao.persist(file);
+                        } catch (Throwable t) {
+                            log.error("Failed to update status of logical file " + file.getUuid()
+                                    + " to STAGING_FAILED after error with staging task " + getQueueTask().getId(), t);
+                        }
+
+                        try {
+                            FileEvent event = new FileEvent(FileEventType.STAGING_FAILED,
+                                    "Your scheduled transfer of " + file.getSourceUri() +
+                                            " failed to transfer on attempt " + (getQueueTask().getRetryCount() + 1) +
+                                            " with the following error message: " + e.getMessage() +
+                                            ". This transfer will be attempted " + (Settings.MAX_STAGING_RETRIES - getQueueTask().getRetryCount()) +
+                                            " more times before being being abandonded.",
+                                    queueTask.getOwner());
+                           FileEventProcessor.processAndSaveContentEvent(file, event);
+                        } catch (LogicalFileException | FileEventProcessingException e1) {
+                            log.error("Failed to send notification of failed staging task " + getQueueTask().getId(), e1);
+                        }
+
+                        // increment the retry counter and throw it back into queue
+                        getQueueTask().setRetryCount(getQueueTask().getRetryCount() + 1);
+                        getQueueTask().setStatus(StagingTaskStatus.STAGING_QUEUED);
+                        try {
+                            QueueTaskDao.persist(getQueueTask());
+                        } catch (Exception e1) {
+                            String msg = "While processing " + e.getClass().getSimpleName() +
+                                    ", unable to persist next attempt for queue task " + getQueueTask().getId() + ".";
+                            log.error(msg, e1);
+                            throw e1;
+                        }
+                    } else {
+                        try {
+                            file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
+                            LogicalFileDao.persist(file);
+                        } catch (Throwable t) {
+                            log.error("Failed to update status of logical file " + file.getUuid()
+                                    + " to STAGING_FAILED after error with staging task " + getQueueTask().getId(), t);
+                        }
+
+                        try {
+                            FileEvent event = new FileEvent(FileEventType.STAGING_FAILED,
+                                    "Your scheduled transfer of " + file.getSourceUri() +
+                                            " failed after " + Settings.MAX_STAGING_RETRIES + " attempts with the following message: " +
+                                            e.getMessage() + ". If you feel there was an error and this problem persists, please " +
+                                            "contact your platform administrator for assistance.",
+                                    queueTask.getOwner());
+                            FileEventProcessor.processAndSaveContentEvent(file, event);
+                        } catch (LogicalFileException | FileEventProcessingException e1) {
+                            log.error("Failed to send notification of failed staging task " + getQueueTask().getId(), e1);
+                        }
+
+                        getQueueTask().setStatus(StagingTaskStatus.STAGING_FAILED);
+                        try {
+                            QueueTaskDao.persist(getQueueTask());
+                        } catch (Exception e1) {
+                            String msg = "While processing " + e.getClass().getSimpleName() +
+                                    ", unable to persist exhausted attempt for queue task " + getQueueTask().getId() + ".";
+                            log.error(msg, e1);
+                            throw e1;
+                        }
+                    }
+                } else {
+                    log.error("Failed to submit unknown file", e);
+                }
+            } catch (Throwable t) {
+                log.error("Failed to roll back failed staging task", e);
+            }
+
+            try {
+                if (rootTask != null) {
+                    if (rootTask.getRootTask() != null) {
+                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getRootTask().getId());
+                    } else if (rootTask.getParentTask() != null) {
+                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getParentTask().getId());
+                    } else {
+                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getId());
+                    }
+                }
+            } catch (Throwable t) {
+                log.error("Task cancellation failed.", t);
+            }
+        }
+        finally {
+            try {
+                if (sourceClient != null) sourceClient.disconnect();
+            } catch (Throwable ignored) {
+            }
+            try {
+                if (destClient != null) destClient.disconnect();
+            } catch (Throwable ignored) {
+            }
+            setTaskComplete(true);
+            releaseJob();
+        }
+    }
+
+    /**
+     * Validates a URI and returns an authenticated {@link RemoteDataClient}. Exceptions
+     * will be thrown rather than null returned if a system was not available.
+     *
+     * @param requestingUser user requesting the data transfer
+     * @param singleRawInputUri the URI of a file item for which a remote data client will be returned
+     * @return
+     * @throws AgaveNamespaceException
+     * @throws AuthenticationException
+     * @throws SystemUnavailableException
+     * @throws SystemUnknownException
+     * @throws RemoteDataException
+     */
+    private RemoteDataClient getSourceRemoteDataClient(String requestingUser, URI singleRawInputUri)
+            throws AgaveNamespaceException, AuthenticationException, SystemUnavailableException, SystemUnknownException,
+            RemoteDataException {
+        RemoteSystem system = null;
+        RemoteDataClient remoteDataClient = null;
+
+        if (ApiUriUtil.isInternalURI(singleRawInputUri)) {
+            try {
+                system = ApiUriUtil.getRemoteSystem(requestingUser, singleRawInputUri);
+            } catch (PermissionException e) {
+                String msg = "Unable to get remote system for user \"" + requestingUser + "\": " + singleRawInputUri.toString();
+                log.error(msg, e);
+                throw new AuthenticationException(msg, e);
+            }
+
+            if(!system.isAvailable()) {
+                String msg = "The source system is currently unavailable.";
+                log.error(msg);
+                throw new SystemUnavailableException(msg);
+            } else if (system.getStatus() != SystemStatusType.UP) {
+                String msg = system.getStatus().getExpression();
+                log.error(msg);
+                throw new SystemUnavailableException(msg);
+            } else {
+                try {
+                    remoteDataClient = system.getRemoteDataClient(null);
+                    remoteDataClient.authenticate();
+                } catch (IOException e) {
+                    String msg = "Failed to connect to the remote source system";
+                    log.error(msg, e);
+                    throw new RemoteDataException(msg, e);
+                } catch (RemoteCredentialException e) {
+                    String msg = "Failed to authenticate to remote source system ";
+                    log.error(msg, e);
+                    throw new AuthenticationException("Failed to authenticate to remote source system ", e);
+                } catch (Exception e) {
+                    String msg = "System-acquired remote client authentication error: " + e.getMessage();
+                    log.error(msg, e);
+                    throw e;
+                }
+            }
+        } else {
+            try {
+                remoteDataClient = new RemoteDataClientFactory().getInstance(
+                        requestingUser, null, singleRawInputUri);
+
+                if (remoteDataClient == null) {
+                    String msg = "No system was found for user " + requestingUser + " satisfying the source URI: " + singleRawInputUri.toString();
+                    log.error(msg);
+                    throw new SystemUnknownException(msg);
+                } else {
+                    remoteDataClient.authenticate();
+                }
+            } catch (SystemUnknownException e) {
+                String msg = "Authentication failed for user " + remoteDataClient.getUsername() +
+                        " on host " + remoteDataClient.getHost() + " because of unknown system.";
+                log.error(msg, e);
+                throw e;
+            } catch (FileNotFoundException e) {
+                String msg = "No source system was found for user " + requestingUser + " satisfying the URI.";
+                log.error(msg, e);
+                throw new SystemUnknownException(msg);
+            } catch (IOException e) {
+                String msg = "Failed to connect to the remote source system";
+                log.error(msg, e);
+                throw new RemoteDataException(msg, e);
+            } catch (PermissionException | RemoteCredentialException e) {
+                String msg = "Failed to authenticate to remote source system. ";
+                log.error(msg, e);
+                throw new AuthenticationException(msg, e);
+            } catch (Exception e) {
+                String msg = "Remote client authentication error: " + singleRawInputUri.toString();
+                log.error(msg, e);
+                throw e;
+            }
+        }
+
+        return remoteDataClient;
+    }
+
+    /**
+     * @return the rootTask
+     */
+    public synchronized TransferTask getRootTask() {
+        return rootTask;
+    }
+
+    /**
+     * @param rootTask the rootTask to set
+     */
+    public synchronized void setRootTask(TransferTask rootTask) {
+        this.rootTask = rootTask;
+    }
+
+    /**
+     * @param stopped the stopped to set
+     * @throws UnableToInterruptJobException
+     */
+    @Override
+    public synchronized void setStopped(boolean stopped)
+            throws UnableToInterruptJobException {
         if (getUrlCopy() != null) {
             getUrlCopy().setKilled(true);
         }
-        
+
         super.setStopped(true);
     }
-    
+
     /**
      * @return the urlCopy
      */
@@ -670,69 +594,66 @@ public class StagingJob extends AbstractJobWatch<StagingTask>
     public synchronized void setUrlCopy(URLCopy urlCopy) {
         this.urlCopy = urlCopy;
     }
-    
 
-	@Override
-	public void interrupt() throws UnableToInterruptJobException 
-	{
-		if (getQueueTask() != null) 
-		{
-			try 
-			{
-				this.queueTask = (StagingTask) QueueTaskDao.merge(getQueueTask());
-				this.queueTask.setStatus(StagingTaskStatus.STAGING_QUEUED);
-				QueueTaskDao.persist(this.queueTask);
-			}
-			catch (Throwable e) {
-				log.error("Failed to roll back transfer task during interrupt.");
-			}
-			
-			try 
-			{
-				LogicalFile file = getQueueTask().getLogicalFile();
-				file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
-				file.addContentEvent(new FileEvent(FileEventType.STAGING_FAILED, 
-						"Transfer was interrupted by the worker thread.",
-						queueTask.getOwner()));
-				LogicalFileDao.persist(file);
-			}
-			catch (Throwable e) {
-				log.error("Failed to roll back transfer task during interrupt.");
-			}
-			
-			if (getRootTask() != null)
-			{
-				try 
-				{
-					rootTask = TransferTaskDao.merge(getRootTask());
-					
-					if (rootTask.getRootTask() != null) {
-						TransferTaskDao.cancelAllRelatedTransfers(rootTask.getRootTask().getId()); 
-					} else if (rootTask.getParentTask() != null) {
-						TransferTaskDao.cancelAllRelatedTransfers(rootTask.getParentTask().getId());
-					} else {
-						TransferTaskDao.cancelAllRelatedTransfers(rootTask.getId());
-					}
-				} catch (Exception e1) {}
-			}
-		}
-		
-		releaseJob();
-	}
+
+    @Override
+    public void interrupt() throws UnableToInterruptJobException {
+        if (getQueueTask() != null) {
+            try {
+                setQueueTask((StagingTask) QueueTaskDao.merge(getQueueTask()));
+                getQueueTask().setStatus(StagingTaskStatus.STAGING_QUEUED);
+                QueueTaskDao.persist(getQueueTask());
+            } catch (Throwable e) {
+                log.error("Failed to roll back transfer task during interrupt.");
+            }
+
+            try {
+                LogicalFile file = getQueueTask().getLogicalFile();
+                file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
+                file.addContentEvent(new FileEvent(FileEventType.STAGING_FAILED,
+                        "Transfer was interrupted by the worker thread.",
+                        queueTask.getOwner()));
+                LogicalFileDao.persist(file);
+            } catch (Throwable e) {
+                log.error("Failed to roll back transfer task during interrupt.");
+            }
+
+            if (getRootTask() != null) {
+                try {
+                    rootTask = TransferTaskDao.merge(getRootTask());
+
+                    if (rootTask.getRootTask() != null) {
+                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getRootTask().getId());
+                    } else if (rootTask.getParentTask() != null) {
+                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getParentTask().getId());
+                    } else {
+                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getId());
+                    }
+                } catch (Exception e1) {
+                    log.error("Task cancellation failed.", e1);
+                }
+            }
+        }
+
+        releaseJob();
+    }
 
     @Override
     public synchronized Long selectNextAvailableQueueTask() throws TaskException {
-        return QueueTaskDao.getNextStagingTask(TenancyHelper.getDedicatedTenantIdForThisService());
+        return QueueTaskDao.getNextStagingTask(Settings.getQueuetaskTenantIds());
     }
-    
+
     /* (non-Javadoc)
      * @see org.iplantc.service.jobs.queue.WorkerWatch#getJob()
      */
     @Override
     public synchronized StagingTask getQueueTask() {
         if (this.queueTask == null && queueTaskId != null) {
-            this.queueTask = QueueTaskDao.getStagingTaskById(this.queueTaskId);
+            this.queueTask = QueueTaskDao.getStagingTaskById(getQueueTaskId());
         }
+        if (log.isTraceEnabled() && (queueTask == null))
+            log.trace("Null staging task returned for queueTaskId " + queueTaskId + ".");
+
         return this.queueTask;
     }
 
@@ -742,12 +663,7 @@ public class StagingJob extends AbstractJobWatch<StagingTask>
     }
 
     @Override
-    public synchronized void setQueueTaskId(Long queueTaskId) {
-        this.queueTaskId = queueTaskId;
-    }
-
-    @Override
     protected void releaseJob() {
-        JobProducerFactory.releaseStagingJob(this.queueTaskId);
+        JobProducerFactory.releaseStagingJob(getQueueTaskId());
     }
 }

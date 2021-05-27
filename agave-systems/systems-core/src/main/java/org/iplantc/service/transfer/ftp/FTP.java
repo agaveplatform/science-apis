@@ -3,34 +3,13 @@
  */
 package org.iplantc.service.transfer.ftp;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.io.StringReader;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.StringTokenizer;
-import java.util.concurrent.ConcurrentHashMap;
-
+import com.google.common.io.Files;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.FileUtils;
-import org.globus.ftp.Buffer;
-import org.globus.ftp.DataSink;
-import org.globus.ftp.DataSource;
-import org.globus.ftp.FTPClient;
-import org.globus.ftp.FileRandomIO;
-import org.globus.ftp.HostPort;
-import org.globus.ftp.HostPort6;
-import org.globus.ftp.MlsxEntry;
-import org.globus.ftp.Session;
+import org.globus.ftp.*;
 import org.globus.ftp.exception.ClientException;
 import org.globus.ftp.exception.FTPException;
 import org.globus.ftp.exception.FTPReplyParseException;
@@ -44,12 +23,19 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteInputStream;
 import org.iplantc.service.transfer.RemoteTransferListener;
+import org.iplantc.service.transfer.exceptions.InvalidTransferException;
 import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
-import com.google.common.io.Files;
+import java.io.*;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.StringTokenizer;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author dooley
@@ -57,12 +43,10 @@ import com.google.common.io.Files;
  */
 public class FTP extends FTPClient implements RemoteDataClient 
 {
-	private static Logger log = Logger.getLogger(FTPClient.class);
+	private static final Logger log = Logger.getLogger(FTPClient.class);
 
 	public static final String ANONYMOUS_USER = "anonymous";
 	public static final String ANONYMOUS_PASSWORD = "guest";
-	
-//	protected RemoteSystem system;
 	
 	protected String host;
 	protected int port;
@@ -72,13 +56,12 @@ public class FTP extends FTPClient implements RemoteDataClient
 	protected String rootDir;
     protected static final int MAX_BUFFER_SIZE = 1048576;
     protected boolean bPassive = true;
-    private Map<String, RemoteFileInfo> fileInfoCache = new ConcurrentHashMap<String, RemoteFileInfo>();
+    private final Map<String, RemoteFileInfo> fileInfoCache = new ConcurrentHashMap<String, RemoteFileInfo>();
 
     private boolean disconnected = true;
     
 	public FTP(String host, int port, String username, String password, String rootDir, String homeDir)
 	{
-//		this.system = system;
 		this.host = host;
 		this.port = port > 0 ? port : 21;
 		this.username = username;
@@ -165,15 +148,15 @@ public class FTP extends FTPClient implements RemoteDataClient
 	public String resolvePath(String path) throws FileNotFoundException
 	{
 		if (StringUtils.isEmpty(path)) {
-		    return StringUtils.stripEnd(homeDir, " ");
+		    return StringUtils.stripEnd(getHomeDir(), " ");
 		}
 		else if (path.startsWith("/")) 
 		{
-			path = rootDir + path.replaceFirst("/", "");
+			path = getRootDir() + path.replaceFirst("/", "");
 		}
 		else
 		{
-			path = homeDir + path;
+			path = getHomeDir() + path;
 		}
 		
 		String adjustedPath = path;
@@ -190,8 +173,8 @@ public class FTP extends FTPClient implements RemoteDataClient
 		if (path == null) {
 			throw new FileNotFoundException("The specified path " + path + 
 					" does not exist or the user does not have permission to view it.");
-		} else if (!path.startsWith(rootDir)) {
-			if (!path.equals(StringUtils.removeEnd(rootDir, "/"))) {
+		} else if (!path.startsWith(getRootDir())) {
+			if (!path.equals(StringUtils.removeEnd(getRootDir(), "/"))) {
 				throw new FileNotFoundException("The specified path " + path + 
 					" does not exist or the user does not have permission to view it.");
 			}
@@ -207,8 +190,8 @@ public class FTP extends FTPClient implements RemoteDataClient
     		String parent = StringUtils.isEmpty(dir) ? ".." : dir + "/..";
     		String resolvedParentPath = resolvePath(parent);
             if (!doesExist(parent) 
-                    && StringUtils.startsWith(resolvedParentPath, rootDir) 
-                    && !StringUtils.equals(resolvedParentPath, rootDir)) 
+                    && StringUtils.startsWith(resolvedParentPath, getRootDir())
+                    && !StringUtils.equals(resolvedParentPath, getRootDir()))
             {
                 mkdirs(parent);
             }
@@ -233,7 +216,7 @@ public class FTP extends FTPClient implements RemoteDataClient
                 } else {
                     pathBuilder = (StringUtils.startsWith(remotepath, "/") ? "/" : "") + token;
                 }
-                
+
                 if (doesExist(pathBuilder)) {
                     continue;
                 } else if (mkdir(pathBuilder)) {
@@ -251,13 +234,14 @@ public class FTP extends FTPClient implements RemoteDataClient
 	@Override
 	public boolean mkdir(String dir) throws IOException, RemoteDataException
 	{
-	    fileInfoCache.remove(resolvePath(dir));
+		String resolvedPath = resolvePath(dir);
+	    fileInfoCache.remove(resolvedPath);
         
 	    if (doesExist(dir)) {
 			return false;
 		} else {
 			try {
-				super.makeDir(resolvePath(dir));
+				super.makeDir(resolvedPath);
 				return true;
 			} catch (ServerException e) {
 				if (e.toString().contains("Permission denied")) {
@@ -266,6 +250,7 @@ public class FTP extends FTPClient implements RemoteDataClient
 					throw new RemoteDataException("Failed to create " + dir, e);
 				}
 			} catch (Exception e) {
+				log.error("Failed to create directory " + dir, e);
 				return false;
 			}
 		}
@@ -288,7 +273,6 @@ public class FTP extends FTPClient implements RemoteDataClient
             
 	        controlChannel = new FTPControlChannel(host, port);
 	        controlChannel.open();
-//	        localServer = new FTPServerFacade(controlChannel);
 	        localServer = new FTPServerFacade(controlChannel) {
 	        	/**
 	        	 * Start the local server
@@ -374,7 +358,7 @@ public class FTP extends FTPClient implements RemoteDataClient
 					(!StringUtils.equals(remoteFileInfo.getOwner(), this.username) && !remoteFileInfo.groupCanRead() && !remoteFileInfo.allCanRead())) { 
 				throw new RemoteDataException("Permission denied");
 			} else {
-				return new FTPInputStream(this, resolvePath(path), false);
+				return new FTPInputStream(this, resolvePath(path), passive);
 			}
 		}
 		catch (IOException e) {
@@ -406,9 +390,6 @@ public class FTP extends FTPClient implements RemoteDataClient
 			{
 				if (isDirectory(path)) {
 					throw new RemoteDataException("Cannot open output stream to directory " + path);
-//				} else if ((StringUtils.equals(remoteFileInfo.getOwner(), this.username) && !remoteFileInfo.userCanRead()) ||
-//						(!StringUtils.equals(remoteFileInfo.getOwner(), this.username) && !remoteFileInfo.groupCanWrite() && !remoteFileInfo.allCanWrite())) {
-//					throw new RemoteDataException("Permission denied");
 				} else {
 					return new FTPOutputStream(this, resolvePath(path), passive, append);
 				}
@@ -418,14 +399,7 @@ public class FTP extends FTPClient implements RemoteDataClient
 				String parentPath = (StringUtils.isEmpty(path) ? ".." : FilenameUtils.getPath(path));
 				if (doesExist(parentPath))
 				{
-//					RemoteFileInfo remoteFileInfo = getFileInfo(parentPath);
-//					if ((StringUtils.equals(remoteFileInfo.getOwner(), this.username) && !remoteFileInfo.userCanRead()) ||
-//							(!StringUtils.equals(remoteFileInfo.getOwner(), this.username) && !remoteFileInfo.groupCanWrite() && !remoteFileInfo.allCanWrite())) 
-//					{
-//						throw new RemoteDataException("Permission denied");
-//					} else {
-						return new FTPOutputStream(this, resolvePath(path), passive, append);
-//					}
+					return new FTPOutputStream(this, resolvePath(path), passive, append);
 				} else {
 					throw new FileNotFoundException("No such file or directory");
 				}
@@ -449,8 +423,6 @@ public class FTP extends FTPClient implements RemoteDataClient
 		
 		try 
 		{
-//			RemoteFileInfo remoteFileInfo = getFileInfo(remotedir);
-			
 			File localDir = new File(localdir);
 			
 			if (isDirectory(remotedir))
@@ -467,7 +439,8 @@ public class FTP extends FTPClient implements RemoteDataClient
 				} 
 				else if (localDir.isFile()) 
 				{
-					throw new RemoteDataException("cannot overwrite non-directory: " + localDir.getName() + " with directory " + remotedir);
+					String msg = "Cannot overwrite non-directory " + localdir + " with directory " + remotedir;
+					throw new InvalidTransferException(msg);
 				}
 				else {
 					localDir = new File(localDir, FilenameUtils.getName(remotedir));
@@ -727,8 +700,6 @@ public class FTP extends FTPClient implements RemoteDataClient
 		setMode(Session.MODE_STREAM);
 		
 		setDTP(false);
-//		setPassive();
-//		setLocalActive();
 		
 		try 
 		{
@@ -744,8 +715,6 @@ public class FTP extends FTPClient implements RemoteDataClient
 		}
 		
 		setDTP(bPassive);
-//		setPassive();
-//		setLocalActive();
 		
 	}
 		
@@ -758,8 +727,10 @@ public class FTP extends FTPClient implements RemoteDataClient
 		{
 			// can't put dir to file
 			if (localFile.isDirectory() && !isDirectory(dest)) {
-				throw new RemoteDataException("cannot overwrite non-directory: " + 
-						remotedir + " with directory " + localFile.getName());
+				String msg = "Cannot overwrite non-directory " + remotedir +
+						" with directory " + localFile.getPath();
+				log.error(msg);
+				throw new InvalidTransferException(msg);
 			} 
 			dest += (StringUtils.isEmpty(dest) ? "" : "/") + localFile.getName();
 			mkdir(dest);
@@ -888,18 +859,6 @@ public class FTP extends FTPClient implements RemoteDataClient
 				
 			try
 			{
-				String newDestPath = remotedest;
-				if (doesExist(remotedest) && isDirectory(remotedest)) {
-					newDestPath += File.separator + FilenameUtils.getName(remotesrc);
-				}
-				
-//				localServer.setProtectionBufferSize(Session.SERVER_DEFAULT);
-//				setType(Session.TYPE_IMAGE);
-//				setMode(Session.MODE_STREAM);
-//				
-//				setActive(remoteDestClient.setPassive());
-//				
-//				transfer(resolvePath(remotesrc), remoteDestClient, newDestPath, false, listener);
 				File localTempDir = null;
 				try {
 					String src = (listener == null ? getUriForPath(remotesrc).toString() : listener.getTransferTask().getSource());
@@ -978,11 +937,11 @@ public class FTP extends FTPClient implements RemoteDataClient
             Reply reply = controlChannel.exchange(new Command("SITE", "RDEL " + resolvedPath));
         	if (reply.getCode() != 250) {
         		if (reply.getMessage().contains("No such file or directory")) {
-        			throw new FileNotFoundException("No such file or directory");
+        			throw new FileNotFoundException("No such file or directory: " + resolvedPath);
         		} else if (reply.getMessage().contains("Permission denied")) {
-					throw new RemoteDataException("Permission denied");
+					throw new RemoteDataException("Permission denied: " + resolvedPath);
         		} else {
-//        			log.error("Failed recursive server-side delete. Manually applying now.");
+        			log.error("Failed recursive server-side delete. Manually applying now: " + dir);
         			deleteManually(dir);
         		}
         	}
@@ -994,7 +953,7 @@ public class FTP extends FTPClient implements RemoteDataClient
 			throw e;
 		}
 		catch (Exception e) {
-//        	log.error("Failed recursive server-side delete. Manually applying now.", e);
+        	log.error("Failed recursive server-side delete. Manually applying now: " + dir, e);
         	deleteManually(dir);
         }
     }
@@ -1005,8 +964,6 @@ public class FTP extends FTPClient implements RemoteDataClient
 		{	
 			setType(Session.TYPE_ASCII);
 			setDTP(false);
-//			setLocalPassive();
-//			setActive();
 			
 			String resolvedPath = resolvePath(remotepath);
             
@@ -1199,9 +1156,6 @@ public class FTP extends FTPClient implements RemoteDataClient
 			try 
 			{
 				setDTP(false);
-//				setPassive();
-//				setLocalActive();
-//				setProtectionBufferSize(16384)
 				super.mlsd(resolvedPath, iSink);
 			} 
 			catch (ServerException e) 
@@ -1212,16 +1166,12 @@ public class FTP extends FTPClient implements RemoteDataClient
 			    else if (e.getMessage().contains("451 active connection failed")) {
 					// try to reverse the mode and see if that helps
 					setDTP(true);
-//					setLocalPassive();
-//					setActive();
 					super.mlsd(resolvedPath, iSink);
 				} 
 				else if (e.getMessage().toLowerCase().contains("illegal port command")) {
 					// try to reverse the mode and see if that helps
 					this.bPassive = true;
 					setDTP(true);
-//					setLocalPassive();
-//					setActive();
 					return doLegacyLs(resolvedPath);
 				} 
 				else if (e.toString().contains("No such file or directory")) {
@@ -1284,19 +1234,16 @@ public class FTP extends FTPClient implements RemoteDataClient
 	
 	private class ByteArrayDataSink implements DataSink {
 
-        private ByteArrayOutputStream received;
+        private final ByteArrayOutputStream received;
 
         public ByteArrayDataSink() {
             this.received = new ByteArrayOutputStream(1000);
         }
         
         public void write(Buffer buffer) throws IOException {
-            if (log.isDebugEnabled()) {
-                log.debug(
-                             "received "
-                             + buffer.getLength()
-                             + " bytes of directory listing");
-            }
+            if (log.isDebugEnabled()) 
+                log.debug("received " + buffer.getLength() + " bytes of directory listing");
+            
             this.received.write(buffer.getBuffer(), 0, buffer.getLength());
         }
 
@@ -1348,11 +1295,7 @@ public class FTP extends FTPClient implements RemoteDataClient
             // check file exists
             if (!doesExist(path)) return false;
 
-            if (path.startsWith(rootDir)) {
-                return true;
-            } else {
-                return false;
-            }
+            return path.startsWith(rootDir);
         } catch (Exception e) {
             return false;
         }
@@ -1364,11 +1307,7 @@ public class FTP extends FTPClient implements RemoteDataClient
         try {
             path = resolvePath(path);
 
-            if (path.startsWith(rootDir)) {
-                return true;
-            } else {
-                return false;
-            }
+            return path.startsWith(rootDir);
         } catch (Exception e) {
             return false;
         }
@@ -1459,30 +1398,38 @@ public class FTP extends FTPClient implements RemoteDataClient
 	@Override
 	public RemoteFileInfo getFileInfo(String path) throws RemoteDataException, IOException
 	{
+	    // Check for cached file info.
 		String resolvedPath = resolvePath(path);
 		RemoteFileInfo fileInfo = fileInfoCache.get(resolvedPath);
-		// check the cache so we can save a query when possible
-		if (fileInfo == null) 
-		{
-			try {
-			    if (isFeatureSupported("MLST")) {
-    				fileInfo = doGetFileInfo(resolvedPath);
-    			} else {
-    				fileInfo = doGetLegacyFileInfo(resolvedPath);
-    			}
-    			fileInfoCache.put(resolvedPath, fileInfo);
-			} 
-			catch (RemoteDataException | IOException e) {
-			    fileInfoCache.remove(resolvedPath);
-			    throw e;
-			}
+		if (fileInfo != null) return fileInfo;
+		
+		// We have to contact the server.
+		try {
+		    if (isFeatureSupported("MLST")) fileInfo = doGetFileInfo(resolvedPath);
+    		 else fileInfo = doGetLegacyFileInfo(resolvedPath);
+		    
+		    // Protect the cache and never return a null result.
+    		if (fileInfo == null) {
+                String msg = "Null file information returned for " + resolvedPath;
+                log.error(msg);
+                throw new FileNotFoundException(msg);
+    		}
+    		    
+    		// Cache the results.
+    		fileInfoCache.put(resolvedPath, fileInfo);
+		} 
+		catch (RemoteDataException | IOException e) {
+			// Logging has already occurred in the called methods.
+			throw e;
 		}
 		
 		return fileInfo;
 	}
 	
 	/**
-	 * Uses legacy list command with file filter to get the file info
+	 * Uses legacy list command with file filter to get the file info.
+	 * 
+	 * Caching is not performed here; all cache manipulation is done by the caller.
 	 * 
 	 * @param resolvedPath absolute path to file or folder on the system
 	 * @return
@@ -1490,80 +1437,38 @@ public class FTP extends FTPClient implements RemoteDataClient
 	 * @throws IOException
 	 */
 	private RemoteFileInfo doGetLegacyFileInfo(String resolvedPath) 
-	throws RemoteDataException, IOException
+	throws RemoteDataException
 	{
-		RemoteFileInfo fileInfo = null;
-		BufferedReader reader = null;
+	    // File info is null.
 		try
 		{
-			// check the cache so we can save a query when possible
-			if (fileInfoCache.containsKey(resolvedPath)) {
-				return fileInfoCache.get(resolvedPath);
-			}
-			
 			setType(Session.TYPE_ASCII);
 			
 			setDTP(true);
-//			setLocalPassive();
-//			setActive();
-//			setActive(localServer.setPassive());
 			
-			changeDir(resolvedPath);
-				
-			ByteArrayDataSink sink = new ByteArrayDataSink();
-
-	        List<RemoteFileInfo> listing = doLegacyLs(resolvedPath);
-
-	        ByteArrayOutputStream received = sink.getData();
-
-	        // transfer done. Data is in received stream.
-	        // convert it to a vector.
-
-	        reader = new BufferedReader(new StringReader(received.toString()));
-
-	        String line = null;
-
-	        while ((line = reader.readLine()) != null) {
-	            line = line.trim();
-	            if(line.equals(""))
-	            {
-	                continue;
-	            }
-	            if (line.startsWith("total"))
-	                continue;
-	            RemoteFileInfo childInfo = new RemoteFileInfo(line);
-				if (StringUtils.equals(childInfo.getName(), ".") || 
-						StringUtils.equals(childInfo.getName(), FilenameUtils.getName(StringUtils.removeEnd(resolvedPath, "/")))) 
-				{
-					fileInfo = childInfo;
-				}
-	        }
-	        changeDir(resolvePath(""));
+			RemoteFileInfo fileInfo = doStat(resolvedPath);
 			
+			// This shouldn't happen, but we capture it if it does.
+			if (fileInfo == null) {
+			    String msg = "Null file information returned for " + resolvedPath;
+			    log.error(msg);
+			    throw new FileNotFoundException(msg);
+			}
+			
+			// Return the results.
 			return fileInfo;
 		}
-		catch (ServerException e) 
-		{
-			if (e.toString().contains("check for file existence") ||
-					e.toString().contains("No such file or directory")) 
-			{
-				throw new FileNotFoundException("No such file or directory");
-			} else if (e.toString().contains("Permission denied")) {
-				throw new RemoteDataException("Permission denied", e);
-			} else {
-				throw new RemoteDataException("Failed to retrieve file info for " + fileInfoCache.containsKey(resolvedPath), e);
-			}
-		}
 		catch (Exception e) {
-			throw new RemoteDataException("Failed to retrieve file info for " + fileInfoCache.containsKey(resolvedPath), e);
-		}
-		finally {
-			try { reader.close(); } catch (Exception e) {}
+		    String msg = "Failed to retrieve file info for " + resolvedPath;
+		    log.error(msg);
+			throw new RemoteDataException(msg, e);
 		}
 	}
 	
 	/**
-	 * Uses mlst to get the file info
+	 * Uses mlst to get the file info.
+	 * 
+	 * Caching is not performed here; all cache manipulation is done by the caller.
 	 * 
 	 * @param resolvedPath absolute path to file or folder on the system
 	 * @return
@@ -1578,15 +1483,10 @@ public class FTP extends FTPClient implements RemoteDataClient
 			setType(Session.TYPE_ASCII);
 			
 			setDTP(true);
-//			setLocalPassive();
-//			setActive();
-//			setActive(localServer.setPassive());
 			
 			MlsxEntry entry = super.mlst(resolvedPath);
 			
 			fileInfo = new RemoteFileInfo(entry);
-			fileInfoCache.put(resolvedPath, fileInfo);
-			
 			return fileInfo;
 		}
 		catch (ServerException e) {
@@ -1597,7 +1497,9 @@ public class FTP extends FTPClient implements RemoteDataClient
 			        MlsxEntry entry = super.mlst(resolvedPath);
 					return new RemoteFileInfo(entry);
 				} catch (Exception e1) {
-					throw new RemoteDataException("Failed to retrieve file info for " + resolvedPath.replace(homeDir,  ""), e);
+				    String msg = "Failed to retrieve file info for " + resolvedPath.replace(homeDir,  "");
+				    log.error(msg, e1);
+					throw new RemoteDataException(msg, e);
 				}
 			}
 			else if (e.toString().contains("check for file existence")) {
@@ -1605,16 +1507,23 @@ public class FTP extends FTPClient implements RemoteDataClient
 			}
 			else if (e.toString().contains("No such file or directory"))  
 			{
-//			    return doGetLegacyFileInfo(resolvedPath);
-				throw new java.io.FileNotFoundException("No such file or directory");
+			    String msg = "No such file or directory: " + resolvedPath;
+			    log.error(msg, e);
+				throw new java.io.FileNotFoundException(msg);
 			} else if (e.toString().contains("Permission denied")) {
-				throw new RemoteDataException("Permission denied", e);
+                String msg = "Permission denied: " + resolvedPath;
+                log.error(msg, e);
+				throw new RemoteDataException(msg, e);
 			} else {
-				throw new RemoteDataException("Failed to retrieve file info for " + resolvedPath.replace(homeDir,  ""), e);
+                String msg = "Failed to retrieve file info for " + resolvedPath.replace(homeDir,  "");
+                log.error(msg, e);
+				throw new RemoteDataException(msg, e);
 			}
 		}
 		catch (Exception e) {
-			throw new RemoteDataException("Failed to retrieve file info for " + resolvedPath.replace(homeDir,  ""), e);
+            String msg = "Failed to retrieve file info for " + resolvedPath.replace(homeDir,  "");
+            log.error(msg, e);
+			throw new RemoteDataException(msg, e);
 		}
 	}
 	
@@ -1625,20 +1534,21 @@ public class FTP extends FTPClient implements RemoteDataClient
 	 * @throws FileNotFoundException 
 	 * @throws RemoteDataException 
 	 */
-	private RemoteFileInfo doStat(String resolvedPath) throws FileNotFoundException, RemoteDataException {
-	    List<RemoteFileInfo> listing = new ArrayList<RemoteFileInfo>();
+	private RemoteFileInfo doStat(String resolvedPath) throws FileNotFoundException, RemoteDataException 
+	{
 	    try 
 	    {
 	        Reply reply = quote("STAT " + resolvedPath);
             String replyMessage = reply.getMessage();
             StringTokenizer replyLines =
-                new StringTokenizer(
-                                    replyMessage,
+                new StringTokenizer(replyMessage,
                                     System.getProperty("line.separator"));
             if (replyLines.hasMoreElements()) {
                 replyLines.nextElement();
             } else {
-                throw new RemoteDataException("Expected multiline reply");
+                String msg = "Expected multiline reply on STAT of " + resolvedPath;
+                log.error(msg);
+                throw new RemoteDataException(msg);
             }
            
             String fileName = FilenameUtils.getName(resolvedPath);
@@ -1647,18 +1557,11 @@ public class FTP extends FTPClient implements RemoteDataClient
                 // skip last line
                 if (!replyLines.hasMoreElements()) break;
                 
-//                if (StringUtils.startsWithAny(line, new String[]{"STAT", "213 End."})) continue;
-                
                 RemoteFileInfo fileItem = new RemoteFileInfo(line);
                 
                 if (StringUtils.equals(fileItem.getName(), fileName)) {
                     return fileItem;
                 }
-                
-                
-//                if (StringUtils.endsWith(line, fileName)) {
-//                    
-//                }
             }
             
             if (Reply.isPositiveCompletion(reply) && !StringUtils.equals(reply.getMessage(), "STAT" + System.getProperty("line.separator") + "213 End.")) {
@@ -1676,14 +1579,20 @@ public class FTP extends FTPClient implements RemoteDataClient
             } 
             else 
             {
-                throw new FileNotFoundException("Unknown file/folder.");
+                String msg = "Unknown file/folder: " + resolvedPath;
+                log.error(msg);
+                throw new FileNotFoundException(msg);
             }
 	    }
 	    catch (FileNotFoundException e) {
+            String msg = "Not found: " + resolvedPath;
+            log.error(msg, e);
 	        throw e;
 	    }
 	    catch (Throwable e) {
-            throw new RemoteDataException("Unable to get remote file info.", e);
+            String msg = "Unable to retrieve remote file info: " + resolvedPath;
+            log.error(msg, e);
+            throw new RemoteDataException(msg, e);
         }
         
 	}
@@ -1838,7 +1747,7 @@ public class FTP extends FTPClient implements RemoteDataClient
 		{
 			RemoteFileInfo remoteFileInfo = getFileInfo(remotePath); 
 			if (remoteFileInfo.isDirectory()) {
-				throw new RemoteDataException("Cannot perform checksum on a directory");
+				throw new RemoteDataException("Cannot perform checksum on a directory: " + remotePath);
 			} else {
 				throw new NotImplementedException("Checksum is not currently supported.");
 			}
@@ -1912,26 +1821,9 @@ public class FTP extends FTPClient implements RemoteDataClient
 		else if (!rootDir.equals(other.rootDir)) return false;
 		if (username == null)
 		{
-			if (other.username != null) return false;
+            return other.username == null;
 		}
-		else if (!username.equals(other.username)) return false;
-		return true;
-	}
-	
-//	@Override
-//	public boolean equals(Object o)
-//	{
-//		if (o != null && o instanceof FTP) {
-//			FTP rdc = (FTP)o;
-//			return (StringUtils.equalsIgnoreCase(host, rdc.host) && 
-//				port == rdc.port && 
-//				StringUtils.equalsIgnoreCase(username, rdc.username) &&
-//				StringUtils.equalsIgnoreCase(password, rdc.password) &&
-//				StringUtils.equalsIgnoreCase(homeDir, rdc.homeDir) &&
-//				StringUtils.equalsIgnoreCase(rootDir, rdc.rootDir));
-//		} else {
-//			return false;
-//		}
-//	}
+		else return username.equals(other.username);
+    }
 	
 }

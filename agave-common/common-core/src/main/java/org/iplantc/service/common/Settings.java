@@ -1,47 +1,25 @@
 package org.iplantc.service.common;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.security.SecureRandom;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TimeZone;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.X509TrustManager;
-
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.util.IPAddressValidator;
 import org.iplantc.service.common.util.OSValidator;
 import org.joda.time.DateTimeZone;
 
-import com.google.common.escape.Escaper;
-import com.google.common.net.UrlEscapers;
-import com.jayway.jsonpath.Configuration;
-import com.jayway.jsonpath.Option;
-import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
-import com.jayway.jsonpath.spi.json.JsonProvider;
-import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
-import com.jayway.jsonpath.spi.mapper.MappingProvider;
+import javax.net.ssl.*;
+import java.io.*;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.*;
 
 
 public class Settings 
@@ -49,6 +27,8 @@ public class Settings
     private static final Logger log = Logger.getLogger(Settings.class);
     
     protected static final String PROPERTY_FILE = "service.properties";
+    
+    public static final String INVALID_QUEUE_TASK_TENANT_ID = "!!";
 
 	/* Debug settings */
     public static boolean       DEBUG;
@@ -59,8 +39,6 @@ public class Settings
     
     public static String        API_VERSION;
     public static String        SERVICE_VERSION;
-    public static int           JETTY_PORT;
-    public static int           JETTY_AJP_PORT;
     
     public static String        PUBLIC_USER_USERNAME;
     public static String        WORLD_USER_USERNAME;
@@ -91,7 +69,6 @@ public class Settings
     public static String        IPLANT_MONITOR_SERVICE;
     public static String        IPLANT_PROFILE_SERVICE;
     public static String        IPLANT_SYSTEM_SERVICE;
-    public static String        IPLANT_TRANSFORM_SERVICE;
     public static String        IPLANT_TRANSFER_SERVICE;
     public static String        IPLANT_NOTIFICATION_SERVICE;
     public static String        IPLANT_POSTIT_SERVICE;
@@ -129,7 +106,25 @@ public class Settings
     public static String                        NOTIFICATION_TOPIC;
     public static String                        NOTIFICATION_RETRY_QUEUE;
     public static String                        NOTIFICATION_RETRY_TOPIC;
-    
+
+    /* Metadata support */
+    public static String 						METADATA_DB_HOST;
+    public static String 						METADATA_DB_SCHEME;
+    public static String 						METADATA_DB_COLLECTION;
+    public static String                        METADATA_DB_SCHEMATA_COLLECTION;
+    public static int                           METADATA_DB_PORT;
+    public static String                        METADATA_DB_USER;
+    public static String                        METADATA_DB_PWD;
+
+    /* Notification retry */
+    public static String 						FAILED_NOTIFICATION_DB_HOST;
+    public static String 						FAILED_NOTIFICATION_DB_SCHEME;
+    public static int                           FAILED_NOTIFICATION_DB_PORT;
+    public static String                        FAILED_NOTIFICATION_DB_USER;
+    public static String                        FAILED_NOTIFICATION_DB_PWD;
+    public static int                           FAILED_NOTIFICATION_COLLECTION_LIMIT;
+    public static int                           FAILED_NOTIFICATION_COLLECTION_SIZE;
+
     /* Messaging support */
     public static String                        MESSAGING_SERVICE_PROVIDER;
     public static String                        MESSAGING_SERVICE_HOST;
@@ -150,13 +145,6 @@ public class Settings
     public static String                        TRANSFERS_STAGING_TOPIC;
     public static String                        TRANSFERS_STAGING_QUEUE;
     
-    public static String                        TRANSFORMS_ENCODING_QUEUE;
-    public static String                        TRANSFORMS_ENCODING_TOPIC;
-    public static String                        TRANSFORMS_DECODING_QUEUE;
-    public static String                        TRANSFORMS_DECODING_TOPIC;
-    public static String                        TRANSFORMS_STAGING_TOPIC;
-    public static String                        TRANSFORMS_STAGING_QUEUE;
-    
     public static String                        JOBS_STAGING_QUEUE;
     public static String                        JOBS_STAGING_TOPIC;
     public static String                        JOBS_SUBMISSION_QUEUE;
@@ -176,7 +164,7 @@ public class Settings
     public static String                        USAGETRIGGERS_CHECK_TOPIC;
     
     public static String                        PLATFORM_STORAGE_SYSTEM_ID;
-
+    
     private static String                       DEDICATED_TENANT_ID;
 
     private static String[]                     DEDICATED_USER_IDS;
@@ -189,204 +177,238 @@ public class Settings
         
     public static String						TEMP_DIRECTORY;
     
-    static
-    {
-//    	Configuration.setDefaults(new Configuration.Defaults() {
-//
-//    	    private final JsonProvider jsonProvider = new JacksonJsonProvider();
-//    	    private final MappingProvider mappingProvider = new JacksonMappingProvider();
-//
-//    	    @Override
-//    	    public JsonProvider jsonProvider() {
-//    	        return jsonProvider;
-//    	    }
-//
-//    	    @Override
-//    	    public MappingProvider mappingProvider() {
-//    	        return mappingProvider;
-//    	    }
-//
-//    	    @Override
-//    	    public Set<Option> options() {
-//    	    	return EnumSet.of(Option.ALWAYS_RETURN_LIST, Option.SUPPRESS_EXCEPTIONS);
-//    	    }
-//    	});
-    	
+    static {
         // trust everyone. we need this due to the unknown nature of the callback urls
-        try { 
-            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier(){ 
-                    public boolean verify(String hostname, SSLSession session) { 
-                            return true; 
-                    }}); 
-            SSLContext context = SSLContext.getInstance("TLS"); 
-            context.init(null, new X509TrustManager[]{new X509TrustManager(){ 
-                    public void checkClientTrusted(X509Certificate[] chain, 
-                                    String authType) throws CertificateException {} 
-                    public void checkServerTrusted(X509Certificate[] chain, 
-                                    String authType) throws CertificateException {} 
-                    public X509Certificate[] getAcceptedIssuers() { 
-                            return new X509Certificate[0]; 
-                    }}}, new SecureRandom()); 
-            HttpsURLConnection.setDefaultSSLSocketFactory( 
-                            context.getSocketFactory());
-            
+        try {
+            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            });
+            SSLContext context = SSLContext.getInstance("TLS");
+            context.init(null, new X509TrustManager[]{new X509TrustManager() {
+                public void checkClientTrusted(X509Certificate[] chain,
+                                               String authType) throws CertificateException {
+                }
+
+                public void checkServerTrusted(X509Certificate[] chain,
+                                               String authType) throws CertificateException {
+                }
+
+                public X509Certificate[] getAcceptedIssuers() {
+                    return new X509Certificate[0];
+                }
+            }}, new SecureRandom());
+            HttpsURLConnection.setDefaultSSLSocketFactory(
+                    context.getSocketFactory());
+
         } catch (Exception e) { // should never happen 
-                e.printStackTrace(); 
+            log.error("Unexpected error configuring HTTPS URL connection. Continuing initialization.");
         }
-        
+
         Properties props = loadRuntimeProperties();
-        
+
         DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
         TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
-        
-        DEBUG = Boolean.valueOf((String)props.get("iplant.debug.mode"));
-        
-        DEBUG_USERNAME = (String)props.get("iplant.debug.username");
-        
-        AUTH_SOURCE = (String) props.get("iplant.auth.source");
-        
-        VERIFY_JWT_SIGNATURE = Boolean.valueOf((String) props.getProperty("iplant.verify.jwt.signature", "no"));
-        
-        API_VERSION = (String)props.getProperty("iplant.api.version");
-        
-        if (!StringUtils.isEmpty(System.getProperty("jetty.port"))) {
-            JETTY_PORT = Integer.valueOf(System.getProperty("jetty.port"));
+
+        try {
+            DEBUG = Boolean.valueOf(props.getProperty("iplant.debug.mode", "false"));
+        } catch (Exception e) {
+            log.error("Failure loading setting iplant.debug.mode.", e);
+            DEBUG = false;
         }
-        if (JETTY_PORT == 0) {
-            JETTY_PORT = Integer.valueOf((String)props.getProperty("jetty.port", "8182"));
+
+        DEBUG_USERNAME = props.getProperty("iplant.debug.username");
+
+        AUTH_SOURCE = props.getProperty("iplant.auth.source");
+
+        try {
+            VERIFY_JWT_SIGNATURE = Boolean.valueOf(props.getProperty("iplant.verify.jwt.signature", "no"));
+        } catch (Exception e) {
+            log.error("Failure loading setting iplant.verify.jwt.signature", e);
+            VERIFY_JWT_SIGNATURE = false;
         }
-        
-        if (!StringUtils.isEmpty(System.getProperty("jetty.ajp.port"))) {
-            JETTY_AJP_PORT = Integer.valueOf(System.getProperty("jetty.ajp.port"));
+
+        API_VERSION = props.getProperty("iplant.api.version");
+
+        // ensure the default system temp directory is set to the TEMP_DIRECTORY value so that any containers
+        // sharing a mounted directory will both have access to any temp directories created.
+        TEMP_DIRECTORY = props.getProperty("iplant.server.temp.dir", "/scratch");
+        System.setProperty("java.io.tmpdir", TEMP_DIRECTORY);
+        try {
+            // ensure the temp dir exists and is writeble. If not, none of our file operations are going to work
+            // in a containerized setting.
+            File tmpDir = Paths.get(TEMP_DIRECTORY).toFile();
+            // create dir if not present
+            if (!tmpDir.exists()) {
+                // if unable to create it, throw an exception we can log and catch.
+                if (!tmpDir.mkdirs()) {
+                    throw new IOException("Failed to create missing temp directory");
+                }
+                else {
+                    log.debug("Successfully created temp directory: " + TEMP_DIRECTORY);
+                }
+            } else {
+                log.debug("Temp directory found: " + TEMP_DIRECTORY);
+            }
+
+            if (!tmpDir.canWrite()) {
+                throw new PermissionException("Temp directory is not writeable");
+            } else if (!tmpDir.canRead()) {
+                throw new PermissionException("Temp directory is not readable");
+            }
+        } catch (IOException|PermissionException e) {
+            log.error("Error found while validating temp directory, " + TEMP_DIRECTORY + ": " +
+                    e.getMessage() + ". Some remote data movement operations may fail.");
         }
-        if (JETTY_AJP_PORT == 0) {
-            JETTY_AJP_PORT = Integer.valueOf((String)props.getProperty("jetty.ajp.port", "8183"));
-        }
-        
-        TEMP_DIRECTORY = (String) props.getProperty("iplant.server.temp.dir", "/scratch");
-        
-        SERVICE_VERSION = (String)props.getProperty("iplant.service.version");
-        
+
+        SERVICE_VERSION = props.getProperty("iplant.service.version");
+
         IPLANT_LDAP_URL = props.getProperty("iplant.ldap.url");
 
         IPLANT_LDAP_BASE_DN = props.getProperty("iplant.ldap.base.dn");
-        
+
         IPLANT_LDAP_PASSWORD = props.getProperty("iplant.ldap.password");
-        
+
         IPLANT_LDAP_USERNAME = props.getProperty("iplant.ldap.username");
-        
-        PUBLIC_USER_USERNAME = (String)props.getProperty("iplant.public.user", "public");
-        
-        WORLD_USER_USERNAME = (String)props.getProperty("iplant.world.user", "world");
-        
-        COMMUNITY_PROXY_USERNAME = (String)props.get("iplant.community.username");
-        
-        COMMUNITY_PROXY_PASSWORD = (String)props.get("iplant.community.password");
-        
-        String trustedUsers = (String)props.get("iplant.trusted.users");
+
+        PUBLIC_USER_USERNAME = props.getProperty("iplant.public.user", "public");
+
+        WORLD_USER_USERNAME = props.getProperty("iplant.world.user", "world");
+
+        COMMUNITY_PROXY_USERNAME = props.getProperty("iplant.community.username");
+
+        COMMUNITY_PROXY_PASSWORD = props.getProperty("iplant.community.password");
+
+        String trustedUsers = props.getProperty("iplant.trusted.users");
         if (trustedUsers != null && !trustedUsers.equals("")) {
-            for (String user: trustedUsers.split(",")) {
+            for (String user : trustedUsers.split(",")) {
                 TRUSTED_USERS.add(user);
             }
         }
-        
+
         KEYSTORE_PATH = props.getProperty("system.keystore.path");
 
         TRUSTSTORE_PATH = props.getProperty("system.truststore.path");
+
+        TACC_MYPROXY_SERVER = props.getProperty("iplant.myproxy.server");
+
+        try {
+            TACC_MYPROXY_PORT = Integer.valueOf(props.getProperty("iplant.myproxy.port", "7512"));
+        } catch (Exception e) {
+            log.error("Failure loading setting iplant.myproxy.port - continuing using default value.", e);
+            TACC_MYPROXY_PORT = 7512;
+        }
+
+        IPLANT_APP_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.app.service", "https://sandbox.agaveplatform.org/apps/v2");
+        IPLANT_AUTH_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.auth.service", "https://sandbox.agaveplatform.org/auth/v2");
+        IPLANT_CLIENTS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.clients.service", "http://sandbox.agaveplatform.org/clients/v2");
+        IPLANT_SYSTEM_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.system.service", "https://sandbox.agaveplatform.org/systems/v2");
+        IPLANT_DOCS = Settings.getSantizedServiceUrl(props, "iplant.service.documentation", "https://sandbox.agaveplatform.org/docs/v2");
+        IPLANT_FILE_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.io.service", "https://sandbox.agaveplatform.org/files/v2");
+        IPLANT_GROUPS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.groups.service", "https://sandbox.agaveplatform.org/groups/v2");
+        IPLANT_JOB_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.job.service", "https://sandbox.agaveplatform.org/jobs/v2");
+        IPLANT_LOG_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.log.service", "https://sandbox.agaveplatform.org/logging/v2");
+        IPLANT_METADATA_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.metadata.service", "https://sandbox.agaveplatform.org/meta/v2");
+        IPLANT_MONITOR_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.monitor.service", "https://sandbox.agaveplatform.org/monitors/v2");
+        IPLANT_NOTIFICATION_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.notification.service", "https://sandbox.agaveplatform.org/notifications/v2");
+        IPLANT_PERMISSIONS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.permissions.service", "https://sandbox.agaveplatform.org/permissions/v2");
+        IPLANT_POSTIT_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.postit.service", "https://sandbox.agaveplatform.org/postits/v2");
+        IPLANT_PROFILE_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.profile.service", "https://sandbox.agaveplatform.org/profiles/v2");
+        IPLANT_REALTIME_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.realtime.service", "http://public.realtime.sandbox.agaveplatform.org/channels/v2");
+        IPLANT_ROLES_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.roles.service", "https://sandbox.agaveplatform.org/roles/v2");
+        IPLANT_TAGS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.tags.service", "https://sandbox.agaveplatform.org/tags/v2");
+        IPLANT_TENANTS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.tenants.service", "https://agaveplatform.org/tenants/");
+        IPLANT_TRANSFER_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.transfer.service", "https://sandbox.agaveplatform.org/transfers/v2");
+        IPLANT_REACTOR_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.reactors.service", "https://sandbox.agaveplatform.org/reactors/v2");
+        IPLANT_REPOSITORY_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.repositories.service", "https://sandbox.agaveplatform.org/repositories/v2");
+        IPLANT_ABACO_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.abaco.service", "https://sandbox.agaveplatform.org/abaco/v2");
+
+        NOTIFICATION_QUEUE = props.getProperty("iplant.notification.service.queue", "prod.notifications.queue");
+        NOTIFICATION_TOPIC = props.getProperty("iplant.notification.service.topic", "prod.notifications.queue");
+        NOTIFICATION_RETRY_QUEUE = props.getProperty("iplant.notification.service.retry.queue", "retry." + NOTIFICATION_QUEUE);
+        NOTIFICATION_RETRY_TOPIC = props.getProperty("iplant.notification.service.retry.topic", "retry." + NOTIFICATION_TOPIC);
+
+        METADATA_DB_COLLECTION = props.getProperty("iplant.metadata.db.collection", "metadata");
+        METADATA_DB_SCHEMATA_COLLECTION = props.getProperty("iplant.metadata.schemata.db.collection", "schemata");
+        METADATA_DB_SCHEME = props.getProperty("iplant.metadata.db.scheme", "api");
+        METADATA_DB_HOST = props.getProperty("iplant.metadata.db.host", "mongodb");
+        METADATA_DB_PORT = Integer.parseInt(props.getProperty("iplant.metadata.db.port", "27017"));
+        METADATA_DB_USER = props.getProperty("iplant.metadata.db.user", "agaveuser");
+        METADATA_DB_PWD = props.getProperty("iplant.metadata.db.pwd", "password");
+
+        FAILED_NOTIFICATION_DB_SCHEME = props.getProperty("iplant.notification.failed.db.scheme", "api");
+        FAILED_NOTIFICATION_DB_HOST = props.getProperty("iplant.notification.failed.db.host", "mongodb");
+        FAILED_NOTIFICATION_DB_PORT = org.apache.commons.lang.math.NumberUtils.toInt(props.getProperty("iplant.notification.failed.db.port", "27017"), 27017);
+        FAILED_NOTIFICATION_DB_USER = props.getProperty("iplant.notification.failed.db.user", "agaveuser");
+        FAILED_NOTIFICATION_DB_PWD = props.getProperty("iplant.notification.failed.db.pwd", "password");
+        FAILED_NOTIFICATION_COLLECTION_SIZE = org.apache.commons.lang.math.NumberUtils.toInt(props.getProperty("iplant.notification.failed.db.max.queue.size"), 1048576);
+        FAILED_NOTIFICATION_COLLECTION_LIMIT = org.apache.commons.lang.math.NumberUtils.toInt(props.getProperty("iplant.notification.failed.db.max.queue.limit"), 1000);
+
+        MESSAGING_SERVICE_PROVIDER = props.getProperty("iplant.messaging.provider");
+        MESSAGING_SERVICE_USERNAME = props.getProperty("iplant.messaging.username");
+        MESSAGING_SERVICE_PASSWORD = props.getProperty("iplant.messaging.password");
+        MESSAGING_SERVICE_HOST = props.getProperty("iplant.messaging.host");
+        try {
+            MESSAGING_SERVICE_PORT = Integer.parseInt((String) props.get("iplant.messaging.port"));
+        } catch (Exception e) {
+            log.error("Failure loading setting iplant.messaging.port - continuing.", e);
+        }
         
-        TACC_MYPROXY_SERVER = (String)props.get("iplant.myproxy.server");
+        FILES_ENCODING_QUEUE = props.getProperty("iplant.files.service.encoding.queue", "encoding.prod.files.queue");
+        FILES_ENCODING_TOPIC = props.getProperty("iplant.files.service.encoding.topic", "encoding.prod.files.topic");
+        FILES_STAGING_QUEUE = props.getProperty("iplant.files.service.staging.queue", "staging.prod.files.queue");
+        FILES_STAGING_TOPIC = props.getProperty("iplant.files.service.staging.topic", "staging.prod.files.topic");
         
-        TACC_MYPROXY_PORT = Integer.valueOf((String)props.getProperty("iplant.myproxy.port", "7512"));
+        TRANSFERS_DECODING_QUEUE = props.getProperty("iplant.transfers.service.decoding.queue", "decoding.prod.transfers.queue");
+        TRANSFERS_DECODING_TOPIC = props.getProperty("iplant.transfers.service.decoding.topic", "decoding.prod.transfers.topic");
+        TRANSFERS_ENCODING_QUEUE = props.getProperty("iplant.transfers.service.encoding.queue", "encoding.prod.transfers.queue");
+        TRANSFERS_ENCODING_TOPIC = props.getProperty("iplant.transfers.service.encoding.topic", "encoding.prod.transfers.topic");
+        TRANSFERS_STAGING_QUEUE = props.getProperty("iplant.transfers.service.staging.queue", "staging.prod.transfers.queue");
+        TRANSFERS_STAGING_TOPIC = props.getProperty("iplant.transfers.service.staging.topic", "staging.prod.transfers.topic");
         
-        IPLANT_APP_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.app.service", "https://public.agaveapi.co/apps/v2");        
-        IPLANT_AUTH_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.auth.service", "https://public.agaveapi.co/auth/v2");
-        IPLANT_CLIENTS_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.clients.service", "http://public.agaveapi.co/clients/v2");
-        IPLANT_SYSTEM_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.system.service", "https://public.agaveapi.co/systems/v2");
-        IPLANT_DOCS                 = Settings.getSantizedServiceUrl(props, "iplant.service.documentation", "https://public.agaveapi.co/docs/v2");
-        IPLANT_FILE_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.io.service", "https://public.agaveapi.co/files/v2");
-        IPLANT_GROUPS_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.groups.service", "https://public.agaveapi.co/groups/v2");
-        IPLANT_JOB_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.job.service", "https://public.agaveapi.co/jobs/v2");
-        IPLANT_LOG_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.log.service", "https://public.agaveapi.co/logging/v2");
-        IPLANT_METADATA_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.metadata.service", "https://public.agaveapi.co/meta/v2");
-        IPLANT_MONITOR_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.monitor.service", "https://public.agaveapi.co/monitors/v2");
-        IPLANT_NOTIFICATION_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.notification.service", "https://public.agaveapi.co/notifications/v2");
-        IPLANT_PERMISSIONS_SERVICE  = Settings.getSantizedServiceUrl(props, "iplant.permissions.service", "https://public.agaveapi.co/permissions/v2");
-        IPLANT_POSTIT_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.postit.service", "https://public.agaveapi.co/postits/v2");
-        IPLANT_PROFILE_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.profile.service", "https://public.agaveapi.co/profiles/v2");
-        IPLANT_REALTIME_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.realtime.service", "http://public.realtime.prod.agaveapi.co/channels/v2");
-        IPLANT_ROLES_SERVICE        = Settings.getSantizedServiceUrl(props, "iplant.roles.service", "https://public.agaveapi.co/roles/v2");
-        IPLANT_TAGS_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.tags.service", "https://public.agaveapi.co/tags/v2");
-        IPLANT_TENANTS_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.tenants.service", "http://agaveapi.co/tenants/");
-        IPLANT_TRANSFER_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.transfer.service", "https://public.agaveapi.co/transfers/v2");
-        IPLANT_REACTOR_SERVICE     	= Settings.getSantizedServiceUrl(props, "iplant.reactors.service", "https://public.agaveapi.co/reactors/v2");
-        IPLANT_REPOSITORY_SERVICE   = Settings.getSantizedServiceUrl(props, "iplant.repositories.service", "https://public.agaveapi.co/repositories/v2");
-        IPLANT_ABACO_SERVICE     	= Settings.getSantizedServiceUrl(props, "iplant.abaco.service", "https://public.agaveapi.co/abaco/v2");
+        JOBS_STAGING_QUEUE = props.getProperty("iplant.jobs.service.staging.queue", "staging.prod.jobs.queue");
+        JOBS_STAGING_TOPIC = props.getProperty("iplant.jobs.service.staging.topic", "staging.prod.jobs.topic");
+        JOBS_SUBMISSION_QUEUE = props.getProperty("iplant.jobs.service.submission.queue", "submission.prod.jobs.queue");
+        JOBS_SUBMISSION_TOPIC = props.getProperty("iplant.jobs.service.submission.topic", "submission.prod.jobs.topic");
+        JOBS_MONITORING_QUEUE = props.getProperty("iplant.jobs.service.monitoring.queue", "monitoring.prod.jobs.queue");
+        JOBS_MONITORING_TOPIC = props.getProperty("iplant.jobs.service.monitoring.topic", "monitoring.prod.jobs.topic");
+        JOBS_ARCHIVING_QUEUE = props.getProperty("iplant.jobs.service.archiving.queue", "archiving.prod.jobs.queue");
+        JOBS_ARCHIVING_TOPIC = props.getProperty("iplant.jobs.service.archiving.topic", "archiving.prod.jobs.topic");
         
-        NOTIFICATION_QUEUE = (String) props.getProperty("iplant.notification.service.queue", "prod.notifications.queue");
-		NOTIFICATION_TOPIC = (String) props.getProperty("iplant.notification.service.topic", "prod.notifications.queue");
-		
-		NOTIFICATION_RETRY_QUEUE = (String) props.getProperty("iplant.notification.service.retry.queue", "retry." + NOTIFICATION_QUEUE);
-		NOTIFICATION_RETRY_TOPIC = (String) props.getProperty("iplant.notification.service.retry.topic", "retry." + NOTIFICATION_TOPIC);
-		
-        MESSAGING_SERVICE_PROVIDER = (String)props.get("iplant.messaging.provider");
-        MESSAGING_SERVICE_USERNAME = (String)props.get("iplant.messaging.username");
-        MESSAGING_SERVICE_PASSWORD = (String)props.get("iplant.messaging.password");
-        MESSAGING_SERVICE_HOST = (String)props.get("iplant.messaging.host");
-        MESSAGING_SERVICE_PORT = Integer.valueOf((String)props.get("iplant.messaging.port"));
+        MONITORS_CHECK_QUEUE = props.getProperty("iplant.monitors.service.checks.queue", "checks.prod.monitors.queue");
+        MONITORS_CHECK_TOPIC = props.getProperty("iplant.monitors.service.checks.topic", "checks.prod.monitors.topic");
         
-        FILES_ENCODING_QUEUE = (String) props.getProperty("iplant.files.service.encoding.queue", "encoding.prod.files.queue");
-        FILES_ENCODING_TOPIC = (String) props.getProperty("iplant.files.service.encoding.topic", "encoding.prod.files.topic");
-        FILES_STAGING_QUEUE = (String) props.getProperty("iplant.files.service.staging.queue", "staging.prod.files.queue");
-        FILES_STAGING_TOPIC = (String) props.getProperty("iplant.files.service.staging.topic", "staging.prod.files.topic");
+        APPS_PUBLISHING_QUEUE = props.getProperty("iplant.apps.service.publishing.queue", "publish.prod.apps.queue");
+        APPS_PUBLISHING_TOPIC = props.getProperty("iplant.apps.service.publishing.topic", "publish.prod.apps.topic");
         
-        TRANSFERS_DECODING_QUEUE = (String) props.getProperty("iplant.transfers.service.decoding.queue", "decoding.prod.transfers.queue");
-        TRANSFERS_DECODING_TOPIC = (String) props.getProperty("iplant.transfers.service.decoding.topic", "decoding.prod.transfers.topic");
-        TRANSFERS_ENCODING_QUEUE = (String) props.getProperty("iplant.transfers.service.encoding.queue", "encoding.prod.transfers.queue");
-        TRANSFERS_ENCODING_TOPIC = (String) props.getProperty("iplant.transfers.service.encoding.topic", "encoding.prod.transfers.topic");
-        TRANSFERS_STAGING_QUEUE = (String) props.getProperty("iplant.transfers.service.staging.queue", "staging.prod.transfers.queue");
-        TRANSFERS_STAGING_TOPIC = (String) props.getProperty("iplant.transfers.service.staging.topic", "staging.prod.transfers.topic");
-        
-        TRANSFORMS_ENCODING_QUEUE = (String) props.getProperty("iplant.transforms.service.encoding.queue", "encoding.prod.transforms.queue");
-        TRANSFORMS_ENCODING_TOPIC = (String) props.getProperty("iplant.transforms.service.encoding.topic", "decoding.prod.transforms.topic");
-        TRANSFORMS_DECODING_QUEUE = (String) props.getProperty("iplant.transforms.service.decoding.queue", "decoding.prod.transforms.queue");
-        TRANSFORMS_DECODING_TOPIC = (String) props.getProperty("iplant.transforms.service.decoding.topic", "decoding.prod.transforms.topic");
-        TRANSFORMS_STAGING_QUEUE = (String) props.getProperty("iplant.transforms.service.staging.queue", "staging.prod.transforms.queue");
-        TRANSFORMS_STAGING_TOPIC = (String) props.getProperty("iplant.transforms.service.staging.topic", "staging.prod.transforms.topic");
-        
-        JOBS_STAGING_QUEUE = (String) props.getProperty("iplant.jobs.service.staging.queue", "staging.prod.jobs.queue");
-        JOBS_STAGING_TOPIC = (String) props.getProperty("iplant.jobs.service.staging.topic", "staging.prod.jobs.topic");
-        JOBS_SUBMISSION_QUEUE = (String) props.getProperty("iplant.jobs.service.submission.queue", "submission.prod.jobs.queue");
-        JOBS_SUBMISSION_TOPIC = (String) props.getProperty("iplant.jobs.service.submission.topic", "submission.prod.jobs.topic");
-        JOBS_MONITORING_QUEUE = (String) props.getProperty("iplant.jobs.service.monitoring.queue", "monitoring.prod.jobs.queue");
-        JOBS_MONITORING_TOPIC = (String) props.getProperty("iplant.jobs.service.monitoring.topic", "monitoring.prod.jobs.topic");
-        JOBS_ARCHIVING_QUEUE = (String) props.getProperty("iplant.jobs.service.archiving.queue", "archiving.prod.jobs.queue");
-        JOBS_ARCHIVING_TOPIC = (String) props.getProperty("iplant.jobs.service.archiving.topic", "archiving.prod.jobs.topic");
-        
-        MONITORS_CHECK_QUEUE = (String) props.getProperty("iplant.monitors.service.checks.queue", "checks.prod.monitors.queue");
-        MONITORS_CHECK_TOPIC = (String) props.getProperty("iplant.monitors.service.checks.topic", "checks.prod.monitors.topic");
-        
-        APPS_PUBLISHING_QUEUE = (String) props.getProperty("iplant.apps.service.publishing.queue", "publish.prod.apps.queue");
-        APPS_PUBLISHING_TOPIC = (String) props.getProperty("iplant.apps.service.publishing.topic", "publish.prod.apps.topic");
-        
-        USAGETRIGGERS_CHECK_QUEUE = (String) props.getProperty("iplant.usagetriggers.service.queue", "check.prod.usagetriggers.queue");
-        USAGETRIGGERS_CHECK_TOPIC = (String) props.getProperty("iplant.usagetriggers.service.topic", "check.prod.usagetriggers.topic");
+        USAGETRIGGERS_CHECK_QUEUE = props.getProperty("iplant.usagetriggers.service.queue", "check.prod.usagetriggers.queue");
+        USAGETRIGGERS_CHECK_TOPIC = props.getProperty("iplant.usagetriggers.service.topic", "check.prod.usagetriggers.topic");
 
         
-        DEFAULT_PAGE_SIZE = NumberUtils.toInt((String) props.getProperty("iplant.default.page.size", "100"), 100);
+        try {DEFAULT_PAGE_SIZE = NumberUtils.toInt(props.getProperty("iplant.default.page.size", "100"), 100);}
+        	catch (Exception e) {
+        		log.error("Failure loading setting iplant.default.page.size", e);
+        		DEFAULT_PAGE_SIZE = 100;
+        	}
         
-        MAX_PAGE_SIZE = NumberUtils.toInt((String) props.getProperty("iplant.max.page.size", "100"), 100);
+        try {MAX_PAGE_SIZE = NumberUtils.toInt(props.getProperty("iplant.max.page.size", "100"), 100);}
+    	catch (Exception e) {
+    		log.error("Failure loading setting iplant.max.page.size", e);
+    		DEFAULT_PAGE_SIZE = 100;
+    	}
         
-        PLATFORM_STORAGE_SYSTEM_ID = (String)props.getProperty("iplant.platform.storage.system", "agave-s3-prod");
+        PLATFORM_STORAGE_SYSTEM_ID = props.getProperty("iplant.platform.storage.system", "agave-s3-prod");
         
-        DRAIN_QUEUES = (String)props.getProperty("iplant.drain.all.queues");
+        DRAIN_QUEUES = props.getProperty("iplant.drain.all.queues");
         
-        DEDICATED_TENANT_ID = (String)props.getProperty("iplant.dedicated.tenant.id");
+        DEDICATED_TENANT_ID = props.getProperty("iplant.dedicated.tenant.id");
         
-        DEDICATED_USER_IDS = StringUtils.split((String)props.get("iplant.dedicated.user.id"), ",");
+        DEDICATED_USER_IDS = StringUtils.split(props.getProperty("iplant.dedicated.user.id"), ",");
         
-        DEDICATED_USER_GROUPS = StringUtils.split((String)props.get("iplant.dedicated.user.group.id"), ",");
+        DEDICATED_USER_GROUPS = StringUtils.split(props.getProperty("iplant.dedicated.user.group.id"), ",");
         
-        DEDICATED_SYSTEM_IDS = StringUtils.split((String)props.getProperty("iplant.dedicated.system.id", ""), ",");
+        DEDICATED_SYSTEM_IDS = StringUtils.split(props.getProperty("iplant.dedicated.system.id", ""), ",");
     }
     
     /**
@@ -399,11 +421,17 @@ public class Settings
     public static Properties loadRuntimeProperties()
     {
         Properties props = new Properties();
+        InputStream stream = null;
         try {
-            props.load(Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE));
+        	stream = Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE);
+            props.load(stream);
         }
         catch (Exception e) {
-            e.printStackTrace();
+        	String msg = "Unable to load " + PROPERTY_FILE + ".";
+            log.error(msg, e);
+        }
+        finally {
+        	if (stream != null) try {stream.close();} catch (Exception e){}
         }
         
         Map<String, String> environment = System.getenv();
@@ -423,15 +451,14 @@ public class Settings
     /**
      * Reads in a service url from the properties file and ensures it ends in a 
      * single trailing slash.
-     * @param props the properes to fetch the service url from.
+     * @param props the properties to fetch the service url from.
      * @param propertyKey the key to lookup
      * @param defaultValue value to use if no value is present in the properties object
      * @return
      */
     public static String getSantizedServiceUrl(Properties props, String propertyKey, String defaultValue) {
     	return StringUtils.trimToEmpty(
-    			(String)props.getProperty(propertyKey, defaultValue))
-    				.replaceAll("/$", "") + "/";
+    			props.getProperty(propertyKey, defaultValue)).replaceAll("/$", "") + "/";
 	}
 
 	/**
@@ -444,19 +471,25 @@ public class Settings
         if (StringUtils.isEmpty(DEDICATED_TENANT_ID)) 
         {
             Properties props = new Properties();
+            InputStream stream = null;
             try
             {
-                props.load(Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE));
+            	stream = Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE);
+                props.load(stream);
                 
-                DEDICATED_TENANT_ID = (String)props.get("iplant.dedicated.tenant.id");
+                DEDICATED_TENANT_ID = props.getProperty("iplant.dedicated.tenant.id");
             }
             catch (Exception e)
             {
+            	log.error("Failure loading setting iplant.dedicated.tenant.id", e);
                 DEDICATED_TENANT_ID = null;
+            }
+            finally {
+            	if (stream != null) try {stream.close();} catch (Exception e){}
             }
         }
         
-        return StringUtils.stripToNull(new String(DEDICATED_TENANT_ID));
+        return StringUtils.stripToNull(DEDICATED_TENANT_ID);
     }
     
     /**
@@ -469,24 +502,31 @@ public class Settings
         if (ArrayUtils.isEmpty(DEDICATED_USER_IDS)) 
         {
             Properties props = new Properties();
+            InputStream stream = null;
             try
             {
-                props.load(Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE));
+            	stream = Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE);
+                props.load(stream);
                 
                 List<String> userIds = new ArrayList<String>();
-                for (String userId: StringUtils.split((String)props.getProperty("iplant.dedicated.user.id", ""), ",")) {
+                for (String userId: StringUtils.split(props.getProperty("iplant.dedicated.user.id", ""), ",")) {
                     userId = StringUtils.trimToNull(userId);
                     if (userId != null) {
                         userIds.add(userId);
                     }
                 }
                 
-                DEDICATED_USER_IDS = userIds.toArray(new String[] {});
+                String[] stringArray = new String[userIds.size()];
+                DEDICATED_USER_IDS = userIds.toArray(stringArray);
                 
             }
             catch (Exception e)
             {
+            	log.error("Failure loading setting iplant.dedicated.user.id", e);
                 DEDICATED_USER_IDS = new String[] {};
+            }
+            finally {
+            	if (stream != null) try {stream.close();} catch (Exception e){}
             }
         }
         
@@ -503,23 +543,30 @@ public class Settings
         if (ArrayUtils.isEmpty(DEDICATED_USER_GROUPS)) 
         {
             Properties props = new Properties();
+            InputStream stream = null;
             try
             {
-                props.load(Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE));
+            	stream = Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE);
+                props.load(stream);
                 
                 List<String> groupIds = new ArrayList<String>();
-                for (String groupId: StringUtils.split((String)props.getProperty("iplant.dedicated.user.group", ""), ",")) {
+                for (String groupId: StringUtils.split(props.getProperty("iplant.dedicated.user.group", ""), ",")) {
                     groupId = StringUtils.trimToNull(groupId);
                     if (groupId != null) {
                         groupIds.add(groupId);
                     }
                 }
                 
-                DEDICATED_USER_GROUPS = groupIds.toArray(new String[] {});
+                String[] stringArray = new String[groupIds.size()];
+                DEDICATED_USER_GROUPS = groupIds.toArray(stringArray);
             }
             catch (Exception e)
             {
+            	log.error("Failure loading setting iplant.dedicated.user.group", e);
                 DEDICATED_USER_GROUPS = new String[] {};
+            }
+            finally {
+            	if (stream != null) try {stream.close();} catch (Exception e){}
             }
         }
         
@@ -540,23 +587,30 @@ public class Settings
         if (ArrayUtils.isEmpty(DEDICATED_SYSTEM_IDS)) 
         {
             Properties props = new Properties();
+            InputStream stream = null;
             try
             {
-                props.load(Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE));
+            	stream = Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE);
+                props.load(stream);
                 
                 List<String> systemIds = new ArrayList<String>();
-                for (String systemId: StringUtils.split((String)props.getProperty("iplant.dedicated.system.id", ""), ",")) {
+                for (String systemId: StringUtils.split(props.getProperty("iplant.dedicated.system.id", ""), ",")) {
                     systemId = StringUtils.trimToNull(systemId);
                     if (systemId != null) {
                         systemIds.add(systemId);
                     }
                 }
                 
-                DEDICATED_SYSTEM_IDS = systemIds.toArray(new String[] {});
+                String[] stringArray = new String[systemIds.size()];
+                DEDICATED_SYSTEM_IDS = systemIds.toArray(stringArray);
             }
             catch (Exception e)
             {
+            	log.error("Failure loading setting iplant.dedicated.system.id", e);
                 DEDICATED_SYSTEM_IDS = new String[] {};
+            }
+            finally {
+            	if (stream != null) try {stream.close();} catch (Exception e){}
             }
         }
     
@@ -575,15 +629,21 @@ public class Settings
         if (StringUtils.isEmpty(DRAIN_QUEUES)) 
         {
             Properties props = new Properties();
+            InputStream stream = null;
             try
             {
-                props.load(Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE));
+            	stream = Settings.class.getClassLoader().getResourceAsStream(PROPERTY_FILE);
+                props.load(stream);
                 
-                DRAIN_QUEUES = (String)props.getProperty("iplant.drain.all.queues");
+                DRAIN_QUEUES = props.getProperty("iplant.drain.all.queues");
             }
             catch (Exception e)
             {
+            	log.error("Failure loading setting iplant.drain.all.queues", e);
                 DRAIN_QUEUES = null;
+            }
+            finally {
+            	if (stream != null) try {stream.close();} catch (Exception e){}
             }
         }
         
@@ -605,8 +665,8 @@ public class Settings
         {
             try {
                 hostname = InetAddress.getLocalHost().getHostName();
-            } catch (UnknownHostException e1) {
-                log.error("Unable to resolve local hostname");
+            } catch (UnknownHostException e) {
+                log.error("Unable to resolve local hostname", e);
                 hostname = "localhost";
             }
         }
@@ -709,7 +769,7 @@ public class Settings
             log.error("Failed to fork command " + command);
         }
         finally {
-            try {reader.close();} catch (Exception e) {}
+            if (reader != null) try {reader.close();} catch (Exception e) {}
         }
         
         return lines;
@@ -775,10 +835,67 @@ public class Settings
     }
     
     public static List<String> getEditableRuntimeConfigurationFields() {
-        return Arrays.asList("DRAIN_QUEUES",
+        return Arrays.asList(
+        		"DRAIN_QUEUES",
                 "DEDICATED_TENANT_ID",
                 "DEDICATED_SYSTEM_IDS",
                 "DEDICATED_USER_IDS",
                 "DEDICATED_USER_GROUPS");
+    }
+    
+    /** Retrieve and parse the queue task tenant ids if they were assigned.
+     * If unassigned, return an empty array. 
+     * 
+     * @return a non-null string array of tenant ids
+     */
+    public static String[] getQueueTaskTenantIds(Properties props)
+    {
+        // See if the queue task tenant ids property was assigned.
+        String inputIds = props.getProperty("iplant.queuetask.tenant.ids");
+        if (StringUtils.isBlank(inputIds)) {
+            if (log.isInfoEnabled()) {
+                String msg = "No tenant id specified for queue tasks, using all tenants.";
+                log.info(msg);
+            }
+            return new String[] {};
+        }
+        
+        // Parse the comma separated list of tenant ids.  During the 
+        // parsing we validate that the list only contains assertions
+        // or negations, but not both.
+        boolean hasAssertion = false;
+        boolean hasNegation  = false;
+        List<String> tenantIds = new ArrayList<String>();
+        for (String tenantId: StringUtils.split(inputIds, ",")) {
+            tenantId = StringUtils.trimToNull(tenantId);
+            if (tenantId != null) {
+                // Record assertion/negation type.
+                if (tenantId.startsWith("!")) hasNegation = true;
+                 else hasAssertion = true;
+                tenantIds.add(tenantId);
+            }
+        }
+        
+        // Validate that all members are either assertions or negations.
+        // If this condition does not hold, return an array with the
+        // distinguished invalid tenant id to disable task queue queries.
+        if (hasAssertion && hasNegation) {
+            String msg = "The iplant.queuetask.tenant.ids property cannot contain " +
+                         "both assertions and negations.  Please check the configuration " +
+                         "for this service.  The received tenant id values will be ignored: " + 
+                         inputIds;
+            log.error(msg);
+            return new String[] {INVALID_QUEUE_TASK_TENANT_ID};
+        }
+        
+        // Tracing.
+        if (log.isInfoEnabled()) {
+            String msg = "Using the following tenant id configuration for queue tasks: " + inputIds;
+            log.info(msg);
+        }
+        
+        // Return the tenant ids in an array.
+        String[] stringArray = new String[tenantIds.size()];
+        return tenantIds.toArray(stringArray);
     }
 }

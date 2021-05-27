@@ -6,14 +6,15 @@
    "description":"My example storage system using SFTP to store data for testing",
    "site":"example.com",
    "storage":{
-      "host":"docker.example.com",
-      "port":10022,
+      "host": "${sftp.host}",
+      "port": ${sftp.port},
       "protocol":"SFTP",
       "rootDir":"/",
-      "homeDir":"/home/${iplant.community.username}",
+      "homeDir":"/home/testuser",
+      "publicAppsDir": "/tmp",
       "auth":{
-         "username":"${iplant.community.username}",
-         "password":"${iplant.community.password}",
+         "username":"testuser",
+         "password":"testuser",
          "type":"PASSWORD"
       }
    }

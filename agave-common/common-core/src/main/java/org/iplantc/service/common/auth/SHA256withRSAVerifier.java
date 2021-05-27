@@ -1,16 +1,16 @@
 package org.iplantc.service.common.auth;
 
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.ReadOnlyJWSHeader;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jose.util.Base64URL;
+
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.interfaces.RSAPublicKey;
-
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.ReadOnlyJWSHeader;
-import com.nimbusds.jose.crypto.RSASSAVerifier;
-import com.nimbusds.jose.util.Base64URL;
 
 /**
  * Custom verifier to check for SHA256withRSA signing of a JWT

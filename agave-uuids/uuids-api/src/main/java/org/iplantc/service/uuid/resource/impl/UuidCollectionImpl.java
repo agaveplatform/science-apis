@@ -3,20 +3,10 @@
  */
 package org.iplantc.service.uuid.resource.impl;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
-import javax.ws.rs.Path;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -30,12 +20,17 @@ import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.uuid.resource.UuidCollection;
 import org.restlet.data.Status;
 import org.restlet.representation.Representation;
+import org.restlet.resource.Get;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.ws.rs.Path;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.*;
 
 /**
  * @author dooley
@@ -100,6 +95,7 @@ public class UuidCollectionImpl extends AbstractUuidCollection implements UuidCo
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.uuid.resource.UuidCollection#searchUuid(java.lang.String, java.lang.String, java.lang.String)
 	 */
+	@Get
 	@Override
 	public Response searchUuid(@QueryParam("uuids") String uuids, 
 								@QueryParam("expand") String expand, 
@@ -127,7 +123,7 @@ public class UuidCollectionImpl extends AbstractUuidCollection implements UuidCo
 
 	/**
 	 * Looks up metadata for an array of uuid. 
-	 * @param uuids
+	 * @param uuids the uuids to resolve
 	 * @return ArrayNode of uuid metadata objects.
 	 */
 	protected ArrayNode resolveUuids(String[] uuids) {
@@ -144,7 +140,7 @@ public class UuidCollectionImpl extends AbstractUuidCollection implements UuidCo
 					json.put("type", agaveUuid.getResourceType().name().toLowerCase());
 
 				ObjectNode linksObject = mapper.createObjectNode();
-		  		linksObject.set("self", (ObjectNode)mapper.createObjectNode()
+		  		linksObject.set("self", mapper.createObjectNode()
 		  							.put("href", TenancyHelper.resolveURLToCurrentTenant(agaveUuid.getObjectReference())));
 
 		  		json.set("_links", linksObject);

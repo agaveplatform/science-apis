@@ -3,15 +3,12 @@
  */
 package org.iplantc.service.jobs.resources;
 
-import java.util.Hashtable;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
-import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.jobs.dao.JobDao;
@@ -23,15 +20,13 @@ import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.managers.JobPermissionManager;
 import org.iplantc.service.jobs.model.Job;
 import org.restlet.Context;
-import org.restlet.data.Form;
-import org.restlet.data.MediaType;
-import org.restlet.data.Parameter;
-import org.restlet.data.Request;
-import org.restlet.data.Response;
-import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
+
+import java.util.Hashtable;
+import java.util.Map;
 
 /**
  * The JobManageResource is the job management interface for users. Through the
@@ -44,8 +39,8 @@ import org.restlet.resource.Variant;
 public class JobManageResource extends AbstractJobResource {
 	private static final Logger	log	= Logger.getLogger(JobManageResource.class);
 
-	private String				sJobId;
-	private String				internalUsername;
+	private final String				sJobId;
+	private final String				internalUsername;
 	private Job					job;
 
 	/**
@@ -89,9 +84,10 @@ public class JobManageResource extends AbstractJobResource {
 			job = JobDao.getByUuid(sJobId);
 			if (job == null) 
 			{
+	            String msg = "No job found with job id " + sJobId + "."; 
+	            log.error(msg);
 				getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-				getResponse().setEntity(new IplantErrorRepresentation(
-						"No job found with job id " + sJobId));
+				getResponse().setEntity(new IplantErrorRepresentation(msg));
 				return;
 			}
 			
@@ -153,9 +149,10 @@ public class JobManageResource extends AbstractJobResource {
 				}
 				else if (!job.isVisible()) 
 				{
+	                String msg = "Job with uuid " + sJobId + " is not visible.";
+	                log.error(msg);
 					getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-					getResponse().setEntity(new IplantErrorRepresentation(
-							"No job found with job id " + sJobId));
+					getResponse().setEntity(new IplantErrorRepresentation(msg));
 					return;
 				}
 				else if (pTable.get("action").equalsIgnoreCase("resubmit"))
@@ -321,6 +318,9 @@ public class JobManageResource extends AbstractJobResource {
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			getResponse().setEntity(new IplantErrorRepresentation(e.getMessage()));
 		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 
 
@@ -351,10 +351,18 @@ public class JobManageResource extends AbstractJobResource {
 		try
 		{
 			job = JobDao.getByUuid(sJobId);
-			if (job == null || !job.isVisible()) 
+			if (job == null) 
 			{
+	            String msg = "No job found with job id " + sJobId + "."; 
+	            log.error(msg);
 				getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-				return new IplantErrorRepresentation("No job found with job id " + sJobId);
+				return new IplantErrorRepresentation(msg);
+			}
+			else if (!job.isVisible()) {
+                String msg = "Job with uuid " + sJobId + " is not visible.";
+                log.error(msg);
+                getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+                return new IplantErrorRepresentation(msg);
 			}
 			else if (new JobPermissionManager(job, username).canRead(username))
 			{
@@ -378,6 +386,9 @@ public class JobManageResource extends AbstractJobResource {
 			// can't set a stopped job back to running. Bad request
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			return new IplantErrorRepresentation(e.getMessage());
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 
 	}
@@ -409,10 +420,17 @@ public class JobManageResource extends AbstractJobResource {
 		{
 			job = JobDao.getByUuid(sJobId);
 			
-			if (job == null || !job.isVisible()) {
+			if (job == null) {
+                String msg = "No job found with job id " + sJobId + "."; 
+                log.error(msg);
 				getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-				getResponse().setEntity(new IplantErrorRepresentation(
-						"No job found with job id " + sJobId));
+				getResponse().setEntity(new IplantErrorRepresentation(msg));
+			}
+			else if (!job.isVisible()) {
+                String msg = "Job with uuid " + sJobId + " is not visible.";
+                log.error(msg);
+                getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+                getResponse().setEntity(new IplantErrorRepresentation(msg));
 			}
 			else if (new JobPermissionManager(job, username).canWrite(username))
 			{
@@ -448,6 +466,9 @@ public class JobManageResource extends AbstractJobResource {
 					new IplantErrorRepresentation("Job deletion failed"));
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			log.error("Failed to hide job " + sJobId, e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 
 	}

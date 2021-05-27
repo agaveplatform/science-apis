@@ -1,13 +1,13 @@
 package org.iplantc.service.io.resources;
 
-import java.util.List;
-
 import org.iplantc.service.io.FilesApplication;
 import org.restlet.data.Reference;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 import org.restlet.security.Role;
+
+import java.util.List;
 
 /**
  * Defines common behaviour of server resources.

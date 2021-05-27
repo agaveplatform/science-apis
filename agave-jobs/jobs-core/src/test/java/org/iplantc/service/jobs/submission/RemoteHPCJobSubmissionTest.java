@@ -3,11 +3,8 @@
  */
 package org.iplantc.service.jobs.submission;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -26,8 +23,10 @@ import org.json.JSONObject;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.io.IOException;
+import java.util.Date;
+import java.util.List;
 
 /**
  * Tests the placing of a submitted job into the remote HPC system queue.
@@ -35,9 +34,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * @author dooley
  *
  */
+@Test(groups={"integration"})
 public class RemoteHPCJobSubmissionTest extends AbstractJobSubmissionTest 
 {
-	private ObjectMapper mapper = new ObjectMapper();
+	private final ObjectMapper mapper = new ObjectMapper();
 	
 	private Job job;
 	private JSONTestDataUtil jtd;
@@ -97,7 +97,7 @@ public class RemoteHPCJobSubmissionTest extends AbstractJobSubmissionTest
 		job.setArchiveSystem(storageSystem);
 		job.setCreated(new Date());
 		job.setMemoryPerNode((double)512);
-		job.setOwner("dooley");
+		job.setOwner("xxx");
 		job.setProcessorsPerNode((long)1);
 		job.setMaxRunTime("1:00:00");
 		job.setSoftwareName(software.getUniqueName());

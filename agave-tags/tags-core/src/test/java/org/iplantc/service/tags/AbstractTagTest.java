@@ -1,8 +1,9 @@
 package org.iplantc.service.tags;
 
-import java.io.IOException;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -21,13 +22,13 @@ import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.surftools.BeanstalkClientImpl.ClientImpl;
+import java.io.IOException;
+import java.util.Map;
 
-public class AbstractTagTest {
+@Test(groups={"integration"})
+public abstract class AbstractTagTest {
 
 	protected ObjectMapper mapper = new ObjectMapper();
 	protected NotificationDao notificationDao = new NotificationDao();

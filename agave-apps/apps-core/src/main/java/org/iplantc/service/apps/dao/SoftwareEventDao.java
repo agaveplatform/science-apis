@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.apps.dao;
 
-import java.util.List;
-
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -15,6 +13,8 @@ import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
+
+import java.util.List;
 
 /**
  * Model class for interacting with software events. {@link SoftwareEvent}s are

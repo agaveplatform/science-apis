@@ -1,5 +1,11 @@
 package org.iplantc.service.metadata.jackson;
-import static com.google.common.base.Objects.toStringHelper;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import java.util.Objects;
+import java.util.regex.Pattern;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.regex.Matcher.quoteReplacement;
 import static java.util.regex.Pattern.compile;
@@ -7,11 +13,6 @@ import static java.util.regex.Pattern.quote;
 import static org.apache.commons.lang3.StringEscapeUtils.unescapeJava;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.trimToNull;
-
-import java.util.Objects;
-import java.util.regex.Pattern;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * Provides a key compatible with mongoDB field names by escaping the restricted characters with the Unicode full width equivalents:
@@ -57,7 +58,7 @@ public class MongoDBSafeKey {
 		if (obj == null || !(obj instanceof MongoDBSafeKey)) {
 			return false;
 		}
-		final MongoDBSafeKey other = MongoDBSafeKey.class.cast(obj);
+		final MongoDBSafeKey other = (MongoDBSafeKey) obj;
 		return Objects.equals(key, other.key);
 	}
 

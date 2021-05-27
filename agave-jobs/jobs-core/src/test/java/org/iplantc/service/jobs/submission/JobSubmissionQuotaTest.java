@@ -3,13 +3,7 @@
  */
 package org.iplantc.service.jobs.submission;
 
-import static org.mockito.Mockito.*;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Date;
-
-import org.hibernate.cfg.Configuration;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwarePermission;
@@ -22,13 +16,9 @@ import org.iplantc.service.jobs.model.JSONTestDataUtil;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.queue.actions.SubmissionAction;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.SystemRole;
-import org.iplantc.service.systems.model.enumerations.RoleType;
-import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -38,14 +28,11 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-//import org.iplantc.service.systems.model.JSONTestDataUtil;
 
+import java.io.IOException;
+import java.util.Date;
 
-
-
-
-
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.mockito.Mockito.*;
 
 /**
  * Tests the user and overall job quotas enforced by the system.
@@ -53,6 +40,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @author dooley
  *
  */
+@Test(groups={"integration"})
 public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 
 	private Software software;
@@ -61,8 +49,6 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 	public void beforeClass() throws Exception
 	{
 		super.beforeClass();
-		
-		
 	}
 	
 	@AfterClass
@@ -86,7 +72,7 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 //	public void beforeClass() throws Exception
 //	{
 //		jtd = JSONTestDataUtil.getInstance();
-////	    File file = new File("src/test/resources/hibernate.cfg.xml");
+////	    File file = new File("target/test-classes/hibernate.cfg.xml");
 ////		Configuration configuration = new Configuration().configure(file);
 ////		HibernateUtil.rebuildSessionFactory(configuration);
 //		systemsDao = new SystemDao();
@@ -139,6 +125,8 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 		job.setBatchQueue(longQueue.getEffectiveMappedName());
 		job.setArchivePath("/iplant-test/archive/test-job-999");
 		job.setCreated(new Date());
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(software.getExecutionSystem().getScheduler());
 		job.setInputsAsJsonObject(mapper.createObjectNode());
 		job.setMemoryPerNode((double)512);
 		job.setOwner(SYSTEM_OWNER);
@@ -174,10 +162,10 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 			
 			PowerMockito.mockStatic(JobManager.class);
 //			when(JobManager.updateStatus(job, JobStatusType.STAGED)).thenReturn(job);
-			
+
 			submissionAction.run();
-		
-			PowerMockito.verifyStatic();
+
+			PowerMockito.verifyStatic(JobManager.class);
 			JobManager.updateStatus(job, JobStatusType.STAGED);
 			
 			job = JobDao.getById(job.getId());

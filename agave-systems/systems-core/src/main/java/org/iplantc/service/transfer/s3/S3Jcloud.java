@@ -1,11 +1,38 @@
 package org.iplantc.service.transfer.s3;
 
-import static org.jclouds.Constants.PROPERTY_RELAX_HOSTNAME;
-import static org.jclouds.Constants.PROPERTY_TRUST_ALL_CERTS;
-import static org.jclouds.blobstore.options.PutOptions.Builder.multipart;
-import static org.jclouds.s3.reference.S3Constants.PROPERTY_S3_SERVICE_PATH;
-import static org.jclouds.s3.reference.S3Constants.PROPERTY_S3_VIRTUAL_HOST_BUCKETS;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.hash.HashCode;
+import com.google.common.io.ByteSource;
+import com.google.common.io.Files;
+import com.google.common.util.concurrent.UncheckedExecutionException;
+import com.google.inject.Module;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+import org.iplantc.service.transfer.*;
+import org.iplantc.service.transfer.exceptions.InvalidTransferException;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.iplantc.service.transfer.model.RemoteFilePermission;
+import org.iplantc.service.transfer.model.enumerations.PermissionType;
+import org.jclouds.ContextBuilder;
+import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.blobstore.ContainerNotFoundException;
+import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
+import org.jclouds.blobstore.domain.PageSet;
+import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.CopyOptions;
+import org.jclouds.blobstore.options.ListContainerOptions;
+import org.jclouds.http.HttpException;
+import org.jclouds.io.Payload;
+import org.jclouds.io.payloads.ByteSourcePayload;
+import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
+import org.jclouds.s3.blobstore.S3BlobStore;
 
+import javax.activation.MimetypesFileTypeMap;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -13,61 +40,16 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.activation.MimetypesFileTypeMap;
+import static org.jclouds.Constants.PROPERTY_RELAX_HOSTNAME;
+import static org.jclouds.Constants.PROPERTY_TRUST_ALL_CERTS;
+import static org.jclouds.blobstore.options.PutOptions.Builder.multipart;
+import static org.jclouds.s3.reference.S3Constants.PROPERTY_S3_SERVICE_PATH;
+import static org.jclouds.s3.reference.S3Constants.PROPERTY_S3_VIRTUAL_HOST_BUCKETS;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteFileInfo;
-import org.iplantc.service.transfer.RemoteInputStream;
-import org.iplantc.service.transfer.RemoteOutputStream;
-import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.model.RemoteFilePermission;
-import org.iplantc.service.transfer.model.enumerations.PermissionType;
-import org.jclouds.ContextBuilder;
-//import org.jclouds.aws.s3.AWSS3AsyncClient;
-import org.jclouds.aws.s3.AWSS3Client;
-//import org.jclouds.aws.s3.blobstore.AWSS3BlobStore;
-import org.jclouds.azureblob.AzureBlobClient;
-import org.jclouds.blobstore.BlobStoreContext;
-import org.jclouds.blobstore.ContainerNotFoundException;
-import org.jclouds.blobstore.domain.Blob;
-import org.jclouds.blobstore.domain.BlobMetadata;
-import org.jclouds.blobstore.domain.ContainerAccess;
-import org.jclouds.blobstore.domain.PageSet;
-import org.jclouds.blobstore.domain.StorageMetadata;
-import org.jclouds.blobstore.domain.StorageType;
-import org.jclouds.blobstore.options.CopyOptions;
-import org.jclouds.blobstore.options.ListContainerOptions;
-import org.jclouds.http.HttpException;
-import org.jclouds.http.options.GetOptions;
-import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
-//import org.jclouds.rest.RestContext;
-//import org.jclouds.s3.S3AsyncClient;
-import org.jclouds.s3.S3Client;
-import org.jclouds.s3.blobstore.S3BlobStore;
-
-import com.google.common.collect.ImmutableSet;
-import com.google.common.hash.HashCode;
-import com.google.common.io.ByteSource;
-import com.google.common.io.Files;
-import com.google.common.util.concurrent.UncheckedExecutionException;
-import com.google.inject.Module;
-
-public class S3Jcloud implements RemoteDataClient 
+public class S3Jcloud implements RemoteDataClient
 {
 	public static final Logger log = Logger.getLogger(S3Jcloud.class);
 	
@@ -82,12 +64,12 @@ public class S3Jcloud implements RemoteDataClient
 	protected String containerName = "";
 	protected BlobStoreContext context;
 	protected S3BlobStore blobStore = null;
-	
+	protected MimetypesFileTypeMap mimetypesFileTypeMap = null;
 	private String accountKey = null;
 	private String accountSecret = null;
 	private String host = null;
 	private int port = 443;
-	private Map<String, BlobMetadata> fileInfoCache = new ConcurrentHashMap<String, BlobMetadata>();
+	private final Map<String, BlobMetadata> fileInfoCache = new ConcurrentHashMap<String, BlobMetadata>();
     
     protected static final int MAX_BUFFER_SIZE = 1*1024*1024;
     
@@ -213,7 +195,8 @@ public class S3Jcloud implements RemoteDataClient
 				overrides.setProperty(PROPERTY_S3_VIRTUAL_HOST_BUCKETS, "false");
 		        overrides.setProperty(PROPERTY_TRUST_ALL_CERTS, "true"); 
 		        overrides.setProperty(PROPERTY_RELAX_HOSTNAME, "true");
-		        Iterable<Module> modules = ImmutableSet.<Module> of(new SLF4JLoggingModule());
+
+		        Iterable<Module> modules = ImmutableSet.of(new SLF4JLoggingModule());
 		        
 		        
 				if (StringUtils.isNotEmpty(endpoint.getPath()) && !StringUtils.equals(endpoint.getPath(), "/")) {
@@ -268,91 +251,69 @@ public class S3Jcloud implements RemoteDataClient
 		
 		return blobStore;
 	}
-	
-//	public AWSS3AsyncClient s3AsyncClient() {
-//	    RestContext<AWSS3Client, AWSS3AsyncClient> providerContext = context.unwrap();
-//        return providerContext.getAsyncApi();
-//	}
-
 
 	@Override
 	public boolean mkdir(String remotepath)
 	throws IOException, RemoteDataException
 	{
+		if ( remotepath != null && FilenameUtils.getName(remotepath).equals("{") ) {
+			throw new RemoteDataException("'{' is not supported as a directory name.");
+		}
+
 		String resolvedPath = _doResolvePath(remotepath);
-		
+
+
 		fileInfoCache.remove(resolvedPath);
-		
+
+		// if the resolved path is empty, that represents the bucket root, which had
+		// to have been created for this class to be initialized.
 		if (StringUtils.isEmpty(resolvedPath)) {
-			if (!getBlobStore().containerExists(containerName)) {
-				return getBlobStore().createContainerInLocation(null, containerName);
-			} else {
+			// nothing to be done. Return false
+			return false;
+		}
+		else
+		{
+			// fetch RemoteFileInfo so we only pull metadata once
+			RemoteFileInfo fileInfo = null;
+			try { fileInfo = getFileInfo(remotepath); } catch (FileNotFoundException ignore){}
+
+			// if not found, check parent and create directory
+			if (fileInfo == null) {
+				// resolve parent path
+				String resolvedParentPath = _doResolvePath(getParentPath(remotepath));
+				// if the parent exists, we can create the directory. This is the only scenario in which
+				// true can be resolved.
+				if (_directoryExists(resolvedParentPath)) {
+					try {
+//						String resp = getBlobStore().putBlob(
+//								containerName,
+//								blobStore.blobBuilder(resolvedPath + "/")
+//										.type(StorageType.FOLDER)
+//										.payload(newByteArrayPayload(new byte[] {}))
+//										.contentType("application/x-directory").build());
+//
+//						log.debug(String.format("Response from creating directory %s: %s", resolvedPath, resp));
+						getBlobStore().createDirectory(containerName, resolvedPath);
+						return true;
+					}
+					catch(Throwable t) {
+						throw new RemoteDataException("Failed to create " + remotepath, t);
+					}
+				}
+				// no parent, so we throw an exception
+				else {
+					throw new FileNotFoundException("No such file or directory");
+				}
+			}
+			// if present, but the remote is a file object, throw exception
+			else if (fileInfo.isFile()) {
+				// handle this by returning false rather than throwing exception for consistency with other
+				// RemoteDataClient implementations.
 				return false;
 			}
+
+			return false;
 		}
-		else 
-		{
-			resolvedPath = StringUtils.removeEnd(resolvedPath, "/");
-			
-//			BlobMetadata meta = getFileMeta(resolvedPath);
-//			if (meta == null)
-			if (!getBlobStore().directoryExists(containerName, resolvedPath))
-            {
-			    String resolvedParentPath = _doResolvePath(getParentPath(remotepath));
-                if (getBlobStore().directoryExists(containerName, resolvedParentPath)) {
-			        getBlobStore().createDirectory(containerName, resolvedPath);
-			    } else {
-			        throw new FileNotFoundException("No such file or directory");
-			    }
-            }
-            else {
-                BlobMetadata meta = getFileMeta(resolvedPath);
-                if (meta.getType() != StorageType.RELATIVE_PATH && meta.getType() != StorageType.FOLDER) {
-                 // trying to create directory that is a file
-                    throw new RemoteDataException("Failed to create " + resolvedPath + ". File already exists.");
-                } else {
-                    return false;
-                }
-            }
-			
-//			if (!getBlobStore().directoryExists(containerName, resolvedPath)) {
-//			{
-//			    
-//			}
-//				
-//				if (StringUtils.isEmpty(resolvedParentPath)) 
-//				{
-//					getBlobStore().createDirectory(containerName, resolvedPath);
-//				}
-//				else 
-//				{
-//					BlobMetadata parentMeta = getFileMeta(resolvedParentPath);
-//					if (parentMeta == null) 
-//					{
-//						throw new FileNotFoundException("No such file or directory");
-//					} 
-//					else if (parentMeta.getType() == StorageType.RELATIVE_PATH || parentMeta.getType() == StorageType.FOLDER) 
-//					{
-//						getBlobStore().createDirectory(containerName, resolvedPath);
-//					}
-//					else
-//					{
-//						// parent is a file object, this directory cannot be created
-//						throw new RemoteDataException("Failed to create " + remotepath + ". Parent path is not a directory.");
-//					}
-//				}
-//			}
-//			else if (meta.getType() != StorageType.RELATIVE_PATH && meta.getType() != StorageType.FOLDER) 
-//			{
-//				// trying to create directory that is an object
-//				throw new RemoteDataException("Failed to create " + remotepath + ". File already exists.");
-//			}
-//			else {
-//				return false;
-//			}
-		}
-		
-		return true;
 	}
 	
 	@Override
@@ -362,6 +323,32 @@ public class S3Jcloud implements RemoteDataClient
 	    return mkdirs(remotepath, null);
     }
 
+	/**
+	 * Safe check for directory existence. This is used rather than the native jcloud check due to the
+	 * spotty support for trailing characters and other delimiters in various implementations.
+	 * @param resolvedPath resolved path within bucket
+	 * @return true if the path is a directory marker, false otherwise
+	 * @throws FileNotFoundException
+	 * @throws RemoteDataException
+	 */
+    protected boolean _directoryExists(String resolvedPath)
+	throws FileNotFoundException, RemoteDataException {
+		BlobMetadata md;
+		try {
+
+			if (StringUtils.isEmpty(resolvedPath)) {
+				return true;
+			}
+			else {
+				md = getFileMeta(resolvedPath);
+				return (md != null && _isDirectoryMarker(md));
+			}
+		}
+		catch (FileNotFoundException | RemoteDataException ignore) {}
+
+		return false;
+	}
+
 	@Override
 	public boolean mkdirs(String remotepath, String authorizedUsername) 
 	throws IOException, RemoteDataException 
@@ -369,18 +356,19 @@ public class S3Jcloud implements RemoteDataClient
 		try 
 		{	
 			String resolvedPath = _doResolvePath(remotepath);
+
+			// nothing to do for empty resolved path. This is the bucket root
 			if (StringUtils.isEmpty(resolvedPath)) {
-				if (!getBlobStore().containerExists(containerName)) {
-					return getBlobStore().createContainerInLocation(null, containerName);
-				} else {
-					return false;
-				}
+				return false;
 			}
-			else 
+			else
 			{
-				if (doesExist(remotepath))
+				RemoteFileInfo remoteFileInfo = null;
+				try { remoteFileInfo = getFileInfo(remotepath); } catch (Exception ignore) {}
+
+				if (remoteFileInfo != null)
 				{
-					if (isFile(remotepath)) {
+					if (remoteFileInfo.isFile()) {
 						throw new RemoteDataException("Failed to create " + remotepath + ". File already exists.");
 					} else {
 						return false;
@@ -397,23 +385,23 @@ public class S3Jcloud implements RemoteDataClient
 						
 						newdirectories.append(pathTokens[i]);
 						 
-//						if (meta == null || meta.getProviderId() == null)
-						if (!getBlobStore().directoryExists(containerName, newdirectories.toString()))
+						// if path doesn't exist
+						BlobMetadata meta = getFileMeta(newdirectories.toString());
+						if (meta == null)
 						{
 							getBlobStore().createDirectory(containerName, newdirectories.toString());
-							
+
 							if (isPermissionMirroringRequired() && StringUtils.isNotEmpty(authorizedUsername)) {
 			                    setOwnerPermission(authorizedUsername, containerName, true);
 			                }
-							
 						}
-						else {
-					        BlobMetadata meta = getFileMeta(newdirectories.toString());
-					        if (meta.getType() != StorageType.RELATIVE_PATH && meta.getType() != StorageType.FOLDER) {
-					         // trying to create directory that is a file
-	                            throw new RemoteDataException("Failed to create " + newdirectories + ". File already exists.");
-					        }
+						// trying to create directory that is a file
+						else if (! _isDirectoryMarker(meta)) {
+						    throw new RemoteDataException("Failed to create " + newdirectories + ". File already exists.");
 					    }
+						else {
+							// skipping existing directory
+						}
 						newdirectories.append("/");
 					}
 					
@@ -447,10 +435,7 @@ public class S3Jcloud implements RemoteDataClient
 				throw new RemoteDataException("Cannot open input stream for directory " + remotePath);
 			}
 		} 
-		catch (RemoteDataException e) {
-			throw e;
-		}
-		catch (FileNotFoundException e) {
+		catch (RemoteDataException | FileNotFoundException e) {
 			throw e;
 		}
 		catch (Exception e) {
@@ -489,10 +474,7 @@ public class S3Jcloud implements RemoteDataClient
 				throw new FileNotFoundException("No such file or directory");
 			}
 		} 
-		catch (RemoteDataException e) {
-			throw e;
-		}
-		catch (FileNotFoundException e) {
+		catch (RemoteDataException|FileNotFoundException e) {
 			throw e;
 		}
 		catch (Exception e) {
@@ -529,11 +511,8 @@ public class S3Jcloud implements RemoteDataClient
 			{
 				throw new FileNotFoundException("No such file or directory");
 			}
-		} 
-		catch (RemoteDataException e) {
-			throw e;
 		}
-		catch (FileNotFoundException e) {
+		catch (RemoteDataException|FileNotFoundException e) {
 			throw e;
 		}
 		catch (Exception e) {
@@ -566,28 +545,31 @@ public class S3Jcloud implements RemoteDataClient
 					
 					ListContainerOptions listContainerOptions = new ListContainerOptions();
 					if (StringUtils.isNotEmpty(resolvedPath)) {
-						listContainerOptions.inDirectory(resolvedPath);
+						listContainerOptions.prefix(resolvedPath);
+//						listContainerOptions.inDirectory(resolvedPath);
 					}
 					listContainerOptions.maxResults(Integer.MAX_VALUE);
 					
 					if (pageSet != null && pageSet.getNextMarker() != null) {
 						listContainerOptions.afterMarker(pageSet.getNextMarker());
 					}
-					
+
+					listContainerOptions.withDetails();
+
 					pageSet = getBlobStore().list(containerName, listContainerOptions);
 //					pageSet = getBlobStore().list(containerName);
-					String folderName = StringUtils.removeEnd(resolvedPath, "/");
+//					String folderName = StringUtils.removeEnd(resolvedPath, "/");
 					for (StorageMetadata storageMetadata: pageSet.toArray(new StorageMetadata[]{})) {
 						if (storageMetadata == null) {
 						    continue;
-						} else if (StringUtils.equalsIgnoreCase("/", folderName) || 
-						        (StringUtils.equals(folderName, storageMetadata.getName()) && 
-						                storageMetadata.getType() == StorageType.RELATIVE_PATH) || 
-						        StringUtils.isEmpty(storageMetadata.getName())) {
+						} else if (StringUtils.isEmpty(storageMetadata.getName()) ||
+								StringUtils.equalsIgnoreCase("/", resolvedPath) ||
+								StringUtils.equals(resolvedPath, storageMetadata.getName())) {
 						    continue;
 						} else {
 //						    log.debug(storageMetadata.getType() + " - " + storageMetadata.getName());
-						    listing.add(new RemoteFileInfo(storageMetadata));
+							RemoteFileInfo rfi = new RemoteFileInfo((BlobMetadata)storageMetadata);
+							listing.add(rfi);
 						}
 					}
 					
@@ -648,14 +630,20 @@ public class S3Jcloud implements RemoteDataClient
 				// can't download folder to an existing file
 				else if (localDir.isFile()) 
 				{
-					throw new RemoteDataException("Cannot download file to " + localpath + ". Local path is a file.");
+					String msg = "Cannot overwrite non-directory " + localpath + " with directory " + remotepath;
+					throw new InvalidTransferException(msg);
 				}
+				// target directory already exists, so we will copy the remote folder into a folder of the same name
+				// within the target directory.
 				else
 				{
-					localDir = new File(localDir, remoteFileInfo.getName());
+
+					// get the name of the remote directory
+					String remoteDirectoryName = FilenameUtils.getName(StringUtils.removeEnd(remotepath, "/"));
+					localDir = new File(localDir, remoteDirectoryName);
 					
-					// create the target directory 
-					if (!localDir.mkdir()) {
+					// create the child directory under the target directory if not already present
+					if (!localDir.exists() && !localDir.mkdir()) {
 						throw new IOException("Failed to create local download directory");
 					}
 				}
@@ -730,7 +718,9 @@ public class S3Jcloud implements RemoteDataClient
 					
 					in = blob.getPayload().openStream();
 					FileUtils.copyInputStreamToFile(in, localDir);
-					
+					// TODO: set the unix permissions based on the source remote file item's permissino
+					// java.nio.file.Files.setPosixFilePermissions(localDir.toPath(), remoteFileInfo.getPosixFilePermissions());
+
 					if (listener != null) {
 						listener.progressed(localDir.length());
 						listener.completed();
@@ -751,13 +741,7 @@ public class S3Jcloud implements RemoteDataClient
 			}
 			throw new FileNotFoundException("No such file or directory");
 		} 
-		catch (IOException e) {
-			if (listener != null) {
-				listener.failed();
-			}
-			throw e;
-		}
-		catch (RemoteDataException e) {
+		catch (IOException|RemoteDataException e) {
 			if (listener != null) {
 				listener.failed();
 			}
@@ -770,7 +754,7 @@ public class S3Jcloud implements RemoteDataClient
 			throw new RemoteDataException("Failed to copy file from S3.", e);
 		}
 		finally {
-			try { in.close(); } catch (Exception e) {}
+			try { in.close(); } catch (Exception ignore) {}
 		}
 	}
 	
@@ -807,13 +791,9 @@ public class S3Jcloud implements RemoteDataClient
                 throw new NotImplementedException();
             }
         } 
-        catch (IOException e) {
+        catch (IOException | RemoteDataException e) {
             throw e;
-        }
-        catch (RemoteDataException e) {
-            throw e;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new RemoteDataException("Failed to append data to " + remotepath, e);
         }
     }
@@ -829,22 +809,23 @@ public class S3Jcloud implements RemoteDataClient
 	public void put(String localdir, String remotedir, RemoteTransferListener listener)
  	throws IOException, RemoteDataException 
 	{
-//		File localFile = new File(localdir);
-//		if (!localFile.exists()) {
-//			throw new FileNotFoundException("No such file or directory");
-//		} 
-		
 		try
 		{
 			File localFile = new File(localdir);
 			if (!localFile.exists()) {
 				throw new FileNotFoundException("No such file or directory");
 			}
-			else if (doesExist(remotedir)) 
+
+			RemoteFileInfo destFileInfo = null;
+			// if a file not found exception is thrown, we'll deal with a null object below
+			try { destFileInfo = getFileInfo(remotedir); } catch (FileNotFoundException ignore) {}
+
+			if (destFileInfo != null)
 			{
 				// can't put dir to file
-				if (localFile.isDirectory() && !isDirectory(remotedir)) {
-					throw new RemoteDataException("cannot overwrite non-directory: " + remotedir + " with directory " + localFile.getName());
+				if (localFile.isDirectory() && destFileInfo.isFile()) {
+					String msg = "Cannot overwrite non-directory " + remotedir + " with directory " + localdir;
+					throw new InvalidTransferException(msg);
 				} 
 				else 
 				{
@@ -867,14 +848,21 @@ public class S3Jcloud implements RemoteDataClient
 			}
 			
 			if (localFile.isDirectory()) {
+				// TODO: we can speed this up using a stream to avoid the overhead of recursive calls.
+//				java.nio.file.Files.find(localFile.toPath(), Integer.MAX_VALUE, (path, basicFileAttributes) -> basicFileAttributes.isDirectory())
+//						.forEach(d -> ...);
+
 				for (File child: localFile.listFiles()) {
 					String remoteChildDir = remotedir + "/" + child.getName();
-					if (child.isDirectory()) 
+					if (child.isDirectory())
 					{
-						if (!doesExist(remoteChildDir))  {
-							mkdir(remoteChildDir);
-						}
+						// create the remote directory regardless. this save a roundtrip
+						// for metadata on the path
+						mkdir(remoteChildDir);
+
+						// clear the cache and recursively process the directory.
 						fileInfoCache.remove(containerName + "/" + remoteChildDir);
+
 						put(child.getAbsolutePath(), remoteChildDir, listener);
 					} else {
 					    fileInfoCache.remove(containerName + "/" + remotedir);
@@ -883,14 +871,24 @@ public class S3Jcloud implements RemoteDataClient
 				}
 			} else { 
 			
-				ByteSource payload = Files.asByteSource(localFile);
+				ByteSource byteSource = Files.asByteSource(localFile);
+				Payload payload = new ByteSourcePayload(byteSource);
+				String mimeType = resolveMimeTypeOfFile(localFile);
+
 				String resolvedPath = _doResolvePath(remotedir);
+
 				Blob blob = getBlobStore().blobBuilder(resolvedPath)
-						  .payload(payload)
-						  .contentLength(localFile.length())
-						  .contentType("application/octet-stream")
-						  .build();
-				
+					.payload(payload)
+				 	.contentLength(localFile.length())
+					.contentDisposition(FilenameUtils.getName(resolvedPath))
+					.contentMD5(payload.getContentMetadata().getContentMD5AsHashCode())
+					.contentType(mimeType)
+					.build();
+
+				if (destFileInfo != null) {
+					blob.getMetadata().setCreationDate(new Date());
+				}
+
 				if (listener != null) {
 					listener.started(localFile.length(), remotedir);
 				}
@@ -907,7 +905,7 @@ public class S3Jcloud implements RemoteDataClient
 				listener.completed();
 			}
 		} 
-		catch (FileNotFoundException e) {
+		catch (FileNotFoundException|RemoteDataException e) {
 			if (listener != null) {
 				listener.failed();
 			}
@@ -919,12 +917,6 @@ public class S3Jcloud implements RemoteDataClient
 			}
 			throw new RemoteDataException("cannot overwrite non-directory: " + remotedir + " with directory " + localdir);
 		} 
-		catch (RemoteDataException e) {
-			if (listener != null) {
-				listener.failed();
-			}
-			throw e;
-		}
 		catch (Exception e) {
 			if (listener != null) {
 				listener.failed();
@@ -974,7 +966,7 @@ public class S3Jcloud implements RemoteDataClient
 							if (isFile(childRemotePath)) {
 								delete(childRemotePath);
 							}
-						} catch (FileNotFoundException e) {}
+						} catch (FileNotFoundException ignore) {}
 						
 						// now create the remote directory
 						mkdir(childRemotePath);
@@ -995,6 +987,7 @@ public class S3Jcloud implements RemoteDataClient
 				{	
 					ByteSource payload = Files.asByteSource(sourceFile);
 					String resolvedPath = _doResolvePath(remotedir);
+					// TODO: sync unix permission info if available
 					Blob blob = getBlobStore().blobBuilder(resolvedPath)
 							  .payload(payload)
 							  .contentLength(sourceFile.length())
@@ -1020,6 +1013,7 @@ public class S3Jcloud implements RemoteDataClient
 					if (blobMeta == null)
 					{
 						ByteSource payload = Files.asByteSource(sourceFile);
+						// TODO: sync unix permission info if available
 						Blob blob = getBlobStore().blobBuilder(resolvedPath)
 								  .payload(payload)
 								  .contentLength(sourceFile.length())
@@ -1039,11 +1033,12 @@ public class S3Jcloud implements RemoteDataClient
 						}
 					}
 					// if the types mismatch, delete remote, use current
-					else if (sourceFile.isDirectory() && (blobMeta.getType() != StorageType.RELATIVE_PATH && blobMeta.getType() != StorageType.FOLDER) || 
-							sourceFile.isFile() && !(blobMeta.getType() != StorageType.RELATIVE_PATH && blobMeta.getType() != StorageType.FOLDER)) 
+					else if (sourceFile.isDirectory() && ! _isDirectoryMarker(blobMeta) ||
+							sourceFile.isFile() && _isDirectoryMarker(blobMeta))
 					{
 						delete(remotedir);
 						ByteSource payload = Files.asByteSource(sourceFile);
+						// TODO: sync unix permission info if available
 						Blob blob = getBlobStore().blobBuilder(resolvedPath)
 								  .payload(payload)
 								  .contentLength(sourceFile.length())
@@ -1066,6 +1061,7 @@ public class S3Jcloud implements RemoteDataClient
 					else if (sourceFile.length() != blobMeta.getContentMetadata().getContentLength())  
 					{
 						ByteSource payload = Files.asByteSource(sourceFile);
+						// TODO: sync unix permission info if available
 						Blob blob = getBlobStore().blobBuilder(resolvedPath)
 								  .payload(payload)
 								  .contentLength(sourceFile.length())
@@ -1096,7 +1092,7 @@ public class S3Jcloud implements RemoteDataClient
 				}
 			}
 		} 
-		catch (FileNotFoundException e) {
+		catch (FileNotFoundException | RemoteDataException e) {
 			if (listener != null) {
 				listener.failed();
 			}
@@ -1107,14 +1103,7 @@ public class S3Jcloud implements RemoteDataClient
 				listener.failed();
 			}
 			throw new RemoteDataException("cannot overwrite non-directory: " + remotedir + " with directory " + localdir);
-		} 
-		catch (RemoteDataException e) {
-			if (listener != null) {
-				listener.failed();
-			}
-			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			if (listener != null) {
 				listener.failed();
 			}
@@ -1150,18 +1139,25 @@ public class S3Jcloud implements RemoteDataClient
 		try
 		{
 			if (isDirectory(remotepath)) {
-				throw new RemoteDataException("Directory cannot be checksummed.");
+				throw new RemoteDataException("Directory cannot be checksummed");
 			} else {
+				// TODO: enable checksum on s3 files. Need to ensure these are present by default in s3
+//				BlobMetadata blobMetadata = getFileMeta(remotepath, true);
+//				ContentMetadata contentMetadata = blobMetadata.getContentMetadata();
+//				if (contentMetadata != null) {
+//					HashCode hashCode = contentMetadata.getContentMD5AsHashCode();
+//					if (hashCode != null) {
+//						return hashCode.toString();
+//					} else {
+//						throw new RemoteDataException("No checksum found for " + remotepath);
+//					}
+//				} else {
+//					throw new RemoteDataException("Content metadata is not available");
+//				}
 				throw new NotImplementedException();
 			}
 		}
-		catch (IOException e) {
-			throw e;
-		}
-		catch (RemoteDataException e) {
-			throw e;
-		}
-		catch (NotImplementedException e) {
+		catch (IOException|RemoteDataException|NotImplementedException e) {
 			throw e;
 		}
 	}
@@ -1170,7 +1166,24 @@ public class S3Jcloud implements RemoteDataClient
 	public void doRename(String srcPath, String destPath) 
 	throws IOException, RemoteDataException 
 	{
-		doCopy(srcPath, destPath, null, true);
+		try {
+			// check fileinfo for the destPath. If not present, it throws a file not found
+			// exception.
+			RemoteFileInfo destFileInfo = getFileInfo(destPath);
+
+			// If a value is returned, we return a message describing the conflict.
+			if (destFileInfo.isFile()) {
+				throw new RemoteDataException(String.format("Cannot rename %s to %s. " +
+						"A file already exists at the destination path.", srcPath, destPath));
+			}
+			else {
+				throw new RemoteDataException(String.format("Cannot rename %s to %s. " +
+						"A directory already exists at the destination path.", srcPath, destPath));
+			}
+		} catch (FileNotFoundException ignore) {
+			// No object found at destPath, rename is possible. Perform a copy operation
+			doCopy(srcPath, destPath, null, true);
+		}
 	}
 
 	@Override
@@ -1192,41 +1205,49 @@ public class S3Jcloud implements RemoteDataClient
 	throws IOException, RemoteDataException 
 	{
 		RemoteFileInfo sourceFileInfo = null;
+		RemoteFileInfo destFileInfo = null;
 		try  
 		{
 			String resolvedSourcePath = _doResolvePath(srcPath); 
 			resolvedSourcePath = StringUtils.removeEnd(resolvedSourcePath, "/");
-			String resolvedDestPath = _doResolvePath(destPath);
-			resolvedDestPath = StringUtils.removeEnd(resolvedDestPath, "/");
-			String resolvedDestParentPath = _doResolvePath(getParentPath(destPath));
-			resolvedDestParentPath =StringUtils.removeEnd(resolvedDestParentPath, "/");
-			
+			String resolvedSourceParentPath = _doResolvePath(getParentPath(srcPath));
+			String destParentPath = getParentPath(destPath);
+			String resolvedDestParentPath = _doResolvePath(destParentPath);
+			resolvedDestParentPath = StringUtils.removeEnd(resolvedDestParentPath, "/");
+
 			sourceFileInfo = getFileInfo(srcPath);
-			
-			if (sourceFileInfo.isFile()) 
+			// if a file not found exception is thrown, we'll deal with a null object below
+			try { destFileInfo = getFileInfo(destPath); } catch (FileNotFoundException ignore) {}
+
+			if (sourceFileInfo.isFile())
 			{
-				if (doesExist(destPath)) 
-				{
-				    if (!isFile(destPath)) {
-						throw new RemoteDataException("Cannot rename a file to an existing directory path.");
-					}
+				if (destFileInfo != null && ! destFileInfo.isFile()) {
+					throw new RemoteDataException(String.format("Cannot copy %s to %s. " +
+							"A directory already exists with the same name.", srcPath, destPath));
 				}
-			} 
-			else if (doesExist(destPath)) 
+			}
+			// source is directory and destination path exists
+			else if (destFileInfo != null)
 			{
-				if (isFile(destPath)) {
-					throw new RemoteDataException("Cannot rename a directory to an existing file path.");
-				} 
+				// dest is a file and source is a folder. that cannot happen on a rename
+				if (destFileInfo.isFile()) {
+					throw new RemoteDataException(String.format("Cannot copy %s to %s. " +
+							"A file already exists with the same name.", srcPath, destPath));
+				}
+				// dest is a dir and source is  a folder. that cannot happen on a rename
 				else {
 					if (StringUtils.isEmpty(destPath)) {
-						resolvedDestPath = _doResolvePath(sourceFileInfo.getName());
+						destPath = sourceFileInfo.getName();
+//						resolvedDestPath = _doResolvePath(sourceFileInfo.getName());
 					} else {
-					    resolvedDestParentPath = resolvedDestPath;
-						resolvedDestPath += "/" + sourceFileInfo.getName();
+						destParentPath = destPath;
+						destPath += "/" + sourceFileInfo.getName();
+//					    resolvedDestParentPath = resolvedDestPath;
+//						resolvedDestPath += "/" + sourceFileInfo.getName();
 					}
 				}
 			}
-			else if (!doesExist(getParentPath(destPath))) 
+			else if (!doesExist(destParentPath))
 			{
 				throw new FileNotFoundException("No such file or directory");
 			}
@@ -1234,54 +1255,37 @@ public class S3Jcloud implements RemoteDataClient
 			{
 				// if the source directory is being copied to the home directory, use the name
 				// of the source directory as the name of the new folder.
-				if (StringUtils.isEmpty(_doResolvePath(destPath)) 
-						&& !StringUtils.endsWith(_doResolvePath(srcPath), "/")) 
+				if (StringUtils.isEmpty(destParentPath)
+						&& !StringUtils.endsWith(_doResolvePath(srcPath), "/"))
 				{
-					resolvedDestPath = _doResolvePath(sourceFileInfo.getName());
+					destPath = sourceFileInfo.getName();
+//					resolvedDestPath = _doResolvePath(sourceFileInfo.getName());
 				}
-//				
-//				else if (StringUtils.isNotEmpty(_doResolvePath(destPath)) && StringUtils.endsWith(_doResolvePath(destPath), "/") && 
-//						!StringUtils.endsWith(_doResolvePath(srcPath), "/")){
-//					resolvedDestPath += "/" + sourceFileInfo.getName();
-//				}
 			}
-			
-			String resolvedSourceParentPath = _doResolvePath(getParentPath(srcPath));
-			
+
+			String resolvedDestPath = StringUtils.removeEnd(_doResolvePath(destPath), "/");
+
 			if (StringUtils.equals(resolvedSourcePath, resolvedDestPath)) {
-                throw new RemoteDataException("Cannot rename a file to itself.");
+                throw new RemoteDataException(String.format("Cannot rename %s to %s. The original and new names must be different within the same bucket.", srcPath, destPath));
             }
             else if (!StringUtils.equals(resolvedDestParentPath, resolvedSourceParentPath) && 
 			        StringUtils.startsWith(resolvedDestParentPath, resolvedSourcePath)) {
-				throw new RemoteDataException("Cannot rename a file or director into its own subtree");
+				throw new RemoteDataException(String.format("Cannot rename %s to %s. A file or director cannot be moved into its own subtree within the same bucket.", srcPath, destPath));
 			}
-			
-//			BlobMetadata meta = getFileMeta(resolvedSourcePath);
-//            
-//			if (listener != null) {
-//			    listener.started(meta.getSize(), resolvedDestPath);
-//            }
-//            
-//            // copying source file
-//            log.debug("CP " + resolvedSourcePath + " " + resolvedDestPath);
-//            getBlobStore().copyBlob(containerName, resolvedSourcePath, containerName, resolvedDestPath, CopyOptions.NONE);
-//            
-//            if (listener != null) {
-//                listener.progressed(meta.getSize());
-//            }
-//            
-//			if (deleteSource) 
-//                getBlobStore().removeBlob(containerName, resolvedSourcePath);
-			
+
         	if (sourceFileInfo.isDirectory()) 
         	{
+        		// create the target directory prior to copying over all the assets
+				mkdirs(destPath);
+
                 PageSet<? extends StorageMetadata> pageset = null;
                 do 
         		{
-                	if (!StringUtils.isEmpty(resolvedSourcePath) && !StringUtils.endsWith(resolvedSourcePath, "/")) {
+        			// we take this approach to avoid getting a preceding slash or  trailing double slash
+					if (!StringUtils.isEmpty(resolvedSourcePath) && !StringUtils.endsWith(resolvedSourcePath, "/")) {
                 		resolvedSourcePath += "/";
 					}
-					
+
         			ListContainerOptions options = new ListContainerOptions();
         			options.inDirectory(resolvedSourcePath);
         			options.withDetails();
@@ -1297,10 +1301,9 @@ public class S3Jcloud implements RemoteDataClient
 //        				log.debug(meta.getType().name() + " - " + meta.getName());
         				String destsubfolder = StringUtils.replaceOnce(meta.getName(), resolvedSourcePath, resolvedDestPath);
         				
-        				if (meta.getType() == StorageType.FOLDER || meta.getType() == StorageType.RELATIVE_PATH) 
+        				if (_isDirectoryMarker((BlobMetadata)meta))
         				{
         					// creating remote destination folder
-//        					log.debug("MKDIRS " + destsubfolder);
         					mkdirs(destsubfolder);
         					if (deleteSource) 
         						getBlobStore().deleteDirectory(containerName, meta.getName());
@@ -1312,7 +1315,6 @@ public class S3Jcloud implements RemoteDataClient
 							}
         					
         					// copying source file
-//        					log.debug("CP " + meta.getName() + " " + destsubfolder);
         					getBlobStore().copyBlob(containerName, meta.getName(), containerName, destsubfolder, CopyOptions.NONE);
         					
         					if (listener != null) {
@@ -1326,15 +1328,17 @@ public class S3Jcloud implements RemoteDataClient
         		} 
         		while (!StringUtils.isEmpty(pageset.getNextMarker()));
         	}
-            
-        	if (listener != null) {
-				listener.started(sourceFileInfo.getSize(), resolvedDestPath);
-			}
-            
-        	getBlobStore().copyBlob(containerName, resolvedSourcePath, containerName, resolvedDestPath, CopyOptions.NONE);
-            
-            if (listener != null) {
-				listener.progressed(sourceFileInfo.getSize());
+            else {
+				if (listener != null) {
+					listener.started(sourceFileInfo.getSize(), resolvedDestPath);
+				}
+
+				// Copy over the root item.
+				getBlobStore().copyBlob(containerName, resolvedSourcePath, containerName, resolvedDestPath, CopyOptions.NONE);
+
+				if (listener != null) {
+					listener.progressed(sourceFileInfo.getSize());
+				}
 			}
             
             if (deleteSource) 
@@ -1343,41 +1347,6 @@ public class S3Jcloud implements RemoteDataClient
             if (listener != null) {
 				listener.completed();
 			}
-//	            } 
-//	            else if (rest.getApi() instanceof AzureBlobClient) 
-//	            {
-//	            	if (listener != null) {
-//	    				listener.failed();
-//	    			}
-//	               throw new NotImplementedException();
-////	               RestContext<AzureBlobClient, AzureBlobAsyncClient> providerContext = context.unwrap();
-////	               BlobProperties objectMetadata = providerContext.getApi().getBlobProperties(containerName, resolvedSourcePath);
-////	               objectMetadata.getMetadata().put("name", resolvedDestPath);
-////	               providerContext.getApi().setBlobMetadata(containerName, resolvedSourcePath, objectMetadata.getMetadata());
-//	            }
-//	            else
-//	            {
-//	            	if (listener != null) {
-//	    				listener.failed();
-//	    			}
-//	            	throw new NotImplementedException();
-//	            }
-	            	
-//	            else if (rest.getApi() instanceof SwiftClient) {
-//	               RestContext<SwiftClient, SwiftAsyncClient> providerContext = context.unwrap();
-//	               object = providerContext.getApi().getObjectInfo(containerName, blobName);   
-//	            } else if (rest.getApi() instanceof AtmosClient) {
-//	               RestContext<AtmosClient, AtmosAsyncClient> providerContext = context.unwrap();
-//	               object = providerContext.getApi().headFile(containerName + "/" + blobName);
-//	            }
-	            
-	            
-//			} else {
-//				if (listener != null) {
-//					listener.failed();
-//				}
-//			}
-			
 		}
 		catch (RemoteDataException | IOException e) {
 			if (listener != null) {
@@ -1406,11 +1375,6 @@ public class S3Jcloud implements RemoteDataClient
 		{
 			throw new IOException(e);
 		}
-//		if (doesExist(path)) {
-//			return getFileMeta(_doResolvePath(path)).getUri();
-//		} else {
-//			throw new FileNotFoundException("No such file or directory");
-//		}
 	}
 
 	@Override
@@ -1418,7 +1382,7 @@ public class S3Jcloud implements RemoteDataClient
 	throws IOException, RemoteDataException 
 	{
 		String resolvedPath = null;
-		
+//		String encodedPath = null;
 		try 
 		{
 			resolvedPath = _doResolvePath(path);
@@ -1430,33 +1394,47 @@ public class S3Jcloud implements RemoteDataClient
 			else
 			{
 				PageSet<? extends StorageMetadata> pageset = null;
-				
-				do 
+//				encodedPath = urlEncodeResolvedPathComponents(resolvedPath);
+
+				ListContainerOptions options = new ListContainerOptions();
+				options.prefix(resolvedPath);
+				options.delimiter("/");
+				options.recursive();
+
+				ArrayList<String> fileItems = new ArrayList<String>();
+
+				do
 				{
-					ListContainerOptions options = new ListContainerOptions();
-					options.inDirectory(resolvedPath);
-					options.recursive();
+					fileItems.clear();
+
 					if (pageset != null && StringUtils.isEmpty(pageset.getNextMarker())) {
 						options.afterMarker(pageset.getNextMarker());
 					}
-					
+
 					pageset = getBlobStore().list(containerName, options);
-					
+
 					for (StorageMetadata meta: pageset.toArray(new StorageMetadata[]{}))  {
-						if (meta.getType() == StorageType.FOLDER || meta.getType() == StorageType.RELATIVE_PATH) {
-						    fileInfoCache.remove(containerName + "/" + meta.getName());
-							getBlobStore().deleteDirectory(containerName, meta.getName());
-						}
-						else {
-						    fileInfoCache.remove(containerName + "/" + meta.getName());
-						    getBlobStore().removeBlob(containerName, meta.getName());
-						}
+						fileItems.add(meta.getName());
+						fileInfoCache.remove(containerName + "/" + meta.getName());
+
+//						if (_isDirectoryMarker((BlobMetadata)meta)) {
+//						    fileInfoCache.remove(containerName + "/" + meta.getName());
+//							getBlobStore().deleteDirectory(containerName, meta.getName());
+//						}
+//						else {
+//						    fileInfoCache.remove(containerName + "/" + meta.getName());
+//						    getBlobStore().removeBlob(containerName, meta.getName());
+//						}
 					}
+
+					// perform a bulk delete operation
+					getBlobStore().removeBlobs(containerName, fileItems);
 				} 
 				while (!StringUtils.isEmpty(pageset.getNextMarker()));
-				
+
 				fileInfoCache.remove(containerName + "/" + resolvedPath);
 				getBlobStore().deleteDirectory(containerName, resolvedPath);
+//				getBlobStore().deleteDirectory(containerName, encodedPath);
 			}
 		}
 		catch (FileNotFoundException e) {
@@ -1469,6 +1447,58 @@ public class S3Jcloud implements RemoteDataClient
 		{
 			throw new RemoteDataException("Failed to delete " + path, e);
 		}
+	}
+
+//	/**
+//	 * URL encodes supported special charaters in the path. This handles characters on a char
+//	 * by char basis, so use of url-encoded paths will be double encoded.
+//	 *
+//	 * @param resolvedPath
+//	 * @return
+//	 */
+//	private String urlEncodeResolvedPathComponents(String resolvedPath) {
+////		String[] SPECIAL_CHARS = new String[]{ " ", "_", "-", "!", "@", "#", "$", "%", "^", "*", "(", ")",
+////				"+", "[", "]", "{", "}", ":", "."};
+//		Map<String, String> specialChars = Map.ofEntries(
+//				new AbstractMap.SimpleEntry<String, String>(" ","+"),
+//				new AbstractMap.SimpleEntry<String, String>("!", "%21"),
+//				new AbstractMap.SimpleEntry<String, String>("@", "%40"),
+//				new AbstractMap.SimpleEntry<String, String>("#", "%23"),
+//				new AbstractMap.SimpleEntry<String, String>("$", "%24"),
+//				new AbstractMap.SimpleEntry<String, String>("%", "%25"),
+//				new AbstractMap.SimpleEntry<String, String>("^", "%5E"),
+//				new AbstractMap.SimpleEntry<String, String>("(", "%28"),
+//				new AbstractMap.SimpleEntry<String, String>(")", "%29"),
+//				new AbstractMap.SimpleEntry<String, String>("+", "%2B"),
+//				new AbstractMap.SimpleEntry<String, String>("[", "%5B"),
+//				new AbstractMap.SimpleEntry<String, String>("]", "%5D"),
+//				new AbstractMap.SimpleEntry<String, String>("{", "%7B"),
+//				new AbstractMap.SimpleEntry<String, String>("}", "%7D"),
+//				new AbstractMap.SimpleEntry<String, String>(":", "%3A")
+//		);
+//
+//		StringBuilder sb = new StringBuilder(resolvedPath.length());
+//		Charset charset;
+//		CharArrayWriter charArrayWriter = new CharArrayWriter();
+//
+//		for (char c: resolvedPath.toCharArray()) {
+//			String s = String.valueOf(c);
+//			sb.append(specialChars.getOrDefault(s, s));
+//		}
+//
+//		return sb.toString();
+//	}
+
+	/**
+	 * Checks whether the BlobMetadata object has a content type of application/directory.
+	 * This is the default directory marker across BlobStore implementations.
+	 *
+	 * @param blobMetadata
+	 * @return
+	 */
+	protected boolean _isDirectoryMarker(BlobMetadata blobMetadata) {
+		return ArrayUtils.contains(new String[]{"application/directory", "application/x-directory"},
+			blobMetadata.getContentMetadata().getContentType());
 	}
 
 	@Override
@@ -1497,7 +1527,7 @@ public class S3Jcloud implements RemoteDataClient
 		{
 			resolvedPath = _doResolvePath(remotePath);
 			if (StringUtils.isEmpty(resolvedPath)) {
-				return getBlobStore().containerExists(containerName);
+				return true;
 			} 
 			else 
 			{
@@ -1533,17 +1563,16 @@ public class S3Jcloud implements RemoteDataClient
 	
 	@Override
     public String resolvePath(String path) throws FileNotFoundException {
-		if (StringUtils.isEmpty(path)) {
-		    return homeDir;
-//			return StringUtils.removeStart(homeDir, "/");
+		if (StringUtils.isBlank(path)) {
+		    return getHomeDir();
 		}
 		else if (path.startsWith("/")) 
 		{
-			path = rootDir + path.replaceFirst("/", "");
+			path = getRootDir() + path.replaceFirst("/", "");
 		}
 		else
 		{
-			path = homeDir + path;
+			path = getHomeDir() + path;
 		}
 		
 		String adjustedPath = path;
@@ -1560,14 +1589,14 @@ public class S3Jcloud implements RemoteDataClient
 		if (path == null) {
 			throw new FileNotFoundException("The specified path " + path + 
 					" does not exist or the user does not have permission to view it.");
-		} else if (!path.startsWith(rootDir)) {
-			if (!path.equals(StringUtils.removeEnd(rootDir, "/"))) {
+		} else if (!path.startsWith(getRootDir())) {
+			if (!path.equals(StringUtils.removeEnd(getRootDir(), "/"))) {
 				throw new FileNotFoundException("The specified path " + path + 
 					" does not exist or the user does not have permission to view it.");
 			}
 		}
 		
-		return path;
+		return StringUtils.trimToEmpty(path);
 	}
 	
 	public String getParentPath(String path) {
@@ -1587,10 +1616,8 @@ public class S3Jcloud implements RemoteDataClient
 	 * Convenience method to work around AWS being picky about trailing slashes
 	 * and to cache the result for quicker complex operations.
 	 * 
-	 * @param remotepath
+	 * @param resolvedPath resolved path within the s3 container
 	 * @return
-	 * @throws FileNotFoundException
-	 * @throws RemoteDataException 
 	 */
 	private BlobMetadata getFileMeta(String resolvedPath) 
     throws FileNotFoundException, RemoteDataException
@@ -1600,35 +1627,48 @@ public class S3Jcloud implements RemoteDataClient
 	
 	/**
      * Convenience method to work around AWS being picky about trailing slashes.
-     * @param remotepath
+     * @param resolvedPath the actual remote path to the file
      * @param forceCheck whether to break the cache and force a remote check
      * @return
-     * @throws FileNotFoundException
-     * @throws RemoteDataException 
      */
     private BlobMetadata getFileMeta(String resolvedPath, boolean forceCheck) 
-	throws FileNotFoundException, RemoteDataException
+	throws RemoteDataException
 	{
 	    BlobMetadata blobMeta = fileInfoCache.get(containerName + "/" + resolvedPath);
 		if (blobMeta == null || forceCheck)
 		{
 		    try 
 		    {
-		        blobMeta = getBlobStore().blobMetadata(containerName, resolvedPath);
+		    	blobMeta = getBlobStore().blobMetadata(containerName, resolvedPath);
+		    	// if a value was returned and the name matches the path, then we're good. otherwise, it could
+				// be a shadow object that s3 delegated to the parent bucket. Happens when requesting an object
+				// of name "{"
     		    if (blobMeta != null) {
         			// cool, found it
         		    fileInfoCache.put(containerName + "/" + resolvedPath, blobMeta);
-        		} else if (!StringUtils.endsWith(resolvedPath, "/")) { 
+        		} else if (!StringUtils.endsWith(resolvedPath, "/")) {
         		    blobMeta = getBlobStore().blobMetadata(containerName, resolvedPath + "/");
         		    if (blobMeta != null) {
-        		        fileInfoCache.put(containerName + "/" + resolvedPath, blobMeta);
+//        		    	if (!blobMeta.getUri().getPath().substring(1).equals(blobMeta.getName())) {
+//							log.debug(String.format("False object returned by S3 for %s/%s. " +
+//											"Object name does not reflect the URL. This is a ghost metadata item",
+//									containerName, resolvedPath));
+//							return null;
+//						}
+//        		    	else {
+							fileInfoCache.put(containerName + "/" + resolvedPath, blobMeta);
+//						}
         		    }
+        		    else {
+        		    	return null;
+					}
         		} else {
         			return null;
         		}
 		    } catch (ContainerNotFoundException e) {
-		        fileInfoCache.remove(containerName + "/" + resolvedPath);
-		        throw new FileNotFoundException("No such file or directory");
+		        // this should not be reached due to the check during auth
+		    	fileInfoCache.remove(containerName + "/" + resolvedPath);
+		        // throw new FileNotFoundException("No such file or directory");
 		    }
 		}
 		return blobMeta;
@@ -1636,7 +1676,7 @@ public class S3Jcloud implements RemoteDataClient
 	
 	@Override
 	public RemoteFileInfo getFileInfo(String path) 
-	throws RemoteDataException, IOException 
+	throws RemoteDataException, FileNotFoundException
 	{
 	    String resolvedPath = _doResolvePath(path);
 		try 
@@ -1662,6 +1702,8 @@ public class S3Jcloud implements RemoteDataClient
 					throw new FileNotFoundException("No such file or directory");
 				} else {
 					fileInfo = new RemoteFileInfo(blobMetadata);
+					String remoteDirectoryName = FilenameUtils.getName(StringUtils.removeEnd(resolvedPath, "/"));
+					fileInfo.setName(remoteDirectoryName);
 				}
 			}
 			
@@ -1670,9 +1712,6 @@ public class S3Jcloud implements RemoteDataClient
 		catch (FileNotFoundException e) {
 			throw e;
 		}
-		catch (ContainerNotFoundException e) {
-			throw new FileNotFoundException("No such file or directory");
-		} 
 		catch (Exception e)
 		{
 			throw new RemoteDataException("Failed to retrieve information for " + path, e);
@@ -1810,5 +1849,41 @@ public class S3Jcloud implements RemoteDataClient
 	@Override
 	public boolean isPermissionMirroringRequired() {
 		return false;
+	}
+
+	/**
+	 * Determines the mime type for a local file. The file must already exist on disk.
+	 * Mime type is determined by the file name. If the file extension is not recognized,
+	 * a value of "application/octet-stream" is returned.
+	 *
+	 * @param localFile the local file to for which to get the mimetype.
+	 * @return the mime type of the file item or "application/octet-stream" if unknown
+	 */
+	protected String resolveMimeTypeOfFile(File localFile){
+    	return getMimetypesFileTypeMap().getContentType(localFile.getAbsolutePath());
+	}
+
+	/**
+	 * Loads the known mime types as a map. Values are read from a mime.types file in the classpath.
+	 * If the file cannot be found, the default system file is loaded. If that is not found, all
+	 * Files wind up being resolved as "application/octet-stream"
+	 * @return
+	 */
+	protected MimetypesFileTypeMap getMimetypesFileTypeMap() {
+    	if (mimetypesFileTypeMap == null) {
+			InputStream mimeTypesStream = null;
+			try {
+				mimeTypesStream = this.getClass().getClassLoader().getResourceAsStream("mime.types");
+				mimetypesFileTypeMap = new MimetypesFileTypeMap(mimeTypesStream);
+			} catch (Exception e) {
+				log.error("Unable to load bundled mime.types file. Falling back on system file.", e);
+				// Try again on a different map.
+				mimetypesFileTypeMap = new MimetypesFileTypeMap();
+			} finally {
+				if (mimeTypesStream != null) try {mimeTypesStream.close();} catch (Exception ignore){}
+			}
+		}
+
+    	return mimetypesFileTypeMap;
 	}
 }

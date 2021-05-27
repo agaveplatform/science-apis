@@ -6,8 +6,8 @@
 	"description": "Example gridftp system",
 	"site": "example.com",
 	"storage": {
-		"host": "docker.example.com",
-		"port": 2811,
+		"host": "${gridftp.host}",
+		"port": ${gridftp.port},
 		"protocol": "GRIDFTP",
 		"homeDir": "/home/testuser",
 		"rootDir": "/",
@@ -16,11 +16,12 @@
 			"password": "testuser",
 			"credential": null,
 			"type": "X509",
+			"caCerts": null,
 			"server": {
 				"id": "docker.example.com",
 				"name": "Agave Dev myproxy Docker container",
-				"endpoint": "docker.example.com",
-				"port": 7514,
+				"endpoint": "${myproxy.host}",
+				"port": ${myproxy.port},
 				"protocol": "MYPROXY"
 			}
 		}

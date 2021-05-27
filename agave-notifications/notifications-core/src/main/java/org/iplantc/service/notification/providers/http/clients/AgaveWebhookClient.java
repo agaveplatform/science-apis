@@ -1,16 +1,5 @@
 package org.iplantc.service.notification.providers.http.clients;
 
-import java.io.InputStream;
-import java.net.URI;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.util.HashMap;
-import java.util.Map;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLException;
-
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
@@ -28,22 +17,24 @@ import org.apache.http.conn.ssl.SSLContextBuilder;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.auth.BasicScheme;
-import org.apache.http.impl.client.BasicAuthCache;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.client.LaxRedirectStrategy;
+import org.apache.http.impl.client.*;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.auth.JWTClient;
-import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.exceptions.TenantException;
-import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.NotificationAttempt;
 import org.iplantc.service.notification.model.NotificationAttemptResponse;
 import org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType;
-import org.iplantc.service.notification.providers.NotificationAttemptProvider;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLException;
+import java.io.InputStream;
+import java.net.URI;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.HashMap;
+import java.util.Map;
 
 public class AgaveWebhookClient extends AbstractWebhookClient {
 	
@@ -105,8 +96,7 @@ public class AgaveWebhookClient extends AbstractWebhookClient {
 	 * contains authorization informaiton, HTTP Basic auth is attempted with the
 	 * given credentials.
 	 * 
-	 * @param attempt the attempt to make
-	 * @return contains the http response code and interpreted message from the response. 
+	 * @return contains the http response code and interpreted message from the response.
 	 * @throws NotificationException
 	 */
 	@Override
@@ -246,7 +236,7 @@ public class AgaveWebhookClient extends AbstractWebhookClient {
 				attemptResponse.setCode(408);
 				attemptResponse.setMessage("Failed to send " + attempt.getEventName() + 
 						getSupportedCallbackProviderType() + " notification to " + attempt.getCallbackUrl() +
-						". Remote call to " + escapedUri.toString() + " timed out after " + 
+						". Remote call to " + escapedUri + " timed out after " +
 						(System.currentTimeMillis() - callstart) + " milliseconds.");
 				throw new NotificationException(attemptResponse.getMessage(),e);
 			} 
@@ -255,11 +245,11 @@ public class AgaveWebhookClient extends AbstractWebhookClient {
 				if (StringUtils.equalsIgnoreCase(escapedUri.getScheme(), "https")) {
 					attemptResponse.setMessage("Failed to send " + attempt.getEventName() + 
 							getSupportedCallbackProviderType() + " notification to " + attempt.getCallbackUrl() +
-							". Remote call to " + escapedUri.toString() + " failed due to the remote side not supporting SSL.");
+							". Remote call to " + escapedUri + " failed due to the remote side not supporting SSL.");
 				} else {
 					attemptResponse.setMessage("Failed to send " + attempt.getEventName() + 
 							getSupportedCallbackProviderType() + " notification to " + attempt.getCallbackUrl() +
-							". Remote call to " + escapedUri.toString() + " failed due a server side SSL failure.");
+							". Remote call to " + escapedUri + " failed due a server side SSL failure.");
 				}
 				throw new NotificationException(attemptResponse.getMessage(),e);
 			} 
@@ -302,7 +292,7 @@ public class AgaveWebhookClient extends AbstractWebhookClient {
 	{
 		// use the tenant id to create the internal url we can can call with a jwt
 		String tenantId = TenancyHelper.getCurrentTenantId();
-		String internalUrl = "https://" + StringUtils.replace(tenantId, ".", "-") + ".api.prod.agaveapi.co/"; 
+		String internalUrl = "https://" + StringUtils.replace(tenantId, ".", "-") + ".api.prod.agaveplatform.org/";
 		
 		// strip the version number as the backend does not refernece them.
 		String filteredcallbackUrl = StringUtils.replace(callbackUrl, "/v2", "");

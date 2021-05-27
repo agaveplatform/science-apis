@@ -3,20 +3,8 @@
  */
 package org.iplantc.service.jobs.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.Filters;
@@ -31,8 +19,8 @@ import org.iplantc.service.jobs.util.ServiceUtils;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Entity class for persisting job events. This creates a history log 
@@ -266,7 +254,7 @@ public class JobEvent {
 	}
 	
 	public String toString() {
-		return job + " " + status + " " + new DateTime(created).toString();
+		return job + " " + status + " " + new DateTime(created);
 	}
 	
 	public String toJSON(Software software) {

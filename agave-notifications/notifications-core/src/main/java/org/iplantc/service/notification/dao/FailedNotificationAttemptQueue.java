@@ -1,40 +1,39 @@
-/**
- * 
- */
 package org.iplantc.service.notification.dao;
 
-import java.net.UnknownHostException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoCredential;
+import com.mongodb.MongoException;
+import com.mongodb.ServerAddress;
+import com.mongodb.client.*;
+import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.client.model.IndexOptions;
 import org.apache.log4j.Logger;
+import org.bson.Document;
+import org.bson.codecs.configuration.CodecRegistries;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.ClassModel;
+import org.bson.codecs.pojo.PojoCodecProvider;
+import org.bson.conversions.Bson;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.notification.model.NotificationAttempt;
+import org.iplantc.service.notification.model.NotificationAttemptCodec;
+import org.iplantc.service.notification.model.NotificationAttemptResponse;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.BasicDBObjectBuilder;
-import com.mongodb.CommandFailureException;
-import com.mongodb.Cursor;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoCredential;
-import com.mongodb.MongoException;
-import com.mongodb.ServerAddress;
-import com.mongodb.util.JSON;
+import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+
+import static com.mongodb.client.model.Filters.*;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 /**
  * Manages the failed notification stack in MongoDB. The stack is implemented
@@ -47,8 +46,7 @@ public class FailedNotificationAttemptQueue {
 
 	private static final Logger	log	= Logger.getLogger(FailedNotificationAttemptQueue.class);
 
-	private MongoClient mongoClient;
-	private DB db;
+	private MongoClient mongov4Client = null;
 	
 	private static FailedNotificationAttemptQueue queue;
 	
@@ -67,35 +65,41 @@ public class FailedNotificationAttemptQueue {
 	/**
 	 * Establishes a connection to the mongo server
 	 * 
-	 * @return
-	 * @throws UnknownHostException
+	 * @return a valid connected client connection
+	 * @throws UnknownHostException if unable to locate the mongo server
 	 */
 	public MongoClient getMongoClient() throws UnknownHostException
     {
-		
-		if (mongoClient == null ) 
+		if (mongov4Client == null )
     	{
-	    	mongoClient = new MongoClient(new ServerAddress(Settings.FAILED_NOTIFICATION_DB_HOST, Settings.FAILED_NOTIFICATION_DB_PORT), Arrays.asList(getMongoCredential()));
-    	} 
-    	else if (!mongoClient.getConnector().isOpen()) 
-    	{
-    		try { mongoClient.close(); } catch (Exception e) { log.error("Failed to close mongo client.", e); }
-    		mongoClient = null;
-    		mongoClient = new MongoClient(new ServerAddress(Settings.FAILED_NOTIFICATION_DB_HOST, Settings.FAILED_NOTIFICATION_DB_PORT), Arrays.asList(getMongoCredential()));
+			ClassModel<JsonNode> valueModel = ClassModel.builder(JsonNode.class).build();
+			ClassModel<NotificationAttemptResponse> metadataPermissionModel = ClassModel.builder(NotificationAttemptResponse.class).build();
+			PojoCodecProvider pojoCodecProvider = PojoCodecProvider.builder().register(valueModel, metadataPermissionModel).build();
+			CodecRegistry registry = CodecRegistries.fromCodecs(new NotificationAttemptCodec());
+			CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
+					fromProviders(pojoCodecProvider),
+					registry);
+
+			mongov4Client = MongoClients.create(MongoClientSettings.builder()
+					.applyToClusterSettings(builder -> builder.hosts(Collections.singletonList(
+							new ServerAddress(Settings.FAILED_NOTIFICATION_DB_HOST, Settings.FAILED_NOTIFICATION_DB_PORT))))
+					.codecRegistry(pojoCodecRegistry)
+					.credential(getMongoCredential())
+
+					.build());
     	}
-    		
-        return mongoClient;
+
+        return mongov4Client;
     }
     
     /**
-     * Creates a new MongoDB credential for the database collections
-     * @return
-     */
-    private MongoCredential getMongoCredential() {
-//    	return MongoCredential.createMongoCRCredential(
-//                Settings.METADATA_DB_USER, "api", Settings.METADATA_DB_PWD.toCharArray());
-    	return MongoCredential.createCredential(
-                Settings.FAILED_NOTIFICATION_DB_USER, "api", Settings.FAILED_NOTIFICATION_DB_PWD.toCharArray());
+	 * Creates a new MongoDB credential for the database collections
+	 *
+	 * @return valid mongo credential for this instance
+	 */
+	private MongoCredential getMongoCredential() {
+		return MongoCredential.createScramSha1Credential(
+                Settings.FAILED_NOTIFICATION_DB_USER, Settings.FAILED_NOTIFICATION_DB_SCHEME, Settings.FAILED_NOTIFICATION_DB_PWD.toCharArray());
     }
     
     /**
@@ -103,43 +107,64 @@ public class FailedNotificationAttemptQueue {
      * bound in byte size by {@link Settings#FAILED_NOTIFICATION_COLLECTION_SIZE} and
      * bound in length by {@link Settings#FAILED_NOTIFICATION_COLLECTION_SIZE}.
      * 
-     * @param collectionName
-     * @return
-     * @throws NotificationException
+     * @param collectionName  name of the capped collection to return
+     * @return the named collection, converted to capped collection if needed
+     * @throws NotificationException if unable to fetch the collection
      */
-    private DBCollection getOrCreateCappedCollection(String collectionName) 
+    private MongoCollection<NotificationAttempt> getOrCreateCappedCollection(String collectionName)
     throws NotificationException 
     {	
     	// Set up MongoDB connection
+		MongoDatabase db;
         try
         {
-        	db = getMongoClient().getDB("api");//Settings.FAILED_NOTIFICATION_DB_SCHEME);
+			db = getMongoClient().getDatabase(Settings.FAILED_NOTIFICATION_DB_SCHEME);
         	
             // Gets a collection, if it does not exist creates it
-        	DBCollection cappedCollection = null;
+			MongoCollection<NotificationAttempt> cappedCollection;
         	
         	try {
-        		DBObject options = BasicDBObjectBuilder.start()
-                		.add("capped", true)
-                		.add("size", Settings.FAILED_NOTIFICATION_COLLECTION_SIZE)
-                		.add("max", Settings.FAILED_NOTIFICATION_COLLECTION_LIMIT)
-                		.get();
-                cappedCollection = db.createCollection(collectionName, options);
+				CreateCollectionOptions options = new CreateCollectionOptions()
+						.capped(true)
+						.sizeInBytes(Settings.FAILED_NOTIFICATION_COLLECTION_SIZE)
+						.maxDocuments(Settings.FAILED_NOTIFICATION_COLLECTION_LIMIT);
+
+
+                db.createCollection(collectionName, options);
+
+                cappedCollection = db.getCollection(collectionName, NotificationAttempt.class);
+                Document createdIndex = new Document(Map.of("created", 1));
+                // bound the max attempt lifetime at 30 days
+                cappedCollection.createIndex(createdIndex, new IndexOptions().expireAfter(30L, TimeUnit.DAYS));
         	}
-        	catch (CommandFailureException e) {
-        		cappedCollection = db.getCollection(collectionName);
-        		if (!cappedCollection.isCapped()) {
-        			try {
-        				BasicDBObject command = new BasicDBObject("convertToCapped", collectionName);
-	        			command.append("size", Settings.FAILED_NOTIFICATION_COLLECTION_SIZE);
-	            		command.append("max", Settings.FAILED_NOTIFICATION_COLLECTION_LIMIT);
-	        			db.command(command);
-        			}
-        			catch (Throwable t) {
-        				log.error("Failed to convert standard collection " + 
-        						collectionName + " into capped collection", t);
-        			}
-        		}
+        	catch (Throwable e) {
+        		Document collStats = db.runCommand(new Document("collStats", collectionName));
+				if (!collStats.getBoolean("capped", false)) {
+					try {
+						Document command = new Document("convertToCapped", collectionName);
+						command.append("size", Settings.FAILED_NOTIFICATION_COLLECTION_SIZE);
+						command.append("max", Settings.FAILED_NOTIFICATION_COLLECTION_LIMIT);
+						db.runCommand(command);
+					} catch (Throwable t) {
+						log.error("Failed to convert standard collection " +
+								collectionName + " into capped collection", t);
+					}
+				}
+
+				// get the modified collection and check for the TTL index
+				cappedCollection = db.getCollection(collectionName, NotificationAttempt.class);
+
+				AtomicBoolean foundMatch = new AtomicBoolean(false);
+				cappedCollection.listIndexes().forEach((Consumer<? super Document>) document -> {
+					if (document.containsKey("created") && document.get("created").equals(1)) {
+						foundMatch.set(true);
+					}
+				});
+				// if the index is missing, add it.
+				if (!foundMatch.get()) {
+					Document createdIndex = new Document(Map.of("created", 1));
+					cappedCollection.createIndex(createdIndex, new IndexOptions().expireAfter(30L, TimeUnit.DAYS));
+				}
         	}
         	
         	return cappedCollection;
@@ -153,26 +178,22 @@ public class FailedNotificationAttemptQueue {
 	 * Pushes a {@link NotificationAttempt} into a MongoDB capped collection
 	 * named after the associationed {@link Notification} uuid.
 	 * 
-	 * @param attempt
-	 * @throws NotificationException
+	 * @param attempt the attempt to add to the collection
+	 * @throws NotificationException if unable to persist attempt
 	 */
 	public void push(NotificationAttempt attempt) 
 	throws NotificationException
 	{
 		String json = null;
 		try {
-			DBCollection cappedCollection = getOrCreateCappedCollection(attempt.getNotificationId());
-			ObjectMapper mapper = new ObjectMapper();
-			json = mapper.writeValueAsString(attempt);
-			
-			DBObject doc = (DBObject)JSON.parse(json);
-			
-			cappedCollection.insert(doc);			
+			MongoCollection<NotificationAttempt> cappedCollection = getOrCreateCappedCollection(attempt.getNotificationId());
+
+			cappedCollection.insertOne(attempt);
 		}
-		catch (JsonProcessingException e) {
-			log.error("Failed to serialize attempt " + attempt.getUuid() + 
-					" prior to sending to the failed queue for "  + attempt.getNotificationId(), e);
-		}
+//		catch (JsonProcessingException e) {
+//			log.error("Failed to serialize attempt " + attempt.getUuid() +
+//					" prior to sending to the failed queue for "  + attempt.getNotificationId(), e);
+//		}
 		catch (MongoException e) {
 			log.error("Failed to push failed notification attempt for " + attempt.getUuid() + 
 					" on to the failed queue for "  + attempt.getNotificationId(), e);
@@ -195,22 +216,20 @@ public class FailedNotificationAttemptQueue {
 	/**
 	 * Deletes a single {@link NotificationAttempt} from the queue.
 	 * 
-	 * @param notificationId
-	 * @param attemptId
+	 * @param notificationId notification uuid
+	 * @param attemptId the attempt uuid
 	 * @return the {@link NotificationAttempt} at the top of the queue or null if the queue is empty.
-	 * @throws NotificationException
+	 * @throws NotificationException if unable to remove attempt
 	 */
-	public NotificationAttempt remove(String notificationId, String attemptId) 
+	public void remove(String notificationId, String attemptId)
 	throws NotificationException
 	{
 		try {
-			DBCollection cappedCollection = getOrCreateCappedCollection(notificationId);
-			
-			ObjectMapper mapper = new ObjectMapper();
-			
-			DBObject query = BasicDBObjectBuilder.start().add("id", attemptId).get();
-			
-			cappedCollection.remove(query);
+			MongoCollection<NotificationAttempt> cappedCollection = getOrCreateCappedCollection(notificationId);
+
+			Document query = new Document(Map.of("id", attemptId));
+
+			cappedCollection.deleteOne(query);
 		}
 		catch (MongoException e) {
 			log.error("Failed to fetch last failed notification attempt for " + notificationId, e);
@@ -219,34 +238,25 @@ public class FailedNotificationAttemptQueue {
 			log.error("Unexpected server error while fetching last failed notification attempt for " + 
 					notificationId, e);
 		}
-		
-		return null;
 	}
 	
 	/**
 	 * Returns the next entry on the queue. This will be the oldest item,
 	 * or the "top" of the queue.
 	 * 
-	 * @param notificationId
+	 * @param notificationId notification uuid
 	 * @return the {@link NotificationAttempt} at the top of the queue or null if the queue is empty.
-	 * @throws NotificationException
+	 * @throws NotificationException if unable to fetch attempt
 	 */
 	public NotificationAttempt next(String notificationId) 
 	throws NotificationException
 	{
+		NotificationAttempt attempt = null;
 		try {
-			DBCollection cappedCollection = getOrCreateCappedCollection(notificationId);
-			
-			ObjectMapper mapper = new ObjectMapper();
-			
+			MongoCollection<NotificationAttempt> cappedCollection = getOrCreateCappedCollection(notificationId);
+
 			// capped collections guarantee results return in the insertion order
-			Cursor cursor = cappedCollection.find().limit(1);
-			if (cursor.hasNext()) {
-				return mapper.readValue(cursor.next().toString(), NotificationAttempt.class);
-			}	
-		}
-		catch (JsonProcessingException e) {
-			log.error("Failed to serialize last attempt for notification " + notificationId, e);
+			attempt = cappedCollection.find().first();
 		}
 		catch (MongoException e) {
 			log.error("Failed to fetch last failed notification attempt for " + notificationId, e);
@@ -256,106 +266,99 @@ public class FailedNotificationAttemptQueue {
 					notificationId, e);
 		}
 		
-		return null;
+		return attempt;
 	}
 	
 	/**
 	 * Removes all {@link NotificationAttempt} from a {@link Notification} attempt queue.
 	 * 
-	 * @param notificationId
-	 * @param attemptId
+	 * @param notificationId notification uuid
 	 * @return the {@link NotificationAttempt} at the top of the queue or null if the queue is empty.
-	 * @throws NotificationException
+	 * @throws NotificationException if unable to clear all attempts for the notification
 	 */
-	public NotificationAttempt removeAll(String notificationId) 
+	public void removeAll(String notificationId)
 	throws NotificationException
 	{
 		try {
-			DBCollection cappedCollection = getOrCreateCappedCollection(notificationId);
-			// technically we drop the collection
-			cappedCollection.drop();
+			getMongoClient().getDatabase(Settings.FAILED_NOTIFICATION_DB_SCHEME)
+					.getCollection(notificationId)
+					.drop();
 		}
 		catch (MongoException e) {
-			log.error("Failed to fetch last failed notification attempt for " + notificationId, e);
+			log.error("Failed to clear attempt history for notification " + notificationId, e);
 		}
 		catch (Exception e) {
-			log.error("Unexpected server error while fetching last failed notification attempt for " + 
+			log.error("Unexpected server error while clearing attempt history for notification " +
 					notificationId, e);
 		}
-		
-		return null;
 	}
 	
 	/**
 	 * Finds matching 
 	 * 
-	 * @param notificationId
+	 * @param notificationId notification uuid
 	 * @return the {@link NotificationAttempt} at the top of the queue or null if the queue is empty.
-	 * @throws NotificationException
+	 * @throws NotificationException if unable to fetch attempts
 	 */
 	public List<NotificationAttempt> findMatching(String notificationId, Map<SearchTerm, Object> searchCriteria, int limit, int offset)  
 	throws NotificationException
 	{
-		List<NotificationAttempt> attempts = new ArrayList<NotificationAttempt>();
+		List<NotificationAttempt> attempts = new ArrayList<>();
 		try {
 			SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ENGLISH);
 			SimpleDateFormat beforeFormatter = new SimpleDateFormat("yyyy-MM-dd'T'00:00:00'Z'", Locale.ENGLISH);
 			SimpleDateFormat afterFormatter = new SimpleDateFormat("yyyy-MM-dd'T'23:59:59'Z'", Locale.ENGLISH);
-			DBCollection cappedCollection = getOrCreateCappedCollection(notificationId);
-			
-			ObjectMapper mapper = new ObjectMapper();
-			
-			BasicDBObjectBuilder builder = BasicDBObjectBuilder.start()
-								.add("notificationId", notificationId);
-			
+			MongoCollection<NotificationAttempt> cappedCollection = getOrCreateCappedCollection(notificationId);
+
+			List<Bson> filterList = new ArrayList<Bson>();
+			filterList.add(eq("notificationId", notificationId));
+
 			for (SearchTerm searchTerm: searchCriteria.keySet()) {
 				if (searchTerm.getOperator() == SearchTerm.Operator.EQ) {
-					builder.add(searchTerm.getSearchField(), searchCriteria.get(searchTerm));
+					filterList.add(eq(searchTerm.getSearchField(), searchCriteria.get(searchTerm)));
 				} 
 				else if (searchTerm.getOperator() == SearchTerm.Operator.NEQ) {
-					builder.push(searchTerm.getSearchField()).add("$ne", searchCriteria.get(searchTerm));
+					filterList.add(ne(searchTerm.getSearchField(), searchCriteria.get(searchTerm)));
 				} 
 				else if (searchTerm.getOperator() == SearchTerm.Operator.GT) {
-					builder.push(searchTerm.getSearchField()).add("$gt", searchCriteria.get(searchTerm));
+					filterList.add(gt(searchTerm.getSearchField(), searchCriteria.get(searchTerm)));
 				} 
 				else if (searchTerm.getOperator() == SearchTerm.Operator.GTE) {
-					builder.push(searchTerm.getSearchField()).add("$gte", searchCriteria.get(searchTerm));
+					filterList.add(gte(searchTerm.getSearchField(), searchCriteria.get(searchTerm)));
 				} 
 				else if (searchTerm.getOperator() == SearchTerm.Operator.LT) {
-					builder.push(searchTerm.getSearchField()).add("$lt", searchCriteria.get(searchTerm));
+					filterList.add(lt(searchTerm.getSearchField(), searchCriteria.get(searchTerm)));
 				} 
 				else if (searchTerm.getOperator() == SearchTerm.Operator.LTE) {
-					builder.push(searchTerm.getSearchField()).add("$lte", searchCriteria.get(searchTerm));
+					filterList.add(lte(searchTerm.getSearchField(), searchCriteria.get(searchTerm)));
 				}
 				else if (searchTerm.getOperator() == SearchTerm.Operator.IN) {
-					BasicDBList array = new BasicDBList();
-					array.addAll((List<Object>)searchCriteria.get(searchTerm));
-					builder.add(searchTerm.getSearchField(), array);
+					filterList.add(in(searchTerm.getSearchField(), (List<Object>)searchCriteria.get(searchTerm)));
 				}
 				else if (searchTerm.getOperator() == SearchTerm.Operator.ON) {
-					builder.push(searchTerm.getSearchField()) 
-							.add("$gte", afterFormatter.format((Date)searchCriteria.get(searchTerm)))
-							.add("$lte", beforeFormatter.format((Date)searchCriteria.get(searchTerm)));
+					filterList.add(or(
+							gte(searchTerm.getSearchField(), afterFormatter.format((Date)searchCriteria.get(searchTerm))),
+							lte(searchTerm.getSearchField(), beforeFormatter.format((Date)searchCriteria.get(searchTerm)))));
 				}
 				else if (searchTerm.getOperator() == SearchTerm.Operator.AFTER) {
-					builder.push(searchTerm.getSearchField()) 
-						.add("$gt", formatter.format((Date)searchCriteria.get(searchTerm)));
+					filterList.add(gt(searchTerm.getSearchField(), formatter.format((Date)searchCriteria.get(searchTerm))));
 				}
 				else if (searchTerm.getOperator() == SearchTerm.Operator.BEFORE) {
-					builder.push(searchTerm.getSearchField()) 
-						.add("$lt", formatter.format((Date)searchCriteria.get(searchTerm)));
+					filterList.add(gt(searchTerm.getSearchField(), formatter.format((Date)searchCriteria.get(searchTerm))));
 				}
 			}
-			
-			DBObject query = builder.get();
-			
-			Cursor cursor = cappedCollection.find(query);
-			if (cursor.hasNext()) {
-				attempts.add(mapper.readValue(cursor.next().toString(), NotificationAttempt.class));
-			}	
-		}
-		catch (JsonProcessingException e) {
-			log.error("Failed to serialize last attempt for notification " + notificationId, e);
+			// now make the query and get the range result set
+			MongoCursor<NotificationAttempt> cursor = cappedCollection
+					.find(and(filterList))
+					.skip(offset)
+					.limit(limit).cursor();
+
+			// convert to a list and deserialized objects and return
+			List<NotificationAttempt> resultList = new ArrayList<>();
+			while (cursor.hasNext()) {
+				resultList.add(cursor.next());
+			}
+			return resultList;
 		}
 		catch (MongoException e) {
 			log.error("Failed to fetch last failed notification attempt for " + notificationId, e);

@@ -3,10 +3,6 @@
  */
 package org.iplantc.service.transfer.http;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -14,6 +10,10 @@ import org.apache.log4j.lf5.util.StreamUtils;
 import org.globus.ftp.RestartData;
 import org.iplantc.service.transfer.RemoteInputStream;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * @author dooley
@@ -61,13 +61,9 @@ public class HTTPInputStream extends RemoteInputStream<HTTP>
 	    		throw new IOException(statusLine.getReasonPhrase());
 	    	}
 		}
-		catch (IOException e) {
+		catch (IOException | RemoteDataException e) {
 			throw e;
-		}
-		catch (RemoteDataException e) {
-			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new RemoteDataException("Failed to establish input stream to " + remotepath, e);
 		}
 	}

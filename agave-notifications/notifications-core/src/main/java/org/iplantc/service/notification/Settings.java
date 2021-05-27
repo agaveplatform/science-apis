@@ -12,7 +12,6 @@ import org.iplantc.service.notification.providers.realtime.enumeration.RealtimeP
 import org.iplantc.service.notification.providers.sms.enumeration.SmsProviderType;
 
 import javax.net.ssl.*;
-
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -64,7 +63,6 @@ public class Settings
 	public static String 						IPLANT_JOB_SERVICE;
 	public static String 						IPLANT_APP_SERVICE;
 	public static String 						IPLANT_TRANSFER_SERVICE;
-	public static String 						IPLANT_TRANSFORM_SERVICE;
 	public static String 						IPLANT_NOTIFICATION_SERVICE;
 	public static String						IPLANT_POSTIT_SERVICE;
 	
@@ -81,7 +79,7 @@ public class Settings
     public static String 						SMTP_AUTH_PWD;
     public static String 						SMTP_FROM_NAME;
     public static String 						SMTP_FROM_ADDRESS;
-	
+	public static String						SMTP_AUTH_TOKEN;
 	/* General policy settings */
 	public static int 							MAX_NOTIFICATION_RETRIES;
 	public static int 							MAX_NOTIFICATION_TASKS;
@@ -162,9 +160,9 @@ public class Settings
 			}
 		}
 		
-		API_VERSION = (String)props.getProperty("iplant.api.version");
+		API_VERSION = props.getProperty("iplant.api.version");
 		
-		SERVICE_VERSION = (String)props.getProperty("iplant.service.version");
+		SERVICE_VERSION = props.getProperty("iplant.service.version");
 		
 		PUBLIC_USER_USERNAME = (String)props.get("iplant.public.user");
 		
@@ -178,29 +176,30 @@ public class Settings
 //	    public static String 						SMTP_FROM_NAME;
 //	    public static String 						SMTP_FROM_ADDRESS;
 	    
-		String emailProvider = (String) props.getProperty("mail.smtps.provider", "localhost");
+		String emailProvider = props.getProperty("mail.smtps.provider", "localhost");
 		try {
 		    EMAIL_PROVIDER = EmailProviderType.valueOf(StringUtils.upperCase(emailProvider));
 		} catch (Exception e) {
 		    log.error("Invalid email provider specified. Defaulting to localhost.");
 		    EMAIL_PROVIDER = EmailProviderType.LOCAL;
 		}
-		finally {}
-		
-		SMTP_AUTH_REQUIRED = Boolean.parseBoolean((String) props.getProperty("mail.smtps.auth", "false"));
+
+		SMTP_AUTH_TOKEN = props.getProperty("mail.smtps.token");
+
+		SMTP_AUTH_REQUIRED = Boolean.parseBoolean(props.getProperty("mail.smtps.auth", "false"));
 		
 		if (SMTP_AUTH_REQUIRED) {
-			SMTP_HOST_NAME = (String) props.getProperty("mail.smtps.host", "smtp");
-			SMTP_HOST_PORT = NumberUtils.toInt((String) props.getProperty("mail.smtps.port"), 587);
-			SMTP_AUTH_USER = (String) props.getProperty("mail.smtps.user", System.getProperty("user.name"));
-			SMTP_AUTH_PWD = (String) props.getProperty("mail.smtps.passwd", "");
+			SMTP_HOST_NAME = props.getProperty("mail.smtps.host", "smtp");
+			SMTP_HOST_PORT = NumberUtils.toInt(props.getProperty("mail.smtps.port"), 587);
+			SMTP_AUTH_USER = props.getProperty("mail.smtps.user", System.getProperty("user.name"));
+			SMTP_AUTH_PWD = props.getProperty("mail.smtps.passwd", "");
 		} else {
-			SMTP_HOST_NAME = (String) props.getProperty("mail.smtps.host", "localhost");
-			SMTP_HOST_PORT = NumberUtils.toInt((String) props.getProperty("mail.smtps.port"), 25);
+			SMTP_HOST_NAME = props.getProperty("mail.smtps.host", "localhost");
+			SMTP_HOST_PORT = NumberUtils.toInt(props.getProperty("mail.smtps.port"), 25);
 		}
 		
-		SMTP_FROM_NAME = (String) props.getProperty("mail.smtps.from.name", "Agave Notification Service");
-		SMTP_FROM_ADDRESS = (String) props.getProperty("mail.smtps.from.address", "no-reply@agaveapi.co");
+		SMTP_FROM_NAME = props.getProperty("mail.smtps.from.name", "Agave Notification Service");
+		SMTP_FROM_ADDRESS = props.getProperty("mail.smtps.from.address", "noreply@agaveplatform.org");
 		
 //	    MAIL_SERVER = (String) props.getProperty("mail.smtps.host");
 //		
@@ -210,7 +209,7 @@ public class Settings
 //		
 //		MAILPASSWORD = (String) props.getProperty("mail.smtps.passwd");
 		
-		String smsProvider = (String) props.getProperty("sms.provider", "localhost");
+		String smsProvider = props.getProperty("sms.provider", "localhost");
 		try {
 		    SMS_PROVIDER = SmsProviderType.valueOf(StringUtils.upperCase(smsProvider));
 		} catch (Exception e) {
@@ -218,11 +217,11 @@ public class Settings
 		}
 		finally {}
 		
-		TWILIO_AUTH_TOKEN = (String) props.getProperty("twilio.token");
+		TWILIO_AUTH_TOKEN = props.getProperty("twilio.token");
 		
-		TWILIO_ACCOUNT_SID = (String) props.getProperty("twilio.sid");
+		TWILIO_ACCOUNT_SID = props.getProperty("twilio.sid");
 		
-		TWILIO_PHONE_NUMBER = (String) props.getProperty("twilio.phone.number");
+		TWILIO_PHONE_NUMBER = props.getProperty("twilio.phone.number");
 		
 		IPLANT_MYPROXY_SERVER = (String)props.get("iplant.myproxy.server");
 		
@@ -275,7 +274,7 @@ public class Settings
 		IPLANT_DOCS = (String) props.get("iplant.service.documentation");
 		if (!IPLANT_DOCS.endsWith("/")) IPLANT_DOCS += "/";
 		
-		String realtimeProvider = (String) props.getProperty("realtime.provider", "LOG");
+		String realtimeProvider = props.getProperty("realtime.provider", "LOG");
 		try {
 			REALTIME_PROVIDER = RealtimeProviderType.valueOf(StringUtils.upperCase(realtimeProvider));
 		} catch (Exception e) {
@@ -283,41 +282,49 @@ public class Settings
 		    REALTIME_PROVIDER = RealtimeProviderType.LOG;
 		}
 		
-		REALTIME_BASE_URL = (String) props.getProperty("realtime.url", "http://realtime.example.com:7999");
+		REALTIME_BASE_URL = props.getProperty("realtime.url", "http://realtime.example.com:7999");
         if (!REALTIME_BASE_URL.endsWith("/")) REALTIME_BASE_URL += "/";
 		
-        REALTIME_REALM_ID = (String) props.getProperty("realtime.realm.id", "");
-        REALTIME_REALM_KEY = (String) props.getProperty("realtime.realm.key", "");
+        REALTIME_REALM_ID = props.getProperty("realtime.realm.id", "");
+        REALTIME_REALM_KEY = props.getProperty("realtime.realm.key", "");
         
-		MAX_NOTIFICATION_RETRIES = Integer.valueOf((String)props.getProperty("iplant.max.notification.retries", "5"));
-		MAX_NOTIFICATION_TASKS = Integer.valueOf((String)props.getProperty("iplant.max.notification.tasks", "1"));
+		try {MAX_NOTIFICATION_RETRIES = Integer.valueOf(props.getProperty("iplant.max.notification.retries", "5"));}
+		    catch (Exception e) {
+	            log.error("Failure loading setting iplant.max.notification.retries.", e);
+	            MAX_NOTIFICATION_RETRIES = 5;
+		    }
+		try {MAX_NOTIFICATION_TASKS = Integer.valueOf(props.getProperty("iplant.max.notification.tasks", "1"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.max.notification.task.", e);
+            MAX_NOTIFICATION_TASKS = 1;
+        }
 		
 		SLAVE_MODE = Boolean.valueOf((String)props.get("iplant.slave.mode"));
 		
-		NOTIFICATION_QUEUE = (String) props.getProperty("iplant.notification.service.queue", "prod.notifications.queue");
-		NOTIFICATION_TOPIC = (String) props.getProperty("iplant.notification.service.topic", "prod.notifications.queue");
+		NOTIFICATION_QUEUE = props.getProperty("iplant.notification.service.queue", "prod.notifications.queue");
+		NOTIFICATION_TOPIC = props.getProperty("iplant.notification.service.topic", "prod.notifications.queue");
 		
-		NOTIFICATION_RETRY_QUEUE = (String) props.getProperty("iplant.notification.service.retry.queue", "retry." + NOTIFICATION_QUEUE);
-		NOTIFICATION_RETRY_TOPIC = (String) props.getProperty("iplant.notification.service.retry.topic", "retry." + NOTIFICATION_TOPIC);
-		
-		
-		FAILED_NOTIFICATION_DB_SCHEME = (String) props.getProperty("iplant.notification.failed.db.scheme", "api");
-		FAILED_NOTIFICATION_DB_HOST = (String) props.getProperty("iplant.notification.failed.db.host", "mongodb");
-		FAILED_NOTIFICATION_DB_PORT = NumberUtils.toInt((String)props.getProperty("iplant.notification.failed.db.port"), 27017);
-		FAILED_NOTIFICATION_DB_USER = (String) props.getProperty("iplant.notification.failed.db.user", "agaveuser");
-		FAILED_NOTIFICATION_DB_PWD = (String) props.getProperty("iplant.notification.failed.db.pwd", "password");
-		FAILED_NOTIFICATION_COLLECTION_SIZE = NumberUtils.toInt((String)props.getProperty("iplant.notification.failed.db.max.queue.size"), 1048576);
-		FAILED_NOTIFICATION_COLLECTION_LIMIT = NumberUtils.toInt((String)props.getProperty("iplant.notification.failed.db.max.queue.limit"), 1000);
+		NOTIFICATION_RETRY_QUEUE = props.getProperty("iplant.notification.service.retry.queue", "retry." + NOTIFICATION_QUEUE);
+		NOTIFICATION_RETRY_TOPIC = props.getProperty("iplant.notification.service.retry.topic", "retry." + NOTIFICATION_TOPIC);
 		
 		
-		SLACK_WEBHOOK_ICON_EMOJI = (String) props.getProperty("iplant.notification.service.slack.icon.emoji");
-		SLACK_WEBHOOK_ICON_URL = (String) props.getProperty("iplant.notification.service.slack.icon.url", "http://www.gravatar.com/avatar/4a01bd7c64dbb313035b23fe521f75e6");
-		SLACK_WEBHOOK_USERNAME = (String) props.getProperty("iplant.notification.service.slack.username", "AgaveBot");
+		FAILED_NOTIFICATION_DB_SCHEME = props.getProperty("iplant.notification.failed.db.scheme", "api");
+		FAILED_NOTIFICATION_DB_HOST = props.getProperty("iplant.notification.failed.db.host", "mongodb");
+		FAILED_NOTIFICATION_DB_PORT = NumberUtils.toInt(props.getProperty("iplant.notification.failed.db.port"), 27017);
+		FAILED_NOTIFICATION_DB_USER = props.getProperty("iplant.notification.failed.db.user", "agaveuser");
+		FAILED_NOTIFICATION_DB_PWD = props.getProperty("iplant.notification.failed.db.pwd", "password");
+		FAILED_NOTIFICATION_COLLECTION_SIZE = NumberUtils.toInt(props.getProperty("iplant.notification.failed.db.max.queue.size"), 1048576);
+		FAILED_NOTIFICATION_COLLECTION_LIMIT = NumberUtils.toInt(props.getProperty("iplant.notification.failed.db.max.queue.limit"), 1000);
 		
-		MESSAGING_SERVICE_PROVIDER = (String) props.getProperty("iplant.messaging.provider", "beanstalk");
+		
+		SLACK_WEBHOOK_ICON_EMOJI = props.getProperty("iplant.notification.service.slack.icon.emoji");
+		SLACK_WEBHOOK_ICON_URL = props.getProperty("iplant.notification.service.slack.icon.url", "http://www.gravatar.com/avatar/4a01bd7c64dbb313035b23fe521f75e6");
+		SLACK_WEBHOOK_USERNAME = props.getProperty("iplant.notification.service.slack.username", "AgaveBot");
+		
+		MESSAGING_SERVICE_PROVIDER = props.getProperty("iplant.messaging.provider", "beanstalk");
 		MESSAGING_SERVICE_USERNAME = (String)props.get("iplant.messaging.username");
 		MESSAGING_SERVICE_PASSWORD = (String)props.get("iplant.messaging.password");
-		MESSAGING_SERVICE_HOST = (String)props.getProperty("iplant.messaging.host", "beanstalkd");
-		MESSAGING_SERVICE_PORT = Integer.valueOf((String)props.getProperty("iplant.messaging.port", "11300"));
+		MESSAGING_SERVICE_HOST = props.getProperty("iplant.messaging.host", "beanstalkd");
+		MESSAGING_SERVICE_PORT = Integer.valueOf(props.getProperty("iplant.messaging.port", "11300"));
 	}
 }

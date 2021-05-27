@@ -4,53 +4,39 @@
 	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc</groupId>
-		<artifactId>agave</artifactId>
-		<version>2.1.11</version>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>science-apis</artifactId>
+		<version>2.2.27</version>
 	</parent>
-	<groupId>org.iplantc.agave</groupId>
+
 	<artifactId>monitors</artifactId>
-	<name>iPlant Agave API Monitoring Service Parent POM</name>
+	<name>Agave Platform Monitoring Service Parent POM</name>
 	<description>This is the parent project for the monitors service.</description>
 	<packaging>pom</packaging>
 
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-monitors.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-monitors.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-monitors</url>
-	</scm>
+	<properties>
+        <main.basedir>${project.basedir}/../../</main.basedir>
+	</properties>
 
 	<build>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<artifactId>maven-dependency-plugin</artifactId>
-					<executions>
-						<execution>
-							<id>install</id>
-							<phase>install</phase>
-							<goals>
-								<goal>sources</goal>
-							</goals>
-						</execution>
-					</executions>
-				</plugin>
-				<plugin>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<version>${maven-surefire-plugin.METADATA.version}</version>
-					<configuration>
-						<suiteXmlFiles>
-							<suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
-						</suiteXmlFiles>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
+		<plugins>
+			<!-- Default unit testing for all submodules. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+			</plugin>
+
+			<!-- Default integration testing for all submodules. Note that integration testing
+				requires persistence, queueing, etc. These are provided as containers and
+				managed by Docker Compose through the managed docker-compose-maven-plugin.
+				We omit the inclusion of those plugins here due to this being a parent folder
+				and not containing any tests that require orchestration. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+			</plugin>
+		</plugins>
 	</build>
-
-	<dependencies>
-
-	</dependencies>
 
 	<modules>
 		<module>monitors-core</module>

@@ -1,7 +1,5 @@
 package org.iplantc.service.common.auth;
 
-import java.io.File;
-
 import org.apache.commons.io.FileUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -9,9 +7,12 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
+
+@Test(groups = {"broken", "unit"} )
 public class JWTClientTest 
 {
-	public static String JWT_TEST_FOLDER = "src/test/resources/jwt/";
+	public static String JWT_TEST_FOLDER = "target/test-classes/jwt/";
 	@BeforeClass
 	public void beforeClass() {
 	}
@@ -48,7 +49,7 @@ public class JWTClientTest
 		}
 	}
 	
-	@Test(dataProvider = "parseProvider", dependsOnMethods = {"parse"} )
+	@Test(dataProvider = "parseProvider", dependsOnMethods = {"parse"})
 	public void getCurrentJWSObject(String serializedToken, boolean shouldThrowException, String message) {
 		try 
 		{
@@ -71,7 +72,8 @@ public class JWTClientTest
 	{
 		String jwtToken = FileUtils.readFileToString(new File(JWT_TEST_FOLDER + "stubbs.jwt"));
 		String jwtToken2 = FileUtils.readFileToString(new File(JWT_TEST_FOLDER + "stubbs2.jwt"));
-		return new Object[][] { 
+
+		return new Object[][] {
 				{ jwtToken, "tacc/jstubbs", false, "Decoded end user does not match expected end user" },
 				{ jwtToken2, "testadmin@test.com", false, "Decoded end user does not match expected end user" },
 		};

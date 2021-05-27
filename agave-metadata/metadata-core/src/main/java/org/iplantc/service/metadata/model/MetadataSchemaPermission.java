@@ -4,10 +4,7 @@
 package org.iplantc.service.metadata.model;
 
 import org.apache.commons.lang.StringUtils;
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.Filters;
-import org.hibernate.annotations.ParamDef;
+import org.bson.types.ObjectId;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.exceptions.MetadataException;
@@ -16,34 +13,32 @@ import org.json.JSONException;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import javax.persistence.*;
-
 import java.util.Date;
 
 /**
- * Class to represent individual shared permissions for jobs
- * 
+ * Class to represent individual shared permissions for {@link MetadataSchemaItem}
  * @author dooley
- * 
  */
-@Entity
-@Table(name = "metadata_schema_permissions", uniqueConstraints=
-@UniqueConstraint(columnNames={"schemaId","username"}))
-@FilterDef(name="schemaPemTenantFilter", parameters=@ParamDef(name="tenantId", type="string"))
-@Filters(@Filter(name="schemaPemTenantFilter", condition="tenant_id=:tenantId"))
 public class MetadataSchemaPermission {
 
-	private Long				id;
+//	@BsonProperty ("_id")
+//	@BsonId
+	private ObjectId id;
+//	@BsonProperty ("schemaId")
 	private String				schemaId;
+//	@BsonProperty ("username")
 	private String				username;
+//	@BsonProperty ("permission")
 	private PermissionType		permission;
+//	@BsonProperty ("lastUpdated")
 	private Date				lastUpdated = new Date();
-	private String 				tenantId;		
-	
+//	@BsonProperty ("tenantId")
+	private String 				tenantId;
+
 	public MetadataSchemaPermission() {
 		this.setTenantId(TenancyHelper.getCurrentTenantId());
 	}
-	
+
 	public MetadataSchemaPermission(String schemaId, String username, PermissionType permissionType) throws MetadataException
 	{
 		this();
@@ -55,10 +50,7 @@ public class MetadataSchemaPermission {
 	/**
 	 * @return the id
 	 */
-	@Id
-	@GeneratedValue
-	@Column(name = "id", unique = true, nullable = false)
-	public Long getId()
+	public ObjectId getId()
 	{
 		return id;
 	}
@@ -67,7 +59,7 @@ public class MetadataSchemaPermission {
 	 * @param id
 	 *            the id to set
 	 */
-	public void setId(Long id)
+	public void setId(ObjectId id)
 	{
 		this.id = id;
 	}
@@ -75,7 +67,6 @@ public class MetadataSchemaPermission {
 	/**
 	 * @return the schemaId
 	 */
-	@Column(name = "schemaId", nullable = false)
 	public String getSchemaId()
 	{
 		return schemaId;
@@ -93,7 +84,6 @@ public class MetadataSchemaPermission {
 	/**
 	 * @return the username
 	 */
-	@Column(name = "username", nullable = false, length = 32)
 	public String getUsername()
 	{
 		return username;
@@ -102,7 +92,7 @@ public class MetadataSchemaPermission {
 	/**
 	 * @param username
 	 *            the username to set
-     * @throws org.iplantc.service.metadata.exceptions.MetadataException
+     * @throws MetadataException when username is empty or greater than 32 characters
 	 */
 	public void setUsername(String username) throws MetadataException
 	{
@@ -116,8 +106,6 @@ public class MetadataSchemaPermission {
 	/**
 	 * @return the permission
 	 */
-	@Enumerated(EnumType.STRING)
-	@Column(name = "permission", nullable = false, length = 16)
 	public PermissionType getPermission()
 	{
 		return permission;
@@ -152,8 +140,6 @@ public class MetadataSchemaPermission {
 	/**
 	 * @return the lastUpdated
 	 */
-	@Temporal(TemporalType.TIMESTAMP)
-	@Column(name = "lastUpdated", nullable = false, length = 19)
 	public Date getLastUpdated()
 	{
 		return lastUpdated;
@@ -201,14 +187,13 @@ public class MetadataSchemaPermission {
 	
 	public String toString()
 	{
-		return "[" + schemaId + "] " + username + " " + permission;
+		return username + " " + permission;
 	}
 
 	public boolean equals(Object o)
 	{
 		if (o instanceof MetadataSchemaPermission) {
-			return ( 
-				( (MetadataSchemaPermission) o ).schemaId.equals(schemaId) &&
+			return (
 				( (MetadataSchemaPermission) o ).username.equals(username) &&
 				( (MetadataSchemaPermission) o ).permission.equals(permission) );
 		}

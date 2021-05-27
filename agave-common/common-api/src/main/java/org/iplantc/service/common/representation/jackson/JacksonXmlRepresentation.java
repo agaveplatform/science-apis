@@ -1,20 +1,19 @@
 package org.iplantc.service.common.representation.jackson;
 
-import java.io.IOException;
-import java.io.Writer;
-import java.util.logging.Level;
-
-import org.restlet.Context;
-import org.restlet.data.MediaType;
-import org.restlet.representation.Representation;
-import org.restlet.representation.WriterRepresentation;
-
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator.Feature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlFactory;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import org.restlet.Context;
+import org.restlet.data.MediaType;
+import org.restlet.representation.Representation;
+import org.restlet.representation.WriterRepresentation;
+
+import java.io.IOException;
+import java.io.Writer;
+import java.util.logging.Level;
 
 /**
  * Representation based on the Jackson library. It can serialize and deserialize
@@ -34,7 +33,7 @@ public class JacksonXmlRepresentation<T> extends WriterRepresentation {
     private Class<T> objectClass;
 
     /** The JSON representation to parse. */
-    private Representation jsonRepresentation;
+    private final Representation jsonRepresentation;
 
     /** The modifiable Jackson object mapper. */
     private ObjectMapper objectMapper;

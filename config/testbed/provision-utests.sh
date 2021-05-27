@@ -3,22 +3,22 @@
 # assumes the mysql host is defined in the /etc/hosts file
 # working dir agave project root
 # usage :  <agave_proj_root>/config/testbed/provision-utests.sh <module:the agave module> "<containers:list of compose services>" <suite:testng suite> <image:image for test runner>
-# usage :  <agave_proj_root>/config/testbed/provision-utests.sh monitors "mysql beanstalkd mongodb ftp" testng-remote.xml agaveapi/mvn-runner
+# usage :  <agave_proj_root>/config/testbed/provision-utests.sh monitors "mysql beanstalkd mongodb ftp" testng-remote.xml agaveplatform/maven:3.6
 #
 # variables
 testrun_log=testrun.log
 echo "" > $testrun_log
 module=$1
 core_module=agave-$module/$module-core
-suite=$3
 containers=$2
-
-
+suite=$3
+export IMAGE=${4:-agaveplatform/maven:3.6}
+export USER_HOME=${5:-/root}
 
 echo "1 module     : $module"
 echo "2 containers : $containers"
 echo "3 suite      : $suite"
-# options are currently agaveapi/mvn-runner or slave-mvn-runner:1.0
+# options are currently agaveplatform/maven:3.6 or slave-mvn-runner:1.0
 # the first is for use with Mac workstation using docker toolbox setup
 # the second is for use with Jenkins distributed build
 echo " image for utest runner      : $IMAGE"

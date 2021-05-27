@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package sftpproto;
+option go_package = ".;sftpproto";
+option java_package = "org.agaveplatform.transfer.proto.sftp";
+option java_multiple_files = true;
+
+option objc_class_prefix = "AgaveSftp";
+option java_outer_classname = "AgaveSftpProto";
+
+// General message objects
+message RemoteSystemConfig {
+    string host = 1;
+    int32 port = 2;
+    string username = 3;
+    string password = 4;
+    string publicKey = 5;
+    string privateKey = 6;
+}
+
+message RemoteFileInfo {
+    string name = 1;
+    string path = 2;
+    int64 size  = 3;
+    string mode  = 4;
+    int64 lastUpdated = 5;
+    bool isDirectory = 6;
+    bool isLink   = 7;
+}
+
+message RemoteDataError {
+    string message = 1;
+    int32 code = 2;
+}
+
+// Common request objects
+message SrvPutRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+    string localPath = 3;
+    bool force = 4;
+    string range = 5;
+    bool append = 6;
+}
+
+message SrvGetRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+    string localPath = 3;
+    bool force = 4;
+    string range = 5;
+}
+
+message SrvListRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+}
+
+message SrvMkdirRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+    bool recursive = 3;
+}
+
+message SrvRemoveRequest {
+     RemoteSystemConfig systemConfig = 1;
+     string remotePath = 2;
+}
+
+message SrvCopyRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+    string localPath = 3;
+}
+
+message SrvRenameRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+    string newName = 3;
+}
+
+message SrvMoveRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+    string newPath = 3;
+}
+
+message SrvStatRequest{
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+}
+
+message AuthenticationCheckRequest {
+    RemoteSystemConfig systemConfig = 1;
+}
+
+// Common response objects
+message EmptyResponse {
+    string error = 1;
+}
+
+message TransferResponse {
+    RemoteFileInfo remoteFileInfo = 1;
+    int64 bytesTransferred = 2;
+    string error = 3;
+}
+
+message FileInfoResponse {
+    RemoteFileInfo remoteFileInfo = 1;
+    string error = 2;
+}
+
+message FileInfoListResponse {
+    repeated RemoteFileInfo listing = 1;
+    string error = 2;
+}
+
+service SftpRelay {
+    rpc AuthCheck (AuthenticationCheckRequest) returns (EmptyResponse);
+    rpc Get (SrvGetRequest) returns (TransferResponse);
+    rpc Put (SrvPutRequest) returns (TransferResponse);
+    rpc Mkdir (SrvMkdirRequest) returns (FileInfoResponse);
+    rpc Remove (SrvRemoveRequest) returns (EmptyResponse);
+    rpc Stat (SrvStatRequest) returns (FileInfoResponse);
+    rpc List (SrvListRequest) returns (FileInfoListResponse);
+//    rpc Copy (SrvCopyRequest) returns (FileInfoResponse);
+    rpc Rename (SrvRenameRequest) returns (FileInfoResponse);
+//    rpc Move (SrvMoveRequest) returns (FileInfoResponse);
+}
+
+
+
+

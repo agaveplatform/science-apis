@@ -1,14 +1,13 @@
 package org.iplantc.service.transfer.sftp;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-
+import com.sshtools.sftp.SftpClient;
+import com.sshtools.sftp.SftpStatusException;
 import org.iplantc.service.transfer.RemoteInputStream;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 
-import com.sshtools.sftp.SftpStatusException;
-import com.sshtools.sftp.SftpClient;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 
 public class MaverickSFTPInputStream extends RemoteInputStream<MaverickSFTP> {
 
@@ -51,8 +50,8 @@ public class MaverickSFTPInputStream extends RemoteInputStream<MaverickSFTP> {
 	public void close() throws IOException
 	{
 		in.close();
-		try { client.quit(); } catch (Exception e) {};
-	}
+		try { client.quit(); } catch (Exception ignored) {}
+    }
 
 	/**
 	 *

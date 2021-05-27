@@ -17,30 +17,30 @@
 		}
 	],
 	"login": {
-		"host": "iplant-ssh.tacc.utexas.edu",
-		"port": 22,
+		"host": "${ssh.host}",
+		"port": ${ssh.port},
 		"protocol": "SSH",
 		"scratchDir": "scratch",
 		"workDir": "workdir",
 		"auth": {
-			"username": "sterry1",
+			"username": "testuser",
 			"password": "{$default.password}",
 			"credential": "",
 			"type": "PASSWORD"
 		}
 	},
 	"storage": {
-		"host": "iplant-ssh.tacc.utexas.edu",
-		"port": 22,
+		"host": "${ssh.host}",
+		"port": ${ssh.port},
 		"protocol": "SFTP",
-		"rootDir": "/home/sterry1",
+		"rootDir": "/home/testuser",
 		"auth": {
-			"username": "sterry1",
+			"username": "testuser",
 			"password": "{$default.password}",
 			"type": "PASSWORD"
 		}
 	},
 	"scheduler": "FORK",
 	"environment": "",
-	"startupScript": "./bashrc"
+	"startupScript": null
 }

@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.transfer.azure;
 
-import java.io.IOException;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.StorageSystem;
@@ -14,12 +12,14 @@ import org.json.JSONObject;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
+
 /**
  * @author dooley
  *
  */
 
-@Test(groups= {"azure","filesystem"})
+@Test(enabled = false, groups= {"azure","filesystem", "broken", "notReady"})
 public class AzureRemoteDataClientTest extends AbstractRemoteDataClientTest {
 
 	@Override
@@ -30,7 +30,7 @@ public class AzureRemoteDataClientTest extends AbstractRemoteDataClientTest {
     	JSONObject json = getSystemJson();
     	json.remove("id");
     	json.put("id", this.getClass().getSimpleName());
-		system = (StorageSystem)StorageSystem.fromJSON(json);
+		system = StorageSystem.fromJSON(json);
     	system.setOwner(SYSTEM_USER);
     	String homeDir = system.getStorageConfig().getHomeDir();
     	homeDir = StringUtils.isEmpty(homeDir) ? "" : homeDir;

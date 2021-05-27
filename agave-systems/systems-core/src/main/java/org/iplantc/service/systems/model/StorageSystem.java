@@ -1,15 +1,5 @@
 package org.iplantc.service.systems.model;
 
-import java.net.URLEncoder;
-import java.util.Arrays;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.PrimaryKeyJoinColumn;
-import javax.persistence.Table;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -27,6 +17,10 @@ import org.joda.time.DateTime;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
+
+import javax.persistence.*;
+import java.net.URLEncoder;
+import java.util.Arrays;
 
 /**
  * Represents a remote system available for exeuction of applications.
@@ -46,24 +40,6 @@ public class StorageSystem extends RemoteSystem implements SerializableSystem {
 		type = RemoteSystemType.STORAGE;
 	}
 
-//	/**
-//	 * @return the protocol
-//	 */
-//	@Enumerated(EnumType.STRING)
-//	@Column(name = "protocol", nullable = false, length = 16)
-//	public StorageProtocolType getProtocol()
-//	{
-//		return protocol;
-//	}
-//
-//	/**
-//	 * @param protocol the protocol to set
-//	 */
-//	public void setProtocol(StorageProtocolType protocol)
-//	{
-//		this.protocol = protocol;
-//	}
-	
 	@Override
 	@Enumerated(EnumType.STRING)
 	@Column(name = "type", nullable = false, length = 16)
@@ -164,7 +140,7 @@ public class StorageSystem extends RemoteSystem implements SerializableSystem {
 		        		.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_SYSTEM_SERVICE) + getSystemId() + "/credentials")
 		        	.endObject()
 		        	.key("metadata").object()
-		    			.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + "data/?q=" + URLEncoder.encode("{\"associationIds\":\"" + getUuid() + "\"}"))
+		    			.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + "data/?q=" + URLEncoder.encode("{\"associationIds\":\"" + getUuid() + "\"}", "utf-8"))
 		    		.endObject();
 					if (!isPubliclyAvailable()) {
 						js.key("owner").object()
@@ -183,12 +159,25 @@ public class StorageSystem extends RemoteSystem implements SerializableSystem {
 
 		return output;
 	}
-	
-	public static StorageSystem fromJSON(JSONObject jsonConfig) throws SystemArgumentException
+
+	/**
+	 * Instantiates a {@link StorageSystem} object from its json representation
+	 * @param jsonSystem the json representation of the system
+	 * @return a new StorageSystem
+	 * @throws SystemException if the JSONObject is an invalid representation of the system
+	 */
+	public static StorageSystem fromJSON(JSONObject jsonSystem) throws SystemException
 	{
-		return fromJSON(jsonConfig, null);
+		return fromJSON(jsonSystem, null);
 	}
 
+	/**
+	 * Updates the given StorageSystem with the json representation provided
+	 * @param jsonSystem the json representation of the system
+	 * @param system the original storage system to update
+	 * @return a new StorageSystem
+	 * @throws SystemException if the JSONObject is an invalid representation of the system
+	 */
 	public static StorageSystem fromJSON(JSONObject jsonSystem, StorageSystem system) throws SystemException
 	{
 		if (system == null) {

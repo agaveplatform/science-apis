@@ -7,7 +7,6 @@ package org.iplantc.service.monitor;
 import org.apache.commons.lang.StringUtils;
 
 import javax.net.ssl.*;
-
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -60,7 +59,6 @@ public class Settings
 	public static String 						IPLANT_APP_SERVICE;
 	public static String						IPLANT_SYSTEM_SERVICE;
 	public static String 						IPLANT_TRANSFER_SERVICE;
-	public static String 						IPLANT_TRANSFORM_SERVICE;
 	public static String 						IPLANT_NOTIFICATION_SERVICE;
 	public static String						IPLANT_POSTIT_SERVICE;
 	
@@ -131,21 +129,21 @@ public class Settings
 			}
 		}
 		
-		API_VERSION = (String)props.getProperty("iplant.api.version");
+		API_VERSION = props.getProperty("iplant.api.version");
 		
-		SERVICE_VERSION = (String)props.getProperty("iplant.service.version");
+		SERVICE_VERSION = props.getProperty("iplant.service.version");
 		
 		PUBLIC_USER_USERNAME = (String)props.get("iplant.public.user");
 		
 		WORLD_USER_USERNAME = (String)props.get("iplant.world.user");
 		
-		MAIL_SERVER = (String) props.getProperty("mail.smtps.host");
+		MAIL_SERVER = props.getProperty("mail.smtps.host");
 		
-		MAILSMTPSPROTOCOL = (String) props.getProperty("mail.smtps.auth");
+		MAILSMTPSPROTOCOL = props.getProperty("mail.smtps.auth");
 		
-		MAILLOGIN = (String) props.getProperty("mail.smtps.user");
+		MAILLOGIN = props.getProperty("mail.smtps.user");
 		
-		MAILPASSWORD = (String) props.getProperty("mail.smtps.passwd");
+		MAILPASSWORD = props.getProperty("mail.smtps.passwd");
 		
 		IPLANT_MYPROXY_SERVER = (String)props.get("iplant.myproxy.server");
 		
@@ -204,25 +202,25 @@ public class Settings
 		IPLANT_DOCS = (String) props.get("iplant.service.documentation");
 		if (!IPLANT_DOCS.endsWith("/")) IPLANT_DOCS += "/";
 		
-		MAX_MONITOR_RETRIES = Integer.valueOf((String)props.getProperty("iplant.max.monitor.retries", "1"));
-		MAX_MONITOR_TASKS = Integer.valueOf((String)props.getProperty("iplant.max.monitor.tasks", "1"));
-		MAX_MONITOR_QUEUE_FAILURES = Integer.valueOf((String)props.getProperty("iplant.max.monitor.queue.failures", "5"));
+		MAX_MONITOR_RETRIES = Integer.valueOf(props.getProperty("iplant.max.monitor.retries", "1"));
+		MAX_MONITOR_TASKS = Integer.valueOf(props.getProperty("iplant.max.monitor.tasks", "1"));
+		MAX_MONITOR_QUEUE_FAILURES = Integer.valueOf(props.getProperty("iplant.max.monitor.queue.failures", "5"));
 		
 		SLAVE_MODE = Boolean.valueOf((String)props.get("iplant.slave.mode"));
 		
-		NOTIFICATION_QUEUE = (String) props.getProperty("iplant.notification.service.queue");
-		NOTIFICATION_TOPIC = (String) props.getProperty("iplant.notification.service.topic");
-		MONITOR_QUEUE = (String) props.getProperty("iplant.monitor.service.queue");
-		MONITOR_TOPIC = (String) props.getProperty("iplant.monitor.service.topic");
+		NOTIFICATION_QUEUE = props.getProperty("iplant.notification.service.queue");
+		NOTIFICATION_TOPIC = props.getProperty("iplant.notification.service.topic");
+		MONITOR_QUEUE = props.getProperty("iplant.monitor.service.queue");
+		MONITOR_TOPIC = props.getProperty("iplant.monitor.service.topic");
 		
-		MESSAGING_SERVICE_PROVIDER = (String) props.getProperty("plant.messaging.provider");
+		MESSAGING_SERVICE_PROVIDER = props.getProperty("plant.messaging.provider");
 		MESSAGING_SERVICE_USERNAME = (String)props.get("iplant.messaging.username");
 		MESSAGING_SERVICE_PASSWORD = (String)props.get("iplant.messaging.password");
 		MESSAGING_SERVICE_HOST = (String)props.get("iplant.messaging.host");
 		MESSAGING_SERVICE_PORT = Integer.valueOf((String)props.get("iplant.messaging.port"));
 
-		DEFAULT_PAGE_SIZE = Integer.parseInt((String) props.getProperty("iplant.default.page.size", "25"));
+		DEFAULT_PAGE_SIZE = Integer.parseInt(props.getProperty("iplant.default.page.size", "25"));
 		
-		MINIMUM_MONITOR_REPEAT_INTERVAL = Integer.parseInt((String) props.getProperty("iplant.min.monitor.repeat.interval", "300"));
+		MINIMUM_MONITOR_REPEAT_INTERVAL = Integer.parseInt(props.getProperty("iplant.min.monitor.repeat.interval", "300"));
 	}
 }

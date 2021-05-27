@@ -1,21 +1,18 @@
 package org.iplantc.service.jobs.queue;
 
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.log4j.Logger;
-import org.quartz.JobDetail;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SchedulerFactory;
-import org.quartz.SimpleTrigger;
+import org.quartz.*;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.quartz.TriggerBuilder.newTrigger;
+
+@Test(groups={"unit"})
 public class AgaveJobCleanupTriggerListenerTest {
-	private static Logger log = Logger
+	private static final Logger log = Logger
 			.getLogger(AgaveJobCleanupTriggerListenerTest.class);
 	
 	AtomicBoolean jobFinished = new AtomicBoolean(false);

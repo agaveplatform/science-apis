@@ -1,9 +1,86 @@
 package org.iplantc.service.transfer.model.enumerations;
 
+import org.iplantc.service.common.Settings;
+import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
+
+/**
+ * Enumerated values representing all available permissions that may be set on file items at the Agave level.
+ * These are map to permission model of a {@link org.iplantc.service.systems.model.enumerations.StorageProtocolType}
+ * on a case by case basis within the concerte {@link org.iplantc.service.transfer.RemoteDataClientPermissionProvider}
+ * for a {@link org.iplantc.service.transfer.RemoteDataClient}.
+ * <p>
+ * <em>Note:</em> When set on a directory/collection without recursive behavior, the permission will apply only to the
+ * directory itself. This allows for direct listing and stat operations on the directory but will not apply to any of
+ * file items within the directory.
+ */
 public enum PermissionType implements Comparable<PermissionType>
 {
-	NONE, READ, WRITE, EXECUTE, READ_WRITE, READ_EXECUTE, WRITE_EXECUTE, ALL, OWNER, READ_PERMISSION, WRITE_PERMISSION, READ_WRITE_PERMISSION;
+	/**
+	 * No permissions at all. This cannot be explitly set, but rather is an indication of no permission of any kind
+	 */
+	NONE,
+	/**
+	 * Read-only permission. This grants permission to read the content, but not edit or execute
+ 	 */
+	READ,
+	/**
+	 * Write-only permission. This grants permission to edit the content and delete, but not read or execute.
+	 */
+	WRITE,
+	/**
+	 * Execute-only permission. This grants permission to edit the content and delete, but not read or write.
+	 * This may not have any meaning depending on the underlying {@link StorageProtocolType} of the {@link RemoteSystem}
+	 */
+	EXECUTE,
+	/**
+	 * {@link #READ} and {@link #WRITE} permission. This grants the ability to read and edit the content of a file,
+	 * but not execute it.
+	 */
+	READ_WRITE,
+	/**
+	 * {@link #READ} and {@link #EXECUTE} permission. This grants the ability to read and execute the content of a file,
+	 * but not change its content. The {@link #EXECUTE} permission may not have any meaning depending on the underlying
+	 * {@link StorageProtocolType} of the {@link RemoteSystem}
+	 */
+	READ_EXECUTE,
+	/**
+	 * {@link #WRITE} and {@link #EXECUTE} permission. This grants the ability to edit content and execute a file item,
+	 * but not read its content. The {@link #EXECUTE} permission may not have any meaning depending on the underlying
+	 * {@link StorageProtocolType} of the {@link RemoteSystem}
+	 */
+	WRITE_EXECUTE,
+	/**
+	 * All permissions. This is a wilcard meaning every {@link PermissionType} except for {@link #NONE} and
+	 * {@link #OWNER}.
+	 */
+	ALL,
+	/**
+	 * Indicates ownership of the file. Implementations of the {@link StorageProtocolType} may refer to this as
+	 * "creator" or "author" within their terminology. Here we use this to differentiate from the {@link #ALL}
+	 * permission which is not allowed to grant ownership to another user.
+	 * <p>
+	 * Please note that the {@link Settings#WORLD_USER_USERNAME} and {@link Settings#PUBLIC_USER_USERNAME} cannot be
+	 * granted owner permission.
+	 */
+	OWNER,
+	/**
+	 * Grants permission to read the permissions on a file item. {@link #WRITE_PERMISSION} is prohibited.
+	 */
+	READ_PERMISSION,
+	/**
+	 * Grants permission to create, edit, and delete the permissions on a file item. {@link #READ_PERMISSION} is prohibited.
+	 */
+	WRITE_PERMISSION,
+	/**
+	 * Grants both {@link #READ_PERMISSION} and {@link #WRITE_PERMISSION} allowing the user to fully manage the permissions of a file item.
+	 */
+	READ_WRITE_PERMISSION;
 
+	/**
+	 * Checks for the existence direct or implied {@link #READ}. This includes {@link #ALL} and {@link #OWNER}
+	 * @return true if permission has read ability
+	 */
 	public boolean canRead() {
 		return (this.equals(ALL) || this.equals(OWNER) ||
 				this.equals(READ) || 
@@ -12,7 +89,11 @@ public enum PermissionType implements Comparable<PermissionType>
 				this.equals(READ_WRITE_PERMISSION) ||
 				this.equals(READ_EXECUTE));
 	}
-	
+
+	/**
+	 * Checks for the existence direct or implied {@link #WRITE}. This includes {@link #ALL} and {@link #OWNER}
+	 * @return true if permission has write ability
+	 */
 	public boolean canWrite() {
 		return (this.equals(ALL) || this.equals(OWNER) ||
 				this.equals(WRITE) || 
@@ -21,18 +102,31 @@ public enum PermissionType implements Comparable<PermissionType>
 				this.equals(READ_WRITE_PERMISSION) || 
 				this.equals(WRITE_EXECUTE));
 	}
-	
+
+	/**
+	 * Checks for the existence direct or implied {@link #EXECUTE}. This includes {@link #ALL} and {@link #OWNER}
+	 * @return true if permission has execute ability
+	 */
 	public boolean canExecute() {
 		return (this.equals(ALL) || this.equals(OWNER) ||
 				this.equals(EXECUTE) || 
 				this.equals(READ_EXECUTE) ||
 				this.equals(WRITE_EXECUTE));
 	}
-	
+
+	/**
+	 * Checks for the ability to share the file item with another user. Currnetly only {@link #OWNER} has this ability.
+	 * @return true if permission has sharing ability
+	 */
 	public boolean canShare() {
 		return this.equals(OWNER);
 	}
 
+	/**
+	 * Mergest the newPermission with the current one, maintaining the ability of both. If {@link #NONE} is provided,
+	 * no change will be made.
+	 * @return combination of the two permission values.
+	 */
 	public PermissionType add(PermissionType newPermission)
 	{
 		if (newPermission.equals(this)) 
@@ -105,7 +199,12 @@ public enum PermissionType implements Comparable<PermissionType>
 			return this;
 		}
 	}
-	
+
+	/**
+	 * Removes the previous permission from the current. If the new and current permission are equivalent, the result
+	 * will be {@link #NONE}.
+	 * @return the current permission minus the new permission
+	 */
 	public PermissionType remove(PermissionType newPermission)
 	{
 		if (newPermission.equals(this)) 
@@ -175,6 +274,10 @@ public enum PermissionType implements Comparable<PermissionType>
 		}
 	}
 
+	/**
+	 * Returns the numeric owner value of a unix permission code. Potential values are 0-7.
+	 * @return true if permission has read ability
+	 */
 	public int getUnixValue() 
 	{
 		if (this.equals(EXECUTE)) {
@@ -196,6 +299,11 @@ public enum PermissionType implements Comparable<PermissionType>
 		}
 	}
 
+	/**
+	 * Returns a comma-separated list of all permissions.
+	 *
+	 * @return string representation of all values
+	 */
 	public static String supportedValuesAsString()
 	{
 		return ALL + ", " + READ + ", " + WRITE + ", " + READ_WRITE + ", " + EXECUTE + ", " + READ_EXECUTE + ", " + WRITE_EXECUTE + ", " + NONE;

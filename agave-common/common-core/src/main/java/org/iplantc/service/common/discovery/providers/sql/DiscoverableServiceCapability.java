@@ -1,16 +1,10 @@
 package org.iplantc.service.common.discovery.providers.sql;
 
-import java.util.Arrays;
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-
 import org.codehaus.plexus.util.StringUtils;
 import org.iplantc.service.common.discovery.ServiceCapability;
+
+import javax.persistence.*;
+import java.util.Arrays;
 
 /**
  * When a container starts, it will contain zero or
@@ -446,20 +440,15 @@ public class DiscoverableServiceCapability implements ServiceCapability
 		// the values, minus the preceding underscore
 		// are the same, a match is present otherwise
 		// no match
-		} else if (val2.startsWith("^")) {
+		} else // otherwise, this value is a specific
+            // named value and only matches the same value.
+            if (val2.startsWith("^")) {
 			
 			return (val2.substring(1).equals(val1));
 		
 		// neither is an invalidator. if the first 
 		// value is a wildcard, it matches any other value
-		} else if (val1.equals("*")) {
-			return true; 
-		
-		// otherwise, this value is a specific
-		// named value and only matches the same value.
-		} else {
-			return false;
-		}
+		} else return val1.equals("*");
 	}
 	
 	/* (non-Javadoc)

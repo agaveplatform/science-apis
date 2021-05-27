@@ -1,50 +1,44 @@
 package org.iplantc.service.tags.managers;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.tags.dao.TagDao;
+import org.iplantc.service.tags.dao.TagEventDao;
 import org.iplantc.service.tags.events.TagEventProcessor;
-import org.iplantc.service.tags.exceptions.TagEventProcessingException;
-import org.iplantc.service.tags.exceptions.TagException;
-import org.iplantc.service.tags.exceptions.TagPermissionException;
-import org.iplantc.service.tags.exceptions.TagValidationException;
+import org.iplantc.service.tags.exceptions.*;
 import org.iplantc.service.tags.model.Tag;
 import org.iplantc.service.tags.model.TagEvent;
 import org.iplantc.service.tags.model.TaggedResource;
 import org.iplantc.service.tags.model.enumerations.TagEventType;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 public class TagManager {
 	
 	private static final Logger log = Logger.getLogger(TagManager.class);
 	
-	private TagDao dao;
-	private TagEventProcessor eventProcessor;
+	private TagDao dao = new TagDao();
+	private TagEventDao eventDao = new TagEventDao();
+	private TagEventProcessor eventProcessor = new TagEventProcessor();
 	
-	public TagManager() {
-		this.setDao(new TagDao());
-		this.setEventProcessor(new TagEventProcessor());
-	}
-	
+	public TagManager() {}
+
 	/**
 	 * Inserts a tag and sends the appropriate notifications. Permissions
 	 * are verified prior to deletion.
 	 * 
-	 * @param tag
-	 * @param username
-	 * @throws TagException
-	 * @throws TagPermissionException
+	 * @param json the json representation of the tag to add
+	 * @param username the new tag owner
+	 * @throws TagException if unable to add the tag
+	 * @throws TagPermissionException if user does not have permission to add a tag
 	 */
 	public Tag addTagForUser(JsonNode json, String username) 
 	throws TagValidationException, TagException 
@@ -146,9 +140,8 @@ public class TagManager {
 	{
 //				Tag tag = Tag.fromJSON(json);
 		
-		if (getDao().doesUserTagExistWithName(existingTag.getName())) {
-    		throw new TagValidationException("Tag with the name " + 
-    				existingTag.getName() + " already exists. " +
+		if (getDao().doesTagNameExistForUser(existingTag.getName(), username)) {
+    		throw new TagValidationException("Tag with the name " + existingTag.getName() + " already exists. " +
     				"Tag names must be unique per user.");
     	}
     	else {
@@ -287,10 +280,10 @@ public class TagManager {
 	 * Deletes a tag and sends the appropriate notifications. Permissions
 	 * are verified prior to deletion.
 	 * 
-	 * @param tag
-	 * @param username
-	 * @throws TagException
-	 * @throws TagPermissionException
+	 * @param tag the tag to delete
+	 * @param username the user requesting the detetion
+	 * @throws TagException if deletion fails
+	 * @throws TagPermissionException if the user does not have permission to delete
 	 */
 	public void deleteUserTag(Tag tag, String username) 
 	throws TagException, TagPermissionException 
@@ -316,7 +309,14 @@ public class TagManager {
 			} catch (TagEventProcessingException e) {
 				log.error("Failed to send tag deletion event for " + tag.getUuid(), e);
 			}
-    	}
+
+			try {
+				getEventDao().deleteByTagId(tag.getUuid());
+			} catch (TagEventPersistenceException e) {
+				// tag is already gone. log and swallow this exception
+				log.error("Failed to delete history of tag " + tag.getUuid(), e);
+			}
+		}
 	}
 	
 
@@ -348,5 +348,17 @@ public class TagManager {
 		this.eventProcessor = eventProcessor;
 	}
 
+	/**
+	 * @return the {@link TagEventDao}
+	 */
+	public TagEventDao getEventDao() {
+		return eventDao;
+	}
 
+	/**
+	 * @param eventDao the {@link TagEventDao} to get
+	 */
+	public void setEventDao(TagEventDao eventDao) {
+		this.eventDao = eventDao;
+	}
 }

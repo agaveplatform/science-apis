@@ -3,13 +3,9 @@
  */
 package org.iplantc.service.apps.queue.actions;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
-
+import com.google.common.io.Files;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -25,10 +21,6 @@ import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.exceptions.DependencyException;
 import org.iplantc.service.common.exceptions.DomainException;
 import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.common.messaging.DefaultMessageBody;
-import org.iplantc.service.common.messaging.Message;
-import org.iplantc.service.common.messaging.MessageClientFactory;
-import org.iplantc.service.common.messaging.MessageQueueClient;
 import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.util.HTMLizer;
@@ -38,8 +30,6 @@ import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
-import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
 import org.iplantc.service.notification.util.EmailMessage;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
@@ -58,9 +48,10 @@ import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.TransferTask;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.io.Files;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
 /**
  * @author dooley
@@ -68,7 +59,7 @@ import com.google.common.io.Files;
  */
 public class PublishAction extends AbstractWorkerAction<Software> {
     
-    private static Logger log = Logger.getLogger(PublishAction.class);
+    private static final Logger log = Logger.getLogger(PublishAction.class);
     private Software publishedSoftware;
     private String publishingUsername;
     private String publishedSoftwareName;
@@ -88,18 +79,14 @@ public class PublishAction extends AbstractWorkerAction<Software> {
 //        this.publishedSoftwareName = software.getName();
 //        this.publishedSoftwareVersion = software.getVersion();
     }
-    
+
     /**
      * Full arg constructor for publishing app with different name, version, etc.
-     * 
      * @param software
-     * @param publishedSoftware
      * @param publishingUsername
      * @param publishedSoftwareName
      * @param publishedSoftwareVersion
-     * @param publishedSoftwareExecutionSystem
-     * @param publishedSoftwareStorageSystem
-     * @param publishedSoftwareDeploymentPath
+     * @param publishedSoftwareExecutionSystemId
      */
     public PublishAction(Software software, String publishingUsername,
             String publishedSoftwareName, 
@@ -118,15 +105,15 @@ public class PublishAction extends AbstractWorkerAction<Software> {
      * .agave.archive shadow file from the remote job directory and staging
      * everything not in there to the user-supplied Job.archivePath on the 
      * Job.archiveSystem
-     * 
-     * @param job
+     *
      * @throws SystemUnavailableException
      * @throws SystemUnknownException
-     * @throws JobException
+     * @throws DomainException
+     * @throws PermissionException
      */
     @Override
     public void run() 
-    throws SystemUnavailableException, SystemUnknownException, DependencyException, DomainException, ClosedByInterruptException, PermissionException
+    throws SystemUnavailableException, SystemUnknownException, DomainException, PermissionException
     {
         try {
             if (!AuthorizationHelper.isTenantAdmin(publishingUsername)) {
@@ -139,27 +126,11 @@ public class PublishAction extends AbstractWorkerAction<Software> {
                 eventProcessor.processPublishEvent(getEntity(), publishedSoftware, getPublishingUsername());
             }
         }
-        catch (SystemUnknownException e) {
+        catch (SystemUnknownException|SystemUnavailableException e) {
         	getEventProcessor().processSoftwareContentEvent(getEntity(), 
         			SoftwareEventType.PUBLISHING_FAILED, 
         			"A publishing action failed for this app. " + e.getMessage(),
                     getPublishingUsername());
-//            ApplicationManager.addEvent(getEntity(), 
-//                    SoftwareEventType.PUBLISHING_FAILED, 
-//                    "A publishing action failed for this app. " + e.getMessage(),
-//                    getPublishingUsername());
-            throw e;
-        }
-        catch (SystemUnavailableException e) {
-        	getEventProcessor().processSoftwareContentEvent(
-        			getEntity(), 
-                    SoftwareEventType.PUBLISHING_FAILED, 
-                    "A publishing action failed for this app. " + e.getMessage(),
-                    getPublishingUsername());
-//            ApplicationManager.addEvent(getEntity(), 
-//                    SoftwareEventType.PUBLISHING_FAILED, 
-//                    "A publishing action failed for this app. " + e.getMessage(),
-//                    getPublishingUsername());
             throw e;
         }
         catch (SoftwareException | DependencyException e) {
@@ -168,10 +139,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
 		            SoftwareEventType.PUBLISHING_FAILED, 
 		            "A publishing action failed for this app due to an unexpected error. Please try again.",
 		            getPublishingUsername());
-//            ApplicationManager.addEvent(getEntity(), 
-//                    SoftwareEventType.PUBLISHING_FAILED, 
-//                    "A publishing action failed for this app due to an unexpected error. Please try again.",
-//                    getPublishingUsername());
+
             throw new DomainException(e.getMessage(), e);
         }
     }
@@ -179,6 +147,10 @@ public class PublishAction extends AbstractWorkerAction<Software> {
     /**
      * Handles the actual record creation, cloning, and data staging of the app assets.
      * @return published software record
+     * @throws SystemUnavailableException
+     * @throws SystemUnknownException
+     * @throws DependencyException
+     *
      */
     protected Software publish() 
     throws SystemUnknownException, SystemUnavailableException, DependencyException
@@ -189,7 +161,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
         }
         else 
         {
-            File stagingDir = null;
+//            File stagingDir = null;
             File zippedFile = null;
             RemoteDataClient sourceSoftwareDataClient = null;
             RemoteDataClient publishedSoftwareDataClient = null;
@@ -307,7 +279,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
             		publishedSoftware.setChecksum(null);
             	}
             	finally {
-            		try { in.close(); } catch (Exception e){}
+            		try { in.close(); } catch (Exception ignored){}
             	}
                 
                 // ensure the destination directory is present
@@ -317,38 +289,40 @@ public class PublishAction extends AbstractWorkerAction<Software> {
                 
                 // save the app
                 SoftwareDao.persist(publishedSoftware);
-                
+
+                try {
+                    FileUtils.deleteQuietly(stagedDir);
+                } catch (Exception e) {
+                    log.error(String.format("Failed to cleanup staging directory, %s, while publishing app %s. %s",
+                            stagedDir.getAbsolutePath(), publishedSoftware.getUniqueName(), e.getMessage()));
+                }
+
                 // TODO: Make this an option through the tenant admin preferences. 
                 // schedulePublicAppAssetBundleBackup();
                 
                 return publishedSoftware;
             } 
-            catch (SoftwareException e) {
+            catch (SoftwareException | DependencyException e) {
                 throw e;
-            }
-            catch (DependencyException e) {
-                throw e;
-            }
-            catch (Exception e) 
+            } catch (Exception e)
             {
                 throw new SoftwareException("Application publishing failed: " + e.getMessage(), e);
             } 
             finally 
             {
-                try { stagingDir.delete(); } catch (Exception e) {}
-                try { zippedFile.delete(); } catch (Exception e) {}
-                try { sourceSoftwareDataClient.disconnect(); } catch (Exception e) {}
-                try { publishedSoftwareDataClient.disconnect(); } catch (Exception e) {}
+                try { if (zippedFile != null) {zippedFile.delete();} } catch (Exception ignored) {}
+                try { sourceSoftwareDataClient.disconnect(); } catch (Exception ignored) {}
+                try { publishedSoftwareDataClient.disconnect(); } catch (Exception ignored) {}
             }
         }
     }
     
     /**
-     * Reliably transfers the zipped {@link Software} archive to the remote {@link StoragSystem} and
+     * Reliably transfers the zipped {@link Software} archive to the remote {@link StorageSystem} and
      * sets the checksum of the file for future reference.
      * 
-     * @param publishedSoftwareDataClient
-     * @param zippedFile
+     * @param publishedSoftwareDataClient the {@link RemoteDataClient} pointing to the system where the archive is published
+     * @param zippedFile the file to archive
      * @throws FileNotFoundException
      * @throws IOException
      * @throws RemoteDataException
@@ -386,9 +360,9 @@ public class PublishAction extends AbstractWorkerAction<Software> {
     protected String resolveAndCreatePublishedDeploymentPath(StorageSystem publishedSoftwareStorageSystem, RemoteDataClient publishedSoftwareDataClient) 
     throws IOException, RemoteDataException 
     {
-     // resolve the path to the folder for public apps on the public default storage system
+        // resolve the path to the folder for public apps on the public default storage system
         // note that this may change over time, but it's saved with the app, so that's fine.
-        String remotePublicAppsFolder = publishedSoftwareStorageSystem.getStorageConfig().getPublicAppsDir();;
+        String remotePublicAppsFolder = publishedSoftwareStorageSystem.getStorageConfig().getPublicAppsDir();
         if (StringUtils.isEmpty(remotePublicAppsFolder)) {
             remotePublicAppsFolder = Settings.PUBLIC_APPS_DEFAULT_DIRECTORY;
         }
@@ -547,15 +521,24 @@ public class PublishAction extends AbstractWorkerAction<Software> {
         
     }
 
+    /**
+     * Gets username of the user publishing the {@link Software}
+     * @return username of publishing user
+     */
     public String getPublishingUsername() {
         return publishingUsername;
     }
 
+    /**
+     * Sets username of the user publishing the {@link Software}
+     * @param publishingUsername username of the publishing username
+     */
     public void setPublishingUsername(String publishingUsername) {
         this.publishingUsername = publishingUsername;
     }
 
     /**
+     * Gets instance of published {@link Software}
      * @return
      */
     public Software getPublishedSoftware() {
@@ -572,8 +555,6 @@ public class PublishAction extends AbstractWorkerAction<Software> {
     /**
      * Backs up an app's assets to the platform cloud storage in a folder 
      * named after the tenant.
-     * 
-     * @throws SoftwareException
      */
     public void schedulePublicAppAssetBundleBackup() 
     {
@@ -614,7 +595,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
                 {
                     LogicalFile logicalFile = new LogicalFile();
                     logicalFile.setStatus(StagingTaskStatus.STAGING_QUEUED);
-                    logicalFile.setOwner("dooley");
+                    logicalFile.setOwner("xxx");
                     logicalFile.setInternalUsername(null);
                     logicalFile.setSourceUri(srcUrl);
                     logicalFile.setNativeFormat("RAW");
@@ -633,7 +614,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
                     // add the logical file to the staging queue
                     QueueTaskDao.enqueueStagingTask(logicalFile, getPublishingUsername());
         
-                    LogicalFileDao.updateTransferStatus(logicalFile, StagingTaskStatus.STAGING_QUEUED, "dooley");
+                    LogicalFileDao.updateTransferStatus(logicalFile, StagingTaskStatus.STAGING_QUEUED, "xxx");
                 }
             }
             

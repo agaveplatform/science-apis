@@ -3,8 +3,6 @@ package org.iplantc.service.common.persistence;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 
-import org.iplantc.service.common.persistence.HibernateUtil;
-
 /**
  * Adds a listener to the servlet closing the session factory down after use.
  * This should prevent the permgen exceptions caused by orphaned threadlocal

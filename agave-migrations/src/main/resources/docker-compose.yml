@@ -1,0 +1,35 @@
+##############################################################
+#  Development Stack of Dependent Services
+#############################################################
+
+##############################################################
+# MySQL
+##############################################################
+version: '2'
+
+networks:
+  ${project.artifactId}:
+
+services:
+  mysql:
+    image: bitnami/mariadb:10.3
+    environment:
+      MARIADB_ROOT_PASSWORD: changeit
+      MARIADB_DATABASE: ${foundation.db.database}
+      MARIADB_USER: ${foundation.db.username}
+      MARIADB_PASSWORD: ${foundation.db.password}
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - ${project.artifactId}
+
+  migrate:
+    image: agave-migrations:${project.version}
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: ${foundation.db.username}
+      MYSQL_PASSWORD: ${foundation.db.password}
+      MYSQL_DATABASE: ${foundation.db.database}
+    command: "/flyway/flyway migrate"
+    networks:
+      - ${project.artifactId}

@@ -1,18 +1,18 @@
 package org.iplantc.service.notification.queue;
 
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.util.Date;
-
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.queue.GenericSchedulingPlugin;
 import org.iplantc.service.notification.Settings;
 import org.joda.time.DateTime;
 import org.quartz.JobDetail;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
-import org.testng.log4testng.Logger;
+
+import java.util.Date;
+
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * Class to initialize worker tasks to process notification events.

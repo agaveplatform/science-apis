@@ -3,13 +3,7 @@
  */
 package org.iplantc.service.jobs.queue.actions;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
+import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -20,14 +14,12 @@ import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.TransferException;
@@ -35,7 +27,11 @@ import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.joda.time.DateTime;
 
-import com.google.common.io.Files;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author dooley
@@ -43,19 +39,21 @@ import com.google.common.io.Files;
  */
 public class ArchiveAction extends AbstractWorkerAction {
     
-    private static Logger log = Logger.getLogger(ArchiveAction.class);
-    
+    private static final Logger log = Logger.getLogger(ArchiveAction.class);
+
+    protected JobManager jobManager = null;
+
     public ArchiveAction(Job job) {
         super(job);
     }
-    
+
+
     /**
      * This method attempts to archive a job's output by retrieving the
      * .agave.archive shadow file from the remote job directory and staging
      * everything not in there to the user-supplied Job.archivePath on the 
      * Job.archiveSystem
      * 
-     * @param job
      * @throws SystemUnavailableException
      * @throws SystemUnknownException
      * @throws JobException
@@ -64,7 +62,7 @@ public class ArchiveAction extends AbstractWorkerAction {
     public void run() 
     throws SystemUnavailableException, SystemUnknownException, JobException, ClosedByInterruptException
     {
-        ExecutionSystem executionSystem = JobManager.getJobExecutionSystem(this.job);
+        ExecutionSystem executionSystem = getJobManager().getJobExecutionSystem(this.job);
         
         if (executionSystem == null || !executionSystem.isAvailable()) {
             throw new SystemUnavailableException("Job execution system " 
@@ -137,7 +135,7 @@ public class ArchiveAction extends AbstractWorkerAction {
                     log.debug("No archive file found for job " + getJob().getUuid() + " on system " + 
                             executionSystem.getSystemId() + " at " + remoteAgaveIgnoreFile + 
                             ". Entire job directory will be archived.");
-                    this.job = JobManager.updateStatus(getJob(), JobStatusType.ARCHIVING, 
+                    this.job = getJobManager().updateStatus(getJob(), JobStatusType.ARCHIVING,
                             "No archive file found. Entire job directory will be archived.");
                 }
             } 
@@ -151,7 +149,7 @@ public class ArchiveAction extends AbstractWorkerAction {
                 log.debug("Unable to parse archive file for job " + getJob().getUuid() + " on system " + 
                         executionSystem.getSystemId() + " at " + remoteAgaveIgnoreFile + 
                         ". Entire job directory will be archived.");
-                this.job = JobManager.updateStatus(getJob(), JobStatusType.ARCHIVING, 
+                this.job = getJobManager().updateStatus(getJob(), JobStatusType.ARCHIVING,
                         "Unable to parse job archive file. Entire job directory will be archived.");
             }
             
@@ -260,7 +258,7 @@ public class ArchiveAction extends AbstractWorkerAction {
             {
                 if (!isStopped()) {
                     executionDataClient.delete(getJob().getWorkPath());
-                    this.job = JobManager.updateStatus(getJob(), JobStatusType.ARCHIVING_FINISHED, 
+                    this.job = getJobManager().updateStatus(getJob(), JobStatusType.ARCHIVING_FINISHED,
                             "Job archiving completed successfully.");
                 }
             }

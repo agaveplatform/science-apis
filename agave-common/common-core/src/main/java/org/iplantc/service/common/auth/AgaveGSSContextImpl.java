@@ -14,34 +14,8 @@
  */
 package org.iplantc.service.common.auth;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.security.GeneralSecurityException;
-import java.security.KeyPair;
-import java.security.KeyStore;
-import java.security.cert.CertStore;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.LinkedList;
-import java.util.Map;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLEngineResult;
-import javax.net.ssl.SSLException;
-import javax.net.ssl.SSLPeerUnverifiedException;
-
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.bouncycastle.jce.provider.X509CertificateObject;
 import org.globus.gsi.GSIConstants;
 import org.globus.gsi.ProviderLoader;
@@ -49,13 +23,7 @@ import org.globus.gsi.TrustedCertificates;
 import org.globus.gsi.X509Credential;
 import org.globus.gsi.bc.BouncyCastleCertProcessingFactory;
 import org.globus.gsi.bc.BouncyCastleUtil;
-import org.globus.gsi.gssapi.ClosedGSSException;
-import org.globus.gsi.gssapi.GSSConstants;
-import org.globus.gsi.gssapi.GlobusGSSException;
-import org.globus.gsi.gssapi.GlobusGSSManagerImpl;
-import org.globus.gsi.gssapi.GlobusGSSName;
-import org.globus.gsi.gssapi.KeyPairCache;
-import org.globus.gsi.gssapi.SSLUtil;
+import org.globus.gsi.gssapi.*;
 import org.globus.gsi.jsse.SSLConfigurator;
 import org.globus.gsi.stores.ResourceSigningPolicyStore;
 import org.globus.gsi.stores.Stores;
@@ -65,28 +33,22 @@ import org.globus.gsi.util.ProxyCertificateUtil;
 import org.globus.util.I18n;
 import org.gridforum.jgss.ExtendedGSSContext;
 import org.gridforum.jgss.ExtendedGSSCredential;
-import org.ietf.jgss.ChannelBinding;
-import org.ietf.jgss.GSSContext;
-import org.ietf.jgss.GSSCredential;
-import org.ietf.jgss.GSSException;
-import org.ietf.jgss.GSSManager;
-import org.ietf.jgss.GSSName;
-import org.ietf.jgss.MessageProp;
-import org.ietf.jgss.Oid;
-/*
- import COM.claymoresystems.ptls.SSLConn;
- import COM.claymoresystems.ptls.SSLRecord;
- import COM.claymoresystems.ptls.SSLDebug;
- import COM.claymoresystems.ptls.SSLCipherSuite;
- import COM.claymoresystems.ptls.SSLCipherState;
- import COM.claymoresystems.ptls.SSLHandshake;
- import COM.claymoresystems.sslg.SSLPolicyInt;
- import COM.claymoresystems.sslg.CertVerifyPolicyInt;
- import COM.claymoresystems.cert.X509Cert;
- import COM.claymoresystems.util.Util;
- */
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.ietf.jgss.*;
+
+import javax.net.ssl.*;
+import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.KeyPair;
+import java.security.KeyStore;
+import java.security.cert.CertStore;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.util.*;
 
 /**
  * Implementation of SSL/GSI mechanism for Java GSS-API. The implementation is
@@ -97,10 +59,10 @@ import org.apache.commons.logging.LogFactory;
  */
 public class AgaveGSSContextImpl implements ExtendedGSSContext {
 
-	private static Log logger = LogFactory.getLog(AgaveGSSContextImpl.class
+	private static final Log logger = LogFactory.getLog(AgaveGSSContextImpl.class
 			.getName());
 
-	private static I18n i18n = I18n.getI18n("org.globus.gsi.gssapi.errors",
+	private static final I18n i18n = I18n.getI18n("org.globus.gsi.gssapi.errors",
 			AgaveGSSContextImpl.class.getClassLoader());
 
 	static {
@@ -116,7 +78,7 @@ public class AgaveGSSContextImpl implements ExtendedGSSContext {
 	 * KeyPair generation with cache of keypairs if configured
 	 */
 
-	private KeyPairCache keyPairCache = KeyPairCache.getKeyPairCache();
+	private final KeyPairCache keyPairCache = KeyPairCache.getKeyPairCache();
 
 	/**
 	 * Used to distinguish between a token created by <code>wrap</code> with
@@ -515,7 +477,7 @@ public class AgaveGSSContextImpl implements ExtendedGSSContext {
 						logger.debug("Peer Identity is: " + identity
 								+ " Target name is: " + this.targetName
 								+ " Limited Proxy: "
-								+ this.peerLimited.toString());
+								+ this.peerLimited);
 
 						this.anonymity = false;
 					}
@@ -633,7 +595,7 @@ public class AgaveGSSContextImpl implements ExtendedGSSContext {
 						.getPeerCertificates();
 				int chainLen = chain.length;
 				X509Certificate[] newChain = new X509Certificate[chainLen + 1];
-				newChain[0] = bcConvert((X509Certificate) certificate);
+				newChain[0] = bcConvert(certificate);
 				for (int i = 0; i < chainLen; i++) {
 					/*
 					 * DEL newChain[i+1] =
@@ -1042,7 +1004,7 @@ public class AgaveGSSContextImpl implements ExtendedGSSContext {
 
 					logger.debug("Peer Identity is: " + identity
 							+ " Target name is: " + this.targetName
-							+ " Limited Proxy: " + this.peerLimited.toString());
+							+ " Limited Proxy: " + this.peerLimited);
 
 					// initiator
 					if (this.anonymity) {
@@ -1113,7 +1075,7 @@ public class AgaveGSSContextImpl implements ExtendedGSSContext {
 					setDone();
 				}
 
-				byte[] a = deleg.getBytes("US-ASCII");
+				byte[] a = deleg.getBytes(StandardCharsets.US_ASCII);
 				inByteBuff = ByteBuffer.wrap(a, 0, a.length);
 				outByteBuff = sslDataWrap(inByteBuff, outByteBuff);
 				outByteBuff.flip();
@@ -2125,11 +2087,11 @@ public class AgaveGSSContextImpl implements ExtendedGSSContext {
 		this.tc = (TrustedCertificates) value;
 		// TODO: set this in SSLConfigurator before creating SSLContext and
 		// engine?
-		sslConfigurator.setTrustAnchorStore(((TrustedCertificates) value)
+		sslConfigurator.setTrustAnchorStore(TrustedCertificates
 				.getTrustStore());
 		sslConfigurator
-				.setCrlStore(((TrustedCertificates) value).getcrlStore());
-		sslConfigurator.setPolicyStore(((TrustedCertificates) value)
+				.setCrlStore(TrustedCertificates.getcrlStore());
+		sslConfigurator.setPolicyStore(TrustedCertificates
 				.getsigPolStore());
 	}
 
@@ -2518,7 +2480,7 @@ public class AgaveGSSContextImpl implements ExtendedGSSContext {
 						 * DEL return
 						 * PureTLSUtil.certificateChainToArray(peerCerts);
 						 */
-						return (X509Certificate[]) peerCerts;
+						return peerCerts;
 					} else {
 						return null;
 					}

@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.apps.resources.impl;
 
-import java.net.URLDecoder;
-
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
@@ -48,7 +46,7 @@ public class AbstractSoftwareResource extends AbstractAgaveResource {
 
     /**
      * Convenience class to log usage info per request
-     * @param action
+     * @param activityKey the activity key to set
      */
     protected void logUsage(AgaveLogServiceClient.ActivityKeys activityKey) {
         AgaveLogServiceClient.log(getServiceKey().name(), activityKey.name(),

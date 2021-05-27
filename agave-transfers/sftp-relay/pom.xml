@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>transfers</artifactId>
+		<version>2.2.27</version>
+	</parent>
+	<artifactId>sftp-relay</artifactId>
+	<name>Agave Platform Transfer SFTP Relay Service</name>
+	<description>Go service to handle sftp transfers as a backend microservice</description>
+	<packaging>jar</packaging>
+
+	<properties>
+		<force.check.version>false</force.check.version>
+		<main.basedir>${project.basedir}/../../</main.basedir>
+	</properties>
+
+	<build>
+		<sourceDirectory>.</sourceDirectory>
+		<plugins>
+			<!-- Dont' build jar for go assets -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<skip>true</skip>
+					<skipIfEmpty>true</skipIfEmpty>
+				</configuration>
+			</plugin>
+
+			<!--  The web assemby -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<skipAssembly>true</skipAssembly>
+				</configuration>
+			</plugin>
+
+			<!-- Skip site generation -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-site-plugin</artifactId>
+				<configuration>
+					<skipDeploy>true</skipDeploy>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>1.6.0</version>
+
+				<executions>
+<!--					<execution>-->
+<!--						<id></id>-->
+<!--						<phase>clean</phase>-->
+<!--						<goals>-->
+<!--							<goal>exec</goal>-->
+<!--						</goals>-->
+<!--						<configuration>-->
+<!--							<executable>make</executable>-->
+<!--							<workingDirectory>${basedir}</workingDirectory>-->
+<!--							<arguments>-->
+<!--								<argument>clean</argument>-->
+<!--							</arguments>-->
+<!--						</configuration>-->
+<!--					</execution>-->
+<!--					<execution>-->
+<!--						<phase>pre-integration-test</phase>-->
+<!--						<goals>-->
+<!--							<goal>exec</goal>-->
+<!--						</goals>-->
+<!--						<configuration>-->
+<!--							<executable>make</executable>-->
+<!--							<workingDirectory>${basedir}</workingDirectory>-->
+<!--							<arguments>-->
+<!--								<argument>default</argument>-->
+<!--							</arguments>-->
+<!--						</configuration>-->
+<!--					</execution>-->
+					<execution>
+						<id>sftpimagebuild</id>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<skip>${skip.integration.tests}</skip>
+							<executable>make</executable>
+							<workingDirectory>${basedir}</workingDirectory>
+							<arguments>
+								<argument>image</argument>
+							</arguments>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+				<version>${docker-compose-maven-plugin.version}</version>
+				<configuration>
+					<skip>${skip.integration.tests}</skip>
+					<detachedMode>true</detachedMode>
+					<projectName>${project.artifactId}</projectName>
+					<composeFiles>
+						<composeFile>${project.basedir}/docker-compose.test.yml</composeFile>
+					</composeFiles>
+					<ignorePullFailures>true</ignorePullFailures>
+				</configuration>
+				<executions>
+					<execution>
+						<id>${project.artifactId}-support-up</id>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>up</goal>
+						</goals>
+						<configuration>
+							<services>
+								<service>sftp</service>
+							</services>
+						</configuration>
+					</execution>
+					<execution>
+						<id>${project.artifactId}-test</id>
+						<phase>integration-test</phase>
+						<goals>
+							<goal>up</goal>
+						</goals>
+						<configuration>
+							<detachedMode>false</detachedMode>
+							<services>
+								<service>test</service>
+							</services>
+						</configuration>
+					</execution>
+					<execution>
+						<id>${project.artifactId}-down</id>
+						<phase>post-integration-test</phase>
+						<goals>
+							<goal>down</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-install-plugin</artifactId>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>

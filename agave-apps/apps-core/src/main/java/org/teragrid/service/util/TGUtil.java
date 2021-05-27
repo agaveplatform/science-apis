@@ -1,17 +1,16 @@
 package org.teragrid.service.util;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
-
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class TGUtil {
 	private static final Logger	log	= LogManager.getLogger(TGUtil.class);
@@ -40,9 +39,7 @@ public class TGUtil {
 
 	public static boolean isEmpty(String value)
 	{
-		if (value == null || value.equals(""))
-			return true;
-		return false;
+		return value == null || value.equals("");
 	}
 
 	public static String getHtmlHeader(String title, String linkUrl)

@@ -3,40 +3,11 @@
  */
 package org.iplantc.service.systems.model;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.Date;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.globus.common.CoGProperties;
 import org.globus.gsi.CredentialException;
-import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.X509Credential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.myproxy.MyProxy;
@@ -50,11 +21,7 @@ import org.iplantc.service.common.clients.MyProxyGatewayClient;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.systems.Settings;
 import org.iplantc.service.systems.crypt.Encryption;
-import org.iplantc.service.systems.exceptions.AuthConfigException;
-import org.iplantc.service.systems.exceptions.EncryptionException;
-import org.iplantc.service.systems.exceptions.RemoteCredentialException;
-import org.iplantc.service.systems.exceptions.SystemArgumentException;
-import org.iplantc.service.systems.exceptions.SystemException;
+import org.iplantc.service.systems.exceptions.*;
 import org.iplantc.service.systems.model.enumerations.AuthConfigType;
 import org.iplantc.service.systems.model.enumerations.CredentialServerProtocolType;
 import org.iplantc.service.systems.util.ServiceUtils;
@@ -64,6 +31,13 @@ import org.joda.time.DateTime;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
+
+import javax.persistence.*;
+import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Date;
 
 
 /**
@@ -271,7 +245,7 @@ public class AuthConfig
 			}
 			catch (Exception e)
 			{
-				throw new EncryptionException("Unable to decrypt the password");
+				throw new EncryptionException("Unable to decrypt the password", e);
 			}
 		}
 	}
@@ -299,7 +273,7 @@ public class AuthConfig
 			}
 			catch (Exception e)
 			{
-				throw new EncryptionException("Unable to encrypt the password");
+				throw new EncryptionException("Unable to encrypt the password", e);
 			}
 		}
 	}
@@ -1305,7 +1279,7 @@ public class AuthConfig
 									// serialize it and prepair for caching
 									ByteArrayOutputStream out = new ByteArrayOutputStream();
 									((GlobusGSSCredentialImpl)proxy).getX509Credential().save(out);
-									String serializedCredential = new String(out.toByteArray());
+									String serializedCredential = out.toString();
 									setCredential(serializedCredential);
 									
 									// encrypt it prior to saving
@@ -1340,7 +1314,7 @@ public class AuthConfig
 								// serialize it and prepair for caching
 								ByteArrayOutputStream out = new ByteArrayOutputStream();
 								((GlobusGSSCredentialImpl)proxy).getX509Credential().save(out);
-								String serializedCredential = new String(out.toByteArray());
+								String serializedCredential = out.toString();
 								setCredential(serializedCredential);
 								
 								// encrypt it prior to saving
@@ -1508,13 +1482,10 @@ public class AuthConfig
 			return false;
 		if (username == null)
 		{
-			if (other.username != null)
-				return false;
+            return other.username == null;
 		}
-		else if (!username.equals(other.username))
-			return false;
-		return true;
-	}
+		else return username.equals(other.username);
+    }
 
 	public String toJSON(RemoteConfig config, String salt, RemoteSystem system) throws SystemArgumentException
 	{

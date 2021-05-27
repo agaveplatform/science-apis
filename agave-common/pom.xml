@@ -4,24 +4,19 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>org.iplantc</groupId>
-		<artifactId>agave</artifactId>
-		<version>2.1.11</version>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>science-apis</artifactId>
+		<version>2.2.27</version>
 	</parent>
-	<groupId>org.iplantc.agave</groupId>
+
 	<artifactId>common</artifactId>
-	<name>iPlant Agave API Common Services Parent</name>
+	<name>Agave Platform Common Parent</name>
 	<description>Parent pom for the Agave common services.</description>
 	<packaging>pom</packaging>
 
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-common.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-common.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-common</url>
-	</scm>
-	
 	<properties>
 		<force.check.update>false</force.check.update>
+		<main.basedir>${project.basedir}/../</main.basedir>
 	</properties>
 	
 	<build>
@@ -33,15 +28,20 @@
 		</testResources>
 		
 		<plugins>
-			<!-- Attach testng to the surefire execution -->
+			<!-- Default unit testing for all submodules. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<configuration>
-					<suiteXmlFiles>
-						<suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
-					</suiteXmlFiles>
-				</configuration>
+			</plugin>
+
+			<!-- Default integration testing for all submodules. Note that integration testing
+				requires persistence, queueing, etc. These are provided as containers and
+				managed by Docker Compose through the managed docker-compose-maven-plugin.
+				We omit the inclusion of those plugins here due to this being a parent folder
+				and not containing any tests that require orchestration. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
 			</plugin>
 
 			<!-- Release config -->
@@ -54,12 +54,12 @@
 					<updateWorkingCopyVersions>false</updateWorkingCopyVersions>
 				</configuration>
 			</plugin>
+
 		</plugins>
 	</build>
 
 	<modules>
 		<module>common-core</module>
-		<module>auth-core</module>
 		<module>common-api</module>
 		<module>common-legacy-api</module>
 	</modules>

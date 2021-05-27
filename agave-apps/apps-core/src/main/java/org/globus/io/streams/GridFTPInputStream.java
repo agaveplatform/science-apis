@@ -15,8 +15,6 @@
  */
 package org.globus.io.streams;
 
-import java.io.IOException;
-
 import org.globus.ftp.DataChannelAuthentication;
 import org.globus.ftp.GridFTPClient;
 import org.globus.ftp.Session;
@@ -24,6 +22,8 @@ import org.globus.ftp.exception.FTPException;
 import org.globus.gsi.gssapi.auth.Authorization;
 import org.globus.gsi.gssapi.auth.HostAuthorization;
 import org.ietf.jgss.GSSCredential;
+
+import java.io.IOException;
 
 public class GridFTPInputStream extends FTPInputStream {
 

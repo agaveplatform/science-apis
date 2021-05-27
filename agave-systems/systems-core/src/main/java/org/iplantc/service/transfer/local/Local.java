@@ -3,41 +3,29 @@
  */
 package org.iplantc.service.transfer.local;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.AccessDeniedException;
-import java.nio.file.FileSystem;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.log4j.lf5.util.StreamUtils;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteFileInfo;
-import org.iplantc.service.transfer.RemoteInputStream;
-import org.iplantc.service.transfer.RemoteOutputStream;
-import org.iplantc.service.transfer.RemoteTransferListener;
+import org.iplantc.service.transfer.*;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.iplantc.service.transfer.util.MD5Checksum;
+
+import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.FileSystem;
+import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author dooley
@@ -47,7 +35,7 @@ public class Local implements RemoteDataClient
 {
     private static final Logger log = Logger.getLogger(Local.class);
     
-	private RemoteSystem system;
+	private final RemoteSystem system;
 
 	protected String homeDir;
 	protected String rootDir;
@@ -112,15 +100,15 @@ public class Local implements RemoteDataClient
 	public String resolvePath(String path) throws FileNotFoundException
 	{
 	    if (StringUtils.isEmpty(path)) {
-            return homeDir;
+            return getHomeDir();
         }
         else if (path.startsWith("/")) 
         {
-            path = rootDir + path.replaceFirst("/", "");
+            path = getRootDir() + path.replaceFirst("/", "");
         }
         else
         {
-            path = homeDir + path;
+            path = getHomeDir() + path;
         }
         
         String adjustedPath = path;
@@ -137,8 +125,8 @@ public class Local implements RemoteDataClient
         if (path == null) {
             throw new FileNotFoundException("The specified path " + path + 
                     " does not exist or the user does not have permission to view it.");
-        } else if (!path.startsWith(rootDir)) {
-            if (path.equals(StringUtils.removeEnd(rootDir, "/"))) {
+        } else if (!path.startsWith(getRootDir())) {
+            if (path.equals(StringUtils.removeEnd(getRootDir(), "/"))) {
                 return path;
             } else {
                 throw new FileNotFoundException("The specified path " + path + 
@@ -1071,13 +1059,10 @@ public class Local implements RemoteDataClient
 			return false;
 		if (system == null)
 		{
-			if (other.system != null)
-				return false;
+            return other.system == null;
 		}
-		else if (!system.equals(other.system))
-			return false;
-		return true;
-	}
+		else return system.equals(other.system);
+    }
 
 	
 }

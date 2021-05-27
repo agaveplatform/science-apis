@@ -1,5 +1,23 @@
 package org.iplantc.service.transfer.azure;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.transfer.*;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.iplantc.service.transfer.model.RemoteFilePermission;
+import org.iplantc.service.transfer.model.enumerations.PermissionType;
+import org.jclouds.ContextBuilder;
+import org.jclouds.blobstore.BlobStore;
+import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.blobstore.ContainerNotFoundException;
+import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
+import org.jclouds.blobstore.domain.PageSet;
+import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.ListContainerOptions;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -9,31 +27,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteFileInfo;
-import org.iplantc.service.transfer.RemoteInputStream;
-import org.iplantc.service.transfer.RemoteOutputStream;
-import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.model.RemoteFilePermission;
-import org.iplantc.service.transfer.model.enumerations.PermissionType;
-import org.jclouds.ContextBuilder;
-import org.jclouds.azureblob.AzureBlobClient;
-import org.jclouds.blobstore.BlobStore;
-import org.jclouds.blobstore.BlobStoreContext;
-import org.jclouds.blobstore.ContainerNotFoundException;
-import org.jclouds.blobstore.domain.Blob;
-import org.jclouds.blobstore.domain.BlobMetadata;
-import org.jclouds.blobstore.domain.PageSet;
-import org.jclouds.blobstore.domain.StorageMetadata;
-import org.jclouds.blobstore.options.ListContainerOptions;
-import org.jclouds.s3.S3Client;
-import org.jclouds.s3.domain.ObjectMetadata;
 
 public class AzureJcloud implements RemoteDataClient 
 {
@@ -51,8 +44,8 @@ public class AzureJcloud implements RemoteDataClient
 	
 	private String accountKey = null;
 	private String accountSecret = null;
-	private String host = null;
-	private int port = 443;
+	private final String host = null;
+	private final int port = 443;
     protected static final int MAX_BUFFER_SIZE = 65537;
     
 	public AzureJcloud(String accountKey, String accountSecret, String rootDir, String homeDir, String containerName, String cloudProvider) 
@@ -89,26 +82,25 @@ public class AzureJcloud implements RemoteDataClient
 	{
 		rootDir = FilenameUtils.normalize(rootDir);
         if (!StringUtils.isEmpty(rootDir)) {
-			this.rootDir = rootDir;
-			if (!this.rootDir.endsWith("/")) {
-				this.rootDir += "/";
+			if (!rootDir.endsWith("/")) {
+				rootDir += "/";
 			}
 		} else {
-			this.rootDir = "/";
+			rootDir = "/";
 		}
 
         homeDir = FilenameUtils.normalize(homeDir);
         if (!StringUtils.isEmpty(homeDir)) {
-            this.homeDir = this.rootDir +  homeDir;
-            if (!this.homeDir.endsWith("/")) {
-                this.homeDir += "/";
+            homeDir = rootDir +  homeDir;
+            if (!homeDir.endsWith("/")) {
+                homeDir += "/";
             }
         } else {
-            this.homeDir = this.rootDir;
+            homeDir = rootDir;
         }
 
-        this.homeDir = this.homeDir.replaceAll("/+", "/");
-        this.rootDir = this.rootDir.replaceAll("/+", "/");
+        this.homeDir = homeDir.replaceAll("/+", "/");
+        this.rootDir = rootDir.replaceAll("/+", "/");
 	}
 
 	@Override
@@ -141,9 +133,7 @@ public class AzureJcloud implements RemoteDataClient
 	throws IOException, RemoteDataException
 	{
 		if (doesExist(remotepath)) {
-			if (isFile(remotepath)) {
-				return false;
-			}
+            return !isFile(remotepath);
 		} else if (!doesExist(FilenameUtils.getPath(remotepath))) {
 			throw new FileNotFoundException("No such file or directory");
 		} else {
@@ -216,13 +206,9 @@ public class AzureJcloud implements RemoteDataClient
 				throw new RemoteDataException("Cannot open input stream for directory " + remotePath);
 			}
 		} 
-		catch (RemoteDataException e) {
+		catch (RemoteDataException | FileNotFoundException e) {
 			throw e;
-		}
-		catch (FileNotFoundException e) {
-			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new RemoteDataException("Failed to open input stream to " + remotePath, e);
 		}	
 	}
@@ -253,13 +239,9 @@ public class AzureJcloud implements RemoteDataClient
 				return new AzureOutputStream(this, resolvePath(remotePath));
 			}
 		} 
-		catch (RemoteDataException e) {
+		catch (RemoteDataException | FileNotFoundException e) {
 			throw e;
-		}
-		catch (FileNotFoundException e) {
-			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new RemoteDataException("Failed to open input stream to " + remotePath, e);
 		}	
 	}
@@ -292,7 +274,7 @@ public class AzureJcloud implements RemoteDataClient
 					
 					StorageMetadata storageMetadata = null;
 					for (Iterator<? extends StorageMetadata> iter = pageSet.iterator(); iter.hasNext(); storageMetadata = iter.next()) {
-						listing.add(new RemoteFileInfo(storageMetadata));
+						listing.add(new RemoteFileInfo((BlobMetadata)storageMetadata));
 					}
 					
 				} while (pageSet.getNextMarker() != null);
@@ -398,19 +380,11 @@ public class AzureJcloud implements RemoteDataClient
 				}
 			}
 		} 
-		catch (FileNotFoundException e) {
+		catch (FileNotFoundException | ContainerNotFoundException e) {
 			throw new java.io.FileNotFoundException("No such file or directory");
-		}
-		catch (ContainerNotFoundException e) {
-			throw new java.io.FileNotFoundException("No such file or directory");
-		} 
-		catch (IOException e) {
+		} catch (IOException | RemoteDataException e) {
 			throw e;
-		}
-		catch (RemoteDataException e) {
-			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new RemoteDataException("Failed to copy file to irods.", e);
 		}
 	}
@@ -447,13 +421,9 @@ public class AzureJcloud implements RemoteDataClient
                 throw new NotImplementedException();
             }
         } 
-        catch (IOException e) {
+        catch (IOException | RemoteDataException e) {
             throw e;
-        }
-        catch (RemoteDataException e) {
-            throw e;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new RemoteDataException("Failed to append data to " + remotepath, e);
         }
     }
@@ -542,13 +512,7 @@ public class AzureJcloud implements RemoteDataClient
 				throw new NotImplementedException();
 			}
 		}
-		catch (IOException e) {
-			throw e;
-		}
-		catch (RemoteDataException e) {
-			throw e;
-		}
-		catch (NotImplementedException e) {
+		catch (IOException | NotImplementedException | RemoteDataException e) {
 			throw e;
 		}
 	}
@@ -719,15 +683,15 @@ public class AzureJcloud implements RemoteDataClient
 	@Override
 	public String resolvePath(String path) throws FileNotFoundException {
 		if (StringUtils.isEmpty(path)) {
-			return homeDir;
+			return getHomeDir();
 		}
 		else if (path.startsWith("/")) 
 		{
-			path = rootDir + path.replaceFirst("/", "");
+			path = getRootDir() + path.replaceFirst("/", "");
 		}
 		else
 		{
-			path = homeDir + path;
+			path = getHomeDir() + path;
 		}
 		
 		String adjustedPath = path;
@@ -744,8 +708,8 @@ public class AzureJcloud implements RemoteDataClient
 		if (path == null) {
 			throw new FileNotFoundException("The specified path " + path + 
 					" does not exist or the user does not have permission to view it.");
-		} else if (!path.startsWith(rootDir)) {
-			if (path.equals(StringUtils.removeEnd(rootDir, "/"))) {
+		} else if (!path.startsWith(getRootDir())) {
+			if (path.equals(StringUtils.removeEnd(getRootDir(), "/"))) {
 				return path;
 			} else {
 				throw new FileNotFoundException("The specified path " + path + 

@@ -3,30 +3,16 @@
  */
 package org.iplantc.service.notification.resources.impl;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifDelete;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifGetById;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifUpdate;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.NOTIFICATIONS02;
-
-import java.util.List;
-
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.representation.AgaveErrorRepresentation;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.notification.dao.FailedNotificationAttemptQueue;
 import org.iplantc.service.notification.dao.NotificationDao;
@@ -44,11 +30,15 @@ import org.restlet.data.Status;
 import org.restlet.ext.fileupload.RestletFileUpload;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
-import org.testng.log4testng.Logger;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.util.Date;
+import java.util.List;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.*;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.NOTIFICATIONS02;
 
 /**
  * @author dooley
@@ -170,7 +160,8 @@ public class NotificationResourceImpl extends AbstractNotificationResource imple
 				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
 						"User does not have access to view this notification");
 			}
-			else if (notification.getStatus() == NotificationStatusType.ACTIVE)
+			else if (notification.getStatus() == NotificationStatusType.ACTIVE ||
+					(notification.getStatus() != NotificationStatusType.INACTIVE && notification.isPersistent()))
 			{
 				RestletFileUpload fileUpload = new RestletFileUpload(new DiskFileItemFactory());
 
@@ -272,14 +263,15 @@ public class NotificationResourceImpl extends AbstractNotificationResource imple
 				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
 						"User does not have access to view this notification");
 			}
-			else if (notification.getStatus() == NotificationStatusType.ACTIVE)
+			else if (notification.getStatus() == NotificationStatusType.ACTIVE ||
+					(notification.getStatus() != NotificationStatusType.INACTIVE && notification.isPersistent()))
 			{
 				ObjectMapper mapper = new ObjectMapper();
         		JsonNode jsonNotification = mapper.readTree(bytes);
             	
         		Notification newNotification = null;
 				if (jsonNotification.isObject()) {
-					newNotification = Notification.fromJSON((ObjectNode)jsonNotification);
+					newNotification = Notification.fromJSON(jsonNotification);
 				} 
 				else {
 					throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
@@ -319,9 +311,10 @@ public class NotificationResourceImpl extends AbstractNotificationResource imple
 			}
 			else
 			{
-				throw new ResourceException(Status.CLIENT_ERROR_PRECONDITION_FAILED,
-						"Notification has already fired. You can not update past notifications.",
-						new NotificationException());
+				return Response.status(Status.CLIENT_ERROR_PRECONDITION_FAILED.getCode())
+						.entity(new AgaveErrorRepresentation(
+								"Notification has already fired. You can not update past notifications."))
+						.build();
 			}
     	} 
 		catch (NotificationException e) {
@@ -336,7 +329,7 @@ public class NotificationResourceImpl extends AbstractNotificationResource imple
 			throw e;
 		} 
 		catch (Throwable e) {
-			log.error("Failed to udpate notification " + uuid, e);
+			log.error("Failed to update notification " + uuid, e);
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"An unexpected error occurred while attempting to update this notification. "
 					+ "If this problem persists, please contact your tenant admin.", e);
@@ -366,7 +359,7 @@ public class NotificationResourceImpl extends AbstractNotificationResource imple
 				
 				
 				Notification notification = getResourceFromPathValue(uuid);
-			
+
 				return Response.ok(new AgaveSuccessRepresentation(notification.toJSON())).build();
 			}
 		}
@@ -400,7 +393,8 @@ public class NotificationResourceImpl extends AbstractNotificationResource imple
 			{
 				notification.setVisible(false);
 				notification.setStatus(NotificationStatusType.INACTIVE);
-				dao.softDeleteNotification(notification.getUuid());
+				notification.setLastUpdated(new Date());
+				dao.update(notification);
 				
 				try 
 				{

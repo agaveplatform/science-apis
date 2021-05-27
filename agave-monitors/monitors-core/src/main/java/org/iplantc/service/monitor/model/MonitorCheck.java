@@ -1,20 +1,8 @@
 package org.iplantc.service.monitor.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.Filters;
@@ -27,9 +15,8 @@ import org.iplantc.service.monitor.model.enumeration.MonitorCheckType;
 import org.iplantc.service.monitor.model.enumeration.MonitorStatusType;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Represents a single invocation of a Monitoring check on a system.
@@ -82,7 +69,7 @@ public class MonitorCheck
 	}	
 
 	/**
-	 * @return the status
+	 * @return the result of the check
 	 */
 	@Enumerated(EnumType.STRING)
 	@Column(name = "result", nullable = false, length = 32)
@@ -91,7 +78,7 @@ public class MonitorCheck
 	}
 
 	/**
-	 * @param status the status to set
+	 * @param result the result of the check
 	 */
 	public void setResult(MonitorStatusType result) {
 		this.result = result;
@@ -142,7 +129,7 @@ public class MonitorCheck
 	}
 
 	/**
-	 * @param nonce the uuid to set
+	 * @param uuid the uuid to set
 	 */
 	public void setUuid(String uuid)
 	{
@@ -159,7 +146,7 @@ public class MonitorCheck
 	}
 
 	/**
-	 * @param monitorId the monitor to set
+	 * @param monitor the monitor to set
 	 */
 	public void setMonitor(Monitor monitor) {
 		this.monitor = monitor;
@@ -214,11 +201,11 @@ public class MonitorCheck
 				.put("created", new DateTime(getCreated()).toString());
 				
 				ObjectNode linksObject = mapper.createObjectNode();
-				linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+				linksObject.put("self", mapper.createObjectNode()
 		    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + getMonitor().getUuid() + "/checks/" + getUuid()));
-				linksObject.put("monitor", (ObjectNode)mapper.createObjectNode()
+				linksObject.put("monitor", mapper.createObjectNode()
 			    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + getMonitor().getUuid()));
-				linksObject.put("system", (ObjectNode)mapper.createObjectNode()
+				linksObject.put("system", mapper.createObjectNode()
 			    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_SYSTEM_SERVICE) + getMonitor().getSystem().getSystemId()));
 			
 				json.set("_links", linksObject);

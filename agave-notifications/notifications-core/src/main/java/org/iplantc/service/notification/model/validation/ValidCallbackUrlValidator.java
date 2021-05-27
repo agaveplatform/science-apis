@@ -1,19 +1,12 @@
 package org.iplantc.service.notification.model.validation;
 
-import java.net.URI;
-import java.util.Arrays;
+import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.notification.exceptions.BadCallbackException;
+import org.iplantc.service.notification.model.constraints.ValidCallbackUrl;
+import org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType;
 
 import javax.validation.ConstraintValidator;
 import javax.validation.ConstraintValidatorContext;
-
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.notification.Settings;
-import org.iplantc.service.notification.exceptions.BadCallbackException;
-import org.iplantc.service.notification.exceptions.NotificationException;
-import org.iplantc.service.notification.model.constraints.ValidCallbackUrl;
-import org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType;
-import org.iplantc.service.notification.providers.sms.enumeration.SmsProviderType;
-import org.iplantc.service.notification.util.ServiceUtils;
 
 public class ValidCallbackUrlValidator implements ConstraintValidator<ValidCallbackUrl, String> {
 	
@@ -29,7 +22,7 @@ public class ValidCallbackUrlValidator implements ConstraintValidator<ValidCallb
         
 		try
 		{
-			NotificationCallbackProviderType.getInstanceForUri(callbackUrl);
+			NotificationCallbackProviderType.getInstanceForUri(callbackUrl, null);
 		}
 		catch (BadCallbackException e) {
 			isValid = false;

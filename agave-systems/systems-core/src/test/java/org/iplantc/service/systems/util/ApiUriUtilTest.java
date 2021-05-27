@@ -1,10 +1,5 @@
 package org.iplantc.service.systems.util;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -12,23 +7,22 @@ import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.systems.Settings;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
-import org.iplantc.service.systems.manager.SystemRoleManager;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.util.ApiUriUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+
+@Test(groups={"integration"})
 public class ApiUriUtilTest
 {
-	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "src/test/resources/systems/storage/";
+	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/storage/";
 
 	public static final String SYSTEM_OWNER = "testuser";
 	public static final String SYSTEM_OWNER_SHARED = "shareduser";
@@ -127,7 +121,7 @@ public class ApiUriUtilTest
             {   Settings.IPLANT_JOB_SERVICE + jobUuid + "/outputs/media//this/is/an/absolute/path?foo=bar", "/this/is/an/absolute/path", false, "Job output absolute path should not show up in path" },
             {   Settings.IPLANT_JOB_SERVICE + jobUuid + "/outputs/media//this/is/an/absolute/path/?foo=bar", "/this/is/an/absolute/path/", false, "Job output absolute path should not show up in path" },
             {   Settings.IPLANT_JOB_SERVICE + jobUuid + "/outputs/media/fastx_out/WT_rep1_1-fx2143.fastq", "fastx_out/WT_rep1_1-fx2143.fastq", false, "relative path with underscore and dashes should show up in path" },
-            {   "https://agave.iplantc.org/jobs/v2/1633830433121627675-e0bd34dffff8de6-0001-007/outputs/media/fastx_out/WT_rep1_1-fx2143.fastq", "fastx_out/WT_rep1_1-fx2143.fastq", false, "relative path with underscore and dashes should show up in path" },
+//            {   "https://agave.iplantc.org/jobs/v2/1633830433121627675-e0bd34dffff8de6-0001-007/outputs/media/fastx_out/WT_rep1_1-fx2143.fastq", "fastx_out/WT_rep1_1-fx2143.fastq", false, "relative path with underscore and dashes should show up in path" },
             
             
 		};

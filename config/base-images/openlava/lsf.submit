@@ -1,0 +1,10 @@
+#!/bin/bash
+#BSUB -J test_job
+#BSUB -o outfile -R "mem>10"
+#BSUB -W 5
+#BSUB -q debug
+
+date
+hostname
+sleep 5
+date

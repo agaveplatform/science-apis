@@ -1,8 +1,10 @@
 package org.iplantc.service.monitor.queue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.log4j.Logger;
-import org.hibernate.StaleObjectStateException;
+import org.hibernate.StaleStateException;
 import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.messaging.Message;
@@ -19,9 +21,6 @@ import org.iplantc.service.notification.util.EmailMessage;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 /**
  * Class to watch for monitor messages coming across the message queue. Despite being 
  * invoked by Quartz, this Job is blocking and each instance starts an infinite loop, thus
@@ -37,7 +36,7 @@ public class MonitorQueueListener implements org.quartz.Job
 {
 	private static final Logger	log	= Logger.getLogger(MonitorQueueListener.class);
 	
-	private MonitorDao dao = new MonitorDao();
+	private final MonitorDao dao = new MonitorDao();
 	
 	private MessageQueueClient messageClient = null;
 	
@@ -87,7 +86,7 @@ public class MonitorQueueListener implements org.quartz.Job
 			}
 		}
 		finally {
-			try { messageClient.stop(); } catch (Exception e) {}
+			try { messageClient.stop(); } catch (Exception ignored) {}
 		}
 	}
 			
@@ -113,20 +112,21 @@ public class MonitorQueueListener implements org.quartz.Job
 				manager.check(monitor, monitor.getOwner());
 			}
 		}
-		catch (StaleObjectStateException e) {
+		catch (StaleStateException e) {
 			log.debug("Just avoided a monitor check race condition.");
 		}
 		catch (Throwable e) {
 			throw new MessageProcessingException("Failed to process monitor message: " + body, e);
 			
 		}
-		
 	}
 
 	public void stop()
 	{
 		try {
-			messageClient.stop();
+			if (messageClient != null) {
+				messageClient.stop();
+			}
 		} catch (Exception e) {
 			log.error("Failed to stop message client.",e);
 		}

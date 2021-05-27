@@ -42,7 +42,7 @@
                         },
                         {
                             "allowMultiple": false,
-                            "description": "The file format this file is in. Defaults to raw. This will be used in file transform operations.",
+                            "description": "The file format this file is in. Not currently used. Defaults to raw.",
                             "name": "fileType",
                             "paramType": "form",
                             "required": false,
@@ -179,7 +179,7 @@
                         },
                         {
                             "allowMultiple": false,
-                            "description": "The file format this file is in. Defaults to raw. This will be used in file transform operations.",
+                            "description": "The file format this file is in. Not currently used. Defaults to raw.",
                             "name": "fileType",
                             "paramType": "form",
                             "required": false,

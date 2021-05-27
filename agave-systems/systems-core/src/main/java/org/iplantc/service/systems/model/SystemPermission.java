@@ -3,20 +3,6 @@
  */
 package org.iplantc.service.systems.model;
 
-import static javax.persistence.GenerationType.IDENTITY;
-
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
@@ -24,11 +10,16 @@ import org.json.JSONException;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
+import javax.persistence.*;
+import java.util.Date;
+
+import static javax.persistence.GenerationType.IDENTITY;
+
 /**
  * Class to represent individual shared permissions for systems. This has
  * been deprecated in favor of support for user roles.
  * 
- * @see org.iplantc.service.systems.manager.SystemRole
+ * @see org.iplantc.service.systems.model.SystemRole
  * @author dooley
  * @deprecated
  * 
@@ -184,8 +175,8 @@ public class SystemPermission implements Comparable<SystemPermission>, LastUpdat
 	{
 		if (o instanceof SystemPermission) { 
 			return ( //( (SystemPermission) o ).system.getId().equals(system.getId()) && 
-					( (SystemPermission) o ).username.equals(username) && 
-					( (SystemPermission) o ).permission.equals(permission) ); 
+					o.username.equals(username) &&
+					o.permission.equals(permission) );
 		}
 
 		return false;
@@ -199,16 +190,16 @@ public class SystemPermission implements Comparable<SystemPermission>, LastUpdat
 		} 
 		else if (o instanceof SystemPermission) 
 		{ 
-			if (((SystemPermission) o ).username.equals(username)) {
-				if (((SystemPermission) o ).permission.equals(permission) ) {
+			if (o.username.equals(username)) {
+				if (o.permission.equals(permission) ) {
 					return 0;
 				} else {
-					return Integer.valueOf(((SystemPermission) o ).permission.getUnixValue())
+					return Integer.valueOf(o.permission.getUnixValue())
 						.compareTo(Integer.valueOf(permission.getUnixValue()));
 				}
 			}
 			else {
-				return ((SystemPermission) o ).username.compareTo(username);
+				return o.username.compareTo(username);
 			}
 		} else {
 			throw new ClassCastException("Cannot compare " + o.getClass() + " with " + this.getClass());

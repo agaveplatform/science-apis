@@ -1,40 +1,30 @@
-/**
- * 
- */
 package org.iplantc.service.monitor.resources.impl;
 
-import static org.quartz.impl.matchers.GroupMatcher.groupEquals;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.log4j.Logger;
+import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
+import org.iplantc.service.common.restlet.resource.AbstractAgaveResource;
+import org.iplantc.service.monitor.resources.QuartzResource;
+import org.iplantc.service.notification.util.ServiceUtils;
+import org.joda.time.DateTime;
+import org.quartz.*;
+import org.quartz.impl.StdSchedulerFactory;
+import org.quartz.impl.matchers.GroupMatcher;
+import org.restlet.data.Status;
+import org.restlet.resource.ResourceException;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
-import org.iplantc.service.common.restlet.resource.AbstractAgaveResource;
-import org.iplantc.service.monitor.resources.QuartzResource;
-import org.iplantc.service.notification.util.ServiceUtils;
-import org.joda.time.DateTime;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobKey;
-import org.quartz.Scheduler;
-import org.quartz.Trigger;
-import org.quartz.TriggerKey;
-import org.quartz.impl.StdSchedulerFactory;
-import org.quartz.impl.matchers.GroupMatcher;
-import org.restlet.data.Status;
-import org.restlet.resource.ResourceException;
-import org.testng.log4testng.Logger;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import static org.quartz.impl.matchers.GroupMatcher.groupEquals;
 
 /**
  * Handles reporting on status of current Quartz triggers and jobs.
@@ -47,7 +37,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class QuartzResourceImpl extends AbstractAgaveResource implements QuartzResource
 {
 	private static final Logger log = Logger.getLogger(QuartzResourceImpl.class);
-	
+	private static final ObjectMapper mapper = new ObjectMapper();
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.notification.resources.NotificationResource#getNotifications()
 	 */
@@ -60,15 +50,14 @@ public class QuartzResourceImpl extends AbstractAgaveResource implements QuartzR
 			try
 			{
 				Scheduler sched = StdSchedulerFactory.getDefaultScheduler();
-				
-				ObjectMapper mapper = new ObjectMapper();
+
 				ObjectNode json = mapper.createObjectNode()
 						.put("id", sched.getSchedulerInstanceId())
 						.put("name", sched.getSchedulerName());
 						
 				ObjectNode jsonJobs = mapper.createObjectNode();
 				
-				Map<String, Trigger> triggerMap = new HashMap<String, Trigger>();
+				Map<String, Trigger> triggerMap = new HashMap<>();
 				
 				ArrayNode allJobs = jsonJobs.putArray("available");
 				List<JobExecutionContext> currentJobs = sched.getCurrentlyExecutingJobs();

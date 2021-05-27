@@ -1,14 +1,5 @@
 package org.iplantc.service.transfer.gridftp;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.FileUtils;
@@ -26,7 +17,9 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-@Test(groups= {"gridftp","performance","broken"})
+import java.io.*;
+
+@Test(enabled = false, groups= {"gridftp","performance","broken"})
 public class GridFTPLoadTest extends BaseTransferTestCase 
 {
 	private static final Logger log = Logger.getLogger(AbstractRemoteDataClientTest.class);
@@ -36,7 +29,7 @@ public class GridFTPLoadTest extends BaseTransferTestCase
     	super.beforeClass();
     	
     	JSONObject json = getSystemJson();
-    	system = (StorageSystem)StorageSystem.fromJSON(json);
+    	system = StorageSystem.fromJSON(json);
     	system.setOwner(SYSTEM_USER);
     	system.getStorageConfig().setHomeDir(system.getStorageConfig().getHomeDir() + "/agave-data-unittests5");
         storageConfig = system.getStorageConfig();

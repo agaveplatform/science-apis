@@ -2,5 +2,5 @@ package org.iplantc.service.profile.model.enumeration;
 
 public enum ProfileType
 {
-	LDAP, TRELLIS, DB;
+	LDAP, TRELLIS, DB, SCIM
 }

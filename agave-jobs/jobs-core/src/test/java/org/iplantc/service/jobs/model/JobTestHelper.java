@@ -1,11 +1,11 @@
 package org.iplantc.service.jobs.model;
 
-import java.util.Date;
-
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
+
+import java.util.Date;
 
 /**
  * Created with IntelliJ IDEA. User: wcs Date: 3/21/13 Time: 4:12 PM To change
@@ -17,7 +17,7 @@ public class JobTestHelper {
 	{
 		StorageSystem storageSystem = new StorageSystem();
 		storageSystem.setType(RemoteSystemType.STORAGE);
-        storageSystem.setOwner("sterry1");
+        storageSystem.setOwner("testuser");
         storageSystem.setAvailable(true);
         storageSystem.setCreated(new Date());
         storageSystem.setDescription("test description");

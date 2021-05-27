@@ -1,15 +1,14 @@
 package org.iplantc.service.monitor;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Convenience class to set up the environment and obtain test data.
@@ -20,9 +19,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class TestDataHelper {
 	
 	public static final String SYSTEM_OWNER = "testuser";
-	public static final String SYSTEM_SHARE_USER = "bob";
+	public static final String SYSTEM_SHARE_USER = "testshareuser";
 	public static final String SYSTEM_PUBLIC_USER = "public";
-	public static final String SYSTEM_UNSHARED_USER = "dan";
+	public static final String SYSTEM_UNSHARED_USER = "testotheruser";
 	public static final String SYSTEM_INTERNAL_USERNAME = "test_user";
 	
 	public static final String TEST_STORAGE_SYSTEM_FILE = "target/test-classes/systems/storage/sftp.example.com.json";

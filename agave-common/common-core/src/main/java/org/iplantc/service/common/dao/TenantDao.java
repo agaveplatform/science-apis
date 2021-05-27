@@ -3,8 +3,7 @@
  */
 package org.iplantc.service.common.dao;
 
-import java.util.concurrent.ConcurrentHashMap;
-
+import org.apache.commons.lang.StringUtils;
 import org.hibernate.CacheMode;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -12,13 +11,15 @@ import org.iplantc.service.common.exceptions.TenantException;
 import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.HibernateUtil;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * @author dooley
  *
  */
 public class TenantDao extends AbstractDao
 {
-	private static ConcurrentHashMap<String, Tenant> tenantCache = new ConcurrentHashMap<String, Tenant>();
+	private static final ConcurrentHashMap<String, Tenant> tenantCache = new ConcurrentHashMap<String, Tenant>();
 	
 	protected Session getSession() {
 		HibernateUtil.beginTransaction();
@@ -172,6 +173,12 @@ public class TenantDao extends AbstractDao
 	public Tenant findByBaseUrl(String hostname) 
 	throws TenantException
 	{
+		// clean up the hostname in clase it has spaces before or affer
+		hostname = StringUtils.trimToNull(hostname);
+
+		// empty or null hostname has no match. return null
+		if (hostname == null) return null;
+
 		try
 		{
 			Session session = getSession();

@@ -3,37 +3,27 @@
  */
 package org.iplantc.service.notification.util;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import com.fasterxml.jackson.core.TreeNode;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.TextNode;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.TextNode;
+import java.io.*;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author dooley
@@ -41,6 +31,8 @@ import com.fasterxml.jackson.databind.node.TextNode;
  */
 public class ServiceUtils {
 
+	private static final Logger log = Logger.getLogger(ServiceUtils.class);
+	
 	@SuppressWarnings("unused")
 	public static String exec(String command) throws IOException
 	{
@@ -102,27 +94,27 @@ public class ServiceUtils {
 
 	public static boolean isValid(Integer value)
 	{
-		return value != null && value.intValue() >= 0;
+		return value != null && value >= 0;
 	}
 	
-	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
+	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
-		return node != null && (node instanceof TextNode) && ((TextNode)node).asText() != null;
+		return (node instanceof TextNode) && ((TextNode) node).asText() != null;
 	}
 	
-	public static boolean isValidString(JsonNode node) throws JSONException, JsonProcessingException, IOException {
-		return node != null && (node instanceof TextNode) && ((TextNode)node).asText() != null;
+	public static boolean isValidString(JsonNode node) throws JSONException, IOException {
+		return (node instanceof TextNode) && node.asText() != null;
 	}
 	
-	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
+	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
-		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
+		return (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode) node).asText());
 	}
 	
-	public static boolean isNonEmptyString(JsonNode node) throws JSONException, JsonProcessingException, IOException {
-		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
+	public static boolean isNonEmptyString(JsonNode node) throws JSONException, IOException {
+		return (node instanceof TextNode) && !StringUtils.isEmpty(node.asText());
 	}
 
 	/**
@@ -140,33 +132,30 @@ public class ServiceUtils {
 	{
 		if (!isValid(s))
 			return false;
-		boolean valid = true;
-		if (s == null || s.indexOf(":") > -1 || s.indexOf(";") > -1
-				|| s.indexOf(",") > -1 || s.indexOf(" ") > -1 ||
-				// s.indexOf("#") > -1 ||
-				s.indexOf("\\") > -1 /*
-									 * || s.indexOf("/") > -1 || s.indexOf("%")
-									 * > -1 || s.indexOf("$") > -1 ||
-									 * s.indexOf("@") > -1 || s.indexOf("!") >
-									 * -1 || s.indexOf("^") > -1 ||
-									 * s.indexOf("&") > -1 || s.indexOf("*") >
-									 * -1 || s.indexOf("(") > -1 ||
-									 * s.indexOf(")") > -1 || s.indexOf("{") >
-									 * -1 || s.indexOf("}") > -1 ||
-									 * s.indexOf("|") > -1 || s.indexOf("'") >
-									 * -1 || s.indexOf("\"") > -1 ||
-									 * s.indexOf("~") > -1 || s.indexOf("`") >
-									 * -1 || s.indexOf("#") > -1 ||
-									 * s.indexOf(".") > -1 || s.indexOf("?") >
-									 * -1 || s.indexOf("<") > -1 ||
-									 * s.indexOf(">") > -1 || //s.indexOf("=") >
-									 * -1 || s.indexOf("+") > -1
-									 */)
-		{
-			valid = false;
-		}
+		boolean valid = !StringUtils.containsAny(s, new char[]{':', ';', ',', '\''});
+//		if (s.contains(":") || s.contains(";") > -1
+//				|| s.contains(",") > -1 || s.contains(" ") > -1 ||
+//				// s.indexOf("#") > -1 ||
+//				s.contains("\\") > -1 /*
+//									 * || s.indexOf("/") > -1 || s.indexOf("%")
+//									 * > -1 || s.indexOf("$") > -1 ||
+//									 * s.indexOf("@") > -1 || s.indexOf("!") >
+//									 * -1 || s.indexOf("^") > -1 ||
+//									 * s.indexOf("&") > -1 || s.indexOf("*") >
+//									 * -1 || s.indexOf("(") > -1 ||
+//									 * s.indexOf(")") > -1 || s.indexOf("{") >
+//									 * -1 || s.indexOf("}") > -1 ||
+//									 * s.indexOf("|") > -1 || s.indexOf("'") >
+//									 * -1 || s.indexOf("\"") > -1 ||
+//									 * s.indexOf("~") > -1 || s.indexOf("`") >
+//									 * -1 || s.indexOf("#") > -1 ||
+//									 * s.indexOf(".") > -1 || s.indexOf("?") >
+//									 * -1 || s.indexOf("<") > -1 ||
+//									 * s.indexOf(">") > -1 || //s.indexOf("=") >
+//									 * -1 || s.indexOf("+") > -1
+//									 */)
 
-		return valid;
+        return valid;
 	}
 
 	public static boolean isValidEmailAddress(String value)
@@ -281,8 +270,7 @@ public class ServiceUtils {
 	 * Used to wrap all output from the service in a JSON object with two
 	 * attributes "status" and "message." the former is success or failure. The
 	 * latter is the output from a service invocation or the error message.
-	 * 
-	 * @param status
+	 *
 	 * @param json
 	 * @return
 	 */
@@ -296,7 +284,7 @@ public class ServiceUtils {
 	 * attributes "status" and "message." the former is success or failure. The
 	 * latter is the output from a service invocation or the error message.
 	 * 
-	 * @param status
+	 * @param message
 	 * @param json
 	 * @return
 	 */
@@ -332,9 +320,10 @@ public class ServiceUtils {
 	{	
 		if (TenancyHelper.isTenantAdmin()) return true;
 		
-		InputStream stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");
+		InputStream stream = null;
 		try
 		{
+			stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");
 			String trustedUserList = IOUtils.toString(stream, "UTF-8");
 			if (isValid(trustedUserList)) {
 				for(String user: trustedUserList.split(",")) {
@@ -349,21 +338,24 @@ public class ServiceUtils {
 		}
 		catch (IOException e)
 		{
-			 //log.error("Failed to locate trusted user file");
+			log.warn("Failed to load trusted user file", e);
 			return false;
 		}
+        finally {
+        	if (stream != null) try {stream.close();} catch (Exception ignored){}
+        }
 	}
 	
 	public static String explode(String glue, List<?> list)
 	{
 		
-		String explodedList = "";
+		StringBuilder explodedList = new StringBuilder();
 		
-		if (!ServiceUtils.isValid(list)) return explodedList;
+		if (!ServiceUtils.isValid(list)) return explodedList.toString();
 		
 		for(Object field: list) 
 		{
-			explodedList += glue + field.toString();
+			explodedList.append(glue).append(field.toString());
 		}	
 		
 		return explodedList.substring(glue.length());
@@ -384,24 +376,49 @@ public class ServiceUtils {
 			return StringUtils.split(tags, separator);
 		}
 	}
-	
+
 	/**
-	 * Formats a 10 digit phone number into (###) ###-#### format
-	 * 
-	 * @param phone
+	 * Formats a 10 digit phone number into {@code (###) ###-####} format. Note that no validation is done here
+	 * 	 * aside from emby checks.
+	 *
+	 * @param phone the phone number to format
 	 * @return formatted phone number string
 	 */
-	public static String formatPhoneNumber(String phone) 
-	{	
-		if (StringUtils.isEmpty(phone)) { 
+	public static String formatPhoneNumber(String phone)
+	{
+		if (StringUtils.isEmpty(phone)) {
 			return null;
 		}
-		else 
+		else
 		{
 			phone = phone.replaceAll("[^\\d.]", "");
-			return String.format("(%s) %s-%s", 
-					phone.substring(0, 3), 
-					phone.substring(3, 6), 
+			return String.format("(%s) %s-%s",
+					phone.substring(0, 3),
+					phone.substring(3, 6),
+					phone.substring(6, 10));
+		}
+	}
+
+	/**
+	 * Formats a 10 digit phone number into the given {@code format}. This should
+	 * be something akin to {@code ###-###-####}. Note that no validation is done here
+	 * aside from emby checks.
+	 *
+	 * @param phone the phone number to format
+	 * @param format the format to apply the phone number.
+	 * @return formatted phone number string
+	 */
+	public static String formatPhoneNumber(String phone, String format)
+	{
+		if (StringUtils.isEmpty(phone)) {
+			return null;
+		}
+		else
+		{
+			phone = phone.replaceAll("[^\\d.]", "");
+			return String.format(format,
+					phone.substring(0, 3),
+					phone.substring(3, 6),
 					phone.substring(6, 10));
 		}
 	}
@@ -411,8 +428,7 @@ public class ServiceUtils {
 	 * when no network connection is up.
 	 * <p>
 	 * The current machine could have more than one local IP address so might
-	 * prefer to use {@link #getAllLocalIPs() } or
-	 * {@link #getAllLocalIPs(java.lang.String) }.
+	 * prefer to use {@link ServiceUtils#getLocalIP()}.
 	 * <p>
 	 * If you want just one IP, this is the right method and it tries to find
 	 * out the most accurate (primary) IP address. It prefers addresses that
@@ -484,7 +500,6 @@ public class ServiceUtils {
      * @return
      */
     public static boolean isValidRealtimeChannel(String callbackUrl, String tenantId) {
-        
         if (StringUtils.isEmpty(callbackUrl)) {
         	return false;
         }
@@ -497,14 +512,12 @@ public class ServiceUtils {
         }
         // agave pushpin server
         else {
+        	if (tenantId == null) {
+        		tenantId = TenancyHelper.getCurrentTenantId();
+			}
         	String tenantRealtimeUrl = TenancyHelper.resolveURLToCurrentTenant("https://realtime.docker.example.com", tenantId);
-            if (StringUtils.startsWith(callbackUrl, tenantRealtimeUrl) 
-        		|| StringUtils.startsWith(callbackUrl, tenantRealtimeUrl.replaceFirst("https", "http"))) {
-            	return true;
-	        }
-	        else {
-	        	return false;
-	        }
+			return StringUtils.startsWith(callbackUrl, tenantRealtimeUrl)
+					|| StringUtils.startsWith(callbackUrl, tenantRealtimeUrl.replaceFirst("https", "http"));
         }
     }
     
@@ -538,7 +551,7 @@ public class ServiceUtils {
         }
         // fanout.io realm
         else {
-        	return callbackUrl.matches("^(?:http|https)://([a-zA-Z0-9]+).fanoutcdn.com/(fpp|bayoux)");
+        	return callbackUrl.matches("^(?:http|https)://([a-zA-Z0-9]+).fanoutcdn.com/(fpp|bayoux)(/[.]*)?");
     	}
     }
 }

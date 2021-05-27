@@ -1,10 +1,5 @@
 package org.iplantc.service.transfer.performance;
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.commons.io.FilenameUtils;
 import org.codehaus.plexus.util.FileUtils;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
@@ -21,20 +16,19 @@ import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 
 @Test(groups= {"transfer","performance"})
 public class URLCopyTest extends BaseTransferTestCase
 {
-	protected static String LOCAL_DIR = "src/test/resources/transfer";
-	protected static String LOCAL_DOWNLOAD_DIR = "src/test/resources/download";
-	protected static String LOCAL_TXT_FILE = "src/test/resources/transfer/test_upload.txt";
-	protected static String LOCAL_BINARY_FILE = "src/test/resources/transfer/test_upload.bin";
+	protected static String LOCAL_DIR = "target/test-classes/transfer";
+	protected static String LOCAL_DOWNLOAD_DIR = "target/test-classes/download";
+	protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.txt";
+	protected static String LOCAL_BINARY_FILE = "target/test-classes/transfer/test_upload.bin";
 	
 	protected static String SOURCE_DIRNAME = "transfer";
 	protected static String DEST_DIRNAME = "transfer.copy";
@@ -95,7 +89,7 @@ public class URLCopyTest extends BaseTransferTestCase
 	private RemoteDataClient getRemoteDataClientFromSystemJson(String pathToSystemJson) throws Exception
 	{	 
 		JSONObject json = jtd.getTestDataObject(pathToSystemJson);
-    	StorageSystem system = (StorageSystem)StorageSystem.fromJSON(json);
+    	StorageSystem system = StorageSystem.fromJSON(json);
     	system.setOwner(SYSTEM_USER);
     	
     	RemoteDataClient client = system.getRemoteDataClient();
@@ -152,8 +146,8 @@ public class URLCopyTest extends BaseTransferTestCase
 	{
 		List<Object[]> testCases = new ArrayList<Object[]>();
 		for(StorageProtocolType destType: testDestTypes) {
-			testCases.add(new Object[] { URI.create("http://preview.agaveapi.co/wp-content/themes/agave/images/favicon.ico"), destType, "Public URL copy to " + destType.name() + " should succeed", false });
-			testCases.add(new Object[] { URI.create("http://agaveapi.co/wp-content/themes/agave/images/favicon.ico"), destType, "Public 301 redirected URL copy to " + destType.name() + " should succeed", false });
+			testCases.add(new Object[] { URI.create("http://preview.agaveplatform.org/wp-content/themes/agave/images/favicon.ico"), destType, "Public URL copy to " + destType.name() + " should succeed", false });
+			testCases.add(new Object[] { URI.create("https://agaveplatform.org/wp-content/themes/agave/images/favicon.ico"), destType, "Public 301 redirected URL copy to " + destType.name() + " should succeed", false });
 			testCases.add(new Object[] { URI.create("https://avatars0.githubusercontent.com/u/785202"), destType, "Public HTTPS URL copy to " + destType.name() + " should succeed", false });
 			testCases.add(new Object[] { URI.create("http://docker.example.com:10080/public/" + DEST_FILENAME), destType, "Public URL copy to " + destType.name() + " on alternative port should succeed", false });
 			testCases.add(new Object[] { URI.create("https://docker.example.com:10443/public/" + DEST_FILENAME), destType, "Public HTTPS URL copy to " + destType.name() + " on alternative port should succeed", false });

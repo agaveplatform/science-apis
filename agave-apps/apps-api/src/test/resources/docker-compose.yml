@@ -1,0 +1,79 @@
+version: '2'
+
+volumes:
+  scratch:
+
+services:
+
+  test-proxy:
+    image: traefik:v2.4
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.grpc.address=:50051"
+      #      - "--entryPoints.mysql.address=:3306"
+      #      - "--entryPoints.mongodb.address=:27017"
+      #      - "--entryPoints.beanstalkd.address=:11300"
+      - "--entryPoints.sftp.address=:${sftp.port}"
+      - "--entryPoints.ssh.address=:${ssh.port}"
+    ports:
+      - 8000:80
+      - 8443:443
+      - 50051:50051
+      - 28443:8080
+      #      - 3306:3306
+      #      - 27017:27017
+      #      - 11300:11300
+      - ${sftp.port}:${sftp.port}
+      - ${ssh.port}:${ssh.port}
+    restart: on-failure
+    cpu_shares: 128
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    labels:
+      - "traefik.enable=true"
+
+  sftp-relay:
+    image: sftp-relay:develop
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
+    volumes:
+      - ${project.basedir}/../../scratch:${project.basedir}/../../scratch
+      - ../:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)"
+      - "traefik.http.routers.sftp-relay.entrypoints=grpc"
+      - "traefik.http.services.sftp-relay.loadbalancer.server.scheme=h2c"
+      - "traefik.http.services.sftp-relay.loadbalancer.server.port=50051"
+
+  sftp:
+    image: agaveplatform/sshd:latest
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.sftp.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.sftp.entrypoints=sftp"
+      - "traefik.tcp.routers.sftp.service=sftp-svc"
+      - "traefik.tcp.services.sftp-svc.loadbalancer.server.port=22"
+
+  ssh:
+    image: agaveplatform/sshd:latest
+    #    command: "-p ${ssh.port}"
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.ssh.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.ssh.entrypoints=ssh"
+      - "traefik.tcp.routers.ssh.service=ssh-svc"
+      - "traefik.tcp.services.ssh-svc.loadbalancer.server.port=22"

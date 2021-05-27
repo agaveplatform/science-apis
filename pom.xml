@@ -1,432 +1,613 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-	<modelVersion>4.0.0</modelVersion>
+    <modelVersion>4.0.0</modelVersion>
 
-	<groupId>org.iplantc</groupId>
-	<artifactId>agave</artifactId>
-	<version>2.1.11</version>
-	<name>Agave Core Science API Parent POM</name>
-	<description>Super pom for all Agave services</description>
-	<packaging>pom</packaging>
-	<organization>
-		<name>TACC</name>
-		<url>http://tacc.utexas.edu</url>
-	</organization>
-	<developers>
-		<developer>
-			<id>deardooley</id>
-			<name>Rion Dooley</name>
-			<email>dooley@tacc.utexas.edu</email>
-			<url>https://agaveapi.org</url>
-			<organization>TACC</organization>
-			<organizationUrl>http://www.tacc.utexas.edu</organizationUrl>
-			<roles>
-				<role>developer</role>
-			</roles>
-		</developer>
-		<developer>
-			<id>sterry1</id>
-			<name>Steve Terry</name>
-			<email>sterry1@tacc.utexas.edu</email>
-			<url>https://agaveapi.org</url>
-			<organization>TACC</organization>
-			<organizationUrl>http://www.tacc.utexas.edu</organizationUrl>
-			<roles>
-				<role>developer</role>
-			</roles>
-		</developer>
-		<developer>
-			<id>jstubbs</id>
-			<name>Joe Stubbs</name>
-			<email>jstubbs@tacc.utexas.edu</email>
-			<url>http://agaveapi.org</url>
-			<organization>TACC</organization>
-			<organizationUrl>http://www.tacc.utexas.edu</organizationUrl>
-			<roles>
-				<role>developer</role>
-			</roles>
-		</developer>
-		<developer>
-			<id>rcardone</id>
-			<name>Richard Cardone</name>
-			<email>rcardone@tacc.utexas.edu</email>
-			<url>https://agaveapi.org</url>
-			<organization>TACC</organization>
-			<organizationUrl>http://www.tacc.utexas.edu</organizationUrl>
-			<roles>
-				<role>developer</role>
-			</roles>
-		</developer>
-	</developers>
+    <groupId>org.agaveplatform</groupId>
+    <artifactId>science-apis</artifactId>
+    <version>2.2.27</version>
+    <name>Agave Platform </name>
+    <description>Parent pom for all Agave services</description>
+    <packaging>pom</packaging>
+    <organization>
+        <name>Agave Platform</name>
+        <url>http://agaveplatform.org</url>
+    </organization>
+    <developers>
+        <developer>
+            <id>deardooley</id>
+            <name>Rion Dooleyy</name>
+            <email>deardooley@gmail.com</email>
+            <url>https://agaveplatform.org</url>
+            <organization>Chapman University</organization>
+            <organizationUrl>http://chapman.edu</organizationUrl>
+            <roles>
+                <role>developer</role>
+            </roles>
+        </developer>
+        <developer>
+            <id>ertanner</id>
+            <name>Eric Tanner</name>
+            <email>ertanner@gmail.com</email>
+            <url>https://agaveplatform.org</url>
+            <organization>Chapman University</organization>
+            <organizationUrl>http://chapman.edu</organizationUrl>
+            <roles>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
 
-	<scm>
-		<connection>scm:git:http://bitbucket.org/agaveapi/agave.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave</url>
-	</scm>
-
-	<repositories>
-		<repository>
-			<id>taccaci</id>
-			<name>TACC ACI Maven repository</name>
-			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/releases</url>
-		</repository>
-		<repository>
-			<id>taccaci-snapshot</id>
-			<name>TACC ACI Maven repository</name>
-			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/snapshots</url>
-		</repository>
-		<repository>
-			<id>taccaci-thirdparty</id>
-			<name>TACC ACI Maven repository</name>
-			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/thirdparty</url>
-		</repository>
-		<repository>
-			<id>maven-restlet</id>
-			<name>Public online Restlet repository</name>
-			<!-- <url>https://maven.tacc.utexas.edu/nexus/content/repositories/maven-restlet/</url> -->
-			<url>http://maven.restlet.com</url>
-		</repository>
-		<repository>
-			<id>iron.io</id>
-			<name>Iron.io Maven repo</name>
-			<url>http://iron-io.github.com/maven/repository</url>
-		</repository>
+    <scm>
+        <connection>scm:git:https://github.com/agaveplatform/science-apis.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com:agaveplatform/science-apis.git</developerConnection>
+        <url>https://github.com/agaveplatform/science-apis</url>
+    </scm>
+    <repositories>
         <repository>
-            <id>jcenter</id>
-            <name>Public testng repository</name>
-            <url>http://jcenter.bintray.com</url>
+            <id>agave-maven-public</id>
+            <name>Agave Maven public mirror</name>
+            <url>https://nexus.agaveplatform.org/repository/maven-public/</url>
         </repository>
-	</repositories>
+        <repository>
+            <id>sonatype-nexus-releases</id>
+            <url>https://oss.sonatype.org/content/repositories/releases</url>
+            <releases>
+                <enabled>false</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>sonatype-nexus-snapshots</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
+    </repositories>
 
-	<pluginRepositories>
-		<pluginRepository>
-			<id>taccaciplugins</id>
-			<name>TACC ACI Mavenrepository</name>
-			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/releases</url>
-			<releases>
-				<enabled>true</enabled>
-			</releases>
-		</pluginRepository>
-	</pluginRepositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>agave-maven-plugins</id>
+            <name>Agave Platform Maven Repository</name>
+            <url>https://nexus.agaveplatform.org/repository/maven-releases</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+        </pluginRepository>
+    </pluginRepositories>
 
-	<properties>
-	    <!-- This build's label -->
-	    <foundation.service.version>${project.version}-r${buildNumber}</foundation.service.version>
+    <properties>
+        <!-- This build's label -->
+        <foundation.service.version>${project.version}-r${buildNumber}</foundation.service.version>
 
-	    <!-- Below are the version numbers for all software on which we explicitly depend. -->
-	    <!-- If a library or plugin appears as a dependency in some pom file, then that    -->
-	    <!-- artifact's version number should in the lists below for easy managment and    -->
-	    <!-- access.  Version numbers are organized into 2 lists, one for plugins and the  -->
-	    <!-- other for library dependencies.                                               -->
-	    <!--                                                                               -->
-	    <!--                    PLEASE KEEP THESE LISTS ALPHABETIZED                       -->
+        <!-- Java version -->
+        <java-source.version>9</java-source.version>
+        <java-target.version>9</java-target.version>
 
-	    <!-- PLUGIN Versions (in alphabetical order) -->
-	    <buildnumber-maven-plugin.version>1.3</buildnumber-maven-plugin.version>
-	    <docker-maven-plugin.version>0.3.3</docker-maven-plugin.version>
-	    <exec-maven-plugin.versionRange>[1.3.2,)</exec-maven-plugin.versionRange>
-	    <flyway-maven-plugin.version>4.0</flyway-maven-plugin.version>
-	    <flyway-maven-plugin.versionRange>[4.0,)</flyway-maven-plugin.versionRange>
-	    <gmaven-plugin.versionRange>[1.5,)</gmaven-plugin.versionRange>
-	    <jetty-maven-plugin.version>8.1.9.v20130131</jetty-maven-plugin.version>
-	    <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
-	    <maven-antrun-plugin.versionRange>[1.7,)</maven-antrun-plugin.versionRange>
-	    <maven-assembly-plugin.version>2.2-beta-2</maven-assembly-plugin.version>
-	    <maven-compiler-plugin.version>3.1</maven-compiler-plugin.version>
-	    <maven-deploy-plugin.version>2.5</maven-deploy-plugin.version>
-	    <maven-install-plugin.version>2.5.1</maven-install-plugin.version>
-	    <maven-jar-plugin.version>2.5</maven-jar-plugin.version>
-	    <maven-jar-plugin.versionRange>[2.5,)</maven-jar-plugin.versionRange>
-	    <maven-php-plugin.version>2.0.2</maven-php-plugin.version>
-	    <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
-	    <maven-site-plugin.version>3.3</maven-site-plugin.version>
-	    <maven-surefire-plugin.version>2.19.1</maven-surefire-plugin.version>
-	    <maven-war-plugin.version>2.4</maven-war-plugin.version>
-	    <org.eclipse.m2e.lifecycle-mapping.version>1.0.0</org.eclipse.m2e.lifecycle-mapping.version>
-	    <sonar-maven-plugin.version>3.6.2</sonar-maven-plugin.version>
+        <!-- required for jdk9 -->
+        <maven.compiler.source>1.9</maven.compiler.source>
+        <maven.compiler.target>1.9</maven.compiler.target>
 
-	    <!-- PLUGIN Version special cases -->
-	    <maven-compiler-plugin.METADATA.version>2.3.2</maven-compiler-plugin.METADATA.version>
-	    <maven-surefire-plugin.METADATA.version>2.13</maven-surefire-plugin.METADATA.version>
+        <!-- Below are the version numbers for all software on which we explicitly depend. -->
+        <!-- If a library or plugin appears as a dependency in some pom file, then that    -->
+        <!-- artifact's version number should be in the lists below for easy managment and -->
+        <!-- access.  Version numbers are organized into 2 lists, one for plugins and the  -->
+        <!-- other for library dependencies.                                               -->
+        <!--                                                                               -->
+        <!-- Note that we specify the versions of the base maven plugins so that they      -->
+        <!-- don't change from underneath us.  This approach requires us to manually       -->
+        <!-- upgrade the plugins we use; a reasonable upgrade cycle would be every 6-12    -->
+        <!-- months.  See http://maven.apache.org/plugins/index.html for latest plugin     -->
+        <!-- listing.  Last upgrade occurred on 4/24/2017.                                 -->
+        <!--                                                                               -->
+        <!--                    PLEASE KEEP THESE LISTS ALPHABETIZED                       -->
 
-	    <!-- LIBRARY Versions (in alphabetical order) -->
-	    <amqp-client.version>3.1.4</amqp-client.version>
-	    <ant.version>1.8.2</ant.version>
-	    <BeanstalkClient.version>1.6.0</BeanstalkClient.version>
-	    <commons-codec.version>1.7</commons-codec.version>
-	    <commons-exec.version>1.1</commons-exec.version>
-	    <commons-fileupload.version>1.2.2</commons-fileupload.version>
-	    <commons-io.version>2.1</commons-io.version>
-	    <commons-lang.version>2.5</commons-lang.version>
-	    <commons-math3.version>3.5</commons-math3.version>
-	    <commons-validator.version>1.4.0</commons-validator.version>
-	    <c3p0.version>0.9.1.2</c3p0.version>
-	    <el-api.version>2.2</el-api.version>
-	    <flyway-core.version>4.1.1</flyway-core.version>
-	    <gsissh.version>0.12.1</gsissh.version>
-	    <gson.version>2.2.4</gson.version>
-        <guava.version>17.0</guava.version>
+        <!-- PLUGIN Versions (in alphabetical order) -->
+        <await-maven-plugin.version>1.4</await-maven-plugin.version>
+        <buildnumber-maven-plugin.version>1.3</buildnumber-maven-plugin.version>
+        <directory-maven-plugin.version>0.1</directory-maven-plugin.version>
+        <docker-compose-maven-plugin.version>2.5.1</docker-compose-maven-plugin.version>
+        <docker-maven-plugin.version>0.4.13</docker-maven-plugin.version>
+        <duplicate-finder-maven-plugin.version>1.2.1</duplicate-finder-maven-plugin.version>
+        <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
+        <flyway-maven-plugin.version>4.0</flyway-maven-plugin.version>
+        <flyway-maven-plugin.versionRange>[4.0,)</flyway-maven-plugin.versionRange>
+        <jaxb.version>2.2.11</jaxb.version>
+        <jacoco.version>0.8.1</jacoco.version>
+        <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
+        <maven-antrun-plugin.version>1.8</maven-antrun-plugin.version>
+        <maven-assembly-plugin.version>3.1.1</maven-assembly-plugin.version>
+        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+        <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
+        <maven-install-plugin.version>2.5.2</maven-install-plugin.version>
+        <maven-jar-plugin.version>3.1.2</maven-jar-plugin.version>
+<!--        <maven-jib-plugin.version>1.7.0</maven-jib-plugin.version>-->
+        <maven-php-plugin.version>2.0.2</maven-php-plugin.version>
+        <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
+        <maven-site-plugin.version>3.8.2</maven-site-plugin.version>
+        <maven-surefire-plugin.version>3.0.0-M3</maven-surefire-plugin.version>
+        <maven-failsafe-plugin.version>3.0.0-M3</maven-failsafe-plugin.version>
+        <maven-war-plugin.version>3.2.3</maven-war-plugin.version>
+        <org.eclipse.m2e.lifecycle-mapping.version>1.0.0</org.eclipse.m2e.lifecycle-mapping.version>
+
+        <!-- LIBRARY Versions (in alphabetical order) -->
+        <amqp-client.version>3.1.4</amqp-client.version>
+        <ant.version>1.8.2</ant.version>
+        <BeanstalkClient.version>1.6.0</BeanstalkClient.version>
+        <commons-codec.version>1.7</commons-codec.version>
+        <commons-exec.version>1.1</commons-exec.version>
+        <commons-fileupload.version>1.2.2</commons-fileupload.version>
+        <commons-io.version>2.1</commons-io.version>
+        <commons-lang.version>2.5</commons-lang.version>
+        <commons-math3.version>3.5</commons-math3.version>
+        <commons-validator.version>1.4.0</commons-validator.version>
+        <el-api.version>2.2</el-api.version>
+        <flyway-core.version>6.0.7</flyway-core.version>
+        <gsissh.version>0.12.1</gsissh.version>
+        <gson.version>2.2.4</gson.version>
+        <guava.version>26.0-android</guava.version>
         <guice.version>3.0</guice.version>
-	    <hibernate-entitymanager.version>3.6.10.Final</hibernate-entitymanager.version>
-	    <hibernate-validator-annotation-processor.version>5.0.1.Final</hibernate-validator-annotation-processor.version>
-	    <hibernate-validator.version>4.1.0.Final</hibernate-validator.version>
-	    <httpclient.version>4.3.4</httpclient.version>
-	    <httpmime.version>4.3.1</httpmime.version>
-	    <ironmq.version>3.0.2</ironmq.version>
-	    <jackson-antpathfilter.version>1.0.1</jackson-antpathfilter.version>
-	    <jackson.version>2.5.5</jackson.version>
-	    <jargon-core.version>4.0.2.4-RELEASE</jargon-core.version>
-	    <jasypt.version>1.9.0</jasypt.version>
-	    <javax.el.version>2.2.4</javax.el.version>
-	    <javax.ws.rs-api.version>2.0-m10</javax.ws.rs-api.version>
-	    <jboss-logging.version>3.1.3.GA</jboss-logging.version>
-	    <jclouds.version>1.9.2</jclouds.version>
-	    <jetty.ajp.version>6.1</jetty.ajp.version>
-	    <jetty.core.version>6.1</jetty.core.version>
-	    <jetty.https.version>6.1</jetty.https.version>
-	    <jetty.util.version>6.1</jetty.util.version>
-	    <!-- <jglobus.version>2.1.0</jglobus.version> -->
-	    <jglobus.version>2.1.0</jglobus.version>
-	    <bcprov.jdk15on>1.5.0</bcprov.jdk15on>
-	    <joda-time.version>2.2</joda-time.version>
-	    <json-path.version>2.2.0</json-path.version>
-	    <json-schema-validator.version>2.0.1</json-schema-validator.version>
-	    <json.version>20090211</json.version>
-	    <junit.version>3.8.1</junit.version>
-	    <log4j.version>1.2.17</log4j.version>
-	    <mail.version>1.4.6</mail.version>
-	    <maverick.version>1.6.3</maverick.version>
-	    <mongo-java-driver.version>2.14.1</mongo-java-driver.version>
-	    <mongojack.version>2.6.0</mongojack.version>
-	    <mysql-connector-java.version>5.1.38</mysql-connector-java.version>
-	    <nimbus-jose-jwt.version>2.20</nimbus-jose-jwt.version>
-	    <pat.version>1.5.3</pat.version>
-	    <plexus-archiver.version>3.0.1</plexus-archiver.version>
-	    <plexus-log4j-logging.version>1.0</plexus-log4j-logging.version>
-	    <plexus-utils.version>3.0.15</plexus-utils.version>
-	    <powermock.version>1.6.4</powermock.version>
-	    <quartz.version>2.1.7</quartz.version>
-	    <reflections.version>0.9.9-RC1</reflections.version>
-	    <reportng.version>1.1.4</reportng.version>
-	    <restlet.version>2.3.4</restlet.version>
-	    <sendgrid-java.version>2.2.2</sendgrid-java.version>
-	    <servlet-api.version>2.4</servlet-api.version>
-	    <simple-http.version>1.0-jdk6</simple-http.version>
-	    <simple-jndi.version>0.11.4.1</simple-jndi.version>
-	    <slf4j-api.version>1.6.1</slf4j-api.version>
-	    <slf4j-log4j12.version>1.6.1</slf4j-log4j12.version>
-	    <spring.version>3.2.0.RELEASE</spring.version>
-	    <testng.version>6.9.12</testng.version>
-	    <twilio-java-sdk.version>3.4.1</twilio-java-sdk.version>
-	    <uuid.version>3.4.0</uuid.version>
-	    <validator-collection.version>2.1.6</validator-collection.version>
-	    <xstream.version>1.4.1</xstream.version>
+        <hibernate-entitymanager.version>3.6.10.Final</hibernate-entitymanager.version>
+        <hibernate-validator-annotation-processor.version>5.0.1.Final</hibernate-validator-annotation-processor.version>
+        <hibernate-validator.version>4.1.0.Final</hibernate-validator.version>
+        <httpclient.version>4.5.10</httpclient.version>
+        <httpmime.version>4.3.1</httpmime.version>
+        <ironmq.version>3.0.2</ironmq.version>
+        <jackson-antpathfilter.version>1.0.1</jackson-antpathfilter.version>
+        <jackson.version>2.5.5</jackson.version>
+        <jargon-core.version>4.2.0.0-RELEASE</jargon-core.version>
+        <jasypt.version>1.9.0</jasypt.version>
+        <javax.el.version>2.2.4</javax.el.version>
+        <javax.ws.rs-api.version>2.0</javax.ws.rs-api.version>
+        <jboss-logging.version>3.1.3.GA</jboss-logging.version>
+        <jclouds.version>2.2.0</jclouds.version>
+        <jglobus.version>2.1.0</jglobus.version>
+        <bcprov.jdk15on>1.5.0</bcprov.jdk15on>
+        <joda-time.version>2.2</joda-time.version>
+        <json-path.version>2.2.0</json-path.version>
+        <json-schema-validator.version>2.0.1</json-schema-validator.version>
+        <json.version>20090211</json.version>
+        <junit.version>3.8.1</junit.version>
+        <log4j.version>1.2.17</log4j.version>
+        <mail.version>1.4.6</mail.version>
+        <maverick.version>1.6.3</maverick.version>
+        <mongo-java-driver.version>3.12.7</mongo-java-driver.version>
+<!--        <mongo-java-driver.version>3.6.3</mongo-java-driver.version>-->
+<!--        <mongojack.version>4.0.2</mongojack.version>-->
+<!--        <mongojack.version>2.6.0</mongojack.version>-->
+        <mysql-connector-java.version>8.0.13</mysql-connector-java.version>
+        <mariadb-connector-java.version>2.4.0</mariadb-connector-java.version>
+        <nimbus-jose-jwt.version>2.20</nimbus-jose-jwt.version>
+        <pat.version>1.5.3</pat.version>
+        <plexus-archiver.version>3.0.1</plexus-archiver.version>
+        <plexus-log4j-logging.version>1.0</plexus-log4j-logging.version>
+        <plexus-utils.version>3.0.15</plexus-utils.version>
+        <powermock.version>1.7.4</powermock.version>
+        <quartz.version>2.1.7</quartz.version>
+        <reflections.version>0.9.9</reflections.version>
+        <restlet.version>2.3.4</restlet.version>
+        <sendgrid-java.version>4.4.8</sendgrid-java.version>
+        <servlet-api.version>2.4</servlet-api.version>
+        <simple-http.version>1.0-jdk6</simple-http.version>
+        <simple-jndi.version>0.11.4.1</simple-jndi.version>
+        <slf4j-api.version>1.6.1</slf4j-api.version>
+        <slf4j-log4j12.version>1.6.1</slf4j-log4j12.version>
+        <testng.version>6.9.12</testng.version>
+        <twilio-java-sdk.version>3.4.1</twilio-java-sdk.version>
+        <uuid.version>3.4.0</uuid.version>
+        <validator-collection.version>2.1.6</validator-collection.version>
+        <xstream.version>1.4.7</xstream.version>
 
-	    <!-- LIBRARY Version special cases -->
-	    <hibernate-validator.PROFILES.version>5.0.1.Final</hibernate-validator.PROFILES.version>
-	    <reportng.METADATA.version>1.1.2</reportng.METADATA.version>
+        <!-- LIBRARY Version special cases -->
+        <hibernate-validator.PROFILES.version>5.0.1.Final</hibernate-validator.PROFILES.version>
 
-	    <!-- OTHER properties (in alphabetical order) -->
-	    <docker.image.commit.hash>${buildNumber}</docker.image.commit.hash>
+        <!-- OTHER properties (in alphabetical order) -->
+        <await-maven-plugin.initialWait>5000</await-maven-plugin.initialWait>
+        <docker-compose-plugin.awaitDuration>10</docker-compose-plugin.awaitDuration>
+        <docker.image.commit.hash>${buildNumber}</docker.image.commit.hash>
         <force.check.update>true</force.check.update>
         <force.check.version>true</force.check.version>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <force.docker.environment>false</force.docker.environment>
+        <main.basedir>${project.basedir}</main.basedir>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.inceptionYear>2011</project.inceptionYear>
+
+        <skip.create-db>true</skip.create-db>
         <skip.docker.build>true</skip.docker.build>
-		<sonar.language>java</sonar.language>
+        <skip.integration.tests>true</skip.integration.tests>
+        <skip.unit.tests>true</skip.unit.tests>
+        <skip.integration.s3.tests>true</skip.integration.s3.tests>
+        <skip.integration.irods3.tests>true</skip.integration.irods3.tests>
+        <skip.integration.irods4.tests>true</skip.integration.irods4.tests>
+        <skip.integration.sftp.tests>true</skip.integration.sftp.tests>
+        <skip.integration.sftprelay.tests>true</skip.integration.sftprelay.tests>
+        <skip.integration.http.tests>true</skip.integration.http.tests>
+        <skip.post-integration.pause>true</skip.post-integration.pause>
 
-	</properties>
+    </properties>
 
-	<build>
-		<plugins>
-			<!-- <plugin> <groupId>com.mycila</groupId> <artifactId>license-maven-plugin</artifactId>
-				<version>2.6</version> <configuration> <header>LICENSE</header> <properties>
-				<owner>Texas Advanced Computing Center</owner> <year>2014</year> <email>dooley@tacc.utexas.edu</email>
-				<url>https://bitbucket.org/taccaci/oa4mp-wso2</url> </properties> <excludes>
-				<exclude>target/**</exclude> <exclude>src/main/html/**</exclude> <exclude>**/README.md</exclude>
-				<exclude>**/*.conf</exclude> <exclude>**/*.config</exclude> <exclude>**/*.config</exclude>
-				<exclude>**/LICENSE</exclude> <exclude>**/.gitignore</exclude> <exclude>src/test/resources/**</exclude>
-				<exclude>src/main/resources/**</exclude> </excludes> </configuration> <executions>
-				<execution> <goals> <goal>check</goal> </goals> </execution> </executions>
-				</plugin> -->
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>buildnumber-maven-plugin</artifactId>
-				<version>${buildnumber-maven-plugin.version}</version>
-				<executions>
-					<execution>
-						<id>last-commit-hash</id>
-						<phase>validate</phase>
-						<goals>
-							<goal>create</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>another-last-commit-hash</id>
-						<phase>clean</phase>
-						<goals>
-							<goal>create</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					<shortRevisionLength>7</shortRevisionLength>
-					<getRevisionOnlyOnce>true</getRevisionOnlyOnce>
-					<doCheck>${force.check.version}</doCheck>
-					<doUpdate>${force.check.update}</doUpdate>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>external.atlassian.jgitflow</groupId>
-				<artifactId>jgitflow-maven-plugin</artifactId>
-				<version>${jgitflow-maven-plugin.version}</version>
-				<configuration>
-					<allowSnapshots>false</allowSnapshots>
-					<allowUntracked>false</allowUntracked>
-					<autoVersionSubmodules>true</autoVersionSubmodules>
-					<updateDependencies>true</updateDependencies>
-					<buildNumber>${buildNumber}</buildNumber>
-					<flowInitContext>
-						<masterBranchName>master</masterBranchName>
-						<developBranchName>devel</developBranchName>
-						<featureBranchPrefix>feature-</featureBranchPrefix>
-						<releaseBranchPrefix>release-</releaseBranchPrefix>
-						<hotfixBranchPrefix>hotfix-</hotfixBranchPrefix>
-						<versionTagPrefix></versionTagPrefix>
-					</flowInitContext>
-				</configuration>
-			</plugin>
-		</plugins>
-		<pluginManagement>
+    <build>
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.6.2</version>
+            </extension>
+        </extensions>
 
-			<plugins>
+        <plugins>
+            <!-- This plugin can be used find duplicate classes on the classpath of each -->
+            <!-- subproject.  Adding the "check" goal below runs this plugin.  A better  -->
+            <!-- approach is to run the following command from the top-level Agave       -->
+            <!-- directory:  mvn duplicate-finder:check.  Run mvn duplicate-finder:help  -->
+            <!-- for more information.                                                   -->
+            <!--                                                                         -->
+            <!-- Also see https://github.com/basepom/duplicate-finder-maven-plugin/wiki  -->
+            <plugin>
+                <groupId>org.basepom.maven</groupId>
+                <artifactId>duplicate-finder-maven-plugin</artifactId>
+                <version>${duplicate-finder-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>default</id>
+                        <phase>verify</phase>
+                        <goals></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>buildnumber-maven-plugin</artifactId>
+                <version>${buildnumber-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>last-commit-hash</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>create</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>another-last-commit-hash</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>create</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <shortRevisionLength>7</shortRevisionLength>
+                    <getRevisionOnlyOnce>true</getRevisionOnlyOnce>
+                    <doCheck>${force.check.version}</doCheck>
+                    <doUpdate>${force.check.update}</doUpdate>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>external.atlassian.jgitflow</groupId>
+                <artifactId>jgitflow-maven-plugin</artifactId>
+                <version>${jgitflow-maven-plugin.version}</version>
+                <configuration>
+                    <allowSnapshots>false</allowSnapshots>
+                    <allowUntracked>false</allowUntracked>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <updateDependencies>true</updateDependencies>
+                    <buildNumber>${buildNumber}</buildNumber>
+                    <flowInitContext>
+                        <masterBranchName>master</masterBranchName>
+                        <developBranchName>devel</developBranchName>
+                        <featureBranchPrefix>feature-</featureBranchPrefix>
+                        <releaseBranchPrefix>release-</releaseBranchPrefix>
+                        <hotfixBranchPrefix>hotfix-</hotfixBranchPrefix>
+                        <versionTagPrefix></versionTagPrefix>
+                    </flowInitContext>
+                </configuration>
+            </plugin>
+        </plugins>
 
-				<!-- Boilerplace compile -->
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<version>${maven-compiler-plugin.version}</version>
-					<executions>
-						<execution>
-							<id>default-compile</id>
-							<phase>compile</phase>
-							<goals>
-								<goal>compile</goal>
-							</goals>
-						</execution>
-					</executions>
-					<configuration>
-						<proc>none</proc>
-						<debug>true</debug>
-						<source>1.7</source>
-						<target>1.7</target>
-					</configuration>
-				</plugin>
+        <pluginManagement>
 
-				<!-- <plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-resources-plugin</artifactId>
-					<version>2.7</version> <executions> <execution> <id>copy-resources</id> here
-					the phase you need <phase>process-sources</phase> <goals> <goal>copy-resources</goal>
-					</goals> <configuration> <outputDirectory>${basedir}/target/test-classes</outputDirectory>
-					<resources> <resource> <directory>src/test/resources</directory> <nonFilteredFileExtension>img</nonFilteredFileExtension>
-					<filtering>true</filtering> </resource> </resources> </configuration> </execution>
-					</executions> </plugin> -->
+            <plugins>
+                <!-- Boilerplace compile -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven-compiler-plugin.version}</version>
+                    <configuration>
+<!--                        <proc>none</proc>-->
+                        <source>${java-source.version}</source>
+                        <target>${java-target.version}</target>
+                        <compilerArgs>
+                            <arg>--add-modules=java.xml.bind</arg>
+                        </compilerArgs>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>default-compile</id>
+                            <phase>compile</phase>
+                            <goals>
+                                <goal>compile</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
 
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-site-plugin</artifactId>
-					<version>${maven-site-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<version>${maven-surefire-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-assembly-plugin</artifactId>
-					<version>${maven-assembly-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<groupId>com.spotify</groupId>
-					<artifactId>docker-maven-plugin</artifactId>
-					<version>${docker-maven-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-deploy-plugin</artifactId>
-					<version>${maven-deploy-plugin.version}</version>
-					<configuration>
-						<skip>true</skip>
-					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-install-plugin</artifactId>
-					<version>${maven-install-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-war-plugin</artifactId>
-					<version>${maven-war-plugin.version}</version>
-					<configuration>
-						<packagingExcludes>
-							WEB-INF/lib/servlet-api*.jar,
-							WEB-INF/lib/javax.servlet-*.jar
-						</packagingExcludes>
-					</configuration>
-				</plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>${maven-site-plugin.version}</version>
+                </plugin>
 
-				<plugin>
-					<groupId>org.codehaus.sonar</groupId>
-					<artifactId>sonar-maven-plugin</artifactId>
-					<version>${sonar-maven-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<groupId>org.phpmaven</groupId>
-					<artifactId>maven-php-plugin</artifactId>
-					<version>${maven-php-plugin.version}</version>
-				</plugin>
+                <!--  Basic unit test execution -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven-surefire-plugin.version}</version>
+                    <configuration>
+                        <argLine>--illegal-access=permit </argLine>
+                        <skipTests>${skip.unit.tests}</skipTests>
+                        <groups>unit</groups>
+                        <excludedGroups>broken,notReady</excludedGroups>
+                        <systemPropertyVariables>
+                            <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+                            </log4j.configuration>
+                        </systemPropertyVariables>
+                    </configuration>
+                </plugin>
 
-				<!--This plugin's configuration is used to store Eclipse m2e settings
-					only. It has no influence on the Maven build itself. -->
-				<plugin>
-					<groupId>org.eclipse.m2e</groupId>
-					<artifactId>lifecycle-mapping</artifactId>
-					<version>${org.eclipse.m2e.lifecycle-mapping.version}</version>
-					<configuration>
-						<lifecycleMappingMetadata>
-							<pluginExecutions>
-							</pluginExecutions>
-						</lifecycleMappingMetadata>
-					</configuration>
-				</plugin>
-				<!-- <plugin> <groupId>external.atlassian.jgitflow</groupId> <artifactId>jgitflow-maven-plugin</artifactId>
-					<version>1.0-m5.1</version> <configuration> <allowSnapshots>false</allowSnapshots>
-					<allowUntracked>false</allowUntracked> <autoVersionSubmodules>true</autoVersionSubmodules>
-					<updateDependencies>true</updateDependencies> <flowInitContext> <masterBranchName>master</masterBranchName>
-					<developBranchName>devel</developBranchName> <featureBranchPrefix>feature-</featureBranchPrefix>
-					<releaseBranchPrefix>release-</releaseBranchPrefix> <hotfixBranchPrefix>hotfix-</hotfixBranchPrefix>
-					<versionTagPrefix>blither-</versionTagPrefix> </flowInitContext> </configuration>
-					</plugin> -->
-			</plugins>
-		</pluginManagement>
-	</build>
+                <!-- Integration test containers providing all third-party services, compute,      -->
+                <!-- storage, etc. needed by the tests in this module. Two plugins work in tandem  -->
+                <!-- here. The first starts up the containers using Docker Compose via the         -->
+                <!-- docker-compose-maven-plugin. This will start all the containers and guarantee -->
+                <!-- they are running. The second performs a rediness check on the containers      -->
+                <!-- ensuring they are ready to accept connections prior to the tests being run.   -->
+                <!-- This keeps us from experiencing test failures due to a db waiting to finish   -->
+                <!-- initializing.																   -->
+                <!--																			   -->
+                <!-- Once the integration tests finish, the containers are torn down and destroyed -->
+                <!-- by the docker-compose-maven-plugin. No data will be kept between invocations  -->
+                <!-- of maven.																	   -->
 
-	<distributionManagement>
-		<repository>
-			<id>tacc-releases</id>
-			<name>TACC Internal Release Repository</name>
-			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/releases</url>
-		</repository>
-		<snapshotRepository>
-			<id>tacc-snapshots</id>
-			<name>TACC Internal Snapshot Repository</name>
-			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/snapshots/</url>
-		</snapshotRepository>
-	</distributionManagement>
+                <!-- Starts and stops integration containers with Docker Compose -->
+                <plugin>
+                    <groupId>com.dkanejs.maven.plugins</groupId>
+                    <artifactId>docker-compose-maven-plugin</artifactId>
+                    <version>${docker-compose-maven-plugin.version}</version>
+                    <configuration>
+                        <skip>${skip.integration.tests}</skip>
+                        <detachedMode>true</detachedMode>
+                        <removeVolumes>true</removeVolumes>
+                        <projectName>${project.artifactId}</projectName>
+                        <composeFiles>
+                            <composeFile>${project.basedir}/target/test-classes/docker-compose.yml</composeFile>
+                            <composeFile>${main.basedir}/compose/third-party/docker-compose.yml</composeFile>
+                        </composeFiles>
+                        <ignorePullFailures>true</ignorePullFailures>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>${project.artifactId}up</id>
+                            <phase>pre-integration-test</phase>
+                            <goals>
+                                <goal>up</goal>
+                            </goals>
+                            <configuration>
+                                <skip>${skip.integration.tests}</skip>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>${project.artifactId}down</id>
+                            <phase>post-integration-test</phase>
+                            <goals>
+                                <goal>down</goal>
+                            </goals>
+                            <configuration>
+                                <removeVolumes>true</removeVolumes>
+                                <skip>${skip.integration.tests}</skip>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>${project.artifactId}sleep</id>
+                            <phase>post-integration-test</phase>
+                            <goals>
+                                <goal>up</goal>
+                            </goals>
+                            <configuration>
+                                <projectName>post-integration-pause</projectName>
+                                <detachedMode>false</detachedMode>
+                                <skip>${skip.post-integration.pause}</skip>
+                                <composeFiles>
+                                    <composeFile>${main.basedir}/compose/third-party/docker-compose-utils.yml</composeFile>
+                                </composeFiles>
+                                <envVars>
+                                    <sleepSeconds>${docker-compose-plugin.awaitDuration}</sleepSeconds>
+                                    <sleepMessage>Pausing for ${docker-compose-plugin.awaitDuration} seconds to allow previous stack to completely tear down...</sleepMessage>
+                                </envVars>
+                                <services>
+                                    <service>pause</service>
+                                </services>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- Introduces an initial pause for containers to start followed
+                    by a connection check via tcp or http(s) to a given port and
+                    hostname. This provides certainty that our containers are up
+                    for integration testing prior to the tests running -->
+                <plugin>
+                    <groupId>org.agaveplatform.ops</groupId>
+                    <artifactId>await-maven-plugin</artifactId>
+                    <version>${await-maven-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <phase>pre-integration-test</phase>
+                            <goals>
+                                <goal>Await</goal>
+                            </goals>
+                            <configuration>
+                                <skip>${skip.integration.tests}</skip>
+                                <initialWait>${await-maven-plugin.initialWait}</initialWait>
+                                <poll>
+                                    <attempts>15</attempts>
+                                    <sleep>2000</sleep>
+                                </poll>
+                                <mysqlConnections>
+                                    <mysqlConnection>
+                                        <host>${foundation.db.test.host}</host>
+                                        <port>${foundation.db.test.port}</port>
+                                        <database>${foundation.db.test.database}</database>
+                                        <username>${foundation.db.test.username}</username>
+                                        <password>${foundation.db.test.password}</password>
+                                        <port>${foundation.db.test.port}</port>
+                                        <query>select * from tenants</query>
+                                    </mysqlConnection>
+                                </mysqlConnections>
+                                <tcpConnections>
+                                    <tcpConnection>
+                                        <host>${foundation.service.meta.db.host}</host>
+                                        <port>${foundation.service.meta.db.port}</port>
+                                    </tcpConnection>
+                                </tcpConnections>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- Basic integration test execution -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${maven-failsafe-plugin.version}</version>
+                    <configuration>
+                        <argLine>
+                            --illegal-access=permit --add-modules=java.xml.bind
+                        </argLine>
+                        <skipTests>${skip.integration.tests}</skipTests>
+                        <groups>integration</groups>
+                        <excludedGroups>broken,notReady</excludedGroups>
+                        <systemPropertyVariables>
+                            <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+                            </log4j.configuration>
+                        </systemPropertyVariables>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <phase>integration-test</phase>
+                            <goals>
+                                <goal>integration-test</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>${exec-maven-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <version>${maven-assembly-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>${maven-deploy-plugin.version}</version>
+                    <configuration>
+                        <skip>true</skip>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven-jar-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>${maven-install-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-war-plugin</artifactId>
+                    <version>${maven-war-plugin.version}</version>
+                    <configuration>
+                        <packagingExcludes>
+                            WEB-INF/lib/servlet-api*.jar,
+                            WEB-INF/lib/javax.servlet-*.jar
+                        </packagingExcludes>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.phpmaven</groupId>
+                    <artifactId>maven-php-plugin</artifactId>
+                    <version>${maven-php-plugin.version}</version>
+                </plugin>
+
+                <!-- This plugin handles layered docker builds of each submodule. Using     -->
+                <!-- this approach significantly speeds up sucessive builds and make 		-->
+                <!-- deployment via skaffold significantly easier for new and seasoned      -->
+                <!-- contributors.															-->
+<!--                <plugin>-->
+<!--                    <groupId>com.google.cloud.tools</groupId>-->
+<!--                    <artifactId>jib-maven-plugin</artifactId>-->
+<!--                    <version>${maven-jib-plugin.version}</version>-->
+<!--                </plugin>-->
+
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.version}</version>
+                    <configuration>
+                        <output>file</output>
+                        <append>true</append>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>default-prepare-agent</id>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>default-report</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <distributionManagement>
+        <repository>
+            <id>agave-releases</id>
+            <name>Agave Internal Release Repository</name>
+            <url>https://nexus.agaveplatform.org/nexus/repository/releases</url>
+        </repository>
+        <snapshotRepository>
+            <id>agave-snapshots</id>
+            <name>Agave Internal Snapshot Repository</name>
+            <url>https://nexus.agaveplatform.org/nexus/repository/snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <!--                   Global Dependencies                        -->
     <!--                                                              -->
@@ -437,30 +618,637 @@
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>${testng.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
-	<modules>
-		<module>agave-auth</module>
-		<module>agave-common</module>
-		<module>agave-postits</module>
-		<module>agave-usage</module>
-		<module>agave-tenants</module>
-		<module>agave-logging</module>
-		<module>agave-notifications</module>
-		<module>agave-profiles</module>
-		<module>agave-metadata</module>
-		<module>agave-systems</module>
-		<module>agave-monitors</module>
-		<module>agave-files</module>
-		<module>agave-transforms</module>
-		<module>agave-apps</module>
-		<module>agave-jobs</module>
-		<module>agave-tags</module>
-		<module>agave-realtime</module>
-		<module>agave-stats</module>
-		<module>agave-uuids</module>
-		<module>agave-apidocs</module>
-		<module>agave-migrations</module>
-	</modules>
+    <modules>
+        <module>agave-migrations</module>
+        <module>agave-protos</module>
+        <module>agave-transfers</module>
+        <module>agave-common</module>
+        <module>agave-postits</module>
+        <module>agave-usage</module>
+        <module>agave-tenants</module>
+        <module>agave-logging</module>
+        <module>agave-notifications</module>
+        <module>agave-profiles</module>
+        <module>agave-tags</module>
+        <module>agave-metadata</module>
+        <module>agave-systems</module>
+        <module>agave-monitors</module>
+
+        <module>agave-files</module>
+        <module>agave-apps</module>
+        <module>agave-jobs</module>
+        <module>agave-realtime</module>
+        <module>agave-stats</module>
+        <module>agave-uuids</module>
+        <module>agave-apidocs</module>
+    </modules>
+
+    <!-- Build profiles -->
+    <profiles>
+        <profile>
+            <id>jenkins</id>
+            <properties>
+                <!-- Container Host and Port for Integration Tests
+                     When running in Jenkins, we use a reverse tcp proxy to access each test container,
+                     thus allowing us to avoid publishing ports on the host, and instead access every
+                     container via the reverse proxy service address. This allows us to run multiple
+                     parallel builds all entirely isolated inside their own private network on the
+                     same host. -->
+<!--                <gridftp.host>traefik</gridftp.host>-->
+<!--                <gridftp.port>2811</gridftp.port>-->
+<!--                -->
+<!--                <myproxy.host>traefik</myproxy.host>-->
+<!--                <myproxy.port>7515</myproxy.port>-->
+
+<!--                <sftp.host>traefik</sftp.host>-->
+<!--                <sftp.port>10022</sftp.port>-->
+
+<!--                <sftptunnel.host>traefik</sftptunnel.host>-->
+<!--                <sftptunnel.port>10033</sftptunnel.port>-->
+
+<!--                <sftphidden.host>sftphidden</sftphidden.host>-->
+<!--                <sftphidden.port>10022</sftphidden.port>-->
+
+<!--                <irods3.host>traefik</irods3.host>-->
+                <irods3.port>1247</irods3.port>
+
+<!--                <irods3pam.host>traefik</irods3pam.host>-->
+                <irods3pam.port>1247</irods3pam.port>
+
+<!--                <irods4.host>traefik</irods4.host>-->
+                <irods4.port>1247</irods4.port>
+
+<!--                <ftp.host>traefik</ftp.host>-->
+                <ftp.port>10021</ftp.port>
+
+                <condor.host>traefik</condor.host>
+                <condor.port>10155</condor.port>
+
+                <gsissh.host>traefik</gsissh.host>
+                <gsissh.port>2222</gsissh.port>
+
+                <ssh.host>traefik</ssh.host>
+                <ssh.port>10111</ssh.port>
+
+                <loadleveler.host>traefik</loadleveler.host>
+                <loadleveler.port>10177</loadleveler.port>
+
+                <lsf.host>traefik</lsf.host>
+                <lsf.port>10177</lsf.port>
+
+                <moab.host>traefik</moab.host>
+                <moab.port>10144</moab.port>
+
+                <pbs.host>traefik</pbs.host>
+                <pbs.port>10188</pbs.port>
+
+                <gridengine.host>traefik</gridengine.host>
+                <gridengine.port>10166</gridengine.port>
+
+                <slurm.host>slurm</slurm.host>
+                <slurm.port>10133</slurm.port>
+
+                <torque.host>torque</torque.host>
+                <torque.port>10144</torque.port>
+
+            </properties>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>com.dkanejs.maven.plugins</groupId>
+                            <artifactId>docker-compose-maven-plugin</artifactId>
+                            <version>${docker-compose-maven-plugin.version}</version>
+                            <configuration>
+                                <skip>${skip.integration.tests}</skip>
+                                <detachedMode>true</detachedMode>
+                                <removeVolumes>true</removeVolumes>
+                                <projectName>${project.artifactId}</projectName>
+                                <composeFiles>
+                                    <composeFile>${project.basedir}/target/test-classes/docker-compose-jenkins.yml</composeFile>
+                                    <composeFile>${main.basedir}/compose/third-party/docker-compose-jenkins.yml</composeFile>
+                                </composeFiles>
+                                <ignorePullFailures>true</ignorePullFailures>
+                            </configuration>
+                            <executions>
+                                <execution>
+                                    <id>${project.artifactId}up</id>
+                                    <phase>pre-integration-test</phase>
+                                    <goals>
+                                        <goal>up</goal>
+                                    </goals>
+                                    <configuration>
+                                        <skip>${skip.integration.tests}</skip>
+                                    </configuration>
+                                </execution>
+                                <execution>
+                                    <id>${project.artifactId}down</id>
+                                    <phase>post-integration-test</phase>
+                                    <goals>
+                                        <goal>down</goal>
+                                    </goals>
+                                    <configuration>
+                                        <removeVolumes>true</removeVolumes>
+                                        <skip>${skip.integration.tests}</skip>
+                                    </configuration>
+                                </execution>
+                            </executions>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
+        <profile>
+            <!-- *********************************************************************
+                **	turns off tests and build of docker containers                  **
+                **********************************************************************-->
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <force.check.update>false</force.check.update>
+                <force.check.version>false</force.check.version>
+
+                <skip.unit.tests>false</skip.unit.tests>
+
+                <slack.webhook.url>https://hooks.slack.com/services/SLACK_INCOMING_WEBHOOK</slack.webhook.url>
+                <foundation.smtp.token></foundation.smtp.token>
+            </properties>
+        </profile>
+        <profile>
+            <id>integration-test</id>
+            <!-- *********************************************************************
+                **	turns off unit tests and enables migrated db image build            **
+                ***********************************************************************-->
+            <properties>
+                <force.check.update>false</force.check.update>
+                <force.check.version>false</force.check.version>
+
+                <skip.integration.tests>false</skip.integration.tests>
+
+                <foundation.smtp.token></foundation.smtp.token>
+                <slack.webhook.url>https://hooks.slack.com/services/SLACK_INCOMING_WEBHOOK</slack.webhook.url>
+            </properties>
+        </profile>
+        <profile>
+            <id>remote-data-tests</id>
+            <properties>
+                <skip.integration.tests>false</skip.integration.tests>
+                <skip.integration.irods3.tests>true</skip.integration.irods3.tests>
+                <skip.integration.irods4.tests>false</skip.integration.irods4.tests>
+                <skip.integration.sftp.tests>false</skip.integration.sftp.tests>
+                <skip.integration.sftprelay.tests>false</skip.integration.sftprelay.tests>
+                <skip.integration.http.tests>false</skip.integration.http.tests>
+            </properties>
+        </profile>
+        <profile>
+            <id>coverage</id>
+            <!-- **********************************************************************
+                **	Enabled Jacoco coverage reporting on unit and integration tests  **
+                ***********************************************************************-->
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <forkMode>once</forkMode>
+                            <forkCount>1</forkCount>
+                            <reuseForks>false</reuseForks>
+                            <argLine>@{argLine} --illegal-access=permit</argLine>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>${jacoco.version}</version>
+                    </plugin>
+                </plugins>
+            </build>
+            <reporting>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <reportSets>
+                            <reportSet>
+                                <reports>
+                                    <!-- select non-aggregate reports -->
+                                    <report>report</report>
+                                </reports>
+                            </reportSet>
+                        </reportSets>
+                    </plugin>
+                </plugins>
+            </reporting>
+        </profile>
+        <profile>
+            <id>agave</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <downloadSources>false</downloadSources>
+                <downloadJavadocs>false</downloadJavadocs>
+
+                <!-- *********************************************************************
+                **************************************************************************
+                **																		**
+                **						Agave common properties 						**
+                **																		**
+                **************************************************************************
+                ***********************************************************************-->
+                <skip.migrations>true</skip.migrations>
+                <iplant.community.username>iplant</iplant.community.username>
+                <iplant.community.password></iplant.community.password>
+                <iplant.community.charge.number>TG-MCB110022</iplant.community.charge.number>
+                <iplant.community.myproxy.server>myproxy.teragrid.org</iplant.community.myproxy.server>
+                <iplant.community.myproxy.port>7512</iplant.community.myproxy.port>
+
+                <irods.username>rods</irods.username>
+                <irods.password>rods</irods.password>
+                <irods.zone>testuser</irods.zone>
+                <irods.host>docker.example.com</irods.host>
+                <irods.port>1247</irods.port>
+                <irods.resource>bitol</irods.resource>
+
+                <foundation.api.version>2</foundation.api.version>
+                <foundation.world.username>world</foundation.world.username>
+                <foundation.public.username>public</foundation.public.username>
+                <foundation.auth.source>wso2</foundation.auth.source>
+                <foundation.service.slave.mode>false</foundation.service.slave.mode>
+                <foundation.remote.default.path>/scratch</foundation.remote.default.path>
+                <foundation.local.scratch.dir>/scratch</foundation.local.scratch.dir>
+
+                <foundation.api.page.size.default>100</foundation.api.page.size.default>
+                <foundation.api.page.size.max>250</foundation.api.page.size.max>
+
+                <!-- ********************** SSH Properties ************************* -->
+                <foundation.maverick.log.level>ERROR</foundation.maverick.log.level>
+
+                <!-- ********************** TLS Properties ************************* -->
+                <foundation.keystore.path>/home/agave/jssecacerts</foundation.keystore.path>
+                <foundation.trusted.certs.path>/home/agave/.globus/certificates</foundation.trusted.certs.path>
+                <foundation.ca.certs.path>/home/agave/.globus/certificates</foundation.ca.certs.path>
+
+                <!-- ********************** Email Properties ************************* -->
+                <foundation.smtp.provider>log</foundation.smtp.provider>
+                <foundation.smtp.user>agave</foundation.smtp.user>
+                <foundation.smtp.password></foundation.smtp.password>
+                <foundation.smtp.token></foundation.smtp.token>
+                <foundation.smtp.host>localhost</foundation.smtp.host>
+                <foundation.smtp.port></foundation.smtp.port>
+                <foundation.smtp.auth>false</foundation.smtp.auth>
+                <foundation.smtp.from.name>Agave Notification Service</foundation.smtp.from.name>
+                <foundation.smtp.from.address>noreply@agaveplatform.org</foundation.smtp.from.address>
+
+                <!-- ********************** LDAP Properties ************************* -->
+                <foundation.ldap.realm>Agave Platform</foundation.ldap.realm>
+                <foundation.ldap.url>ldaps://ldap.example.com</foundation.ldap.url>
+                <foundation.ldap.port>636</foundation.ldap.port>
+                <foundation.ldap.dn>ou=People,dc=example,dc=com</foundation.ldap.dn>
+
+                <!-- *************************** Database **************************** -->
+                <foundation.db.jndi.connection>java:comp/env/jdbc/iplant_io</foundation.db.jndi.connection>
+                <foundation.db.host>mysql</foundation.db.host>
+                <foundation.db.port>3306</foundation.db.port>
+                <foundation.db.database>agavecore</foundation.db.database>
+                <foundation.db.username>agaveuser</foundation.db.username>
+                <foundation.db.password>password</foundation.db.password>
+                <foundation.db.url>jdbc:mysql://${foundation.db.host}:${foundation.db.port}/${foundation.db.database}?zeroDateTimeBehavior=convertToNull&amp;sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true&amp;tinyInt1isBit=false</foundation.db.url>
+                <foundation.db.bootstrap>jdbc:mysql://${foundation.db.host}:${foundation.db.port}/mavenbootstrap?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true&amp;tinyInt1isBit=false</foundation.db.bootstrap>
+                <foundation.db.driver>com.mysql.cj.jdbc.Driver</foundation.db.driver>
+                <foundation.db.postits.table>postits</foundation.db.postits.table>
+                <foundation.db.tenants.table>tenants</foundation.db.tenants.table>
+                <foundation.db.internaluser.table>internalusers</foundation.db.internaluser.table>
+                <foundation.db.usage.table>Usage</foundation.db.usage.table>
+                <foundation.db.usageservices.table>UsageServices</foundation.db.usageservices.table>
+                <foundation.db.usageactivities.table>UsageActivities</foundation.db.usageactivities.table>
+
+                <!-- ************************* Test Database ************************* -->
+                <foundation.db.test.jndi.connection>java:comp/env/jdbc/iplant_io</foundation.db.test.jndi.connection>
+                <foundation.db.test.host>mysql</foundation.db.test.host>
+                <foundation.db.test.port>3306</foundation.db.test.port>
+                <foundation.db.test.database>agavecore</foundation.db.test.database>
+                <foundation.db.test.username>agaveuser</foundation.db.test.username>
+                <foundation.db.test.password>password</foundation.db.test.password>
+                <foundation.db.test.url>jdbc:mysql://${foundation.db.test.host}:${foundation.db.test.port}/${foundation.db.test.database}?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true</foundation.db.test.url>
+                <foundation.db.test.bootstrap>jdbc:mysql://${foundation.db.test.host}:${foundation.db.test.port}/mavenbootstrap?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true</foundation.db.test.bootstrap>
+                <foundation.db.test.driver>com.mysql.cj.jdbc.Driver</foundation.db.test.driver>
+
+                <!-- **************** Minio Credentials for Integration Tests ********** -->
+                <s3.bucket>agavetestdata</s3.bucket>
+                <s3.host>http://minio</s3.host>
+                <s3.port>9000</s3.port>
+                <s3.access.key>agaveuser</s3.access.key>
+                <s3.secret.key>password</s3.secret.key>
+
+                <!-- **************** Default Container Host and Port for Integration Tests ********** -->
+                <gridftp.host>gridftp</gridftp.host>
+                <gridftp.port>2811</gridftp.port>
+                <myproxy.host>myproxy</myproxy.host>
+                <myproxy.port>7515</myproxy.port>
+
+<!--                <sftp.host>sftp</sftp.host>-->
+                <sftp.host>test-proxy</sftp.host>
+                <sftp.port>10022</sftp.port>
+                <sftptunnel.host>test-proxy</sftptunnel.host>
+<!--                <sftptunnel.host>sftptunnel</sftptunnel.host>-->
+                <sftptunnel.port>10033</sftptunnel.port>
+                <sftphidden.host>sftphidden</sftphidden.host>
+                <sftphidden.port>22</sftphidden.port>
+
+<!--                <irods3.host>irods3</irods3.host>-->
+                <irods3.host>test-proxy</irods3.host>
+                <irods3.port>1247</irods3.port>
+
+<!--                <irods3pam.host>irods3-pam</irods3pam.host>-->
+                <irods3pam.host>test-proxy</irods3pam.host>
+                <irods3pam.port>1248</irods3pam.port>
+
+<!--                <irods4.host>irods4</irods4.host>-->
+                <irods4.host>test-proxy</irods4.host>
+                <irods4.port>1257</irods4.port>
+
+                <ftp.host>ftpd</ftp.host>
+                <ftp.port>10021</ftp.port>
+
+                <condor.host>test-proxy</condor.host>
+<!--                <condor.host>condor</condor.host>-->
+<!--                <condor.data.port>22</condor.data.port>-->
+                <condor.data.port>10155</condor.data.port>
+                <condor.port>10155</condor.port>
+
+                <gsissh.host>gridftp</gsissh.host>
+                <gsissh.port>2222</gsissh.port>
+
+                <ssh.host>test-proxy</ssh.host>
+<!--                <ssh.host>ssh</ssh.host>-->
+<!--                <ssh.data.port>22</ssh.data.port>-->
+                <ssh.data.port>10111</ssh.data.port>
+                <ssh.port>10111</ssh.port>
+
+                <loadleveler.host>test-proxy</loadleveler.host>
+<!--                <loadleveler.host>openlava</loadleveler.host>-->
+<!--                <loadleveler.data.port>22</loadleveler.data.port>-->
+                <loadleveler.data.port>10177</loadleveler.data.port>
+                <loadleveler.port>10177</loadleveler.port>
+
+                <lsf.host>test-proxy</lsf.host>
+<!--                <lsf.host>openlava</lsf.host>-->
+<!--                <lsf.data.port>22</lsf.data.port>-->
+                <lsf.data.port>10177</lsf.data.port>
+                <lsf.port>10177</lsf.port>
+
+                <moab.host>test-proxy</moab.host>
+<!--                <moab.host>torque</moab.host>-->
+<!--                <moab.data.port>22</moab.data.port>-->
+                <moab.data.port>10144</moab.data.port>
+                <moab.port>10144</moab.port>
+
+                <pbs.host>test-proxy</pbs.host>
+<!--                <pbs.host>pbs</pbs.host>-->
+<!--                <pbs.data.port>22</pbs.data.port>-->
+                <pbs.data.port>10188</pbs.data.port>
+                <pbs.port>10188</pbs.port>
+
+                <gridengine.host>test-proxy</gridengine.host>
+<!--                <gridengine.host>gridengine</gridengine.host>-->
+<!--                <gridengine.data.port>22</gridengine.data.port>-->
+                <gridengine.data.port>10166</gridengine.data.port>
+                <gridengine.port>10166</gridengine.port>
+
+<!--                <slurm.host>slurm</slurm.host>-->
+                <slurm.host>test-proxy</slurm.host>
+                <slurm.data.port>10133</slurm.data.port>
+<!--                <slurm.data.port>22</slurm.data.port>-->
+                <slurm.port>10133</slurm.port>
+
+<!--                <torque.host>torque</torque.host>-->
+                <torque.host>test-proxy</torque.host>
+                <torque.data.port>10144</torque.data.port>
+<!--                <torque.data.port>22</torque.data.port>-->
+                <torque.port>10144</torque.port>
+
+                <!-- *********************************************************************
+                **************************************************************************
+                **																		**
+                **							Dependent services	 						**
+                **																		**
+                **************************************************************************
+                ***********************************************************************-->
+
+                <!-- ********************** local beanstalkd ************************* -->
+
+                <foundation.service.atmosphere>https://atmo.iplantcollaborative.org:443/auth</foundation.service.atmosphere>
+
+                <!-- *********************** Messaging services ********************** -->
+
+                <!-- ********************** local beanstalkd ************************* -->
+                <foundation.service.messaging.provider>beanstalk</foundation.service.messaging.provider>
+                <foundation.service.messaging.host>beanstalkd</foundation.service.messaging.host>
+                <foundation.service.messaging.port>11300</foundation.service.messaging.port>
+                <foundation.service.messaging.username></foundation.service.messaging.username>
+                <foundation.service.messaging.password></foundation.service.messaging.password>
+
+                <!-- *************************** rabbitmq **************************** -->
+                <!--<foundation.service.messaging.provider>rabbitmq</foundation.service.messaging.provider> -->
+                <!--<foundation.service.messaging.host>localhost</foundation.service.messaging.host> -->
+                <!--<foundation.service.messaging.port>15672</foundation.service.messaging.port> -->
+                <!--<foundation.service.messaging.username></foundation.service.messaging.username> -->
+                <!--<foundation.service.messaging.password></foundation.service.messaging.password> -->
+
+                <!-- *************************** ironmq **************************** -->
+                <!--<foundation.service.messaging.provider>ironmq</foundation.service.messaging.provider> -->
+                <!--<foundation.service.messaging.host>mq-aws-us-east-1.iron.io</foundation.service.messaging.host> -->
+                <!--<foundation.service.messaging.port>80</foundation.service.messaging.port> -->
+                <!--<foundation.service.messaging.username></foundation.service.messaging.username> -->
+                <!--<foundation.service.messaging.password>-8LQ4</foundation.service.messaging.password> -->
+
+                <!-- ********************** ironio beanstalkd ************************* -->
+                <!-- <foundation.service.messaging.provider>ironbeanstalk</foundation.service.messaging.provider> -->
+                <!--<foundation.service.messaging.host>mq-aws-us-east-1.iron.io</foundation.service.messaging.host> -->
+                <!--<foundation.service.messaging.port>11300</foundation.service.messaging.port> -->
+                <!--<foundation.service.messaging.username></foundation.service.messaging.username> -->
+                <!--<foundation.service.messaging.password>-8LQ4</foundation.service.messaging.password> -->
+
+
+                <!-- *********************************************************************
+                **************************************************************************
+                **																		**
+                **					Agave service-specific properties 					**
+                **																		**
+                **************************************************************************
+                ***********************************************************************-->
+
+                <foundation.base.url>https://docker.example.com</foundation.base.url>
+
+                <foundation.service.documentation>https://docker.example.com/docs/v2</foundation.service.documentation>
+
+                <foundation.service.dedicated.tenant></foundation.service.dedicated.tenant>
+                <foundation.service.dedicated.users></foundation.service.dedicated.users>
+                <foundation.service.dedicated.systems></foundation.service.dedicated.systems>
+                <foundation.service.dedicated.queues></foundation.service.dedicated.queues>
+                <foundation.service.drain.all.queues>false</foundation.service.drain.all.queues>
+                <foundation.queuetask.tenant.ids></foundation.queuetask.tenant.ids>
+
+                <!-- *********************************************************************
+                **								PHP services 							**
+                ***********************************************************************-->
+
+                <!-- ****************** Auth service (deprecated) ******************** -->
+
+                <foundation.service.auth>${foundation.base.url}/auth/v2</foundation.service.auth>
+
+                <!-- ************************ Logging service ************************ -->
+
+                <foundation.service.log>http://logging/logging/</foundation.service.log>
+
+                <!-- ************************ Docs service ************************ -->
+
+                <foundation.service.docs>${foundation.base.url}/docs/v2</foundation.service.docs>
+
+                <!-- ************************ Tenants service ************************ -->
+
+                <foundation.service.tenants>${foundation.base.url}/tenants/v2</foundation.service.tenants>
+
+                <!-- ************************ Usage service ************************ -->
+
+                <foundation.service.usage>${foundation.base.url}/usage/v2</foundation.service.usage>
+                <foundation.v1.db.host>mysql</foundation.v1.db.host>
+                <foundation.v1.db.port>3306</foundation.v1.db.port>
+                <foundation.v1.db.database>iplant-api</foundation.v1.db.database>
+                <foundation.v1.db.username>agaveuser</foundation.v1.db.username>
+                <foundation.v1.db.password>password</foundation.v1.db.password>
+
+                <!-- ************************ PostIts service ************************ -->
+                <foundation.service.proxy>${foundation.base.url}</foundation.service.proxy>
+                <foundation.service.postits>${foundation.base.url}/postits/v2</foundation.service.postits>
+
+
+                <!-- *********************************************************************
+                **								Java services 							**
+                ***********************************************************************-->
+
+                <foundation.allow.relay.transfers>false</foundation.allow.relay.transfers>
+                <foundation.max.relay.transfer.size>2</foundation.max.relay.transfer.size>
+
+                <!-- ************************ Apps service *************************** -->
+
+                <foundation.service.apps>${foundation.base.url}/apps/v2</foundation.service.apps>
+                <foundation.service.apps.default.public.dir>/api/${foundation.api.version}/apps/</foundation.service.apps.default.public.dir>
+
+                <!-- ************************ Files service ************************** -->
+
+                <foundation.service.files>${foundation.base.url}/files/v2</foundation.service.files>
+                <foundation.service.files.disk.quota>-1</foundation.service.files.disk.quota>
+
+                <!-- ************************ Jobs service *************************** -->
+
+                <foundation.service.jobs>${foundation.base.url}/jobs/v2</foundation.service.jobs>
+                <foundation.service.jobs.gateway.node>false</foundation.service.jobs.gateway.node>
+                <foundation.service.jobs.allow.fork>false</foundation.service.jobs.allow.fork>
+                <foundation.service.jobs.staging.tasks>2</foundation.service.jobs.staging.tasks>
+                <foundation.service.jobs.archiving.tasks>2</foundation.service.jobs.archiving.tasks>
+                <foundation.service.jobs.submission.tasks>2</foundation.service.jobs.submission.tasks>
+                <foundation.service.jobs.monitoring.tasks>1</foundation.service.jobs.monitoring.tasks>
+                <foundation.service.jobs.max.retries>3</foundation.service.jobs.max.retries>
+                <foundation.service.jobs.local.system.id></foundation.service.jobs.local.system.id>
+
+                <!-- ************************ Meta service *************************** -->
+
+                <foundation.service.meta>${foundation.base.url}/meta/v2</foundation.service.meta>
+                <foundation.service.meta.db.host>mongodb</foundation.service.meta.db.host>
+                <foundation.service.meta.db.port>27017</foundation.service.meta.db.port>
+                <foundation.service.meta.db.user>agaveuser</foundation.service.meta.db.user>
+                <foundation.service.meta.db.pwd>password</foundation.service.meta.db.pwd>
+                <foundation.service.meta.db.scheme>api</foundation.service.meta.db.scheme>
+                <foundation.service.meta.collection>metadata</foundation.service.meta.collection>
+                <foundation.service.meta.schema.collection>schemata</foundation.service.meta.schema.collection>
+
+                <!-- ************************ Monitor service ******************* -->
+
+                <foundation.service.monitor>${foundation.base.url}/monitors/v2</foundation.service.monitor>
+                <foundation.service.monitor.queue>dev.monitors.queue</foundation.service.monitor.queue>
+                <foundation.service.monitor.topic>dev.monitors.topic</foundation.service.monitor.topic>
+                <foundation.service.montior.max.q.failures>5</foundation.service.montior.max.q.failures>
+                <foundation.service.monitor.max.retries>1</foundation.service.monitor.max.retries>
+                <foundation.service.monitor.max.tasks>2</foundation.service.monitor.max.tasks>
+                <foundation.service.min.monitor.repeat.interval>0</foundation.service.min.monitor.repeat.interval>
+
+                <!-- ************************ Notification service ******************* -->
+
+                <foundation.service.notif>${foundation.base.url}/notifications/v2</foundation.service.notif>
+                <foundation.service.notif.queue>dev.notifications.queue</foundation.service.notif.queue>
+                <foundation.service.notif.topic>dev.notifications.topic</foundation.service.notif.topic>
+                <foundation.service.notif.retry.queue>devretry.notifications.queue</foundation.service.notif.retry.queue>
+                <foundation.service.notif.retry.topic>devretry.notifications.queue</foundation.service.notif.retry.topic>
+                <foundation.service.notif.max.retries>5</foundation.service.notif.max.retries>
+                <foundation.service.notif.max.tasks>1</foundation.service.notif.max.tasks>
+
+                <foundation.service.notif.failed.db.host>mongodb</foundation.service.notif.failed.db.host>
+                <foundation.service.notif.failed.db.port>27017</foundation.service.notif.failed.db.port>
+                <foundation.service.notif.failed.db.user>agaveuser</foundation.service.notif.failed.db.user>
+                <foundation.service.notif.failed.db.pwd>password</foundation.service.notif.failed.db.pwd>
+                <foundation.service.notif.failed.db.scheme>notifications</foundation.service.notif.failed.db.scheme>
+                <foundation.service.notif.failed.db.size>1048576</foundation.service.notif.failed.db.size>
+                <foundation.service.notif.failed.db.limit>10000</foundation.service.notif.failed.db.limit>
+
+                <foundation.service.notif.slack.icon.emoji></foundation.service.notif.slack.icon.emoji>
+                <foundation.service.notif.slack.icon.url>
+                    http://www.gravatar.com/avatar/4a01bd7c64dbb313035b23fe521f75e6
+                </foundation.service.notif.slack.icon.url>
+                <foundation.service.notif.slack.username>AgaveBot</foundation.service.notif.slack.username>
+
+                <foundation.sms.provider>LOG</foundation.sms.provider>
+                <foundation.twilio.sid></foundation.twilio.sid>
+                <foundation.twilio.token></foundation.twilio.token>
+                <foundation.twilio.phone.number></foundation.twilio.phone.number>
+
+                <foundation.realtime.provider>pushpin</foundation.realtime.provider>
+                <foundation.realtime.url>http://localhost:7999</foundation.realtime.url>
+                <foundation.realtime.realm.key></foundation.realtime.realm.key>
+                <foundation.realtime.realm.id></foundation.realtime.realm.id>
+
+                <!-- ************************ Profile service ************************ -->
+                <foundation.service.profiles>${foundation.base.url}/profiles/v2</foundation.service.profiles>
+                <foundation.service.profiles.trellis.url>https://user.iplantcollaborative.org/api/v1/users/
+                </foundation.service.profiles.trellis.url>
+                <foundation.service.profiles.trellis.secret></foundation.service.profiles.trellis.secret>
+                <foundation.service.profiles.trellis.key></foundation.service.profiles.trellis.key>
+
+                <!-- ************************ Systems service ************************ -->
+
+                <foundation.service.systems>${foundation.base.url}/systems/v2</foundation.service.systems>
+                <foundation.test.credentials.username>agave</foundation.test.credentials.username>
+                <foundation.test.credentials.password>password</foundation.test.credentials.password>
+
+                <!-- ************************ Tags service ********************* -->
+
+                <foundation.service.tags>${foundation.base.url}/tags/v2</foundation.service.tags>
+
+                <!-- ************************ Transfers service ********************** -->
+
+                <foundation.service.transfers>${foundation.base.url}/transfers/v2</foundation.service.transfers>
+                <foundation.service.transfers.max.tasks>5</foundation.service.transfers.max.tasks>
+                <foundation.service.transfers.max.simultaneous>-1</foundation.service.transfers.max.simultaneous>
+                <foundation.service.transfers.same.server.timeout.secs>240</foundation.service.transfers.same.server.timeout.secs>
+                <foundation.service.transfers.max.retries>3</foundation.service.transfers.max.retries>
+                <foundation.service.transfers.max.relay.size>2</foundation.service.transfers.max.relay.size>
+                <foundation.service.transfers.iplant.staging.same.server.timeout.secs>240</foundation.service.transfers.iplant.staging.same.server.timeout.secs>
+
+                <!-- ************************ UUIDs service ********************** -->
+
+                <foundation.service.uuids>${foundation.base.url}/uuids/v2</foundation.service.uuids>
+
+
+            </properties>
+        </profile>
+    </profiles>
+
 </project>

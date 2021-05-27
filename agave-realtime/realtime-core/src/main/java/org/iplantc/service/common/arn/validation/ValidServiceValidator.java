@@ -1,12 +1,12 @@
 package org.iplantc.service.common.arn.validation;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.arn.AgaveServiceType;
 import org.iplantc.service.common.arn.constraints.ValidService;
+
+import javax.validation.ConstraintValidator;
+import javax.validation.ConstraintValidatorContext;
 
 public class ValidServiceValidator implements ConstraintValidator<ValidService, String> {
 	
@@ -32,7 +32,7 @@ public class ValidServiceValidator implements ConstraintValidator<ValidService, 
         	constraintContext.disableDefaultConstraintViolation();
         	constraintContext
                 .buildConstraintViolationWithTemplate( "{org.iplantc.service.common.arn.validation.ValidService.message}" )
-                .addPropertyNode( "service" )
+				.addNode( "service" )
                 .addConstraintViolation();
         }
         

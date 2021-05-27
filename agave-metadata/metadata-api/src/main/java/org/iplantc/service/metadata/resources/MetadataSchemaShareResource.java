@@ -1,21 +1,12 @@
-/**
- * 
- */
 package org.iplantc.service.metadata.resources;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaPemsCreate;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaPemsDelete;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaPemsList;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaPemsUpdate;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
-
-import java.util.List;
-
+import com.mongodb.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.clients.AgaveProfileServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.AgaveResource;
@@ -37,11 +28,10 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
+import java.util.List;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.*;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
 
 
 /**
@@ -50,22 +40,22 @@ import com.mongodb.MongoClient;
  * @author dooley
  * 
  */
+@SuppressWarnings("deprecation")
 public class MetadataSchemaShareResource extends AgaveResource 
 {
 	private static final Logger	log	= Logger.getLogger(MetadataSchemaShareResource.class);
 
-	private String username; // authenticated user
-	private String schemaId;  // object id
+	private final String username; // authenticated user
+	private final String schemaId;  // object id
     private String owner;
-	private String sharedUsername; // user receiving permissions
-    private MongoClient mongoClient;
-    private DB db;
+	private final String sharedUsername; // user receiving permissions
+	private DB db;
     private DBCollection collection;
 
    /**
-	 * @param context
-	 * @param request
-	 * @param response
+	 * @param context the request context
+	 * @param request the request object
+	 * @param response the response object
 	 */
 	public MetadataSchemaShareResource(Context context, Request request, Response response)
 	{
@@ -81,7 +71,7 @@ public class MetadataSchemaShareResource extends AgaveResource
 
 		try 
         {
-        	mongoClient = ((MetadataApplication)getApplication()).getMongoClient();
+			MongoClient mongoClient = ((MetadataApplication) getApplication()).getMongoClient();
         	db = mongoClient.getDB(Settings.METADATA_DB_SCHEME);
             // Gets a collection, if it does not exist creates it
             collection = db.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
@@ -106,20 +96,20 @@ public class MetadataSchemaShareResource extends AgaveResource
             response.setEntity(new IplantErrorRepresentation(e.getMessage()));
             
         } catch (Exception e) {
-            log.error("Unable to connect to metadata store", e);
+            log.error("Exception 6: Unable to connect to metadata store", e);
             response.setStatus(Status.SERVER_ERROR_INTERNAL);
-            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store."));
+            response.setEntity(new IplantErrorRepresentation("Exception 6: Unable to connect to metadata store."));
         }
         finally {
-//        	try { mongoClient.close(); } catch (Throwable e) {}
+        	try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
 	}
 
 	/**
-	 * This method represents the HTTP GET action. Gets Perms on specified iod.
+	 * This method represents the HTTP GET action. Gets Perms on specified id.
 	 */
 	@Override
-	public Representation represent(Variant variant) throws ResourceException
+	public Representation represent(Variant variant)
 	{
 		AgaveLogServiceClient.log(METADATA02.name(), SchemaPemsList.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
 		
@@ -139,10 +129,10 @@ public class MetadataSchemaShareResource extends AgaveResource
 				
 				if (StringUtils.isEmpty(sharedUsername)) 
 				{
-					String jPems = new MetadataSchemaPermission(schemaId, owner, PermissionType.ALL).toJSON();
+					StringBuilder jPems = new StringBuilder(new MetadataSchemaPermission(schemaId, owner, PermissionType.ALL).toJSON());
 					for (int i=offset; i< Math.min((limit+offset), permissions.size()); i++)
 	    			{
-						jPems += "," + permissions.get(i).toJSON();
+						jPems.append(",").append(permissions.get(i).toJSON());
 					}
 					return new IplantSuccessRepresentation("[" + jPems + "]");
 				} 
@@ -175,16 +165,17 @@ public class MetadataSchemaShareResource extends AgaveResource
 			}
 
 		}
-		catch (ResourceException e)
-		{
+		catch (ResourceException e) {
 			getResponse().setStatus(e.getStatus());
 			return new IplantErrorRepresentation(e.getMessage());
 		}
-		catch (Exception e)
-		{
+		catch (Exception e) {
 			// Bad request
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			return new IplantErrorRepresentation(e.getMessage());
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 
@@ -203,8 +194,8 @@ public class MetadataSchemaShareResource extends AgaveResource
 						"No schema id provided.");
 			}
 			
-			String name = null;
-            String sPermission = null;
+			String name;
+            String sPermission;
 
             JSONObject postPermissionContent = super.getPostedEntityAsJsonObject(true);
             
@@ -313,17 +304,18 @@ public class MetadataSchemaShareResource extends AgaveResource
 			}
 
 		}
-		catch (ResourceException e)
-		{
+		catch (ResourceException e) {
 			getResponse().setEntity(
 					new IplantErrorRepresentation(e.getMessage()));
 			getResponse().setStatus(e.getStatus());
 		}
-		catch (Throwable e)
-		{
+		catch (Throwable e) {
 			getResponse().setEntity(
 					new IplantErrorRepresentation("Failed to update metadata schema permissions: " + e.getMessage()));
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -366,10 +358,12 @@ public class MetadataSchemaShareResource extends AgaveResource
 		catch (ResourceException e) {
 			throw e;
 		}
-		catch (Throwable e)
-		{
+		catch (Throwable e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
 					"Failed to remove metadata schema permissions: " + e.getMessage());
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 
@@ -420,7 +414,7 @@ public class MetadataSchemaShareResource extends AgaveResource
 	/**
 	 * Allow the resource to be modified
 	 * 
-	 * @return
+	 * @return true
 	 */
 	public boolean setModifiable()
 	{
@@ -430,7 +424,7 @@ public class MetadataSchemaShareResource extends AgaveResource
 	/**
 	 * Allow the resource to be read
 	 * 
-	 * @return
+	 * @return true
 	 */
 	public boolean setReadable()
 	{

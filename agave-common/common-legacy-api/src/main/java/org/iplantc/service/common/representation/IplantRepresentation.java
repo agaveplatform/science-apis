@@ -3,29 +3,20 @@
  */
 package org.iplantc.service.common.representation;
 
-import java.io.IOException;
-
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.util.JsonPropertyFilter;
-import org.restlet.data.CharacterSet;
-import org.restlet.data.Form;
-import org.restlet.data.MediaType;
-import org.restlet.data.Request;
-import org.restlet.data.Response;
-import org.restlet.data.Status;
-import org.restlet.resource.StringRepresentation;
-
-import ch.mfrey.jackson.antpathfilter.Jackson2Helper;
-
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter.Lf2SpacesIndenter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
+import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.Settings;
+import org.iplantc.service.common.util.JsonPropertyFilter;
+import org.restlet.data.*;
+import org.restlet.resource.StringRepresentation;
+
+import java.io.IOException;
 
 /**
  * @author dooley

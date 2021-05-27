@@ -1,41 +1,34 @@
 package org.iplantc.service.io.permissions;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.dao.LogicalFileDao;
-import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.SystemRole;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
 
 public abstract class AbstractPermissionManagerTest extends BaseTestCase
 {
-	private SystemDao dao = new SystemDao();
+	private final SystemDao dao = new SystemDao();
 
 	@BeforeClass
 	protected void beforeClass() throws Exception
 	{
+		TenancyHelper.setCurrentTenantId("agave.dev");
+		TenancyHelper.setCurrentEndUser(ADMIN_USER);
+		
 		super.beforeClass();
 	}
 
@@ -305,7 +298,7 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 	 * @param expectedResult
 	 * @param shouldThrowException
 	 */
-	public void abstractTestCanRead(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
+	protected void _testCanRead(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
 		try
 		{
@@ -346,7 +339,7 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 	 * @param expectedResult
 	 * @param shouldThrowException
 	 */
-	protected void abstractTestCanWrite(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
+	protected void _testCanWrite(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
 		try
 		{
@@ -387,7 +380,7 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 	 * @param expectedResult
 	 * @param shouldThrowException
 	 */
-	protected void abstractTestCanReadWrite(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
+	protected void _testCanReadWrite(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
 		try
 		{
@@ -428,7 +421,7 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 	 * @param expectedResult
 	 * @param shouldThrowException
 	 */
-	protected void abstractTestCanReadExecute(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
+	protected void _testCanReadExecute(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
 		try
 		{
@@ -469,7 +462,7 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 	 * @param expectedResult
 	 * @param shouldThrowException
 	 */
-	protected void abstractTestCanWriteExecute(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
+	protected void _testCanWriteExecute(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
 		try
 		{
@@ -510,7 +503,7 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 	 * @param expectedResult
 	 * @param shouldThrowException
 	 */
-	protected void abstractTestCanAll(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
+	protected void _testCanAll(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
 		try
 		{
@@ -551,7 +544,7 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 	 * @param expectedResult
 	 * @param shouldThrowException
 	 */
-	protected void abstractTestCanExecute(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
+	protected void _testCanExecute(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
 		try
 		{

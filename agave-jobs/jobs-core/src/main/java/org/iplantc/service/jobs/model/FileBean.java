@@ -1,10 +1,5 @@
 package org.iplantc.service.jobs.model;
 
-import java.io.File;
-import java.util.Date;
-
-import javax.activation.MimetypesFileTypeMap;
-
 import org.iplantc.service.apps.Settings;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.io.model.LogicalFile;
@@ -13,6 +8,10 @@ import org.joda.time.DateTime;
 import org.json.JSONException;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
+
+import javax.activation.MimetypesFileTypeMap;
+import java.io.File;
+import java.util.Date;
 
 public class FileBean {
 	private String	name		= "";		// name of file

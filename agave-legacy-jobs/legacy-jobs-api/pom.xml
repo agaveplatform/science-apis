@@ -1,0 +1,146 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>legacy-jobs</artifactId>
+		<version>2.2.27</version>
+	</parent>
+	<artifactId>legacy-jobs-api</artifactId>
+	<name>Agave Platform Legacy Jobs Service API Endpoints</name>
+	<description>Webapp with REST endpoints for the Legacy Jobs Service</description>
+
+	<properties>
+		<force.check.update>false</force.check.update>
+		<service.war.name>legacy-jobs</service.war.name>
+		<hibernate.hbm2ddl>update</hibernate.hbm2ddl>
+	</properties>
+
+	<build>
+		<finalName>${service.war.name}</finalName>
+		<sourceDirectory>src/main/java</sourceDirectory>
+
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+			</resource>
+		</resources>
+		<testResources>
+			<testResource>
+				<directory>src/test/resources</directory>
+				<filtering>true</filtering>
+			</testResource>
+		</testResources>
+
+		<plugins>
+			<!-- ************************************ -->
+			<!-- *** TESTING ** -->
+			<!-- ************************************ -->
+
+			<!-- Use TestNG as the test runner -->
+
+			<!-- ************************************ -->
+			<!-- *** WAR BUILDER ** -->
+			<!-- ************************************ -->
+
+			<!-- Build war here and replace all the properties in the config file.
+				pick the desired profile above or specify it at the command line to select
+				the appropriate set of values -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-war-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>prepare-war</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>exploded</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<warName>${service.war.name}</warName>
+					<useCache>true</useCache>
+					<nonFilteredFileExtensions>
+						<nonFilteredFileExtension>jar</nonFilteredFileExtension>
+						<nonFilteredFileExtension>flt</nonFilteredFileExtension>
+					</nonFilteredFileExtensions>
+					<packagingExcludes>
+						WEB-INF/lib/servlet-api-*.jar
+					</packagingExcludes>
+					<archive>
+						<manifest>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+						</manifest>
+						<manifestEntries>
+							<Implementation-Build>${buildNumber}</Implementation-Build>
+						</manifestEntries>
+					</archive>
+					<webResources>
+						<resource>
+							<directory>src/main/java</directory>
+							<targetPath>WEB-INF/classes</targetPath>
+							<filtering>true</filtering>
+							<excludes>
+								<exclude>**/*.java</exclude>
+							</excludes>
+						</resource>
+						<resource>
+							<directory>src/main/resources</directory>
+							<targetPath>WEB-INF/classes</targetPath>
+							<filtering>true</filtering>
+							<includes>
+								<include>service.properties</include>
+								<include>hibernate.cfg.xml</include>
+								<include>roles.properties</include>
+							</includes>
+						</resource>
+						<resource>
+							<directory>src/main/webapp/WEB-INF</directory>
+							<targetPath>WEB-INF</targetPath>
+							<filtering>true</filtering>
+						</resource>
+					</webResources>
+				</configuration>
+			</plugin>
+
+			<!-- Don't deploy the war -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-deploy-plugin</artifactId>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-install-plugin</artifactId>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>common-legacy-api</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>legacy-jobs-core</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>${httpclient.version}</version>
+			<scope>compile</scope>
+		</dependency>
+	</dependencies>
+
+	<packaging>war</packaging>
+</project>

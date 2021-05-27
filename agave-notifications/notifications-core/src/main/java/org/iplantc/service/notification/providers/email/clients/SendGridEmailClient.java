@@ -1,18 +1,20 @@
 package org.iplantc.service.notification.providers.email.clients;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-
+import com.sendgrid.Method;
+import com.sendgrid.Request;
+import com.sendgrid.Response;
+import com.sendgrid.SendGrid;
+import com.sendgrid.helpers.mail.Mail;
+import com.sendgrid.helpers.mail.objects.*;
 import org.codehaus.plexus.util.StringUtils;
 import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.providers.email.EmailClient;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.sendgrid.SendGrid;
-import com.sendgrid.SendGridException;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Client class to send emails using the SendGrid HTTP API. This is helpful
@@ -25,15 +27,9 @@ import com.sendgrid.SendGridException;
 public class SendGridEmailClient implements EmailClient {
 
     protected Map<String, String> customHeaders = new HashMap<String, String>();
-    
-    public static void main(String[] args) throws Exception{
-        new SendGridEmailClient().send("Rion", 
-                "agaveapi@gmail.com", 
-                "Test email via smtp", 
-                "This is a simple smtp email fom the java client.",
-                "<p>This is a simple SMTP email fom the <a href=\"http://java.com\">Java</a> client.</p>");
-    }
-    
+
+    private boolean sandboxMode = false;
+
     @Override
     public void send(String recipientName, String recipientAddress, String subject, String body, String htmlBody)
     throws NotificationException 
@@ -54,45 +50,87 @@ public class SendGridEmailClient implements EmailClient {
         if (StringUtils.isEmpty(subject)) {
             throw new NotificationException("Email subject cannot be null.");
         }
-        
-        SendGrid sendgrid = new SendGrid(Settings.SMTP_AUTH_USER, Settings.SMTP_AUTH_PWD);
 
-        SendGrid.Email email = new SendGrid.Email();
+
+        Email fromEmail = new Email();
+        fromEmail.setName(Settings.SMTP_FROM_NAME);
+        fromEmail.setEmail(Settings.SMTP_FROM_ADDRESS);
+
+        Email toEmail = new Email();
+        toEmail.setEmail(recipientAddress);
         if (StringUtils.isEmpty(recipientName)) {
-            email.addTo(recipientAddress);
-        } else {
-            email.addTo(recipientAddress, recipientName);
+            toEmail.setName(Settings.SMTP_FROM_NAME);
         }
-        email.setFrom(Settings.SMTP_FROM_ADDRESS);
-        email.setFromName(Settings.SMTP_FROM_NAME);
-        email.setSubject(subject);
-        email.setHtml(htmlBody);
-        email.setText(body);
-        
-        // add custom headers if present
-        ObjectMapper mapper = new ObjectMapper();
-        ObjectNode jsonHeader = mapper.createObjectNode();
+
+        Personalization personalization = new Personalization();
+        personalization.addTo(toEmail);
         if (!getCustomHeaders().isEmpty()) {
             for (Entry<String,String> entry: getCustomHeaders().entrySet()) {
-                jsonHeader.put(entry.getKey(), entry.getValue());
+                personalization.addHeader(entry.getKey(), entry.getValue());
             }
         }
-        
-        email.addHeader("X-SMTPAPI", jsonHeader.toString());
+
+        Content plainContent = new Content("text/plain", body);
+        Content htmlContent = new Content("text/html", htmlBody);
+
+        MailSettings mailSettings = new MailSettings();
+
+        // enable sandbox mode if set during testing
+        if (isSandboxMode()) {
+            Setting sandBoxMode = new Setting();
+            sandBoxMode.setEnable(true);
+            mailSettings.setSandboxMode(sandBoxMode);
+        }
+
+
+        Mail mail = new Mail();
+        mail.setFrom(fromEmail);
+        mail.addPersonalization(personalization);
+        mail.setSubject(subject);
+        mail.addContent(plainContent);
+        mail.addContent(htmlContent);
+        mail.addPersonalization(personalization);
+        mail.setMailSettings(mailSettings);
+
+        SendGrid sendgrid = new SendGrid(Settings.SMTP_AUTH_TOKEN);
+
+//        SendGrid.Email email = new SendGrid.Email();
+//        if (StringUtils.isEmpty(recipientName)) {
+//            email.addTo(recipientAddress);
+//        } else {
+//            email.addTo(recipientAddress, recipientName);
+//        }
+//        email.setFrom(Settings.SMTP_FROM_ADDRESS);
+//        email.setFromName(Settings.SMTP_FROM_NAME);
+//        email.setSubject(subject);
+//        email.setHtml(htmlBody);
+//        email.setText(body);
+
+        // add custom headers if present
+//        ObjectMapper mapper = new ObjectMapper();
+//        ObjectNode jsonHeader = mapper.createObjectNode();
+
+
+//        email.addHeader("X-SMTPAPI", jsonHeader.toString());
             
 //        email.setTemplateId(Settings.SENDGRID_TEMPLATE_ID);
 
         try {
-          SendGrid.Response response = sendgrid.send(email);
-          
-          if (response == null) {
-              throw new NotificationException("Failed to send notification message. Unable to connect to remote service.");
-          }
-          else if (!response.getStatus()) {
-              throw new NotificationException("Failed to send notification message." + response.getMessage());
-          }
+            Request request = new Request();
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+
+            Response response = sendgrid.api(request);
+
+            if (response == null) {
+                throw new NotificationException("Failed to send notification message. Unable to connect to remote service.");
+            }
+            else if (response.getStatusCode() != 200 && response.getStatusCode() != 201) {
+                throw new NotificationException(String.format("Failed to send notification message: (%d) - %s", response.getStatusCode(), response.getBody()));
+            }
         }
-        catch (SendGridException e) {
+        catch (IOException e) {
             throw new NotificationException("Failed to send notification due to upstream erorr from mail server.", e);
         }
     }
@@ -109,5 +147,13 @@ public class SendGridEmailClient implements EmailClient {
      */
     public synchronized void setCustomHeaders(Map<String, String> customHeaders) {
         this.customHeaders = customHeaders;
+    }
+
+    public boolean isSandboxMode() {
+        return sandboxMode;
+    }
+
+    public void setSandboxMode(boolean sandboxMode) {
+        this.sandboxMode = sandboxMode;
     }
 }

@@ -1,11 +1,9 @@
 package org.iplantc.service.common.representation;
 
-import java.io.IOException;
-import java.util.HashMap;
-
-import javax.servlet.http.HttpSession;
-
+import freemarker.template.Configuration;
+import freemarker.template.Template;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.quartz.util.QuartzUtility;
 import org.iplantc.service.common.resource.AgaveResource;
 import org.quartz.SchedulerException;
@@ -19,10 +17,10 @@ import org.restlet.ext.json.JsonRepresentation;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
-import org.testng.log4testng.Logger;
 
-import freemarker.template.Configuration;
-import freemarker.template.Template;
+import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.util.HashMap;
 
 /**
  * Simple API to manage quartz scheduler running in an 
@@ -188,7 +186,6 @@ public class QuartzUtilityResource extends AgaveResource
 
     /**
      * lists scheduler jobs.
-     * @param session {@code HttpSession} used for authorization.
      * @return JSON containing list of {@link org.iplantc.service.common.quartz.util.ui.JobDescription}s and general scheduler
      * data.
      */
@@ -226,8 +223,7 @@ public class QuartzUtilityResource extends AgaveResource
     /**
      * revert to the original trigger cron expression.
      *
-     * @param trigger job name
-     * @param session session
+     * @param trigger job id
      * @return
      */
 //    @RequestMapping(value = QUARTZ_UTILITY_REVERT_TRIGGER_CHANGES, method = RequestMethod.POST)

@@ -1,21 +1,14 @@
 package org.iplantc.service.jobs.model;
 
+import org.joda.time.DateTime;
+import org.testng.Assert;
+import org.testng.annotations.*;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import org.iplantc.service.jobs.dao.JobDao;
-import org.joda.time.DateTime;
-import org.testng.Assert;
-import org.testng.annotations.Test;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.AfterClass;
-
-import com.jcabi.immutable.Array;
-
+@Test(groups={"broken", "unit"})
 public class JobCalculateExpirationDateTest
 {
 	@BeforeMethod
@@ -152,7 +145,7 @@ public class JobCalculateExpirationDateTest
 			{
 				for (int k=0; k<10; k++) 
 				{
-					String stime = String.valueOf(i) + ":" + String.valueOf(j) + ":" + String.valueOf(k);
+					String stime = i + ":" + j + ":" + k;
 					DateTime expectedTime = new DateTime(now).plusHours(i)
 															 .plusMinutes(j)
 															 .plusSeconds(k)

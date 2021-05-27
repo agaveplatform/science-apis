@@ -1,19 +1,14 @@
 package org.iplantc.service.jobs.submission;
 
-import java.util.HashMap;
-
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareOutput;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.model.JSONTestDataUtil;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.util.HashMap;
 
 /**
  * Test class to verify the job submission validation checks in the JobResource
@@ -25,6 +20,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
+@Test(groups={"integration"})
 public class JobValidationTest extends AbstractJobSubmissionTest{
 	
 	/**

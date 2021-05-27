@@ -3,14 +3,11 @@
  */
 package org.iplantc.service.jobs.queue;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.quartz.JobExecutionContext;
-import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.Trigger.CompletedExecutionInstruction;
-import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.TriggerListener;
 
 /**
@@ -19,7 +16,7 @@ import org.quartz.TriggerListener;
  */
 public class AgaveJobCleanupTriggerListener implements TriggerListener {
 
-	private static Logger log = Logger.getLogger(AgaveJobCleanupTriggerListener.class);
+	private static final Logger log = Logger.getLogger(AgaveJobCleanupTriggerListener.class);
 	/* (non-Javadoc)
 	 * @see org.quartz.TriggerListener#getName()
 	 */

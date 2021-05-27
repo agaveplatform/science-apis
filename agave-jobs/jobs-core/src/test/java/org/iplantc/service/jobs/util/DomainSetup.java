@@ -1,30 +1,28 @@
 package org.iplantc.service.jobs.util;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
+import org.hibernate.exception.ConstraintViolationException;
+import org.iplantc.service.apps.dao.SoftwareDao;
+import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.jobs.dao.AbstractDaoTest;
+import org.iplantc.service.jobs.model.JSONTestDataUtil;
+import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.exceptions.SystemArgumentException;
+import org.iplantc.service.systems.exceptions.SystemException;
+import org.iplantc.service.systems.model.ExecutionSystem;
+import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.StorageSystem;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.testng.annotations.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.commons.io.FileUtils;
-import org.hibernate.exception.ConstraintViolationException;
-import org.iplantc.service.apps.dao.SoftwareDao;
-import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.jobs.dao.AbstractDaoTest;
-import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.dao.JobDaoTest;
-import org.iplantc.service.jobs.exceptions.JobException;
-import org.iplantc.service.jobs.model.JSONTestDataUtil;
-import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.SystemArgumentException;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.StorageSystem;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 /**
  * Created with IntelliJ IDEA.
@@ -33,8 +31,11 @@ import org.json.JSONObject;
  * Time: 8:24 AM
  * To change this template use File | Settings | File Templates.
  */
+@Test(groups={"integration"})
 public class DomainSetup extends AbstractDaoTest
 {
+    private static final Logger log = Logger.getLogger(DomainSetup.class);
+
 	private static final String SOFTWARE_OWNER =       "api_sample_user";       // default software owner if none given
     private static final String SYSTEM_OWNER =         "sysowner";      // default system owner
     
@@ -43,10 +44,10 @@ public class DomainSetup extends AbstractDaoTest
     private List<JSONObject> jsonExecutionList;                         // list of base Execution objects as json
                                                                         // created from template directory
     private List<JSONObject> jsonSoftwareList;
-    private Map<String,Software> softwareMap = new HashMap<String, Software>();
-    private Map<String, ExecutionSystem> executionSystemMap = new HashMap<String, ExecutionSystem>();
-    private Map<String, StorageSystem> storageSystemMap = new HashMap<String, StorageSystem>();
-    private SystemDao systemDao = new SystemDao();
+    private final Map<String,Software> softwareMap = new HashMap<String, Software>();
+    private final Map<String, ExecutionSystem> executionSystemMap = new HashMap<String, ExecutionSystem>();
+    private final Map<String, StorageSystem> storageSystemMap = new HashMap<String, StorageSystem>();
+    private final SystemDao systemDao = new SystemDao();
     
     public Map<String, Software> getSoftwareMap() {
         return softwareMap;
@@ -76,9 +77,7 @@ public class DomainSetup extends AbstractDaoTest
         try {
             String contents = FileUtils.readFileToString(new File(pathToFile));
             json = new JSONObject(contents);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
         }
         return json;
@@ -110,7 +109,6 @@ public class DomainSetup extends AbstractDaoTest
             FileUtils.writeStringToFile(file,content);
         } catch (IOException e) {
             String name = file.getName();
-            System.out.println("failed writing "+name+" to file");
             e.printStackTrace();
             return false;
         }
@@ -173,9 +171,7 @@ public class DomainSetup extends AbstractDaoTest
             try {
                 String key = (String)json.get("id");
                 storageSystemMap.put(key, StorageSystem.fromJSON(json));
-            } catch (SystemArgumentException e) {
-                e.printStackTrace();
-            } catch (JSONException e) {
+            } catch (SystemException | JSONException e) {
                 e.printStackTrace();
             }
         }
@@ -184,9 +180,7 @@ public class DomainSetup extends AbstractDaoTest
             try {
                 String key = (String)json.get("id");
                 executionSystemMap.put(key, ExecutionSystem.fromJSON(json));
-            } catch (SystemArgumentException e) {
-                e.printStackTrace();
-            } catch (JSONException e) {
+            } catch (SystemException | JSONException | SystemArgumentException e) {
                 e.printStackTrace();
             }
         }
@@ -205,9 +199,7 @@ public class DomainSetup extends AbstractDaoTest
             jsonStorageList = collectFiles(STORAGE_SYSTEM_TEMPLATE_DIR);
             jsonExecutionList = collectFiles(EXECUTION_SYSTEM_TEMPLATE_DIR);
             jsonSoftwareList = collectFiles(SOFTWARE_SYSTEM_TEMPLATE_DIR);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
         }
         fillSystemMaps();
@@ -224,7 +216,7 @@ public class DomainSetup extends AbstractDaoTest
             try {
                 String key = (String)json.get("id");
                 // must be able read remote system from db to create a software object.
-                System.out.println(key);
+//                System.out.println(key);
                 softwareMap.put(key, Software.fromJSON(json,SOFTWARE_OWNER));
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -248,7 +240,7 @@ public class DomainSetup extends AbstractDaoTest
         try {
             software = Software.fromJSON(json,SOFTWARE_OWNER);
         } catch (JSONException e) {
-            e.printStackTrace();
+            log.error("Unable to marshal software from json", e);
         }
         return software;
     }
@@ -262,8 +254,8 @@ public class DomainSetup extends AbstractDaoTest
         ExecutionSystem executionSystem = null;
         try {
             executionSystem = ExecutionSystem.fromJSON(json);
-        } catch (SystemArgumentException e) {
-            e.printStackTrace();
+        } catch (SystemException | SystemArgumentException e) {
+            log.error("Unable to marshal execution system from json", e);
         }
         return executionSystem;
     }
@@ -277,8 +269,8 @@ public class DomainSetup extends AbstractDaoTest
         StorageSystem storageSystem = null;
         try{
             storageSystem = StorageSystem.fromJSON(json);
-        } catch (SystemArgumentException e) {
-            e.printStackTrace();
+        } catch (SystemException e) {
+            log.error("Unable to marshal storage system from json", e);
         }
         return storageSystem;
     }
@@ -294,7 +286,7 @@ public class DomainSetup extends AbstractDaoTest
         try {
              software = Software.fromJSON(json,SOFTWARE_OWNER);
         } catch (JSONException e) {
-            e.printStackTrace();
+            log.error("Unable to marshal software from json", e);
         }
         return software;
     }
@@ -307,25 +299,25 @@ public class DomainSetup extends AbstractDaoTest
         fillListsMaps();
         for(JSONObject storageJson : jsonStorageList){
             try {
-                RemoteSystem system = (RemoteSystem)StorageSystem.fromJSON(storageJson);
-                System.out.println("Storage system "+system.getName());
+                RemoteSystem system = StorageSystem.fromJSON(storageJson);
+//                System.out.println("Storage system "+system.getName());
                 system.setOwner(SYSTEM_OWNER);         // default system owner
                 systemDao.persist(system);
-            } catch (SystemArgumentException e) {
-                e.printStackTrace();
+            } catch (SystemException e) {
+                log.error("Unable to parse and safe default test storage system", e);
             }
         }
 
         for(JSONObject executionJson : jsonExecutionList){
             try {
-                RemoteSystem system = (RemoteSystem)ExecutionSystem.fromJSON(executionJson);
-                System.out.println("Execution system "+system.getName());
+                RemoteSystem system = ExecutionSystem.fromJSON(executionJson);
+//                System.out.println("Execution system "+system.getName());
                 system.setOwner(SYSTEM_OWNER);         // default system owner
                 systemDao.persist(system);
-            } catch (SystemArgumentException e) {
-                e.printStackTrace();
+            } catch (SystemException | SystemArgumentException e) {
+                log.error("Unable to parse and save test execution system", e);
             }catch (ConstraintViolationException ce){
-                System.out.println("Continue with loading data if possible");
+//                System.out.println("Continue with loading data if possible");
             }
 
         }
@@ -340,12 +332,12 @@ public class DomainSetup extends AbstractDaoTest
                            // dependency on systems being available in the database.
         for(JSONObject softwareJson : jsonSoftwareList){
             try {
-                System.out.println(softwareJson.get("id"));
+//                System.out.println(softwareJson.get("id"));
                 Software software = Software.fromJSON(softwareJson,SOFTWARE_OWNER);
                 software.setOwner(SOFTWARE_OWNER);
                 SoftwareDao.persist(software);
             } catch (JSONException e) {
-                e.printStackTrace();
+                log.error("Unable to marshall software from json", e);
             }
         }
     }
@@ -361,7 +353,7 @@ public class DomainSetup extends AbstractDaoTest
                 software.setOwner(SYSTEM_OWNER);
                 SoftwareDao.persist(software);
             } catch (JSONException e) {
-                e.printStackTrace();
+                log.error("Unable to marshall software from json", e);
             }
         }
     }
@@ -377,7 +369,7 @@ public class DomainSetup extends AbstractDaoTest
             Software software = Software.fromJSON(softwareJson,SOFTWARE_OWNER);
             SoftwareDao.persist(software);
         } catch (JSONException e) {
-            e.printStackTrace();
+            log.error("Unable to marshall software from json", e);
         }
     }
 
@@ -405,8 +397,7 @@ public class DomainSetup extends AbstractDaoTest
             software.setOwner(SYSTEM_OWNER);
             SoftwareDao.persist(Software.fromJSON(softwareJson,SOFTWARE_OWNER));
         } catch (JSONException e) {
-            System.out.println("failed to persist json \n"+json);
-            e.printStackTrace();
+            log.error("failed to persist json \n"+json, e);
         }
     }
 
@@ -420,7 +411,7 @@ public class DomainSetup extends AbstractDaoTest
             software.setOwner(SYSTEM_OWNER);
             SoftwareDao.persist(software);
         } catch (JSONException e) {
-            e.printStackTrace();
+            log.error("Unable to marshall software from json", e);
         }
     }
 
@@ -435,12 +426,12 @@ public class DomainSetup extends AbstractDaoTest
         RemoteSystem storageSystem = null;
         RemoteSystem executionSystem = null;
         try {
-            storageSystem = (RemoteSystem)StorageSystem.fromJSON(storageJ);
+            storageSystem = StorageSystem.fromJSON(storageJ);
             storageSystem.setOwner(SYSTEM_OWNER);         // default system owner
-            executionSystem = (RemoteSystem)ExecutionSystem.fromJSON(executeJ);
+            executionSystem = ExecutionSystem.fromJSON(executeJ);
             executionSystem.setOwner(SYSTEM_OWNER);
-        } catch (SystemArgumentException e) {
-            e.printStackTrace();
+        } catch (SystemException | SystemArgumentException e) {
+            log.error("Unable to marshall test system from json", e);
         }
     }
 
@@ -461,7 +452,7 @@ public class DomainSetup extends AbstractDaoTest
         iplantStorage.setGlobalDefault(true);
         iplantStorage.setPubliclyAvailable(true);
         idao.persist(iplantStorage);
-        System.out.println();
+//        System.out.println();
     }
 
     /**
@@ -476,79 +467,53 @@ public class DomainSetup extends AbstractDaoTest
         //System.out.println("Total records in all tables "+g.totalTableRecords());
         //g.lockAndWipeTables();
        // System.out.println("Total records in all tables " + g.totalTableRecords());
-        System.out.println("\n\n");
+//        System.out.println("\n\n");
         persistDefaultTestSystemsData();
         //System.out.println("Total records in all tables "+g.totalTableRecords());
-        System.out.println("\n\n");
+//        System.out.println("\n\n");
         //g.closeConnection("DomainSetup");
     }
 
-    /**
-     * Job setup is currently written for wca-iplant-condor software definition and assumes that
-     * wca-iplant-condor is persisted in the database.
-     * @throws JobException 
-     */
-    public void  addAJobSubmissionToDatabase() throws JobException{
-        // this sets up the ability to create
-        //RemoteHPCJobSubmissionTest remoteJob = new RemoteHPCJobSubmissionTest();
-        JobDaoTest jobDaoTest = new JobDaoTest();
-        Job testJob = null;
-        try {
-
-            jobDaoTest.software = SoftwareDao.get("wca-1.00");
-            testJob = jobDaoTest.createJob(JobStatusType.PENDING);
-            System.out.println();
-        } catch (Exception e) {
-            System.out.println("our Job creator jobDaoTest is failing for some reason");
-            e.printStackTrace();
-        }
-
-        // need to change some values on this job and then persist in database in order to
-        // kick off the test for CondorLauncher.
-
-        testJob.setName("testname");
-        testJob.setOwner("sterry1");
-        testJob.setInternalUsername("sterry1");
-        testJob.setOutputPath("");
-        testJob.setArchivePath("/iplant/home/sterry1/archive/test-job-999");
-        testJob.setWorkPath("/dev/null");
-        testJob.setUpdateToken("232a28d8930d43fbc4c58069eaae8bba");
-        testJob.setLocalJobId("");
-        testJob.setSchedulerJobId("");
-        testJob.setCharge(Float.parseFloat("1001.5"));
-
-        try {
-            JobDao.persist(testJob);
-        } catch (JobException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-
-
-
-    public static void main(String[] args) throws IOException, JobException {
-
-        DomainSetup ds = new DomainSetup();
-
-        //ds.baseDataForSoftwareRegistrationTest();
-        ds.addAJobSubmissionToDatabase();
-
-
-        //ds.fillListsMaps();
-        //GSqlData g = new GSqlData("DomainSetup");
-        //ds.setupCondorTestDataStructure();
-        //ds.fillSoftwareMap();
-        //ds.persistSoftwareDomain();
-        //ds.persistSingleSoftwareEntryFromFile(SOFTWARE_SYSTEM_TEMPLATE_DIR+"/wc-iplant-condor.tacc.utexas.edu.json");
-        // pick a software def
-        //ds.viewDomain();
-        //g.closeConnection("DomainSetup");
-        //ds.persistSingleSoftwareEntryFromFile(SOFTWARE_SYSTEM_TEMPLATE_DIR+"/system-software.json","ipctest");
-
-    }
-
-
+//    /**
+//     * Job setup is currently written for wca-iplant-condor software definition and assumes that
+//     * wca-iplant-condor is persisted in the database.
+//     * @throws JobException
+//     */
+//    public void  addAJobSubmissionToDatabase() throws JobException{
+//        // this sets up the ability to create
+//        //RemoteHPCJobSubmissionTest remoteJob = new RemoteHPCJobSubmissionTest();
+//        JobDaoTest jobDaoTest = new JobDaoTest();
+//        Job testJob = null;
+//        try {
+//
+//            Software software = createSoftware();
+//            testJob = jobDaoTest.createJob(JobStatusType.PENDING, software);
+//            System.out.println();
+//        } catch (Exception e) {
+//            System.out.println("our Job creator jobDaoTest is failing for some reason");
+//            e.printStackTrace();
+//        }
+//
+//        // need to change some values on this job and then persist in database in order to
+//        // kick off the test for CondorLauncher.
+//
+//        testJob.setName("testname");
+//        testJob.setOwner("testuser");
+//        testJob.setInternalUsername("testinternaluser");
+//        testJob.setOutputPath("");
+//        testJob.setArchivePath("/iplant/home/testuser/archive/test-job-999");
+//        testJob.setWorkPath("/dev/null");
+//        testJob.setUpdateToken("232a28d8930d43fbc4c58069eaae8bba");
+//        testJob.setLocalJobId("");
+//        testJob.setSchedulerJobId("");
+//        testJob.setCharge(Float.parseFloat("1001.5"));
+//
+//        try {
+//            JobDao.persist(testJob);
+//        } catch (JobException e) {
+//            e.printStackTrace();
+//        }
+//
+//    }
 }
 

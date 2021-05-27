@@ -1,39 +1,22 @@
 package org.iplantc.service.tags.model;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.tags.AbstractTagTest;
 import org.iplantc.service.tags.TestDataHelper;
-import org.iplantc.service.tags.exceptions.TagException;
 import org.iplantc.service.tags.model.enumerations.PermissionType;
-import org.json.JSONException;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.ArrayList;
 
-public class TagPermissionTest extends AbstractTagTest {
-	
-	@BeforeClass
-	protected void beforeClass() throws Exception
-	{
-		super.beforeClass();
-	}
-	
-	@AfterClass
-	protected void afterClass() throws TagException {
-		super.afterClass();
-	}
+@Test(groups={"unit"})
+public class TagPermissionTest {
+	private static final ObjectMapper mapper = new ObjectMapper();
 
 	@DataProvider
 	public Object[][] createTagPermissionProvider() {
@@ -60,7 +43,7 @@ public class TagPermissionTest extends AbstractTagTest {
 
 	@Test
 	public void TagPermissionStringPermissionType() {
-	TagPermission permission = new TagPermission(TestDataHelper.TEST_SHAREUSER, PermissionType.ALL);
+		TagPermission permission = new TagPermission(TestDataHelper.TEST_SHAREUSER, PermissionType.ALL);
 		Assert.assertEquals(permission.getPermission(),PermissionType.ALL,  "permission should be equal to constructor value.");
 		Assert.assertEquals(permission.getUsername(),TestDataHelper.TEST_SHAREUSER,  "username should be equal to constructor value.");
 		Assert.assertNull(permission.getEntityId(), "tag should be null if not passed in constructor.");
@@ -68,7 +51,7 @@ public class TagPermissionTest extends AbstractTagTest {
 
 	@Test
 	public void TagPermissionTagStringPermissionType() {
-		Tag tag = new Tag("foo", TestDataHelper.TEST_USER, new String[]{ defaultTenant.getUuid() });
+		Tag tag = new Tag("foo", TestDataHelper.TEST_USER, new String[]{ new AgaveUUID(UUIDType.TENANT).toString() });
 		TagPermission permission = new TagPermission(tag, TestDataHelper.TEST_SHAREUSER, PermissionType.ALL);
 		
 		Assert.assertEquals(permission.getPermission(),PermissionType.ALL,  "permission should be equal to constructor value.");
@@ -80,7 +63,7 @@ public class TagPermissionTest extends AbstractTagTest {
 
 	@Test
 	public void doClone() {
-		Tag tag = new Tag("foo", TestDataHelper.TEST_USER, new String[]{ defaultTenant.getUuid() });
+		Tag tag = new Tag("foo", TestDataHelper.TEST_USER, new String[]{ new AgaveUUID(UUIDType.TENANT).toString() });
 		TagPermission oldPermission = new TagPermission(tag, TestDataHelper.TEST_SHAREUSER, PermissionType.ALL);
 		TagPermission newPermission = oldPermission.clone();
 		Assert.assertEquals(oldPermission.getUsername(), newPermission.getUsername(), "Username should carry over when cloning a permission");
@@ -92,7 +75,6 @@ public class TagPermissionTest extends AbstractTagTest {
 
 	@DataProvider
 	public Object[][] fromJSONProvider() {
-		ObjectMapper mapper = new ObjectMapper();
 		ObjectNode json = mapper.createObjectNode();
 		json.put("username", TestDataHelper.TEST_SHAREUSER);
 		json.put("permission", PermissionType.ALL.name());
@@ -110,7 +92,7 @@ public class TagPermissionTest extends AbstractTagTest {
 	
 	@Test(dataProvider = "fromJSONProvider")
 	public void fromJSON(ObjectNode json, boolean shouldThrowException, String message) {
-		Tag tag = new Tag("foo", TestDataHelper.TEST_USER, new String[]{ defaultTenant.getUuid() });
+		Tag tag = new Tag("foo", TestDataHelper.TEST_USER, new String[]{ new AgaveUUID(UUIDType.TENANT).toString() });
 		try {
 			TagPermission.fromJSON(json, tag.getUuid());
 			Assert.assertFalse(shouldThrowException, message);
@@ -122,7 +104,6 @@ public class TagPermissionTest extends AbstractTagTest {
 	
 	@DataProvider
 	public Object[][] fromJSONMapsNullAndEmptyToNoneProvider() {
-		ObjectMapper mapper = new ObjectMapper();
 		ObjectNode json = mapper.createObjectNode();
 		json.put("username", TestDataHelper.TEST_SHAREUSER);
 		json.put("permission", PermissionType.ALL.name());
@@ -135,7 +116,7 @@ public class TagPermissionTest extends AbstractTagTest {
 	
 	@Test(dataProvider = "fromJSONMapsNullAndEmptyToNoneProvider")
 	public void fromJSONMapsNullAndEmptyToNone(ObjectNode json, boolean shouldThrowException, String message) {
-		Tag tag = new Tag("foo", TestDataHelper.TEST_USER, new String[]{ defaultTenant.getUuid() });
+		Tag tag = new Tag("foo", TestDataHelper.TEST_USER, new String[]{ new AgaveUUID(UUIDType.TENANT).toString() });
 		try {
 			TagPermission.fromJSON(json, tag.getUuid());
 			Assert.assertFalse(shouldThrowException, message);
@@ -146,7 +127,6 @@ public class TagPermissionTest extends AbstractTagTest {
 	
 	@DataProvider
 	public Object[][] fromJSONMapsCaseInsensitivePermissionProvider() {
-		ObjectMapper mapper = new ObjectMapper();
 		ObjectNode json = mapper.createObjectNode();
 		json.put("username", TestDataHelper.TEST_SHAREUSER);
 		json.put("permission", PermissionType.ALL.name());
@@ -175,33 +155,13 @@ public class TagPermissionTest extends AbstractTagTest {
 	
 	@Test(dataProvider = "fromJSONMapsCaseInsensitivePermissionProvider")
 	public void fromJSONMapsCaseInsensitivePermission(ObjectNode json, PermissionType expectedPermissionType, String message) {
-		Tag tag = new Tag("foo", TestDataHelper.TEST_USER, new String[]{ defaultTenant.getUuid() });
+		Tag tag = new Tag("foo", TestDataHelper.TEST_USER, new String[]{ new AgaveUUID(UUIDType.TENANT).toString() });
 		try {
 			TagPermission permission = TagPermission.fromJSON(json, tag.getUuid());
 			Assert.assertEquals(permission.getPermission(), expectedPermissionType, message );
 		} 
 		catch (Exception e) {
 			Assert.fail(message, e);
-		}
-	}
-
-	@Test
-	public void toJSON() 
-	{
-		try 
-		{
-			Tag tag = createTag();
-			TagPermission permission = new TagPermission(tag, TestDataHelper.TEST_SHAREUSER, PermissionType.READ);
-			
-			ObjectNode json = (ObjectNode) new ObjectMapper().readTree(permission.toJSON());
-			
-			Assert.assertTrue(json.get("_links").get("self").has("href"), "No hypermedia found in serialized response");
-			Assert.assertTrue(json.get("_links").has("tag"), "No permissions reference found in serialized response");
-//			Assert.assertTrue(json.get("_links").has("permissions"), "No history reference found in serialized response");
-			Assert.assertTrue(json.get("_links").has("profile"), "No owner reference found in serialized response");
-		} 
-		catch (Exception e) {
-			Assert.fail("Permission serialization should never throw exception", e);
 		}
 	}
 }

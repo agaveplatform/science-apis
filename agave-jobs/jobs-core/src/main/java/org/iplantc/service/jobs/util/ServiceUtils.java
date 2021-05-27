@@ -1,26 +1,17 @@
 package org.iplantc.service.jobs.util;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.Iterator;
-import java.util.Map;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-
 import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.*;
+import java.util.*;
 
 public class ServiceUtils 
 {
@@ -87,10 +78,7 @@ public class ServiceUtils
 		String ipOnly = "";
 		try
 		{
-			Enumeration<NetworkInterface> nifs = NetworkInterface
-					.getNetworkInterfaces();
-			if (nifs == null)
-				return "";
+			Enumeration<NetworkInterface> nifs = NetworkInterface.getNetworkInterfaces();
 			while (nifs.hasMoreElements())
 			{
 				NetworkInterface nif = nifs.nextElement();
@@ -102,10 +90,10 @@ public class ServiceUtils
 					while (adrs.hasMoreElements())
 					{
 						InetAddress adr = adrs.nextElement();
-						if (adr != null
+						if (adr instanceof Inet4Address
 								&& !adr.isLoopbackAddress()
-								&& ( nif.isPointToPoint() || !adr
-										.isLinkLocalAddress() ))
+								&& (nif.isPointToPoint() || !adr
+								.isLinkLocalAddress()))
 						{
 							String adrIP = adr.getHostAddress();
 							String adrName;

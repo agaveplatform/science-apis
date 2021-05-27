@@ -1,11 +1,7 @@
 package org.iplantc.service.transfer;
 
-import java.io.File;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.StringTokenizer;
-
+import com.sshtools.sftp.SftpFile;
+import com.sshtools.sftp.SftpFileAttributes;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.globus.ftp.MlsxEntry;
@@ -15,11 +11,16 @@ import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
 import org.jclouds.blobstore.domain.BlobMetadata;
-import org.jclouds.blobstore.domain.StorageMetadata;
-import org.jclouds.blobstore.domain.StorageType;
 
-import com.sshtools.sftp.SftpFile;
-import com.sshtools.sftp.SftpFileAttributes;
+import java.io.File;
+import java.nio.file.attribute.PosixFilePermission;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.StringTokenizer;
 
 //import com.sshtools.j2ssh.sftp.FileAttributes;
 //import com.sshtools.j2ssh.sftp.SftpFile;
@@ -136,6 +137,25 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
             throw new RemoteDataException("Could not parse access permission bits");
         }
     }
+
+    public RemoteFileInfo(org.agaveplatform.transfer.proto.sftp.RemoteFileInfo file) throws RemoteDataException {
+		this.name = file.getName();
+
+		if (file.getIsDirectory())
+			this.fileType = DIRECTORY_TYPE;
+		else if (file.getIsLink())
+			this.fileType = SOFTLINK_TYPE;
+		else
+			this.fileType = FILE_TYPE;
+
+		this.size = file.getSize();
+
+		updateMode(file.getMode());
+
+		this.lastModified = Date.from(Instant.ofEpochSecond(file.getLastUpdated()));
+
+		this.owner = UNKNOWN_STRING;
+	}
     
     public RemoteFileInfo(File file) throws RemoteDataException 
     {
@@ -350,7 +370,7 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
 //		}
 //	}
 
-	public RemoteFileInfo(StorageMetadata storageMetadata) throws RemoteDataException
+	public RemoteFileInfo(BlobMetadata storageMetadata) throws RemoteDataException
 	{
 		this.name = FilenameUtils.getName(storageMetadata.getName());
     	this.owner = UNKNOWN_STRING;
@@ -358,8 +378,8 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
     	try
 		{
     		this.lastModified = storageMetadata.getLastModified();
-			
-    		if (storageMetadata.getType() == StorageType.RELATIVE_PATH || storageMetadata.getType() == StorageType.FOLDER)
+
+    		if (storageMetadata.getContentMetadata().getContentType().equals("application/directory"))
     		{
     			this.fileType = DIRECTORY_TYPE;
     			this.size = 0;
@@ -367,7 +387,7 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
     		else
     		{
     			this.fileType = FILE_TYPE;
-    			this.size = ((BlobMetadata)storageMetadata).getContentMetadata().getContentLength();
+    			this.size = storageMetadata.getContentMetadata().getContentLength();
     		}
     		
     		try 
@@ -522,7 +542,25 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
             }
         }
     }
-    
+
+	/**
+	 * Updates the integer permission mode of this fileitem.
+	 * @param modeString unix mode such as "-rwx-r--r--"
+	 * @return
+	 * @throws RemoteDataException if a bad value is passed
+	 */
+	public void updateMode(String modeString) throws RemoteDataException{
+    	try {
+			for(int i=1;i<=9;i++) {
+				if (modeString.charAt(i) != '-') {
+					mode += 1 << (9 - i);
+				}
+			}
+		} catch (IndexOutOfBoundsException e) {
+			throw new RemoteDataException("Could not parse access permission bits");
+		}
+	}
+
     public String formatUnixListReply(String unixMode, boolean isDirectory) throws RemoteDataException 
     {
     	String unixListString = isDirectory ? "d" : "-";
@@ -745,7 +783,7 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
                   oct += (int)Math.pow(2,i);
               }
           }
-          modeStr.append(String.valueOf(oct));
+          modeStr.append(oct);
       }
       return modeStr.toString();
     }
@@ -823,7 +861,7 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
 		if (o == null) {
 			throw new ClassCastException("Cannot compare RemoteFileInfo with null object.");
 		} else { 
-			return this.name.compareToIgnoreCase(((RemoteFileInfo)o).name);
+			return this.name.compareToIgnoreCase(o.name);
 		}
 	}
 	
@@ -839,6 +877,32 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
 		{
 			return null;
 		}
+	}
+
+	/**
+	 * Returns the a Set of PosixFilePermission corresponding to the permissions of the
+	 * original object. These will be pulled from the original source of the file item.
+	 * In object storage systems, these will be pulled from the cloud ACL and user metadata.
+	 * In posix file systems these will be from the original file system.
+	 *
+	 * @return the original permissions translated to unix permissions.
+	 */
+	public Set<PosixFilePermission> getPosixFilePermissions() {
+		Set<PosixFilePermission> perms = new HashSet<PosixFilePermission>();
+		//add owners permission
+		if (userCanRead()) perms.add(PosixFilePermission.OWNER_READ);
+		if (userCanWrite()) perms.add(PosixFilePermission.OWNER_WRITE);
+		if (userCanExecute()) perms.add(PosixFilePermission.OWNER_EXECUTE);
+		//add group permissions
+		if (groupCanRead()) perms.add(PosixFilePermission.GROUP_READ);
+		if (groupCanWrite()) perms.add(PosixFilePermission.GROUP_WRITE);
+		if (groupCanExecute()) perms.add(PosixFilePermission.GROUP_EXECUTE);
+		//add others permissions
+		if (allCanRead()) perms.add(PosixFilePermission.OTHERS_READ);
+		if (allCanWrite()) perms.add(PosixFilePermission.OTHERS_WRITE);
+		if (allCanExecute()) perms.add(PosixFilePermission.OTHERS_EXECUTE);
+
+		return perms;
 	}
     
 }

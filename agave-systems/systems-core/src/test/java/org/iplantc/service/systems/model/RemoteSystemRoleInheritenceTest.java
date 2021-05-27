@@ -9,9 +9,10 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+@Test(groups={"unit"})
 public class RemoteSystemRoleInheritenceTest
 {
-	private final String GOD_USER = "dooley";
+	private final String GOD_USER = "testadmin";
 	private final String SYSTEM_OWNER = "testuser";
 	private final String SYSTEM_SHARE_GUEST_USER = "shareguest";
 	private final String SYSTEM_SHARE_USER_USER = "shareuser";

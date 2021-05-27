@@ -3,13 +3,6 @@
  */
 package org.iplantc.service.transfer;
 
-import java.io.File;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.util.Properties;
-
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.iplantc.service.common.persistence.HibernateUtil;
@@ -20,11 +13,14 @@ import org.iplantc.service.systems.model.StorageSystem;
 import org.json.JSONObject;
 import org.testng.annotations.BeforeClass;
 
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+
 /**
  * @author dooley
  *
  */
-public class BaseTransferTestCase {
+public abstract class BaseTransferTestCase {
 
 	public static final String SYSTEM_USER = "testuser";
 	public static final String SHARED_SYSTEM_USER = "testshareuser";
@@ -56,41 +52,10 @@ public class BaseTransferTestCase {
 	protected JSONTestDataUtil jtd;
 	protected JSONObject jsonTree;
 
-	protected String username;
-	protected String password;
-	protected String uploadFilePath;
-	protected File testFileAnalysisDirectory;
-	protected String destPath;
-	protected URI ftpUri;
-	protected URI gridFtpUri;
-	protected URI httpUri;
-	protected URI httpsUri;
-	protected URI s3Uri;
-	protected URI sftpUri;
-
 	@BeforeClass
 	protected void beforeClass() throws Exception
 	{
 		jtd = JSONTestDataUtil.getInstance();
-
-		Properties props = new Properties();
-		props.load(getClass().getClassLoader().getResourceAsStream(TEST_PROPERTIES_FILE));
-
-		username = (String)props.getProperty("test.iplant.username");
-		password = (String)props.getProperty("test.iplant.password");
-		String urlencodedcredentials = URLEncoder.encode(username, "utf-8") + ":" + URLEncoder.encode(password, "utf-8");
-
-		uploadFilePath = (String)props.getProperty("test.file.path");
-		testFileAnalysisDirectory = new File((String)props.getProperty("test.file.analysis.dir.path"));
-		//ftpUri = new URI("ftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.ftp.uri")));
-		gridFtpUri = new URI("gsiftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.gridftp.uri"));
-		httpUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.http.uri"));
-		httpsUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.https.uri"));
-		s3Uri = new URI((String)props.getProperty("test.s3.uri"));
-		sftpUri = new URI("sftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.sftp.uri"));
-
-		destPath = username + "/test.dat";
-
 	}
 
 	protected void clearSystems() throws Exception {
@@ -116,7 +81,11 @@ public class BaseTransferTestCase {
 		}
 		finally
 		{
-			try { session.close(); } catch (Exception e) {}
+			try {
+				if (session != null) {
+					session.close();
+				}
+			} catch (Exception ignored) {}
 		}
 	}
 
@@ -141,7 +110,7 @@ public class BaseTransferTestCase {
 		}
 		finally
 		{
-			try { session.close(); } catch (Exception e) {}
+			try { session.close(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -162,7 +131,7 @@ public class BaseTransferTestCase {
 		}
 		finally
 		{
-			try { session.close(); } catch (Exception e) {}
+			try { session.close(); } catch (Exception ignored) {}
 		}
 	}
 

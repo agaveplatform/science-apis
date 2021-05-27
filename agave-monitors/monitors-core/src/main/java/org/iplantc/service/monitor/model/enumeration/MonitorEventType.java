@@ -1,8 +1,10 @@
 package org.iplantc.service.monitor.model.enumeration;
 
+import org.iplantc.service.monitor.model.Monitor;
+import org.iplantc.service.monitor.model.MonitorCheck;
+
 /**
- * Defines all events that can occur on a {@link Monitor} or 
- * {@link MonitorCheck}.
+ * Defines all events that can occur on a {@link Monitor} or {@link MonitorCheck}.
  * 
  * @author dooley
  *
@@ -23,21 +25,21 @@ public enum MonitorEventType {
     CHECK_PASSED("The status check passed"),
 	CHECK_FAILED("The status check failed"),
 	CHECK_UNKNOWN("The status check finished in an unknown state"),
+    CHECK_FORBIDDEN("The user had insufficient permissions on the target system to perform the check."),
 	
     STATUS_CHANGE("The status condition of the monitored resource changed since the last check"),
     RESULT_CHANGE("The cumulative result of all checks performed on the monitored resource changed since the last suite of checks");
     
 	
 	
-    private String description;
+    private final String description;
     
-    private MonitorEventType(String description) {
+    MonitorEventType(String description) {
         this.description = description;
     }
     
     /**
-     * Gets the description of this event.
-     * @return
+     * @return the default description of the event
      */
     public String getDescription() {
         return this.description;
@@ -45,7 +47,7 @@ public enum MonitorEventType {
     
     /**
      * Translates {@link MonitorStatusType} into a comparable {@link MonitorEventType}
-     * @param monitorStatusType
+     * @param monitorStatusType the monitor status to map to an event type
      * @return
      */
     public static MonitorEventType valueOfCheckStatus(MonitorStatusType monitorStatusType) {

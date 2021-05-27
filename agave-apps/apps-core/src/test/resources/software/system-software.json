@@ -17,7 +17,7 @@
    "executionSystem":"execute.example.com",
    "executionType":"HPC",
    "parallelism":"SERIAL",
-   "deploymentPath":"applications/boilerplate-1.0/system.example.com",
+   "deploymentPath":"applications/boilerplate-1.0/execute.example.com",
    "deploymentSystem":"storage.example.com",
    "templatePath":"wrapper.template",
    "testPath":"test/test.sh",

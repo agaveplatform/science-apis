@@ -1,5 +1,8 @@
 package org.iplantc.service.systems.model.enumerations;
 
+/**
+ * Enumerated listing of all possible events that can be thrown by a system.
+ */
 public enum SystemEventType {
     CREATED("This system was created"),
     UPDATED("This system was updated"),
@@ -8,7 +11,7 @@ public enum SystemEventType {
     DISABLED("This system was disabled"),
     ERASED("This system was erased and the system id free up for reuse"),
     UNSET_PUBLIC_DEFAULT("The system was unset as the default system of this type for the tenant."),
-    SET_PUBLIC_DEFAULT("The system was unset as the default system of this type for the tenant."),
+    SET_PUBLIC_DEFAULT("The system was set as the default system of this type for the tenant."),
     
     CLEAR_CREDENTIALS("All authentication credentials were removed for this system."),
     UPDATE_DEFAULT_CREDENTIAL("The default authentication credentials for this system were updated."),
@@ -16,7 +19,7 @@ public enum SystemEventType {
     REMOVE_CREDENTIAL("One or more authentication credentials for this system were removed."),
     REMOVE_DEFAULT_CREDENTIAL("The default authentication credentials for this system were removed."),
     UNSET_USER_DEFAULT("One or more users unset this system as their default system of this type."),
-    SET_USER_DEFAULT("One or more users unset this system as their default system of this type."),
+    SET_USER_DEFAULT("One or more users set this system as their default system of this type."),
     
     
     ROLES_GRANT("A new user role was granted on this system"),
@@ -61,7 +64,11 @@ public enum SystemEventType {
         this.description = description;
     }
 
-    private SystemEventType(String description) {
+    /**
+     * Private constructor. We do not support custom events.
+     * @param description the human readable description of the event.
+     */
+    SystemEventType(String description) {
         this.description = description;
     }
 }

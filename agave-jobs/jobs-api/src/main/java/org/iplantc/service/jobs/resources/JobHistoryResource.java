@@ -3,17 +3,17 @@
  */
 package org.iplantc.service.jobs.resources;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.log4j.Logger;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.SearchableAgaveResource;
 import org.iplantc.service.common.search.AgaveResourceResultOrdering;
-import org.iplantc.service.common.search.AgaveResourceSearchFilter;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.dao.JobEventDao;
@@ -35,9 +35,8 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Handles search and listings for {@link JobEvent} resources.
@@ -47,7 +46,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 public class JobHistoryResource extends SearchableAgaveResource<JobEventSearchFilter>
 {
-	private String				sJobId;
+    private static final Logger log = Logger.getLogger(JobHistoryResource.class);
+    
+	private final String				sJobId;
 	private Job					job;
 
 	/**
@@ -71,109 +72,102 @@ public class JobHistoryResource extends SearchableAgaveResource<JobEventSearchFi
 	@Override
 	public Representation represent(Variant variant) throws ResourceException
 	{
+		try {
+			AgaveLogServiceClient.log(AgaveLogServiceClient.ServiceKeys.JOBS02.name(),
+					AgaveLogServiceClient.ActivityKeys.JobsGetHistory.name(),
+					getAuthenticatedUsername(), "", getRequest().getClientInfo().getUpstreamAddress());
 
-		AgaveLogServiceClient.log(AgaveLogServiceClient.ServiceKeys.JOBS02.name(), 
-				AgaveLogServiceClient.ActivityKeys.JobsGetHistory.name(), 
-				getAuthenticatedUsername(), "", getRequest().getClientInfo().getUpstreamAddress());
-		
-		if (!ServiceUtils.isValid(sJobId))
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Job id cannot be empty");
-		}
-
-		try
-		{
-			job = JobDao.getByUuid(sJobId, true);
-			if (job == null || !job.isVisible()) {
-				throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, 
-						"No job found with job id " + sJobId);
+			if (!ServiceUtils.isValid(sJobId)) {
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return new IplantErrorRepresentation("Job id cannot be empty");
 			}
-			else if (new JobPermissionManager(job, getAuthenticatedUsername()).canRead(getAuthenticatedUsername()))
-			{
-				ObjectMapper mapper = new ObjectMapper();
-				ArrayNode history = mapper.createArrayNode();
-				
-				Map<SearchTerm, Object> queryParameters = getQueryParameters();
 
-				List<JobEvent> events = null;
-				if (queryParameters.isEmpty()) {
-					events = JobEventDao.getByJobId(job.getId(), limit, offset, getSortOrder(AgaveResourceResultOrdering.ASC), getSortOrderSearchTerm());
-				}
-				else {
-					events = JobEventDao.findMatching(job.getId(), queryParameters, offset, limit, getSortOrder(AgaveResourceResultOrdering.ASC), getSortOrderSearchTerm());
-				}
-				
-				for(JobEvent event: events)
-				{
-            		ObjectNode jsonEvent = mapper.createObjectNode();
-            		
+			try {
+				job = JobDao.getByUuid(sJobId, true);
+				if (job == null) {
+					String msg = "No job found with job id " + sJobId + ".";
+					log.error(msg);
+					throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, msg);
+				} else if (!job.isVisible()) {
+					String msg = "Job with uuid " + sJobId + " is not visible.";
+					log.error(msg);
+					throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, msg);
+				} else if (new JobPermissionManager(job, getAuthenticatedUsername()).canRead(getAuthenticatedUsername())) {
+					ObjectMapper mapper = new ObjectMapper();
+					ArrayNode history = mapper.createArrayNode();
+
+					Map<SearchTerm, Object> queryParameters = getQueryParameters();
+
+					List<JobEvent> events = null;
+					if (queryParameters.isEmpty()) {
+						events = JobEventDao.getByJobId(job.getId(), limit, offset, getSortOrder(AgaveResourceResultOrdering.ASC), getSortOrderSearchTerm());
+					} else {
+						events = JobEventDao.findMatching(job.getId(), queryParameters, offset, limit, getSortOrder(AgaveResourceResultOrdering.ASC), getSortOrderSearchTerm());
+					}
+
+					for (JobEvent event : events) {
+						ObjectNode jsonEvent = mapper.createObjectNode();
+
 //            		ObjectNode jsonLinks = mapper.createObjectNode();
 //            		jsonLinks.putObject("self")
 //                        .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_JOB_SERVICE) + job.getUuid() + "/events/" + event.getUUid());
 //            		jsonLinks.putObject("job")
 //            		    .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_JOB_SERVICE) + job.getUuid());
 //            
-    				if (event.getTransferTask() != null) 
-					{
+						if (event.getTransferTask() != null) {
 //    				    ObjectNode jsonLinks = mapper.createObjectNode();
 //    				    jsonLinks.putObject("transferTask")
 //                            .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + event.getTransferTask().getUuid());
 //            
-						ObjectNode jsonTransferTask = mapper.createObjectNode();
-						
-						try {
-							TransferSummary summary = TransferTaskDao.getTransferSummary(event.getTransferTask());
-							
-							jsonTransferTask
-								.put("uuid", event.getTransferTask().getUuid())
-							    .put("source", event.getTransferTask().getSource())
-								.put("totalActiveTransfers",  summary.getTotalActiveTransfers())
-								.put("totalFiles", summary.getTotalTransfers())
-								.put("totalBytesTransferred", summary.getTotalTransferredBytes().longValue())
-								.put("totalBytes", summary.getTotalBytes().longValue())
-								.put("averageRate", summary.getAverageTransferRate());
-							
-							jsonEvent.set("progress", jsonTransferTask);
-						} 
-						catch (TransferException e) {
-							jsonEvent.put("progress", (String) null);
-						}
-					}
-					jsonEvent
-						.put("status", event.getStatus())
-						.put("created", new DateTime(event.getCreated()).toString())
-						.put("createdBy", event.getCreatedBy())
-	        			.put("description", event.getDescription());
-//					    .put("_links", jsonLinks);
-					
-					history.add(jsonEvent);
-				}
-				return new IplantSuccessRepresentation(history.toString());
-			}
-			else
-			{
-				getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
-				return new IplantErrorRepresentation(
-						"User does not have permission to view this job history");
-			}
-		}
-		catch (ResourceException e) {
-			throw e;
-		}
-		catch (JobException e)
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Invalid job id "
-					+ e.getMessage());
-		}
-		catch (Exception e)
-		{
-			// can't set a stopped job back to running. Bad request
-			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-			return new IplantErrorRepresentation(e.getMessage());
-		}
+							ObjectNode jsonTransferTask = mapper.createObjectNode();
 
+							try {
+								TransferSummary summary = TransferTaskDao.getTransferSummary(event.getTransferTask());
+
+								jsonTransferTask
+										.put("uuid", event.getTransferTask().getUuid())
+										.put("source", event.getTransferTask().getSource())
+										.put("totalActiveTransfers", summary.getTotalActiveTransfers())
+										.put("totalFiles", summary.getTotalTransfers())
+										.put("totalBytesTransferred", summary.getTotalTransferredBytes().longValue())
+										.put("totalBytes", summary.getTotalBytes().longValue())
+										.put("averageRate", summary.getAverageTransferRate());
+
+								jsonEvent.set("progress", jsonTransferTask);
+							} catch (TransferException e) {
+								jsonEvent.put("progress", (String) null);
+							}
+						}
+						jsonEvent
+								.put("status", event.getStatus())
+								.put("created", new DateTime(event.getCreated()).toString())
+								.put("createdBy", event.getCreatedBy())
+								.put("description", event.getDescription());
+//					    .put("_links", jsonLinks);
+
+						history.add(jsonEvent);
+					}
+					return new IplantSuccessRepresentation(history.toString());
+				} else {
+					getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
+					return new IplantErrorRepresentation(
+							"User does not have permission to view this job history");
+				}
+			} catch (ResourceException e) {
+				throw e;
+			} catch (JobException e) {
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return new IplantErrorRepresentation("Invalid job id "
+						+ e.getMessage());
+			} catch (Exception e) {
+				// can't set a stopped job back to running. Bad request
+				getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+				return new IplantErrorRepresentation(e.getMessage());
+			}
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 
 	@Override public boolean allowDelete() { return false; }

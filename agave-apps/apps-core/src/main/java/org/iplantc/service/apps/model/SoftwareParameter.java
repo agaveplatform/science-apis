@@ -3,28 +3,11 @@
  */
 package org.iplantc.service.apps.model;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.stevesoft.pat.Regex;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.model.enumerations.SoftwareParameterType;
@@ -34,11 +17,9 @@ import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.stevesoft.pat.Regex;
+import javax.persistence.*;
+import java.io.IOException;
+import java.util.*;
 
 /**
  * @author dooley
@@ -203,12 +184,14 @@ public class SoftwareParameter implements SoftwareAttribute<SoftwareParameter>
 			}
 			else if (SoftwareParameterType.valueOf(type.toLowerCase()) == null)
 			{
-				throw new SoftwareException("Invalid type for software parameter. Valid types are [string, num, bool, enumeration]");
+				throw new SoftwareException("Invalid type for software parameter. Valid types are [" +
+						StringUtils.join(SoftwareParameterType.values(), ",") + "]");
 			}
 
 			this.type = SoftwareParameterType.valueOf(type.toLowerCase());
 		} catch (IllegalArgumentException e) {
-			throw new SoftwareException("Invalid type for software parameter. Valid types are [string, num, bool, enumeration]");
+			throw new SoftwareException("Invalid type for software parameter. Valid types are [" +
+					StringUtils.join(SoftwareParameterType.values(), ",") + "]");
 		}
 	}
 
@@ -450,7 +433,7 @@ public class SoftwareParameter implements SoftwareAttribute<SoftwareParameter>
 					enumeratedValuesArray = mapper.readTree(getValidator());
 					if (enumeratedValuesArray.isArray())
 					{
-						for(Iterator<JsonNode> iter = ((ArrayNode)enumeratedValuesArray).iterator(); iter.hasNext();) {
+						for(Iterator<JsonNode> iter = enumeratedValuesArray.iterator(); iter.hasNext();) {
 							JsonNode child = iter.next();
 							if (child.isObject()) {
 								String value = child.fieldNames().next();

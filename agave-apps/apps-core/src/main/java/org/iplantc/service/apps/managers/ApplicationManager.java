@@ -3,16 +3,6 @@
  */
 package org.iplantc.service.apps.managers;
 
-import static org.iplantc.service.apps.exceptions.SoftwareResourceException.CLIENT_ERROR_BAD_REQUEST;
-import static org.iplantc.service.apps.exceptions.SoftwareResourceException.CLIENT_ERROR_FORBIDDEN;
-import static org.iplantc.service.apps.exceptions.SoftwareResourceException.CLIENT_ERROR_NOT_FOUND;
-import static org.iplantc.service.apps.exceptions.SoftwareResourceException.SERVER_ERROR_INTERNAL;
-
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-
 import org.apache.log4j.Logger;
 import org.hibernate.Session;
 import org.iplantc.service.apps.Settings;
@@ -33,10 +23,18 @@ import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Date;
+import java.util.List;
+
+import static org.iplantc.service.apps.exceptions.SoftwareResourceException.*;
 
 /**
  * Handles management tasks for {@link Software} objects.
@@ -52,29 +50,39 @@ public class ApplicationManager
 	 * No-args constructor for testing
 	 */
 	public ApplicationManager() {}
-	
+
+	/**
+	 * Get app by unique name
+	 * @param appName the {@link Software#getUniqueName()}
+	 * @return the app with the uniqiue name in the current tenant, or null
+	 */
 	public static Software getApplication(String appName)
 	{
-		Software software = SoftwareDao.get(appName);
-
-		return software;
+		return SoftwareDao.get(appName);
 	}
 
+	/**
+	 * @return all apps in tenant
+	 */
 	public static List<Software> getApplications()
 	{
 
 		return SoftwareDao.getAll();
 	}
 
+	/**
+	 * @return all public apps in tenant
+	 */
 	public static List<Software> getPublicApplications()
 	{
-
 		return SoftwareDao.getAllPublic();
 	}
 
+	/**
+	 * @return all private apps owned or shared in tenant
+	 */
 	public static List<Software> getSharedApplications()
 	{
-
 		return SoftwareDao.getAllPrivate();
 	}
 	
@@ -83,17 +91,17 @@ public class ApplicationManager
 	 * {@code existingSoftware} exists, then the {@link JSONObject} is validated for correctness 
 	 * and merged with the existing {@link Software} object as an update. Otherwise a new {@link Software}
 	 * entry is created.
-	 *  
-	 * @param existingSoftware
-	 * @param json
-	 * @param username
+	 *
+	 * @param existingSoftware the existing {@link Software) resource to be updated by the <code>json</code> object
+	 * @param json the json definition of the system
+	 * @param callingUser the username of the user callign the method
 	 * @return
 	 * @throws SoftwareResourceException
 	 */
-	public Software processSoftware(Software existingSoftware, JSONObject json, String username) 
+	public Software processSoftware(Software existingSoftware, JSONObject json, String callingUser)
 	throws SoftwareResourceException
 	{
-		String owner = (existingSoftware == null ? username : existingSoftware.getOwner());
+		String owner = (existingSoftware == null ? callingUser : existingSoftware.getOwner());
 		
 		try 
 		{
@@ -101,7 +109,7 @@ public class ApplicationManager
 	        Software newSoftware = Software.fromJSON(json, owner);
 	        newSoftware.setOwner(owner);
 	        
-	        if (!newSoftware.getExecutionSystem().getUserRole(username).canPublish()) {
+	        if (!newSoftware.getExecutionSystem().getUserRole(callingUser).canPublish()) {
 	        	throw new SoftwareResourceException(CLIENT_ERROR_FORBIDDEN,
 	        			"User does not have permission to publish applications on execution system \"" + 
 	        					newSoftware.getExecutionSystem().getSystemId() + "\"");
@@ -127,9 +135,9 @@ public class ApplicationManager
 	        	}
 	        }
 	        
-	        if (ApplicationManager.userCanPublish(username, newSoftware)) 
+	        if (ApplicationManager.userCanPublish(callingUser, newSoftware))
 	        {	
-	        	validateSoftwareDependencies(username, newSoftware);
+	        	validateSoftwareDependencies(callingUser, newSoftware);
 	        	
 	        } else {
 	        	throw new SoftwareResourceException(CLIENT_ERROR_FORBIDDEN,
@@ -183,8 +191,8 @@ public class ApplicationManager
 	 * Checks that the app dependencies are present on the remote system as 
 	 * part of the validation process.
 	 * 
-	 * @param username
-	 * @param newSoftware
+	 * @param username the user updating the software
+	 * @param newSoftware the udpated software object
 	 * @return true unless dependencies are not supported for the {@link Software#getExecutionType()}
 	 * @throws RemoteDataException
 	 * @throws RemoteCredentialException
@@ -206,7 +214,7 @@ public class ApplicationManager
 			LogicalFile logicalFile = null;
 			PermissionManager pm = null;
 			
-			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception e) {}
+			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception ignored) {}
 			
 			pm = new PermissionManager(newSoftware.getStorageSystem(), remoteDataClient, logicalFile, username);
 			
@@ -223,7 +231,7 @@ public class ApplicationManager
 			
 			checkPath = newSoftware.getDeploymentPath() + "/" + newSoftware.getExecutablePath();
 			
-			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception e) {}
+			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception ignored) {}
 			
 			pm = new PermissionManager(newSoftware.getStorageSystem(), remoteDataClient, logicalFile, username);
 			
@@ -240,7 +248,7 @@ public class ApplicationManager
 			
 			checkPath = newSoftware.getDeploymentPath() + "/" + newSoftware.getTestPath();
 			
-			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception e) {}
+			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception ignored) {}
 			
 			pm = new PermissionManager(newSoftware.getStorageSystem(), remoteDataClient, logicalFile, username);
 			
@@ -258,7 +266,7 @@ public class ApplicationManager
 			return true;
 		}
 		finally {
-			try { remoteDataClient.disconnect();} catch (Exception e) {}
+			try { if (remoteDataClient != null) remoteDataClient.disconnect();} catch (Exception ignored) {}
 		}
 	}
 
@@ -266,9 +274,10 @@ public class ApplicationManager
 	 * Makes a private app public by snappshotting, compressing, and checksumming the deploymentPath
 	 * onto the tenant default public storage system.
 	 * 
-	 * @param software
-	 * @returns public software object
-	 * @throws SoftwareException
+	 * @param software the software to publish
+	 * @param apiUsername the user publishing the app
+	 * @return the published software object
+	 * @throws SoftwareException if the app could not be published
 	 */
 	public static Software makePublic(Software software, String apiUsername) throws SoftwareException
 	{
@@ -283,13 +292,13 @@ public class ApplicationManager
 	}
 	
 	/**
-	 * Checks that the user has proper permissions on the underlying {@link ExecutionSystem} 
+	 * Checks that the user has proper permissions on the underlying {@link ExecutionSystem}
 	 * and the given {@link Software} object to submit a job. Existence of the {@link Software#getDeploymentPath()} 
 	 * is also verified. If missing, and the app is disabled and notifications are thrown.
 	 * 
-	 * @param software
-	 * @param username
-	 * @return
+	 * @param software the app for which to check avail and permissions
+	 * @param username the user to check
+	 * @return true if the app can be run, false otherwise
 	 */
 	public static boolean isInvokableByUser(Software software, String username) 
 	throws SoftwareException
@@ -353,11 +362,11 @@ public class ApplicationManager
 				}
 				catch (Exception e)
 				{
-					throw new SoftwareException("Unable to locate this application for invocation", e);
+					throw new SoftwareException("Unable to locate app " + software.getUniqueName() + " for invocation", e);
 				}
 				finally {
-					try { dataClient.disconnect(); } catch(Exception e) {};
-				}
+					try { if (dataClient != null) dataClient.disconnect(); } catch(Exception ignored) {}
+                }
 			}
 		}
 	}
@@ -366,9 +375,9 @@ public class ApplicationManager
 	 * Returns true if the user has been granted write or above permissions on the
 	 * {@link Software} object.
 	 * 
-	 * @param software
-	 * @param username
-	 * @return
+	 * @param software the software to check accessability
+	 * @param username the user whose permission will be checked
+	 * @return true if the user has write access to the software
 	 */
 	public static boolean isManageableByUser(Software software, String username)
 	{
@@ -386,9 +395,9 @@ public class ApplicationManager
 	 * check takes {@link Software#isPubliclyAvailable()} into account in the decison 
 	 * making process.
 	 * 
-	 * @param software
-	 * @param username
-	 * @return
+	 * @param software the software to check visibility
+	 * @param username the user whose read permission will be checked
+	 * @return true if the user has read access to the software
 	 */
 	public static boolean isVisibleByUser(Software software, String username)
 	{
@@ -417,7 +426,8 @@ public class ApplicationManager
 	/**
 	 * Deletes a {@link Software} entity from the db. This should not be used, rather
 	 * use a soft delete to preserve relationships and provenance.
-	 * @param software
+	 * @param software the software to delete
+	 * @param username the user whose requested the delete operation
 	 */
 	public static void deleteApplication(Software software, String username)
 	{	
@@ -443,10 +453,10 @@ public class ApplicationManager
 	 * are that the user must have RoleType.PUBLISH on the Software.executionSystem
 	 * and RoleType.USER on the Software.storageSystem.
 	 * 
-	 * @param username
-	 * @param newSoftware
-	 * @return
-	 * @throws SystemUnknownException 
+	 * @param username the user to check publish permissions
+	 * @param newSoftware the software desiring to be published
+	 * @return true if the user has permission, false otherwise
+	 * @throws SystemUnknownException if no execution system is provided
 	 */
 	public static boolean userCanPublish(String username, Software newSoftware) throws SystemUnknownException
 	{
@@ -462,8 +472,9 @@ public class ApplicationManager
 
 	/**
 	 * Deletes a software record and every resource associated with it.
-	 * 
-	 * @param software
+	 *
+	 * @param software the software to erase
+	 * @param username the user requesting the software be erased
 	 */
 	public static void eraseSoftware(Software software, String username) throws SoftwareResourceException
 	{
@@ -508,7 +519,7 @@ public class ApplicationManager
 	 * Pulls the software unique id out of the JSON object. If there is 
 	 * any problem, the exception is swallowed and null returned.
 	 * 
-	 * @param json
+	 * @param json the json software description
 	 * @return softwareUniqueId if present, null otherwise.
 	 */
 	public static String getSoftwareNameFromJSON(JSONObject json)
@@ -524,11 +535,11 @@ public class ApplicationManager
 
 	/**
 	 * Enables an app from disabled status
-	 * 
-	 * @param software
-	 * @param username
-	 * @return
-	 * @throws SoftwareException
+	 *
+	 * @param software the software to enable
+	 * @param username the user requesting it be reenabled
+	 * @return the enabled software
+	 * @throws SoftwareException if the user does not have permission to enable the software, or it cannot be updated
 	 */
 	public static Software enableSoftware(Software software, String username)
 	throws SoftwareException
@@ -553,11 +564,11 @@ public class ApplicationManager
 	
 	/**
 	 * Disables an app from disabled status
-	 * 
-	 * @param software
-	 * @param username
-	 * @return
-	 * @throws SoftwareException
+	 *
+	 * @param software the software to be disabled
+	 * @param username the user requesting the software be disabled
+	 * @return the disabled software
+	 * @throws SoftwareException if the user does not have permission to disable the software, or it cannot be updated
 	 */
 	public static Software disableSoftware(Software software, String username)
 	throws SoftwareException

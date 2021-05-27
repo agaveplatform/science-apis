@@ -38,3 +38,4 @@ tags-api-swagger-express
 # maven and eclipse malformed output test folders
 test-output
 rebel.xml
+!*/src/test/resources/docker-compose.yml

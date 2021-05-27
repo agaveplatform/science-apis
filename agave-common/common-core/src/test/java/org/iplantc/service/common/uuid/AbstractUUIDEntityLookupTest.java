@@ -1,14 +1,11 @@
 package org.iplantc.service.common.uuid;
 
-import java.io.IOException;
-
-import org.iplantc.service.common.exceptions.UUIDException;
-import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.iplantc.service.common.exceptions.UUIDException;
+import org.testng.Assert;
+
+import java.io.IOException;
 
 /**
  * Should be implemented for every entity.
@@ -16,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @author dooley
  *
  */
+
 public abstract class AbstractUUIDEntityLookupTest<T> implements AbstractUUIDTest<T> {
 
 	/**
@@ -35,13 +33,14 @@ public abstract class AbstractUUIDEntityLookupTest<T> implements AbstractUUIDTes
 				.get("href").asText();
 	}
 	
-	@Test
-	public void getResourceUrl() {
+	public abstract void getResourceUrl();
+
+	public void _getResourceUrl() {
 		 try {
 			 T testEntity = createEntity();
 				String resolvedUrl = UUIDEntityLookup
 						.getResourceUrl(getEntityType(), getEntityUuid(testEntity));
-				
+
 				Assert.assertEquals(
 						resolvedUrl,
 						getUrlFromEntityJson(serializeEntityToJSON(testEntity)),

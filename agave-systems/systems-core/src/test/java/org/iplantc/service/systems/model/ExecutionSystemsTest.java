@@ -1,7 +1,5 @@
 package org.iplantc.service.systems.model;
 
-import java.util.Arrays;
-
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -9,7 +7,9 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
 
+@Test(groups={"unit"})
 public class ExecutionSystemsTest extends SystemsModelTestCommon{
 
     @BeforeClass
@@ -208,60 +208,6 @@ public class ExecutionSystemsTest extends SystemsModelTestCommon{
 		}
     }
 
-    @DataProvider(name = "executionSystemScratchDir")
-    public Object[][] executionSystemScratchDir() {
-    	return new Object[][] { 
-    			{ "test name", "test\\ name", "scratchDir unescaped spaces should be escaped" },
-    			{ "test\\ name", "test\\ name", "scratchDir unescaped spaces should be escaped" },
-    			{ "test name test name", "test\\ name\\ test\\ name", "scratchDir unescaped spaces should be escaped" },
-    			{ "test\\ name test\\ name", "test\\ name\\ test\\ name", "scratchDir unescaped spaces should be escaped" },
-    	};
-    }
-    
-    //@Test (groups={"model","system"}, dataProvider="executionSystemScratchDir")
-    public void executionSystemScratchPathTest(Object changeValue, String expectedValue, String message) 
-    throws Exception 
-    {
-    	jsonTree = updateTestData("scratchDir", changeValue);
-		
-		try 
-		{
-			ExecutionSystem system = ExecutionSystem.fromJSON(jsonTree);
-			Assert.assertEquals(system.getScratchDir(), expectedValue, message);
-		}
-		catch(Exception se){
-			System.out.println("Invalid iPlant execution host JSON submitted, attribute scratchDir " + message + " \n\"scratchDir\" = \"" + changeValue + "\"\n" + se.getMessage());
-			se.printStackTrace();
-		}
-	}
-    
-    @DataProvider(name = "executionSystemWorkDirTest")
-    public Object[][] executionSystemWorkDirTest() {
-    	return new Object[][] { 
-    			{ "test name", "test\\ name", "workDir unescaped spaces should be escaped" },
-    			{ "test\\ name", "test\\ name", "workDir escaped spaces should not be escaped" },
-    			{ "test name test name", "test\\ name\\ test\\ name", "workDir should be properly escaped" },
-    			{ "test\\ name test\\ name", "test\\ name\\ test\\ name", "workDir should be properly escaped" },
-    	};
-    }
-    
-    //@Test (groups={"model","system"}, dataProvider="executionSystemWorkDirTest")
-    public void executionSystemWorkPathTest(Object changeValue, String expectedValue, String message) 
-    throws Exception 
-    {
-    	jsonTree = updateTestData("workDir", changeValue);
-		
-		try 
-		{
-			ExecutionSystem system = ExecutionSystem.fromJSON(jsonTree);
-			Assert.assertEquals(system.getScratchDir(), expectedValue, message);
-		}
-		catch(Exception se){
-			System.out.println("Invalid iPlant execution host JSON submitted, attribute workDir " + message + " \n\"workDir\" = \"" + changeValue + "\"\n" + se.getMessage());
-			se.printStackTrace();
-		}
-	}
-    
     @Test
     public void executionSystemLoginPasswordEncryptionTest()
     {

@@ -1,22 +1,10 @@
 package org.iplantc.service.common.persistence;
 
-import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
-import javax.persistence.Entity;
-import javax.persistence.PersistenceException;
-
 import org.apache.log4j.Logger;
-import org.hibernate.HibernateException;
-import org.hibernate.Interceptor;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.Transaction;
+import org.hibernate.*;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.ImprovedNamingStrategy;
-import org.iplantc.service.common.persistence.time.CdtTimestampType;
 import org.reflections.Reflections;
 import org.reflections.scanners.ResourcesScanner;
 import org.reflections.scanners.SubTypesScanner;
@@ -24,6 +12,12 @@ import org.reflections.scanners.TypeAnnotationsScanner;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
+
+import javax.persistence.Entity;
+import javax.persistence.PersistenceException;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Basic Hibernate helper class, handles SessionFactory, Session and Transaction.
@@ -36,11 +30,11 @@ import org.reflections.util.FilterBuilder;
  */
 public class HibernateUtil {
 
-	private static Logger log = Logger.getLogger(HibernateUtil.class);
+	private static final Logger log = Logger.getLogger(HibernateUtil.class);
 
 	private static Configuration configuration;
 	private static SessionFactory sessionFactory;
-	private static Queue<String> filters = new ConcurrentLinkedQueue<String>();
+	private static final Queue<String> filters = new ConcurrentLinkedQueue<String>();
 	private static final ThreadLocal<Session> threadSession = new ThreadLocal<Session>();
 	private static final ThreadLocal<Transaction> threadTransaction = new ThreadLocal<Transaction>();
 	private static final ThreadLocal<Interceptor> threadInterceptor = new ThreadLocal<Interceptor>();
@@ -155,7 +149,7 @@ public class HibernateUtil {
 	 */
 	public static Session getSession()
 		throws PersistenceException {
-		Session s = (Session) threadSession.get();
+		Session s = threadSession.get();
         try {
 			if (s == null || !s.isOpen()) {
 				//log.debug("Opening new Session for this thread.");
@@ -186,7 +180,7 @@ public class HibernateUtil {
 	public static void closeSession()
 		throws PersistenceException {
         try {
-			Session s = (Session) threadSession.get();
+			Session s = threadSession.get();
 			threadSession.set(null);
 			if (s != null && s.isOpen()) {
 				//log.debug("Closing Session of this thread.");
@@ -202,7 +196,7 @@ public class HibernateUtil {
 	 */
 	public static void beginTransaction()
 		throws PersistenceException {
-		Transaction tx = (Transaction) threadTransaction.get();
+		Transaction tx = threadTransaction.get();
 		try {
 			if (tx == null) {
 //				log.debug("Starting new database transaction in this thread.");
@@ -220,7 +214,7 @@ public class HibernateUtil {
 	 */
 	public static void commitTransaction()
 		throws PersistenceException {
-		Transaction tx = (Transaction) threadTransaction.get();
+		Transaction tx = threadTransaction.get();
 		try {
 			if ( tx != null && !tx.wasCommitted()
 							&& !tx.wasRolledBack() ) {
@@ -239,7 +233,7 @@ public class HibernateUtil {
 	 */
 	public static void rollbackTransaction()
 		throws PersistenceException {
-		Transaction tx = (Transaction) threadTransaction.get();
+		Transaction tx = threadTransaction.get();
 		try {
 			threadTransaction.set(null);
 			if ( tx != null && !tx.wasCommitted() && !tx.wasRolledBack() ) {
@@ -301,7 +295,7 @@ public class HibernateUtil {
 
 	private static Interceptor getInterceptor() {
 		Interceptor interceptor =
-			(Interceptor) threadInterceptor.get();
+                threadInterceptor.get();
 		return interceptor;
 	}
 
@@ -328,7 +322,15 @@ public class HibernateUtil {
 	    if (filters.isEmpty()) {
 	        Set<Class<?>> filterEntities = reflections.getTypesAnnotatedWith(FilterDef.class);
     	    for (Class<?> clazz: filterEntities) {
-                filters.add(clazz.getAnnotation(FilterDef.class).name());
+				FilterDef filterAnnotation = clazz.getAnnotation(FilterDef.class);
+                try {
+                	if (filterAnnotation != null) {
+						filters.add(filterAnnotation.name());
+					}
+				}
+                catch (Throwable e) {
+                	log.debug("Unable to remove filter for " + clazz.getCanonicalName());
+				}
             }
 	    }
 	    

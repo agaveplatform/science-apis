@@ -1,25 +1,21 @@
 package org.iplantc.service.transfer.gridftp;
 
-import java.io.ByteArrayOutputStream;
-
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.gridforum.jgss.ExtendedGSSCredential;
 import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.model.AuthConfig;
-import org.iplantc.service.systems.model.JSONTestDataUtil;
-import org.iplantc.service.systems.model.StorageConfig;
-import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemsModelTestCommon;
+import org.iplantc.service.systems.model.*;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups= {"gridftp","boutique","broken"})
+import java.io.ByteArrayOutputStream;
+
+@Test(enabled = false, groups= {"gridftp","boutique","broken"})
 public class X509CredentialSerializationTest extends SystemsModelTestCommon 
 {
-	private SystemDao dao = new SystemDao();
+	private final SystemDao dao = new SystemDao();
 	
 	@BeforeClass
 	public void beforeClass() throws Exception {
@@ -37,7 +33,7 @@ public class X509CredentialSerializationTest extends SystemsModelTestCommon
     	ExtendedGSSCredential proxy = (ExtendedGSSCredential)myproxyAuthConfig.retrieveCredential(myproxySalt);
     	ByteArrayOutputStream out = new ByteArrayOutputStream();
 		((GlobusGSSCredentialImpl)proxy).getX509Credential().save(out);
-		String serializedCredential = new String(out.toByteArray());
+		String serializedCredential = out.toString();
     	
     	// build this into a 
     	jsonTree.getJSONObject("storage").getJSONObject("auth").remove("server");

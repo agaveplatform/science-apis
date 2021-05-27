@@ -1,11 +1,13 @@
 package org.iplantc.service.common.persistence;
 
-import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import com.mysql.cj.jdbc.MysqlDataSource;
+import org.apache.log4j.Logger;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
 
@@ -17,14 +19,19 @@ import java.util.Properties;
  */
 public class JndiSetup 
 {
+	private static final Logger log = Logger.getLogger(JndiSetup.class);
     static Properties props = new Properties();
 
     public static void init()
     {
+    	InputStream jdbcStream = null;
         try {
-            props.load(JndiSetup.class.getClassLoader().getResourceAsStream("jdbc.properties"));
+        	jdbcStream = JndiSetup.class.getClassLoader().getResourceAsStream("jdbc.properties");
+            props.load(jdbcStream);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.warn("Unable to load jdbc properties file.", e);
+        } finally {
+        	if (jdbcStream != null) try {jdbcStream.close();} catch (Exception e){}
         }
 
         // Create initial context
@@ -55,9 +62,12 @@ public class JndiSetup
         try {
             ic = new InitialContext();
             ic.createSubcontext("java:comp/env/jdbc");
-            ic.close();
+            
         } catch (NamingException e) {
             e.printStackTrace();
+        }
+        finally {
+        	try {ic.close();} catch (Exception e){}
         }
     }
 }

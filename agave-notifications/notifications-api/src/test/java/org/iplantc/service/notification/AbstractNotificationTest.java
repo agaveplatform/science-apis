@@ -1,19 +1,5 @@
 package org.iplantc.service.notification;
 
-import static org.iplantc.service.notification.TestDataHelper.NOTIFICATION_CREATOR;
-import static org.iplantc.service.notification.TestDataHelper.NOTIFICATION_STRANGER;
-import static org.iplantc.service.notification.TestDataHelper.TEST_EMAIL_NOTIFICATION;
-import static org.iplantc.service.notification.TestDataHelper.TEST_WEBHOOK_NOTIFICATION;
-import static org.iplantc.service.notification.TestDataHelper.TEST_REALTIME_NOTIFICATION;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.AGAVE;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.EMAIL;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.REALTIME;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.SLACK;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.WEBHOOK;
-
-import java.io.IOException;
-import java.util.List;
-
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -28,19 +14,26 @@ import org.iplantc.service.notification.model.enumerations.NotificationStatusTyp
 import org.quartz.Scheduler;
 import org.quartz.SimpleTrigger;
 import org.testng.Assert;
+import org.testng.annotations.Test;
 
+import java.io.IOException;
+import java.util.List;
+
+import static org.iplantc.service.notification.TestDataHelper.*;
+import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.*;
+
+@Test(groups={"integration"})
 public class AbstractNotificationTest {
 
 	protected static final String TEST_USER = "ipcservices";
-	protected static final String TEST_EMAIL = "dooley@tacc.utexas.edu";
-	protected static final String TEST_URL = "http://requestb.in/11pbi6m1?username=${USERNAME}&status=${STATUS}";
+	protected static final String TEST_EMAIL = "help@agaveplatform.org";
+//	protected static final String TEST_URL = "http://requestbin:8051/11pbi6m1?username=${USERNAME}&status=${STATUS}";
 	protected static final String TEST_URL_QUERY = "?username=${USERNAME}&status=${STATUS}";
 	protected static final String SPECIFIC_ASSOCIATED_UUID = "abc1234-abc1234-abc1234-abc1234-011";
 	protected static final String DECOY_ASSOCIATED_UUID = "def5678-def5678-def5678-def5678-011";
 	protected static final String WILDCARD_ASSOCIATED_UUID = "*";
 	
 	protected NotificationDao dao = null;
-	protected TestDataHelper dataHelper;
 	protected RequestBin requestBin;
 	protected Scheduler sched;
 	protected SimpleTrigger trigger;
@@ -81,7 +74,7 @@ public class AbstractNotificationTest {
 	
 	protected Notification createInvalidNotification() throws NotificationException, IOException
 	{
-		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_EMAIL_NOTIFICATION));
+		Notification notification = Notification.fromJSON(TestDataHelper.getInstance().getTestDataObject(TEST_EMAIL_NOTIFICATION));
 		notification.setCallbackUrl("ftp://foo.example.com");
 		notification.setOwner(NOTIFICATION_CREATOR);
 		
@@ -90,7 +83,7 @@ public class AbstractNotificationTest {
 	
 	protected Notification createEmailNotification() throws NotificationException, IOException
 	{
-		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_EMAIL_NOTIFICATION));
+		Notification notification = Notification.fromJSON(TestDataHelper.getInstance().getTestDataObject(TEST_EMAIL_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
 		
 		return notification;
@@ -101,7 +94,7 @@ public class AbstractNotificationTest {
 		if (requestBin == null) {
 			requestBin = RequestBin.getInstance();
 		}
-		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_WEBHOOK_NOTIFICATION));
+		Notification notification = Notification.fromJSON(TestDataHelper.getInstance().getTestDataObject(TEST_WEBHOOK_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
 		notification.setCallbackUrl(requestBin.toString() + TEST_URL_QUERY);
 		
@@ -113,7 +106,7 @@ public class AbstractNotificationTest {
 		if (requestBin == null) {
 			requestBin = RequestBin.getInstance();
 		}
-		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_WEBHOOK_NOTIFICATION));
+		Notification notification = Notification.fromJSON(TestDataHelper.getInstance().getTestDataObject(TEST_WEBHOOK_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
 		notification.setCallbackUrl("https://hooks.slack.com/services/TTTTTTTTT/BBBBBBBBB/1234567890123456789012345");
 		
@@ -126,7 +119,7 @@ public class AbstractNotificationTest {
 			requestBin = RequestBin.getInstance();
 		}
 		
-		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_WEBHOOK_NOTIFICATION));
+		Notification notification = Notification.fromJSON(TestDataHelper.getInstance().getTestDataObject(TEST_WEBHOOK_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
 		
 		return notification;
@@ -134,7 +127,7 @@ public class AbstractNotificationTest {
 	
 	protected Notification createRealtimeNotification(String channel) throws NotificationException, IOException
 	{
-		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_REALTIME_NOTIFICATION));
+		Notification notification = Notification.fromJSON(TestDataHelper.getInstance().getTestDataObject(TEST_REALTIME_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
 		String realtimeUrl = TenancyHelper.resolveURLToCurrentTenant("https://docker.example.com/realtime");
 		if (!StringUtils.isEmpty(channel)) {
@@ -172,7 +165,7 @@ public class AbstractNotificationTest {
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 }

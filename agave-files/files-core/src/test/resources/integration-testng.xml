@@ -1,0 +1,24 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+
+<suite name="Agave files-core" verbose="5" parallel="none">
+
+	<test name="files-core">
+		<groups>
+			<run>
+				<include name="integration"/>
+				<exclude name="broken"/>
+				<exclude name="notReady"/>
+			</run>
+		</groups>
+		<packages>
+			<package name="org.iplantc.service.common.uuid"/>
+			<package name="org.iplantc.service.io.dao" />
+			<package name="org.iplantc.service.io.model" />
+			<package name="org.iplantc.service.io.notifications" />
+			<package name="org.iplantc.service.io.permissions" />
+			<package name="org.iplantc.service.io.queue" />
+			<package name="org.iplantc.service.io.util" />
+			<package name="org.iplantc.service.io.uuid" />
+		</packages>
+	</test>
+</suite>

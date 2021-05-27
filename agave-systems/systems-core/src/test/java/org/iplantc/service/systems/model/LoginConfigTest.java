@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-
+@Test(groups={"unit"})
 public class LoginConfigTest extends SystemsModelTestCommon{
 
     @BeforeClass
@@ -74,7 +74,7 @@ public class LoginConfigTest extends SystemsModelTestCommon{
                 Assert.fail(message, e);
         }
 
-        System.out.println(" exception thrown?  expected " + shouldExceptionBeThrown + " actual " + exceptionFlag);
+//        System.out.println(" exception thrown?  expected " + shouldExceptionBeThrown + " actual " + exceptionFlag);
 
         Assert.assertTrue(exceptionFlag == shouldExceptionBeThrown, exceptionMsg);
     }
@@ -88,7 +88,7 @@ public class LoginConfigTest extends SystemsModelTestCommon{
     	List<LoginConfig> loginConfigs = new ArrayList<LoginConfig>();
     	File executionDir = new File(EXECUTION_SYSTEM_TEMPLATE_DIR);
 		for(File jsonFile: executionDir.listFiles()) {
-			System.out.println(jsonFile.getName());
+//			System.out.println(jsonFile.getName());
 			jsonTree = jtd.getTestDataObject(jsonFile.getPath()).getJSONObject("login");
 			LoginConfig loginConfig = LoginConfig.fromJSON(jsonTree);
 			loginConfig.getAuthConfigs().add(authConfig); // will bypass validation check in RemoteConfig.addAuthConfigs()
@@ -160,7 +160,7 @@ public class LoginConfigTest extends SystemsModelTestCommon{
 				e.printStackTrace();
 		}
 
-		System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + exceptionFlag);
+//		System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + exceptionFlag);
 
 		Assert.assertTrue(exceptionFlag == shouldThrowException, exceptionMsg);
     }

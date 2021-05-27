@@ -4,18 +4,18 @@
  */
 package org.iplantc.service.apps.model.enumerations;
 
+import org.hibernate.HibernateException;
+import org.hibernate.type.IntegerType;
+import org.hibernate.type.TypeResolver;
+import org.hibernate.usertype.ParameterizedType;
+import org.hibernate.usertype.UserType;
+
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Properties;
-
-import org.hibernate.HibernateException;
-import org.hibernate.type.IntegerType;
-import org.hibernate.type.TypeResolver;
-import org.hibernate.usertype.ParameterizedType;
-import org.hibernate.usertype.UserType;
 
 public class GenericEnumUserType implements UserType, ParameterizedType {
 
@@ -46,8 +46,8 @@ public class GenericEnumUserType implements UserType, ParameterizedType {
 
 		try
 		{
-			identifierMethod = enumClass.getMethod(identifierMethodName,
-					new Class[0]);
+			identifierMethod = enumClass.getMethod(identifierMethodName
+			);
 			identifierType = identifierMethod.getReturnType();
 		}
 		catch (Exception exception)
@@ -68,7 +68,7 @@ public class GenericEnumUserType implements UserType, ParameterizedType {
 		try
 		{
 			valueOfMethod = enumClass.getMethod(valueOfMethodName,
-					new Class[] { identifierType });
+					identifierType);
 		}
 		catch (Exception exception)
 		{
@@ -89,7 +89,7 @@ public class GenericEnumUserType implements UserType, ParameterizedType {
 		Object identifier = type.get(rs, names[0]);
 		try
 		{
-			return valueOfMethod.invoke(enumClass, new Object[] { identifier });
+			return valueOfMethod.invoke(enumClass, identifier);
 		}
 		catch (Exception exception)
 		{
@@ -104,8 +104,8 @@ public class GenericEnumUserType implements UserType, ParameterizedType {
 	{
 		try
 		{
-			Object identifier = value != null ? identifierMethod.invoke(value,
-					new Object[0]) : null;
+			Object identifier = value != null ? identifierMethod.invoke(value
+			) : null;
 			st.setObject(index, identifier);
 		}
 		catch (Exception exception)

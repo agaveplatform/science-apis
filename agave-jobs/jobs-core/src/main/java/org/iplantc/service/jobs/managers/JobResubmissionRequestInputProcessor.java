@@ -3,18 +3,16 @@
  */
 package org.iplantc.service.jobs.managers;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.commons.collections.CollectionUtils;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.jobs.exceptions.JobProcessingException;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author dooley
@@ -35,7 +33,7 @@ public class JobResubmissionRequestInputProcessor extends JobRequestInputProcess
 	 * @param jobRequestMap 
 	 * @throws JobProcessingException
 	 */
-	public ObjectNode process(Map<String, Object> jobRequestMap) 
+	public void process(Map<String, Object> jobRequestMap)
 	throws JobProcessingException 
 	{
 		setJobInputs(getMapper().createObjectNode());
@@ -132,7 +130,7 @@ public class JobResubmissionRequestInputProcessor extends JobRequestInputProcess
 					jobRequestInputValue = doProcessSoftwareInputValue(softwareInput, jobRequestMap.get(softwareInput.getKey()));
 				}
 				
-				getJobInputs().put(softwareInput.getKey(), jobRequestInputValue);
+				getJobInputs().set(softwareInput.getKey(), jobRequestInputValue);
 			} 
 			catch (PermissionException e) {
 				throw new JobProcessingException(400, e.getMessage(), e);
@@ -145,8 +143,6 @@ public class JobResubmissionRequestInputProcessor extends JobRequestInputProcess
 						"Failed to parse input for " + softwareInput.getKey(), e);
 			}
 		}
-		
-		return getJobInputs();
 	}
 
 	/**

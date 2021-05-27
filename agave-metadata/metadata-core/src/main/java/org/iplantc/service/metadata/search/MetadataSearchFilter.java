@@ -1,27 +1,25 @@
 package org.iplantc.service.metadata.search;
 
-import java.io.IOException;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.commons.lang.BooleanUtils;
-import org.apache.commons.lang.math.NumberUtils;
-import org.iplantc.service.common.exceptions.SearchSyntaxException;
-import org.iplantc.service.common.search.AgaveResourceSearchFilter;
-import org.iplantc.service.common.search.SearchTerm;
-import org.iplantc.service.common.util.StringToTime;
-import org.joda.time.DateTime;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.DBObject;
 import com.mongodb.util.JSON;
 import com.mongodb.util.JSONParseException;
+import org.apache.commons.lang.BooleanUtils;
+import org.apache.commons.lang.math.NumberUtils;
+import org.iplantc.service.common.search.AgaveResourceSearchFilter;
+import org.iplantc.service.common.search.SearchTerm;
+import org.iplantc.service.common.util.StringToTime;
+import org.joda.time.DateTime;
+
+import java.io.IOException;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class is the basis for search support across the API.
- * Each service shold implement this class to filter query parameters
+ * Each service should implement this class to filter query parameters
  * from the url into valid hibernate query.
  * 
  * @author dooley
@@ -29,6 +27,8 @@ import com.mongodb.util.JSONParseException;
  */
 public class MetadataSearchFilter extends AgaveResourceSearchFilter
 {
+    private static final ObjectMapper mapper = new ObjectMapper();
+
     /* (non-Javadoc)
      * @see org.iplantc.service.common.search.AgaveResourceSearchFilter#filterCriteria(java.util.Map)
      */
@@ -70,7 +70,7 @@ public class MetadataSearchFilter extends AgaveResourceSearchFilter
 	 * @see org.iplantc.service.common.search.AgaveResourceSearchFilter#getSearchTermPrefix()
 	 */
 	@Override
-	protected String getSearchTermPrefix() {
+    protected String getSearchTermPrefix() {
 	    return "";
 	}
 
@@ -125,6 +125,7 @@ public class MetadataSearchFilter extends AgaveResourceSearchFilter
 	 * @see org.iplantc.service.common.search.AgaveResourceSearchFilter#strongTypeSearchValue(java.lang.Class, java.lang.String, java.lang.String)
 	 */
 	@Override
+    @SuppressWarnings("deprecation")
 	public Object strongTypeSearchValue(Class searchTermType, String searchField, String searchValue)
     throws IllegalArgumentException 
 	{
@@ -171,7 +172,7 @@ public class MetadataSearchFilter extends AgaveResourceSearchFilter
             return BooleanUtils.toBoolean(searchValue);
         } else if (searchTermType == DBObject.class) {
             try {
-                return (DBObject)JSON.parse(searchValue);
+                return JSON.parse(searchValue);
             } catch (JSONParseException e) {
                 throw new IllegalArgumentException("Malformed search value. "
                         + "Please specify a valid json object representing your "
@@ -179,7 +180,6 @@ public class MetadataSearchFilter extends AgaveResourceSearchFilter
             }
         } else if (searchTermType == JsonNode.class) {
             try {
-                ObjectMapper mapper = new ObjectMapper();
                 return mapper.readTree(searchValue);
             } catch (IOException e) {
                 throw new IllegalArgumentException("Unknown search value " + searchValue, e);

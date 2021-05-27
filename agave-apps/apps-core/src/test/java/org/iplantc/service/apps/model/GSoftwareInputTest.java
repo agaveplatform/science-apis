@@ -1,11 +1,7 @@
 package org.iplantc.service.apps.model;
 
-import java.util.Arrays;
-import java.util.List;
-
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.apps.model.enumerations.SoftwareParameterType;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -16,6 +12,9 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Created with IntelliJ IDEA.
  * User: steve
@@ -23,6 +22,7 @@ import org.testng.annotations.Test;
  * Time: 4:04 PM
  * To change this template use File | Settings | File Templates.
  */
+@Test(groups={"unit"})
 public class GSoftwareInputTest extends GModelTestCommon {
     SoftwareInput input = new SoftwareInput();
 
@@ -138,7 +138,7 @@ public class GSoftwareInputTest extends GModelTestCommon {
     			{ negativeDecimal, "Setting input.value.default to negative decimal should not be allowed", true },
     			{ stringArray, "Setting input.value.default to array of objects should not be allowed", false },
     			{ emptyArray, "Setting input.value.default to empty array should be allowed", false },
-    			{ (String)null, "Setting input.value.default to null should be allowed", false },
+    			{null, "Setting input.value.default to null should be allowed", false },
     			{ emptyString, "Setting input.value.default to empty string should be allowed", false },
     			{ nonEmptyString, "Setting input.value.default to string should be allowed", false },
     	};
@@ -160,7 +160,7 @@ public class GSoftwareInputTest extends GModelTestCommon {
     		{  ".*\\.pdf$", "something.pdf2", "Default value not matching regex should throw exception", true },
     		{  ".*\\.pdf$", "pdf", "Default value not matching regex should throw exception", true },
     		
-    		{  (String)null, "", "Empty default value should pass matching regex", false },
+    		{null, "", "Empty default value should pass matching regex", false },
     		{  "", "", "Empty default value should pass empty regex", false },
     		{  "\\s*", "", "Empty default value should pass matching regex", false },
     		{  ".*\\.pdf$", "", "Empty default value should pass matching regex", true },
@@ -590,7 +590,7 @@ public class GSoftwareInputTest extends GModelTestCommon {
             input.setOrder(6);
             input.setRepeatArgument(true);
             input.setRequired(false);
-            input.setShowArgument(true);;
+            input.setShowArgument(true);
             input.setSoftware(software);
             input.setValidator(".*");
             input.setVisible(false);

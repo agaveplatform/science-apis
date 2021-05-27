@@ -1,23 +1,6 @@
 package org.iplantc.service.apps.resources.impl;
 
-import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.CLONE;
-import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.DISABLE;
-import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.ENABLE;
-import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.ERASE;
-import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.PUBLISH;
-
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.StatusType;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
@@ -36,6 +19,7 @@ import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.DependencyException;
 import org.iplantc.service.common.exceptions.DomainException;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
@@ -46,7 +30,11 @@ import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.*;
 
 @Path("/{softwareId}")
 @Produces("application/json")
@@ -54,7 +42,7 @@ public class SoftwareResourceImpl extends AbstractSoftwareResource implements So
     
     private static final Logger log = Logger.getLogger(SoftwareResourceImpl.class);
     
-    private SoftwareEventProcessor eventProcessor = new SoftwareEventProcessor();
+    private final SoftwareEventProcessor eventProcessor = new SoftwareEventProcessor();
 	
     /* (non-Javadoc)
      * @see org.iplantc.service.apps.resources.SoftwareResource#getSoftware(java.lang.String)
@@ -93,8 +81,10 @@ public class SoftwareResourceImpl extends AbstractSoftwareResource implements So
         }
         catch (Exception e)
         {
-            e.printStackTrace();
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL, "Failed to retrieve application information", e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
     
@@ -171,7 +161,10 @@ public class SoftwareResourceImpl extends AbstractSoftwareResource implements So
             log.error(e);
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                     "Failed to update application: " + e.getMessage(), e);
-        } 
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+        }
     }
     
 //    /**
@@ -347,15 +340,15 @@ public class SoftwareResourceImpl extends AbstractSoftwareResource implements So
             log.error(e);
             throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
                     "Permission denied. You do not have permission to perform this action.", e);
-        } catch (SoftwareException e) {
-            log.error(e);
-            throw new ResourceException(Status.SERVER_ERROR_INTERNAL, e.getMessage(), e);
         } catch (ResourceException e) {
             log.error(e);
             throw e;
         } catch (Throwable e) {
             log.error(e);
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL, e.getMessage(), e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
     
@@ -403,6 +396,9 @@ public class SoftwareResourceImpl extends AbstractSoftwareResource implements So
         } catch (Throwable e) {
             log.error(e);
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL, "Failed to delete app", e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }    
 }

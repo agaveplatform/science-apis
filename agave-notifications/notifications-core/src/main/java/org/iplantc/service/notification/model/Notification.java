@@ -1,27 +1,16 @@
 package org.iplantc.service.notification.model;
 
-import java.util.Date;
-import java.util.Set;
-
-import javax.persistence.Column;
-import javax.persistence.Embedded;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-import javax.validation.ConstraintViolation;
-import javax.validation.Valid;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonMappingException.Reference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.CaseFormat;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
@@ -35,24 +24,18 @@ import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.dao.FailedNotificationAttemptQueue;
-import org.iplantc.service.notification.dao.NotificationAttemptDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.constraints.ValidAssociatedUuid;
 import org.iplantc.service.notification.model.constraints.ValidCallbackUrl;
 import org.iplantc.service.notification.model.enumerations.NotificationStatusType;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonMappingException.Reference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.common.base.CaseFormat;
+import javax.persistence.*;
+import javax.validation.*;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+import java.util.Date;
+import java.util.Set;
 
 /**
  * A {@link Notification} represents a subscription target to which one or more {@link #event}s is published.
@@ -126,6 +109,7 @@ public class Notification
 	 */
 	@Column(name = "`notification_event`", nullable = false, length = 32)
 	@JsonProperty("event")
+	@NotEmpty(message = "Invalid notification event value. Event name cannot be empty")
 	@Size(min=1, max=128, message="Invalid notification event. Notification events must be between {min} and {max} characters.")
 	private String event;
 	
@@ -217,6 +201,7 @@ public class Notification
 		this(eventName, callbackUrl);
 		setAssociatedUuid(associatedUuid);
 		setOwner(owner);
+		setPersistent(persistent);
 	}
 
 	/**
@@ -244,7 +229,7 @@ public class Notification
 	}
 
 	/**
-	 * @param nonce the uuid to set
+	 * @param uuid the uuid to set
 	 */
 	public void setUuid(String uuid) throws NotificationException
 	{
@@ -284,13 +269,13 @@ public class Notification
 	}
 
 	/**
-	 * @param nonce the uuid to set
+	 * @param associatedUuid the uuid to set
 	 */
 	public void setAssociatedUuid(String associatedUuid) throws NotificationException
 	{
 		associatedUuid = StringUtils.trimToEmpty(associatedUuid);
 
-		if (StringUtils.isEmpty(associatedUuid)) {
+		if (StringUtils.isBlank(associatedUuid) || StringUtils.equalsIgnoreCase(associatedUuid, "null")) {
 			throw new NotificationException("Invalid notification event. " +
 					"Notification associatedUuid cannot be empty.");
 		}
@@ -316,9 +301,13 @@ public class Notification
 	{
 		event = StringUtils.trimToEmpty(event);
 
-		if (StringUtils.isEmpty(event)) {
+		if (StringUtils.isBlank(event) || StringUtils.equalsIgnoreCase(event, "null")) {
 			throw new NotificationException("Invalid notification event. " +
 					"Notification events cannot be null.");
+		}
+		if (!event.matches("^([\\*]{1}|[a-zA-Z]{1}[a-zA-Z0-9_]*)$")) {
+			throw new NotificationException("Invalid notification event. Event names must contain only letters, " +
+					"numbers and underscores and must begin with a character.");
 		}
 		if (StringUtils.length(event) > 32) {
 			throw new NotificationException("Invalid notification event. " +
@@ -341,56 +330,7 @@ public class Notification
 	 */
 	public void setCallbackUrl(String callbackUrl) throws NotificationException
 	{
-		callbackUrl = StringUtils.trimToEmpty(callbackUrl);
-		
-		this.callbackUrl = callbackUrl;
-		
-//		if (StringUtils.isEmpty(callbackUrl)) {
-//			throw new NotificationException("Invalid callback url. " +
-//					"Callbacks cannot be null.");
-//		}
-//		if (StringUtils.length(callbackUrl) > 1024) {
-//			throw new NotificationException("Invalid callback url. " +
-//					"Callbacks must be less than 1024 characters.");
-//		}
-//		try
-//		{
-//			if (ServiceUtils.isEmailAddress(callbackUrl)) {
-//				this.callbackUrl = callbackUrl;
-//			}
-//			else if (ServiceUtils.isValidPhoneNumber(callbackUrl)) {
-//				if (Settings.SMS_PROVIDER == SmsProviderType.TWILIO) {
-//					this.callbackUrl = callbackUrl;
-//				} else {
-//					throw new NotificationException("Invalid callback address. SMS notifications are not enabled for this tenant.");
-//				}
-//			}
-//			else
-//			{
-//				URI url = new URI(callbackUrl.replaceAll("\\$", "%24").replaceAll("\\{", "%7B").replaceAll("\\}", "%7B"));
-//				if (StringUtils.isEmpty(url.getHost()) ||
-//						StringUtils.equals(url.getHost(), "localhost") ||
-//						url.getHost().startsWith("127.") ||
-//						url.getHost().startsWith("255.")) 
-//				{
-//					throw new NotificationException("Invalid callback host. Please specify a publicly resolvable hostname or ip address.");
-//				}
-//				else if (StringUtils.isEmpty(url.getScheme()) || !Arrays.asList("http","https","agave").contains(url.getScheme().toLowerCase())) {
-//				
-//					throw new NotificationException("Invalid callback protocol. Please specify either http, https, or agave");
-//				}
-//				else {
-//					this.callbackUrl = callbackUrl;
-//				}
-//			}
-//		}
-//		catch (NotificationException e) {
-//			throw e;
-//		}
-//		catch (Throwable e) {
-//			throw new NotificationException("Invalid callback url. " +
-//					"Callbacks should be either email addresses or a valid URL.");
-//		}
+		this.callbackUrl = StringUtils.trimToEmpty(callbackUrl);
 	}
 
 	/**
@@ -567,12 +507,12 @@ public class Notification
         					recommendation = ". Did you mean " + nestedField + prop.toString();
         				}
         				else {
-        					recommendation += ", " + nestedField + prop.toString();
+        					recommendation += ", " + nestedField + prop;
         				}
         				closestLevenshteinMatch = currentLevenshteinMatch;
         			}
         			else if (currentLevenshteinMatch < closestLevenshteinMatch) {
-        				recommendation = ". Did you mean " + nestedField + prop.toString();
+        				recommendation = ". Did you mean " + nestedField + prop;
         				closestLevenshteinMatch = currentLevenshteinMatch;
         			}
         		}
@@ -598,119 +538,6 @@ public class Notification
 		catch (Exception e) {
         	throw new NotificationException("Unexpected error while validating notification.", e); 
         }
-        
-//		try
-//		{
-//			if (json.has("url")) {
-//				try {
-//					notification.setCallbackUrl(json.get("url").asText());
-//				} catch (NotificationException e) {
-//					throw new NotificationException(e.getMessage() + " This will be a an email address, "
-//							+ "phone number, or web address to which the API will send notification of the event.");
-//				}
-//			} else {
-//				throw new NotificationException("Please specify a valid url " +
-//						"value for the notification.url field. This will be the email address, "
-//							+ "phone number, or web address to which the API will send notification of the event.");
-//			}
-//
-//			if (json.has("associatedUuid") && !json.get("associatedUuid").isNull()) {
-//			
-//				String associatedUuid = json.get("associatedUuid").textValue();
-//				
-//				// check for wildcard subscriptions
-//				if (StringUtils.equalsIgnoreCase(associatedUuid, "*")) {
-//					// websockets are good for the firehose
-//					if (ServiceUtils.isValidRealtimeChannel(notification.getCallbackUrl(), notification.getTenantId()) || 
-//							AuthorizationHelper.isTenantAdmin(TenancyHelper.getCurrentEndUser())) {
-//						notification.setAssociatedUuid("*");
-//					}
-//					else {
-//						throw new NotificationException("Invalid associatedUuid. " +
-//		    					"Wildcard notification subscriptions are reserved for administrators.");
-//					}
-//				}
-//				else if (StringUtils.isEmpty(associatedUuid)) {
-//					throw new NotificationException("No associated entity provided. " +
-//	    					"Please provide an associatedUuid for which this notification should apply.");
-//				}
-//				else {
-//					AgaveUUID agaveUUID = new AgaveUUID(associatedUuid);
-//		    		if (StringUtils.isEmpty(agaveUUID.getObjectReference())) {
-//		    			throw new NotificationException("Invalid associatedUuid. The provided uuid was not recognized"
-//		    					+ "as a valid resource uuid type. Please provide an associatedUuid for which this notification should apply.");
-//		    		}
-//		    		else {
-//		    			notification.setAssociatedUuid(associatedUuid);
-//		    		}
-//				}
-//			} else {
-//				throw new NotificationException("No associated entity provided. " +
-//    					"Please provide an associatedUuid for which this notification should apply.");
-//			}
-//			
-//			if (json.has("event") && !json.get("event").isNull()) {
-//				if (json.get("event").isValueNode()) {
-//					notification.setEvent(json.get("event").textValue());
-//				} else {
-//					throw new NotificationException("Invalid event. Please specify the name of a valid event "
-//							+ "for the associatedUuid you specified.");
-//				}
-//			} else {
-//				throw new NotificationException("Invalid event. Please specify the name of a valid event "
-//						+ "for the associatedUuid you specified.");
-//			}
-//			
-//			if (json.has("persistent")) {
-//				if (json.get("persistent").isBoolean()) {
-//					notification.setPersistent(json.get("persistent").asBoolean());
-//				} else {
-//					throw new NotificationException("persistent should be a boolean value indicating " +
-//	    					"whether the subscription should expire after the first notification is sent.");
-//				}
-//			} 
-//			// if persistent was not specified, imply it if they subscribed to
-//			// wildcard events.
-//			else if (StringUtils.equals("*", notification.getEvent())) {
-//				notification.setPersistent(true);
-//			// no wildcard, no persistent field, default to false
-//			} else {
-//				notification.setPersistent(false);
-//			}
-//			
-//			// check for a notification policy
-//			if (json.has("policy") && !json.get("policy").isNull()) {
-//				ObjectMapper mapper = new ObjectMapper().
-//				NotificationPolicy policy = mapper.treeToValue(json, Notification.class);
-//				notification.setPolicy(policy);
-//			} else {
-//				notification.setPolicy(new NotificationPolicy());
-//			}
-//			
-//			notificatinoP
-//		}
-//		catch (NotificationPolicyException e) {
-//			throw e;
-//		}
-//		catch (NotificationException e) {
-//			throw e;
-//		}
-//		catch (MalformedURLException e) {
-//			throw new NotificationException("Invalid url. Please specify a valid callback url " +
-//						"for the notification.url field. This will be the url " +
-//						"to which the API will POST a when the trigger fires.", e);
-//		}
-//		catch (JSONException e) {
-//			throw new NotificationException("Failed to parse notification object", e);
-//		}
-//		catch (UUIDException e) {
-//			throw new NotificationException(e.getMessage(), e);
-//		}
-//		catch (Exception e) {
-//			throw new NotificationException("Failed to parse notification object: " + e.getMessage(), e);
-//		}
-//
-//		return notification;
 	}
 
 	
@@ -755,7 +582,7 @@ public class Notification
 				
 			ObjectNode linksObject = mapper.createObjectNode();
 			
-			linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+			linksObject.put("self", mapper.createObjectNode()
 								.put("href", 
 										TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + getUuid()));
 			
@@ -763,11 +590,11 @@ public class Notification
 //								.put("href", 
 //										TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + getUuid() + "/history"));
 
-			linksObject.put("attempts", (ObjectNode)mapper.createObjectNode()
+			linksObject.put("attempts", mapper.createObjectNode()
 								.put("href", 
 										TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + getUuid() + "/attempts"));
 
-			linksObject.put("owner", (ObjectNode)mapper.createObjectNode()
+			linksObject.put("owner", mapper.createObjectNode()
 								.put("href", 
 										TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + getOwner()));
 			
@@ -776,12 +603,12 @@ public class Notification
 	        		AgaveUUID agaveUuid = new AgaveUUID(associatedUuid);
 		        	UUIDType type = agaveUuid.getResourceType();
 		        	if (type != null) {
-		        		linksObject.put(type.name().toLowerCase(), (ObjectNode)mapper.createObjectNode()
+		        		linksObject.put(type.name().toLowerCase(), mapper.createObjectNode()
 								.put("href", 
 										TenancyHelper.resolveURLToCurrentTenant(agaveUuid.getObjectReference())));
 		        	}
 	        	}
-	        	catch (UUIDException e) {}
+	        	catch (UUIDException ignored) {}
 	        }
 			
 			json.put("_links", linksObject);
@@ -790,14 +617,12 @@ public class Notification
 		}
 		catch (Exception e)
 		{
-			throw new NotificationException("Error producing JSON output for notification", e);
+			throw new NotificationException("Error producing JSON output for notification " + getUuid(), e);
 		}
 
 	}
-	
-	
+
 	public String toString() {
-//		return getId() + "";
 		return associatedUuid + " - " + event + " " + callbackUrl;
 	}
 	

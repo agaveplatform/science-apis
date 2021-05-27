@@ -1,16 +1,15 @@
 package org.iplantc.service.common.uri;
 
+import com.google.common.escape.Escaper;
+import com.google.common.net.UrlEscapers;
+import org.apache.commons.lang.StringUtils;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
-
-import com.google.common.escape.Escaper;
-import com.google.common.net.UrlEscapers;
 
 /**
  * Handles the escaping of urls for use in generating URLS. This is 

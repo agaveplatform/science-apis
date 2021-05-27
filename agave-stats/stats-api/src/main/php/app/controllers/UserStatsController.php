@@ -158,7 +158,7 @@ class UserStatsController extends AbstractAgaveController
         $userTraffic = $this->getUsers('users.all.monthly', "DATE_FORMAT(CreatedAt, '%Y-%m')");
 
         foreach($userTraffic as $row) {
-          if (!in_array($row->Username, array('sterry1', 'systest', 'testuser', 'ipctest', 'jstubbs', 'dooley', 'ldapbind'))  ) {
+          if (!in_array($row->Username, array('systest', 'testuser', 'ldapbind'))  ) {
             if (!empty($topUsers[$row->Username])) {
               $topUsers[$row->Username] += $row->requests;
             } else {

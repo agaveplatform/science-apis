@@ -43,6 +43,10 @@ package org.iplantc.service.io.util;
  * maintenance of any nuclear facility. 
  */
 
+import org.apache.log4j.Logger;
+import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -57,19 +61,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import org.apache.log4j.Logger;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-
 public class GrepUtil {
 	private static final Logger log = Logger.getLogger(GrepUtil.class);
 	
 	// Charset and decoder for ISO-8859-15
-	private Charset charset = Charset.forName("ISO-8859-15");
-	private CharsetDecoder decoder = charset.newDecoder();
+	private final Charset charset = Charset.forName("ISO-8859-15");
+	private final CharsetDecoder decoder = charset.newDecoder();
 
 	// Pattern used to parse lines
-	private Pattern linePattern = Pattern.compile(".*\r?\n");
+	private final Pattern linePattern = Pattern.compile(".*\r?\n");
 
 	// The input pattern that we're looking for
 	private Pattern pattern;

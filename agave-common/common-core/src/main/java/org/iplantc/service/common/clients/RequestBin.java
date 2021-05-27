@@ -1,46 +1,29 @@
 package org.iplantc.service.common.clients;
 
-import java.io.IOException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.conn.ssl.SSLSocketFactory;
-import org.apache.http.conn.ssl.TrustStrategy;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.client.LaxRedirectStrategy;
-import org.apache.http.impl.conn.PoolingClientConnectionManager;
-import org.testng.log4testng.Logger;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import org.apache.commons.lang.StringUtils;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.log4j.Logger;
+
+import java.io.IOException;
 
 /**
- * Simple client library to reqeustb.in
+ * Simple client library to requestbin service
  * @author dooley
  *
  */
 public class RequestBin
 {
 	private static final Logger log = Logger.getLogger(RequestBin.class);
-	private static final String BASE_URL = "https://requestbin.agaveapi.co/api/v1/bins";
-	private static final String PUBLIC_URL = "https://requestbin.agaveapi.co";
-	private ObjectMapper mapper = new ObjectMapper();
+	private static final String BASE_URL = "http://requestbin:5101/api/v1/bins";
+	private static final String PUBLIC_URL = "http://requestbin:5101";
+	private final ObjectMapper mapper = new ObjectMapper();
 	
 	private String binId;
 	
@@ -58,7 +41,7 @@ public class RequestBin
 		JsonNode json = doRequest(post);
 		
 		setBinId(json.get("name").asText());
-		log.debug("Created request bin " + toString());
+		log.debug("Created request bin " + this);
 	}
 	
 //	/**
@@ -126,7 +109,7 @@ public class RequestBin
 		}
 		else
 		{
-			log.debug("Listing contents of request bin " + toString());
+			log.debug("Listing contents of request bin " + this);
 			HttpGet get = new HttpGet(BASE_URL + getBinId());
 			JsonNode json = doRequest(get);
 			if (json != null && json.isArray()) {
@@ -151,7 +134,7 @@ public class RequestBin
 		else
 		{
 			try {
-				log.debug("Checking status of request bin " + toString());
+				log.debug("Checking status of request bin " + this);
 				HttpGet get = new HttpGet(BASE_URL + getBinId());
 				JsonNode json = doRequest(get);
 				return (json != null && !json.isNull());
@@ -182,10 +165,6 @@ public class RequestBin
 	 * @param httpUriRequest
 	 * @return JsonNode
 	 * @throws IOException
-	 * @throws KeyStoreException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws UnrecoverableKeyException 
-	 * @throws KeyManagementException 
 	 */
 	@SuppressWarnings("deprecation")
 	private JsonNode doRequest(HttpUriRequest httpUriRequest)
@@ -193,20 +172,22 @@ public class RequestBin
 	{
 		DefaultHttpClient httpClient = null;
 		try {
-			TrustStrategy acceptingTrustStrategy = new TrustStrategy() {
-				@Override
-				public boolean isTrusted(X509Certificate[] chain, String authType)
-						throws CertificateException {
-					return true;
-				}
-			};
-		    SSLSocketFactory sf = new SSLSocketFactory(
-		      acceptingTrustStrategy, SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-		    SchemeRegistry registry = new SchemeRegistry();
-		    registry.register(new Scheme("https", 443, sf));
-		    ClientConnectionManager ccm = new PoolingClientConnectionManager(registry);
+//			TrustStrategy acceptingTrustStrategy = new TrustStrategy() {
+//				@Override
+//				public boolean isTrusted(X509Certificate[] chain, String authType)
+//						throws CertificateException {
+//					return true;
+//				}
+//			};
+//		    SSLSocketFactory sf = new SSLSocketFactory(
+//		      acceptingTrustStrategy, SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+//		    SchemeRegistry registry = new SchemeRegistry();
+//		    registry.register(new Scheme("https", 443, sf));
+
+//			registry.register(new Scheme("http", 80, PlainConnectionSocketFactory.getSocketFactory()));
+//		    ClientConnectionManager ccm = new PoolingClientConnectionManager(registry);
 		    
-		    httpClient = new DefaultHttpClient(ccm);
+		    httpClient = new DefaultHttpClient();
 		    
 		    HttpResponse response = httpClient.execute(httpUriRequest);
 		    
@@ -221,13 +202,13 @@ public class RequestBin
 			} 
 			else 
 			{
-				throw new IOException("Error response received from Request Bin API at " + toString() + ": " + statusCode + 
+				throw new IOException("Error response received from Request Bin API at " + this + ": " + statusCode +
 						" - " + response.getStatusLine().getReasonPhrase());
 			}
 		}
-		catch (KeyManagementException | UnrecoverableKeyException | NoSuchAlgorithmException | KeyStoreException e) {
-			throw new IOException("Request failed to requestbin.", e);
-		}
+//		catch (KeyManagementException | UnrecoverableKeyException | NoSuchAlgorithmException | KeyStoreException e) {
+//			throw new IOException("Request failed to requestbin.", e);
+//		}
 		finally {
 			try {httpClient.close(); } catch (Exception e){}
 		}

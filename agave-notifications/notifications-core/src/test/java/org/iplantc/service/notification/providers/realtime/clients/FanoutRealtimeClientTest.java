@@ -1,8 +1,7 @@
 package org.iplantc.service.notification.providers.realtime.clients;
 
-import java.io.IOException;
-import java.sql.Timestamp;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.notification.AbstractNotificationTest;
 import org.iplantc.service.notification.TestDataHelper;
@@ -17,9 +16,10 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.time.Instant;
 
+@Test(groups={"integration","notReady"})
 public class FanoutRealtimeClientTest extends AbstractNotificationTest {
 
 	@BeforeClass
@@ -50,7 +50,7 @@ public class FanoutRealtimeClientTest extends AbstractNotificationTest {
 		NotificationAttempt attempt = new NotificationAttempt(notification.getUuid(), 
 				notification.getCallbackUrl(),
 				notification.getOwner(), notification.getAssociatedUuid(), 
-				"RUNNING", json.toString(), new Timestamp(System.currentTimeMillis()));
+				"RUNNING", json.toString(), Instant.now());
 
 		RealtimeClient client = new FanoutRealtimeClient(attempt);
 		

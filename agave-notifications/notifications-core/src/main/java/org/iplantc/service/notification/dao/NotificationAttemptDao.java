@@ -1,8 +1,5 @@
 package org.iplantc.service.notification.dao;
 
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
@@ -15,11 +12,18 @@ import org.iplantc.service.common.dao.AbstractDao;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.search.SearchTerm;
-import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.notification.model.NotificationAttempt;
 
+import java.util.List;
+import java.util.Map;
+
+/**
+ * DAO to manage MySQL-based notification attempts.
+ * @deprecated
+ */
+@Deprecated(since = "2.2.27")
 public class NotificationAttemptDao extends AbstractDao {
 
 	private static final Logger log = Logger.getLogger(NotificationAttemptDao.class);
@@ -209,7 +213,7 @@ public class NotificationAttemptDao extends AbstractDao {
 	/**
 	 * Deletes a notification
 	 * 
-	 * @param profile
+	 * @param attempt
 	 * @throws NotificationException
 	 */
 	public void delete(NotificationAttempt attempt) throws NotificationException
@@ -416,7 +420,7 @@ public class NotificationAttemptDao extends AbstractDao {
                 {
                     query.setParameter(searchTerm.getSafeSearchField(), 
                             searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)));
-                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "'" + searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)) + "'");
                 }
                 
             }

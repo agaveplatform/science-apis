@@ -3,16 +3,11 @@
  */
 package org.iplantc.service.systems;
 
-import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.ietf.jgss.GSSCredential;
+
+import java.util.*;
 
 /**
  * @author dooley
@@ -20,9 +15,11 @@ import org.ietf.jgss.GSSCredential;
  */
 public class Settings {
 
+	private static final Logger log = Logger.getLogger(Settings.class);
+
 	private static Properties					props			= new Properties();
 
-	private static Map<String, GSSCredential>	userProxies		= Collections
+	private static final Map<String, GSSCredential>	userProxies		= Collections
 																		.synchronizedMap(new HashMap<String, GSSCredential>());
 
 	/* Trusted user settings */
@@ -95,9 +92,9 @@ public class Settings {
 		
 		HOSTNAME = org.iplantc.service.common.Settings.getLocalHostname();
 
-		API_VERSION = (String)props.getProperty("iplant.api.version");
+		API_VERSION = props.getProperty("iplant.api.version");
 		
-		SERVICE_VERSION = (String)props.getProperty("iplant.service.version");
+		SERVICE_VERSION = props.getProperty("iplant.service.version");
 		
 		COMMUNITY_USERNAME = (String) props.get("iplant.community.username");
 
@@ -110,14 +107,23 @@ public class Settings {
 			}
 		}
 		
-		SERVICE_VERSION = (String)props.getProperty("iplant.service.version");
+		SERVICE_VERSION = props.getProperty("iplant.service.version");
 		
 		IPLANT_AUTH_SERVICE = (String)props.get("iplant.auth.service");
-		
-		IPLANT_MYPROXY_SERVER = (String) props.get("iplant.myproxy.server");
 
-		IPLANT_MYPROXY_PORT = Integer.valueOf((String) props
-				.get("iplant.myproxy.port"));
+		try {
+		    IPLANT_MYPROXY_SERVER = (String) props.get("iplant.myproxy.server");
+		} catch (Exception e) {
+			log.error("Failure loading setting iplant.myproxy.server", e);
+			IPLANT_MYPROXY_SERVER = "myproxy.xsede.org";
+		}
+
+		try {
+			IPLANT_MYPROXY_PORT = Integer.valueOf((String) props.get("iplant.myproxy.port"));
+		} catch (Exception e) {
+			log.error("Failure loading setting iplant.myproxy.port", e);
+			IPLANT_MYPROXY_PORT = 7512;
+		}
 
 		IPLANT_LDAP_URL = (String) props.get("iplant.ldap.url");
 
@@ -160,13 +166,13 @@ public class Settings {
 		
 		TRUSTED_CA_CERTS_DIRECTORY = (String) props.get("system.ca.certs.path");
 		
-		MAIL_SERVER = (String) props.getProperty("mail.smtps.host");
+		MAIL_SERVER = props.getProperty("mail.smtps.host");
 		
-		MAILSMTPSPROTOCOL = (String) props.getProperty("mail.smtps.auth");
+		MAILSMTPSPROTOCOL = props.getProperty("mail.smtps.auth");
 		
-		MAILLOGIN = (String) props.getProperty("mail.smtps.user");
+		MAILLOGIN = props.getProperty("mail.smtps.user");
 		
-		MAILPASSWORD = (String) props.getProperty("mail.smtps.passwd");
+		MAILPASSWORD = props.getProperty("mail.smtps.passwd");
 
 //		REFRESH_RATE = Integer.valueOf((String) props.get("iplant.refresh.interval"));
 		
@@ -178,7 +184,12 @@ public class Settings {
 
 		IRODS_HOST = (String) props.get("iplant.irods.host");
 
-		IRODS_PORT = Integer.valueOf((String) props.get("iplant.irods.port"));
+		try {
+            IRODS_PORT = Integer.valueOf((String) props.get("iplant.irods.port"));
+        } catch (Exception e){
+			log.error("Failure loading setting iplant.myproxy.server", e);
+			IRODS_PORT = 1247;
+        }
 
 		IRODS_ZONE = (String) props.get("iplant.irods.zone");
 
@@ -194,9 +205,19 @@ public class Settings {
 
 		WORLD_USER_USERNAME = (String) props.get("iplant.world.user");
 
-		DEFAULT_PAGE_SIZE = Integer.parseInt((String) props.getProperty("iplant.default.page.size", "25"));
-		
-		MAX_REMOTE_OPERATION_TIME = Integer.parseInt((String) props.getProperty("iplant.max.remote.connection.time", "90"));
+		try {
+			DEFAULT_PAGE_SIZE = Integer.parseInt(props.getProperty("iplant.default.page.size", "25"));
+		} catch (Exception e){
+			log.error("Failure loading setting iplant.default.page.size", e);
+			DEFAULT_PAGE_SIZE = 25;
+		}
+
+		try {
+			MAX_REMOTE_OPERATION_TIME = Integer.parseInt(props.getProperty("iplant.max.remote.connection.time", "90"));
+		} catch (Exception e){
+			log.error("Failure loading setting iplant.max.remote.connection.time", e);
+			MAX_REMOTE_OPERATION_TIME = 90;
+		}
 	}
 
 }

@@ -1,22 +1,22 @@
-{   
-	"id": "s3.example.com",
-	"name": "Amazon S3 Public Example",
-	"status": "UP",
-	"type": "STORAGE",
-	"description": "Example storage system accessible via public readonly S3 bucket.",
-	"site": "amazon.com",
-    "storage": {
-        "container": "nasanex",
-        "homeDir": "/",
-        "rootDir": "/",
-        "host": "s3-website-us-east-1.amazonaws.com",
-        "port": 443,
-        "auth": {
-            "type": "APIKEYS",
-            "publicKey": "${aws.access.key}",
-			"privateKey": "${aws.secret.key}"
-        },
-        "protocol": "S3"
+{
+  "id": "s3-public.example.com",
+  "name": "Amazon S3 Public Example",
+  "status": "UP",
+  "type": "STORAGE",
+  "description": "Example storage system accessible via public readonly S3 bucket.",
+  "site": "aws",
+  "storage": {
+    "host": "http://docker.example.com",
+    "port": 9000,
+    "homeDir": "/",
+    "rootDir": "/",
+    "auth": {
+      "type": "APIKEYS",
+      "publicKey": "${s3.access.key}",
+      "privateKey": "${s3.secret.key}"
     },
-    "default": false
+    "protocol": "S3",
+    "container": "${s3.access.key}-public"
+  },
+  "default": false
 }

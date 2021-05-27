@@ -17,18 +17,18 @@
         }
     ],
 	"login": {
-		"host": "docker.example.com",
-		"port": 10155,
-		"protocol": "SSH",
-		"auth":{
+      "host": "${condor.host}",
+      "port": ${condor.port},
+      "protocol": "SSH",
+      "auth":{
          "username":"testuser",
          "password":"testuser",
          "type":"PASSWORD"
       }
 	},
 	"storage":{
-      "host":"storage.example.com",
-      "port":10155,
+      "host": "${condor.host}",
+      "port": ${condor.port},
       "protocol":"SFTP",
       "rootDir":"/",
       "homeDir":"/home/testuser",

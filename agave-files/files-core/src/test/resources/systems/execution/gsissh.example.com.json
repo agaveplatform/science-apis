@@ -17,41 +17,41 @@
 		}
 	],
 	"login": {
-		"host": "stampede.tacc.utexas.edu",
-		"port": 2222,
+		"host": "${gsissh.host}",
+		"port": ${gsissh.port},
 		"protocol": "GSISSH",
 		"auth": {
 			"username": "${iplant.community.username}",
 			"password": "${iplant.community.password}",
 			"credential": null,
 			"type": "X509",
-			"caCerts": "http://software.xsede.org/security/xsede-certs.tar.gz",
+			"caCerts": null,
 			"server": {
 				"id": "myproxy.xsede.org",
-				"name": "XSEDE MyProxy Server",
-				"endpoint": "myproxy.xsede.org",
-				"port": 7512,
+				"name": "Agave Dev myproxy Docker container",
+				"endpoint": "${myproxy.host}",
+				"port": ${myproxy.port},
 				"protocol": "MYPROXY"
 			}
 		}
 	},
 	"storage": {
-		"host": "gridftp.stampede.tacc.utexas.edu",
-		"port": 2811,
+		"host": "${gsissh.host}",
+		"port": ${gridftp.port},
 		"protocol": "GRIDFTP",
-		"homeDir": "/home1/00475/dooley",
 		"rootDir": "/",
+		"homeDir": "/home/testuser",
 		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
+			"username": "testuser",
+			"password": "testuser",
 			"credential": null,
 			"type": "X509",
-			"caCerts": "http://software.xsede.org/security/xsede-certs.tar.gz",
+			"caCerts": null,
 			"server": {
 				"id": "myproxy.xsede.org",
-				"name": "XSEDE MyProxy Server",
-				"endpoint": "myproxy.xsede.org",
-				"port": 7512,
+				"name": "Agave Dev myproxy Docker container",
+				"endpoint": "${myproxy.host}",
+				"port": ${myproxy.port},
 				"protocol": "MYPROXY"
 			}
 		}

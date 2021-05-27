@@ -19,9 +19,23 @@ import org.iplantc.service.systems.model.enumerations.SystemStatusType;
  */
 public class JobKillerFactory {
 
-	public static JobKiller getInstance(Job job) throws JobException, SystemUnavailableException
+	protected JobManager jobManager = null;
+
+	/**
+	 * Basic getter for job manager instance. Useful for testing
+	 * @return JobManager instance
+	 */
+	protected JobManager getJobManager() {
+		if (jobManager == null) {
+			jobManager = new JobManager();
+		}
+
+		return jobManager;
+	}
+
+	public JobKiller getInstance(Job job) throws JobException, SystemUnavailableException
 	{
-	    ExecutionSystem executionSystem = JobManager.getJobExecutionSystem(job);
+	    ExecutionSystem executionSystem = getJobManager().getJobExecutionSystem(job);
 	    
 	    if (executionSystem == null || !executionSystem.isAvailable()) {
             throw new SystemUnavailableException("Job execution system " 

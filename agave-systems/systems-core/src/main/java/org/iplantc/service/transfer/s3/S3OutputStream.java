@@ -3,29 +3,25 @@
  */
 package org.iplantc.service.transfer.s3;
 
-import static org.jclouds.blobstore.options.PutOptions.Builder.multipart;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Map;
-
-import javax.activation.MimetypesFileTypeMap;
-
+import com.google.common.io.ByteSource;
+import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.iplantc.service.systems.Settings;
 import org.iplantc.service.transfer.RemoteOutputStream;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.util.MD5Checksum;
 import org.jclouds.blobstore.domain.Blob;
-import org.jclouds.io.payloads.FilePayload;
+import org.jclouds.io.Payload;
+import org.jclouds.io.payloads.ByteSourcePayload;
 
-import com.google.common.hash.HashCode;
-import com.google.common.io.ByteSource;
-import com.google.common.io.Files;
+import javax.activation.MimetypesFileTypeMap;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Map;
+
+import static org.jclouds.blobstore.options.PutOptions.Builder.multipart;
 
 /**
  * @author dooley
@@ -34,9 +30,9 @@ import com.google.common.io.Files;
 public class S3OutputStream extends RemoteOutputStream<S3Jcloud> {
 	private boolean hasWrittenContent;
 	private Blob blob;
-	private OutputStream stream;
-	private File tempFile;
-	private String remotePath;
+	private final OutputStream stream;
+	private final File tempFile;
+	private final String remotePath;
 	private Map<String, String> userMetadata;
 	
 	public S3OutputStream(S3Jcloud client, Blob blob) throws IOException, RemoteDataException 
@@ -79,29 +75,38 @@ public class S3OutputStream extends RemoteOutputStream<S3Jcloud> {
 	 */
 	@Override
 	public void close() throws IOException {
-		stream.close();
 		if (!hasWrittenContent)
 		{
-			InputStream in = null;
+			stream.close();
+
+//			InputStream in = null;
 			try {
-//				File test = new File("/Users/dooley/workspace/agave/agave-systems/systems-core/src/test/resources/transfer/test_upload.txt");
-				ByteSource payload = Files.asByteSource(tempFile);
+//				File test = new File("/Users/dooley/workspace/agave/agave-systems/systems-core/target/test-classes/transfer/test_upload.txt");
+//				in = new FileInputStream(tempFile);
+				ByteSource byteSource = Files.asByteSource(tempFile);
+				Payload payload = new ByteSourcePayload(byteSource);
+
 				if (this.blob == null)
 				{
+
 					this.blob = client.getBlobStore().blobBuilder(remotePath)
 						  .payload(payload)
 						  .contentDisposition(FilenameUtils.getName(remotePath))
 						  .contentLength(tempFile.length())
 						  .contentType(new MimetypesFileTypeMap().getContentType(tempFile))
-						  .contentMD5((HashCode)null)
-//						  .contentMD5(MD5Checksum.getMD5Checksum(tempFile).getBytes())
+						  .contentMD5(payload.getContentMetadata().getContentMD5AsHashCode())
 						  .userMetadata(userMetadata)
 						  .build();
 				}
 				else
 				{
-					in = payload.openBufferedStream();
-					this.blob.setPayload(in);
+//					this.blob.setPayload(in);
+//					in = payload.openBufferedStream();
+//					this.blob.setPayload(in);
+					this.blob.setPayload(payload);
+					this.blob.getMetadata().getContentMetadata().setContentMD5(payload.getContentMetadata().getContentMD5AsHashCode());
+					this.blob.getMetadata().getContentMetadata().setContentType(new MimetypesFileTypeMap().getContentType(tempFile));
+					this.blob.getMetadata().getContentMetadata().setContentLength(tempFile.length());
 				}
 				
 				client.getBlobStore().putBlob(client.containerName, blob, multipart());
@@ -111,11 +116,9 @@ public class S3OutputStream extends RemoteOutputStream<S3Jcloud> {
 			}
 			finally {
 				hasWrittenContent = true;
-				try { in.close(); } catch (Exception e) {}
+//				try { in.close(); } catch (Exception ignore) {}
 				FileUtils.deleteQuietly(tempFile);
-				
 			}
-				
 		}
 	}
 

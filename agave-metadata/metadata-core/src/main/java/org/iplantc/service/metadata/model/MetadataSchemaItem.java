@@ -3,23 +3,30 @@
  */
 package org.iplantc.service.metadata.model;
 
-import java.util.Date;
-
-import javax.persistence.Id;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Past;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonView;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.Length;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
+import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.exceptions.MetadataException;
+import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.model.validation.constraints.ValidJsonSchema;
+import org.iplantc.service.notification.model.Notification;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonView;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.databind.JsonNode;
+import javax.persistence.Id;
+import javax.validation.constraints.NotNull;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * @author dooley
@@ -35,38 +42,48 @@ public class MetadataSchemaItem {
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     @ValidJsonSchema
     private JsonNode schema;
-    
-    @NotNull
+
+    @NotNull(message = "Null tenantId attribute specified. Please provide a valid tenantId for this metadata item.")
+    @Length(min = 1, max = 64, message = "Metadata tenant must be non-empty and less than 64 characters.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String tenantId;
     
-    @NotNull
+    @NotNull(message = "Null internalUsername attribute specified. Please provide a valid internalUsername for this metadata item.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String internalUsername;
-    
-    @NotNull
-    @Length(min=1,max=128)
+
+    @NotNull(message = "Null owner attribute specified. Please provide a valid owner for this metadata item.")
+    @Length(min = 1, max = 32, message = "Metadata owner must be non-empty and less than 33 characters.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String owner;
-    
-    @Length(max=64)
+
+    @Length(max = 64, message = "Metadata uuid must be a valid uuid.")
+    @NotNull(message = "No uuid attribute specified. Please provide a valid uuid for this metadata item.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String uuid;
-    
-    @JsonInclude(Include.NON_NULL)
-    private String error;
-    
-    @Past
-    @NotNull
+
+    @NotNull(message = "Null created attribute specified. Please provide a valid created for this metadata item.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private Date created;
-    
+
+    @NotNull(message = "Null lastUpdated attribute specified. Please provide a valid lastUpdated for this metadata item.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
-    @NotNull
     private Date lastUpdated;
-    
+
+    @JsonInclude(Include.NON_NULL)
+    private String error;
+
     @JsonView({MetadataViews.Resource.Summary.class})
     private String _links;
+
+    @JsonIgnore
+    @JsonView({MetadataViews.Resource.Notifications.class, MetadataViews.Request.class})
+    private final List<Notification> notifications = new ArrayList<Notification>();
+
+    //KL
+    @JsonIgnore
+    @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
+    private List<MetadataPermission> permissions = new ArrayList<MetadataPermission>();
     
     public MetadataSchemaItem() {
         this.uuid = new AgaveUUID(UUIDType.METADATA).toString();
@@ -146,20 +163,6 @@ public class MetadataSchemaItem {
     }
 
     /**
-     * @return the error
-     */
-    public synchronized String getError() {
-        return error;
-    }
-
-    /**
-     * @param error the error to set
-     */
-    public synchronized void setError(String error) {
-        this.error = error;
-    }
-
-    /**
      * @return the created
      */
     public synchronized Date getCreated() {
@@ -187,58 +190,78 @@ public class MetadataSchemaItem {
         this.lastUpdated = lastUpdated;
     }
 
-//    @JsonIgnore
-//    public ObjectNode toObjectNode() {
-//        ObjectMapper mapper = new ObjectMapper();
-//        mapper.registerModule(new JodaModule());
-//        
-//        ObjectNode json = mapper.createObjectNode()
-//                .put("name", getName())
-//                .put("value", getValue())
-//                .put("schemaId", getSchemaId())
-//                .put("owner", getOwner())
-//                .put("uuid", getUuid())
-//                .putPOJO("created", getCreated())
-//                .putPOJO("lastUpdated", getLastUpdated())
-//                .putPOJO("associatedUuids", getAssociatedIds());
-//        
-//        ObjectNode hal = mapper.createObjectNode();
-//        hal.put("self", mapper.createObjectNode().put("href", 
-//                TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE + "data/" + getUuid())));
-//        
-//        if (!getAssociatedUuids().isEmpty())
-//        {
-//            hal.putAll(getAssociatedUuids().getReferenceGroupMap());
-//        }
-//        
-//        if (StringUtils.isNotEmpty(getSchemaId())) 
-//        {
-//            hal.put(UUIDType.SCHEMA.name().toLowerCase(), 
-//                    mapper.createObjectNode().put("href", 
-//                            TenancyHelper.resolveURLToCurrentTenant(getSchemaId())));
-//        }
-//        json.put("_links", hal);
-//        
-//        return json;
-//    }
-    
-//    @JsonValue
-//    public String toString() {
-//        return toObjectNode().toString();
-//    }
+    /**
+     * @return the permissions
+     */
+    public synchronized List<MetadataPermission> getPermissions() {
+        return permissions;
+    }
 
-//    public DBObject toDBObject() {
-//        DBObject json = new BasicDBObject()
-//                .append("name", getName())
-//                .append("value", getValue())
-//                .append("schemaId", getSchemaId())
-//                .append("owner", getOwner())
-//                .append("uuid", getUuid())
-//                .append("tenantId", getTenantId())
-//                .append("created", new DateTime(getCreated()).toString())
-//                .append("lastUpdated", new DateTime(getLastUpdated()).toString())
-//                .append("associatedUuids", new BasicDBList().addAll(getAssociatedUuids().getRawUuid()));
-//        return json;
-//    }
+    //KL
+
+    /**
+     * @param pem the permissions to set
+     */
+    public synchronized void setPermissions(List<MetadataPermission> pem) {
+        this.permissions = pem;
+    }
+
+    public synchronized void updatePermissions(MetadataPermission pem) throws MetadataException {
+        MetadataPermission currentUserPermission = this.getPermissionForUsername(pem.getUsername());
+
+        if (currentUserPermission != null) {
+            int indx = this.permissions.indexOf(currentUserPermission);
+            this.permissions.set(indx, pem);
+        } else {
+            this.permissions.add(pem);
+        }
+    }
+
+    /**
+     * @param pem The permission to remove
+     */
+    public synchronized void removePermission(MetadataPermission pem) {
+        this.permissions.remove(pem);
+    }
+
+    /**
+     * Returns permission for the user with the given username
+     * @param username the username of the person whose permissino will be returned.
+     * @return the permission of the user, or null of not present
+     * @throws MetadataException when unable to instantiate a metadata permission item
+     */
+    public synchronized MetadataPermission getPermissionForUsername(String username) throws MetadataException {
+        for (MetadataPermission pem : this.permissions) {
+            if (pem.getUsername().equals(username)) {
+                return pem;
+            }
+        }
+        if (StringUtils.equals(username, this.getOwner())) {
+            return new MetadataPermission(username, PermissionType.ALL);
+        }
+        return null;
+    }
+
+    @JsonIgnore
+    public ObjectNode toObjectNode() {
+        ObjectMapper mapper = new ObjectMapper();
+
+        ObjectNode json = mapper.createObjectNode()
+                .put("owner", getOwner())
+                .put("uuid", getUuid())
+                .put("created", getCreated().toInstant().toString())
+                .put("lastUpdated", getLastUpdated().toInstant().toString());
+
+        json.set("schema", getSchema());
+
+        ObjectNode hal = mapper.createObjectNode();
+        hal.set("self", mapper.createObjectNode().put("href",
+                TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE + "schemas/" + getUuid())));
+
+        json.set("_links", hal);
+
+        return json;
+    }
+
     
 }

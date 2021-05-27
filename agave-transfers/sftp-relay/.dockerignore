@@ -1,0 +1,50 @@
+# Git files
+#.git
+#.gitignore
+#.gitmodules
+repository
+/.pathhash2.txt
+
+# Binary targets
+target
+*~
+
+
+# Intellij metadata files
+*.idea
+*.ids
+*.iml
+*.eml
+*.imp
+*.ipr
+*.iws
+
+# Eclipse metadata files
+.project
+.settings
+.classpath
+
+# Apple system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear on external disk
+.Spotlight-V100
+.Trashes
+
+# fabric deployment files
+fabfile.py
+fabfile.pyc
+
+# maven and eclipse malformed output test folders
+test-output
+
+# Golang build assets
+/vendor/
+/release/
+/pkg/sftpproto/*.go

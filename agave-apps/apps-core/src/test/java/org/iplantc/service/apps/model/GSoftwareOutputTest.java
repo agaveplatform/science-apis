@@ -2,7 +2,6 @@ package org.iplantc.service.apps.model;
 
 
 import org.apache.commons.collections.CollectionUtils;
-import org.iplantc.service.apps.model.SoftwareOutput;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.testng.Assert;
@@ -17,6 +16,7 @@ import org.testng.annotations.Test;
  * Time: 12:50 PM
  * To change this template use File | Settings | File Templates.
  */
+@Test(groups={"unit"})
 public class GSoftwareOutputTest extends GModelTestCommon{
     SoftwareOutput output = new SoftwareOutput();
 
@@ -101,7 +101,7 @@ public class GSoftwareOutputTest extends GModelTestCommon{
             output.setOrder(6);
             output.setRepeatArgument(true);
             output.setRequired(false);
-            output.setShowArgument(true);;
+            output.setShowArgument(true);
             output.setSoftware(software);
             output.setValidator(".*");
             output.setVisible(false);

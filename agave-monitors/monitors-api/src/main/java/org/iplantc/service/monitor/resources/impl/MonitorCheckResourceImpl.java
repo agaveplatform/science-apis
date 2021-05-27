@@ -3,17 +3,8 @@
  */
 package org.iplantc.service.monitor.resources.impl;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorCheckGetById;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.MONITORS02;
-
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.restlet.resource.AbstractAgaveResource;
 import org.iplantc.service.monitor.dao.MonitorCheckDao;
@@ -25,6 +16,16 @@ import org.iplantc.service.monitor.resources.MonitorCheckResource;
 import org.restlet.Request;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
+
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorCheckGetById;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.MONITORS02;
 
 /**
  * @author dooley
@@ -94,6 +95,9 @@ public class MonitorCheckResourceImpl extends AbstractAgaveResource implements M
 		{
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to retrieve monitor check: " + e.getMessage(), e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 }

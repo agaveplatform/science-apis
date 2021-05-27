@@ -14,29 +14,22 @@
  */
 package org.iplantc.service.common.auth;
 
-import org.globus.util.Util;
-import org.ietf.jgss.GSSException;
-import org.ietf.jgss.GSSName;
-import org.ietf.jgss.Oid;
-import org.gridforum.jgss.ExtendedGSSCredential;
-
-import java.security.cert.X509Certificate;
-import java.security.PrivateKey;
-import java.io.ByteArrayOutputStream;
-import java.io.Serializable;
-import java.io.IOException;
-import java.io.File;
-import java.io.FileOutputStream;
-
-import org.globus.gsi.X509Credential;
-
-import java.security.cert.CertificateEncodingException;
-
 import org.globus.gsi.CredentialException;
+import org.globus.gsi.X509Credential;
 import org.globus.gsi.gssapi.GSSConstants;
 import org.globus.gsi.gssapi.GlobusGSSException;
 import org.globus.gsi.gssapi.GlobusGSSManagerImpl;
 import org.globus.gsi.gssapi.GlobusGSSName;
+import org.globus.util.Util;
+import org.gridforum.jgss.ExtendedGSSCredential;
+import org.ietf.jgss.GSSException;
+import org.ietf.jgss.GSSName;
+import org.ietf.jgss.Oid;
+
+import java.io.*;
+import java.security.PrivateKey;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.X509Certificate;
 
 /**
  * An implementation of <code>GlobusGSSCredential</code>.
@@ -57,7 +50,7 @@ public class AgaveGSSCredentialImpl implements ExtendedGSSCredential,
 
 	private int usage = 0;
 	private AgaveX509Credential cred;
-	private GSSName name;
+	private final GSSName name;
 
 	/**
 	 * Creates anonymous credential.

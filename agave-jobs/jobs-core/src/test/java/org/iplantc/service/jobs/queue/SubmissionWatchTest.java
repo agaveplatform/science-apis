@@ -1,19 +1,9 @@
 package org.iplantc.service.jobs.queue;
 
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.submission.AbstractJobSubmissionTest;
@@ -21,18 +11,11 @@ import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
-import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.SchedulerType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.joda.time.DateTime;
-import org.json.JSONException;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.JobListener;
-import org.quartz.Scheduler;
-import org.quartz.Trigger;
+import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.KeyMatcher;
 import org.testng.Assert;
@@ -41,7 +24,15 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"broken"})
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
+
+@Test(groups={"broken", "integration"})
 public class SubmissionWatchTest extends AbstractJobSubmissionTest 
 {
     private static final Logger log = Logger.getLogger(StagingWatch.class);
@@ -175,11 +166,8 @@ public class SubmissionWatchTest extends AbstractJobSubmissionTest
             if (actuallyThrewException != shouldThrowException) e.printStackTrace();
             job = submissionWatch.getJob();
         }
-        finally {
-            
-        }
         
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
         Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
         
         return job;
@@ -459,7 +447,7 @@ public class SubmissionWatchTest extends AbstractJobSubmissionTest
                     @Override
                     public void jobWasExecuted(JobExecutionContext context, JobExecutionException e) {
                         if (e == null) {
-                            log.error(jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);;
+                            log.error(jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);
                         } else {
 //                            log.error("Transfer failed",e);
                         }
@@ -563,7 +551,7 @@ public class SubmissionWatchTest extends AbstractJobSubmissionTest
                     public void jobWasExecuted(JobExecutionContext context, JobExecutionException e) {
                         if (e == null) {
                             log.error("Completed job " + context.getMergedJobDataMap().getString("uuid") + 
-                            		". " + jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);;
+                            		". " + jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);
                         } else {
                             log.error("Transfer failed",e);
                         }

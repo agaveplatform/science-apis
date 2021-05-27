@@ -1,13 +1,5 @@
 package org.iplantc.service.notification.providers;
 
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.AGAVE;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.EMAIL;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.NONE;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.REALTIME;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.SLACK;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.SMS;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.WEBHOOK;
-
 import org.apache.commons.lang.NotImplementedException;
 import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.exceptions.BadCallbackException;
@@ -21,13 +13,16 @@ import org.iplantc.service.notification.providers.http.clients.SlackWebhookClien
 import org.iplantc.service.notification.providers.realtime.RealtimeClientFactory;
 import org.iplantc.service.notification.providers.sms.SmsClientFactory;
 
+import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.*;
+
 public class NotificationAttemptProviderFactory {
 
 	public static NotificationAttemptProvider getInstance(NotificationAttempt attempt) 
 	throws NotImplementedException, NotificationException 
 	{
 		try {
-			NotificationCallbackProviderType providerType = NotificationCallbackProviderType.getInstanceForUri(attempt.getCallbackUrl());
+			NotificationCallbackProviderType providerType = NotificationCallbackProviderType.getInstanceForUri(
+					attempt.getCallbackUrl(), attempt.getTenantId());
 			NotificationAttemptProvider provider = null;
 			
 			if (providerType == EMAIL) {

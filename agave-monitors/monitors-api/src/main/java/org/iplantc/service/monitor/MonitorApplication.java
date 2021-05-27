@@ -1,23 +1,16 @@
 package org.iplantc.service.monitor;
 
-import java.util.HashSet;
-import java.util.Set;
+import org.iplantc.service.monitor.resources.impl.*;
 
 import javax.ws.rs.core.Application;
-
-import org.iplantc.service.monitor.resources.impl.EntityEventCollectionImpl;
-import org.iplantc.service.monitor.resources.impl.EntityEventResourceImpl;
-import org.iplantc.service.monitor.resources.impl.MonitorCheckCollectionImpl;
-import org.iplantc.service.monitor.resources.impl.MonitorCheckResourceImpl;
-import org.iplantc.service.monitor.resources.impl.MonitorCollectionImpl;
-import org.iplantc.service.monitor.resources.impl.MonitorResourceImpl;
-import org.iplantc.service.monitor.resources.impl.QuartzResourceImpl;
+import java.util.HashSet;
+import java.util.Set;
 
 
 public class MonitorApplication extends Application {
 
 	/**
-	 * @see javax.ws.rs.core.ApplicationConfig#getResourceClasses()
+	 * @see Application#getClasses()
 	 */
 	@Override
     public Set<Class<?>> getClasses() {

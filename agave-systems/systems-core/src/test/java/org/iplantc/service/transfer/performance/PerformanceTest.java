@@ -3,17 +3,10 @@
  */
 package org.iplantc.service.transfer.performance;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.zip.Adler32;
-import java.util.zip.CheckedInputStream;
-
 import org.apache.commons.io.FileUtils;
 import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.model.PersistedSystemsModelTestCommon;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemsModelTestCommon;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.json.JSONObject;
 import org.testng.Assert;
@@ -22,12 +15,19 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.zip.Adler32;
+import java.util.zip.CheckedInputStream;
+
 /**
  * @author dooley
  *
  */
 @Test(groups= {"performance"})
-public class PerformanceTest extends SystemsModelTestCommon {
+public class PerformanceTest extends PersistedSystemsModelTestCommon {
 
 	private SystemDao dao;
 	static File sourceFile;
@@ -168,7 +168,7 @@ public class PerformanceTest extends SystemsModelTestCommon {
 		if (e >= 1000) {
 			kbs = (((float) length / 1024) / ((float) e / 1000) / 1000);
 			System.out.println("Upload Transfered via " + client.getClass().getSimpleName() + " at "
-					+ String.valueOf(kbs) + " MB/s");
+					+ kbs + " MB/s");
 		}
 	}
 	
@@ -218,7 +218,7 @@ public class PerformanceTest extends SystemsModelTestCommon {
 		if (e >= 1000) {
 			kbs = (((float) length / 1024) / ((float) e / 1000) / 1000);
 			System.out.println("Download Transfered via " + client.getClass().getSimpleName() + " at "
-					+ String.valueOf(kbs) + " MB/s");
+					+ kbs + " MB/s");
 		}
 	}
 }

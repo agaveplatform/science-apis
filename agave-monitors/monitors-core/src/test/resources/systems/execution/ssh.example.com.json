@@ -3,9 +3,9 @@
 	"name": "SSH",
 	"status": "UP",
 	"type": "EXECUTION",
-	"description": "Sample ssh execution system.",
-	"site": "tacc.xsede.org",
-	"executionType": "HPC",
+	"description": "Sample ssh fork execution system.",
+	"site": "example.com",
+	"executionType": "CLI",
 	"default": false,
 	"scratchDir": "/tmp",
 	"workDir": "/tmp",
@@ -25,8 +25,8 @@
 		}
 	],
 	"login": {
-		"host": "docker.example.com",
-		"port": 10022,
+		"host": "${ssh.host}",
+		"port": ${ssh.port},
 		"protocol": "SSH",
 		"auth": {
 			"username": "testuser",
@@ -35,8 +35,8 @@
 		}
 	},
 	"storage": {
-		"host": "docker.example.com",
-		"port": 10022,
+		"host": "${ssh.host}",
+		"port": ${ssh.port},
 		"protocol": "SFTP",
 		"rootDir": "/",
 		"homeDir": "/home/testuser",
@@ -46,7 +46,7 @@
 			"type": "PASSWORD"
 		}
 	},
-	"scheduler": "SGE",
+	"scheduler": "FORK",
 	"environment": "",
-	"startupScript": "./bashrc"
+	"startupScript": null
 }

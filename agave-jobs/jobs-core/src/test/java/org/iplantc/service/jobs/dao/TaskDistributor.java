@@ -1,9 +1,9 @@
 package org.iplantc.service.jobs.dao;
+
+import org.apache.log4j.Logger;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 
 public class TaskDistributor
 {   
@@ -37,11 +37,6 @@ public class TaskDistributor
             }
         }
 
-        // print distribution
-        for(List<Integer> bucket : buckets) {
-            log.debug(StringUtils.join(bucket, " ") + "\n");
-        }
-        
         return buckets;
     }
 }

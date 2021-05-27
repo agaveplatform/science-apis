@@ -1,10 +1,5 @@
 package org.iplantc.service.systems.manager;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.cfg.NotYetImplementedException;
@@ -23,22 +18,15 @@ import org.iplantc.service.systems.events.SystemHistoryEventDao;
 import org.iplantc.service.systems.exceptions.EncryptionException;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.iplantc.service.systems.exceptions.SystemException;
-import org.iplantc.service.systems.model.AuthConfig;
-import org.iplantc.service.systems.model.CredentialServer;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.LoginConfig;
-import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.StorageConfig;
-import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemRole;
-import org.iplantc.service.systems.model.enumerations.AuthConfigType;
-import org.iplantc.service.systems.model.enumerations.CredentialServerProtocolType;
-import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
-import org.iplantc.service.systems.model.enumerations.RoleType;
-import org.iplantc.service.systems.model.enumerations.SystemEventType;
-import org.iplantc.service.systems.model.enumerations.SystemStatusType;
+import org.iplantc.service.systems.model.*;
+import org.iplantc.service.systems.model.enumerations.*;
 import org.iplantc.service.systems.util.ServiceUtils;
 import org.json.JSONObject;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 
 public class SystemManager {
 	
@@ -80,50 +68,52 @@ public class SystemManager {
 		this.eventProcessor = eventProcessor;
 	}
 
-	/**
-	 * Returns true if the login configuration is valid and can be used
-	 * to connect to the remote system.
-	 * 
-	 * @param loginConfig
-	 * @return true if a connection can be established, false otherwise
-	 * @throws SystemException
-	 */
-	public boolean isLoginConfigValid(LoginConfig loginConfig) 
-	{
-		if (loginConfig == null) {
-			throw new SystemException("No login configuration provided.");
-		} 
-		
-		try {
-			loginConfig.testConnection();
-			
-			return true;
-		} catch (Exception e) {
-			return false;
-		}
-	}
-	
-	/**
-	 * Returns true if the storage configuration is valid and can be used
-	 * to connect to the remote system.
-	 *
-	 * @param storageConfig
-	 * @return true if a connection can be established, false otherwise
-	 * @throws SystemException
-	 */
-	public boolean isDataConfigValid(StorageConfig storageConfig) 
-	{
-		if (storageConfig == null) {
-			throw new SystemException("No storage configuration provided.");
-		} 
-		
-		try {
-			storageConfig.testConnection();
-			return true;
-		} catch (Exception e) {
-			return false;
-		}
-	}
+//	/**
+//	 * Returns true if the login configuration is valid and can be used
+//	 * to connect to the remote system.
+//	 *
+//	 * @param loginConfig
+//	 * @return true if a connection can be established, false otherwise
+//	 * @throws SystemException
+//	 * @deprecated
+//	 */
+//	public boolean isLoginConfigValid(LoginConfig loginConfig)
+//	{
+//		if (loginConfig == null) {
+//			throw new SystemException("No login configuration provided.");
+//		}
+//
+//		try {
+//			loginConfig.testConnection();
+//
+//			return true;
+//		} catch (Exception e) {
+//			return false;
+//		}
+//	}
+//
+//	/**
+//	 * Returns true if the storage configuration is valid and can be used
+//	 * to connect to the remote system.
+//	 *
+//	 * @param storageConfig
+//	 * @return true if a connection can be established, false otherwise
+//	 * @throws SystemException
+//	 * @deprecated
+//	 */
+//	public boolean isDataConfigValid(StorageConfig storageConfig)
+//	{
+//		if (storageConfig == null) {
+//			throw new SystemException("No storage configuration provided.");
+//		}
+//
+//		try {
+//			storageConfig.testConnection();
+//			return true;
+//		} catch (Exception e) {
+//			return false;
+//		}
+//	}
 
 	/**
 	 * Returns true if the api user has a role sufficient to perform management
@@ -1634,8 +1624,8 @@ public class SystemManager {
 		try {
 			new SystemHistoryEventDao().deleteByEntityId(system.getUuid());
 		} catch (EntityEventPersistenceException e) {
-			log.error("Failed to clean up event data when system system " + 
-					system.toString() + " was erased", e);
+			log.error("Failed to clean up event data when system system " +
+                    system + " was erased", e);
 		}
 		
 		// remove the system from the db
@@ -1664,21 +1654,21 @@ public class SystemManager {
         }
         else 
         {
-            if (system.isAvailable()) {
-                throw new SystemException(system.getSystemId() + " is already available.");
-            } else {
+//            if (system.isAvailable()) {
+//                throw new SystemException(system.getSystemId() + " is already available.");
+//            } else {
                 system.setAvailable(true);
                 getDao().persist(system);
                 getEventProcessor().processSystemUpdateEvent(system, SystemEventType.ENABLED, username);
                 return system;
-            }
+//            }
         }
     }
     
     /**
      * Sets the system availability to false and notifies subscribers
      * @param system the system to make available
-     * @param username user who made the request
+     * @param createdBy user who made the request
      * @return the updated system
      */
     public RemoteSystem disableSystem(RemoteSystem system, String createdBy) 
@@ -1709,18 +1699,18 @@ public class SystemManager {
 
 	/**
 	 * Updates the system status and propagates events by calling the
-	 * {@link RemoteSystemEventProcessor#processStatusChangeEvent(RemoteSystem, SystemStatusType, String))}
-	 * method.
-	 * 
-	 * @param system
-	 * @param newSystemStatus
-	 * @param username
+	 * {@link RemoteSystemEventProcessor#processSystemUpdateEvent(RemoteSystem, SystemEventType, String)}
+	 * method. No authorization is performed within this method
+	 *
+	 * @param system the system to update
+	 * @param newSystemStatus the new status to assign to the system
+	 * @param username the user to whom the udpate is attributed
 	 */
 	public void updateSystemStatus(RemoteSystem system, SystemStatusType newSystemStatus, String username) {
-		
+
 		getDao().updateStatus(system, newSystemStatus);
 		SystemStatusType oldSystemStatus = system.getStatus();
-		
+
 		getEventProcessor().processStatusChangeEvent(system, oldSystemStatus, newSystemStatus, username);
 	}
 }

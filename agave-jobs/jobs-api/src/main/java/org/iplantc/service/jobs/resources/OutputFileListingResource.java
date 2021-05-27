@@ -1,9 +1,8 @@
 package org.iplantc.service.jobs.resources;
 
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.jobs.dao.JobDao;
@@ -20,6 +19,8 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
+import java.util.List;
+
 /**
  * Class to handle get and post requests for
  * {@link org.iplantc.service.jobs.model.Job Jobs}
@@ -29,8 +30,8 @@ import org.restlet.resource.Variant;
  */
 public class OutputFileListingResource extends AbstractJobResource 
 {
-	private String				sJobId;
-	private String				path;
+	private final String				sJobId;
+	private final String				path;
 	
 	/**
 	 * @param context
@@ -69,32 +70,28 @@ public class OutputFileListingResource extends AbstractJobResource
 	 * &nbsp "directory":false,<br>
 	 * &nbsp "readable":true,<br>
 	 * &nbsp "writable":true,<br>
-	 * &nbsp "owner":"dooley",<br>
+	 * &nbsp "owner":"xxx",<br>
 	 * &nbsp "length":688,<br>
 	 * &nbsp "lastModified":"Mon Mar 01 15:20:40 CST 2010",<br>
-	 * &nbsp "path":"/dooley/1/geospiza.traits.fel",<br>
-	 * &nbsp "url":"https://foundation.iplantc.org/io-v1/dooley/archive/job-1928719834asdf/geospiza.traits.fel"
+	 * &nbsp "path":"/xxx/1/geospiza.traits.fel",<br>
+	 * &nbsp "url":"https://foundation.iplantc.org/io-v1/xxx/archive/job-1928719834asdf/geospiza.traits.fel"
 	 * ,<br>
 	 * &nbsp "name":"geospiza.traits.fel",<br>
-	 * &nbsp "parent":"file:/home/0004/iplant/contrast/dooley/1/"<br>
+	 * &nbsp "parent":"file:/home/0004/iplant/contrast/xxx/1/"<br>
 	 * } }]<br>
 	 */
 	@Override
 	public Representation represent(Variant variant) throws ResourceException
 	{
-
-		//Long jobId = null;
-
-		if (StringUtils.isEmpty(sJobId))
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Job id cannot be empty");
-		}
-		
-
 		Job job;
 		try
 		{
+			if (StringUtils.isEmpty(sJobId))
+			{
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return new IplantErrorRepresentation("Job id cannot be empty");
+			}
+
 			job = JobDao.getByUuid(sJobId, true);
 
 			if (job == null || !job.isVisible()) 
@@ -128,7 +125,7 @@ public class OutputFileListingResource extends AbstractJobResource
 			if (builder.length() > 0)
 				builder.deleteCharAt(0);
 
-			return new IplantSuccessRepresentation("[" + builder.toString()
+			return new IplantSuccessRepresentation("[" + builder
 					+ "]");
 
 		}
@@ -141,6 +138,9 @@ public class OutputFileListingResource extends AbstractJobResource
 		{
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			return new IplantErrorRepresentation(e.getMessage());
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 
 	}

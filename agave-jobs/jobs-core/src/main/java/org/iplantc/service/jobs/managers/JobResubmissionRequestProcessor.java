@@ -3,12 +3,11 @@
  */
 package org.iplantc.service.jobs.managers;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.iplantc.service.jobs.exceptions.JobProcessingException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.systems.model.RemoteSystem;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Handles requests for job resubmission
@@ -22,8 +21,8 @@ public class JobResubmissionRequestProcessor extends JobRequestProcessor {
 	private boolean preserveNotifications = false;
 	
 	/**
-	 * @param jobRequestOwner
-	 * @param internalUsername
+	 * @param username user submitting the job request
+	 * @param internalUsername internal user associated with the user
 	 */
 	public JobResubmissionRequestProcessor(String username, String internalUsername) {
 		this(username, internalUsername, false, false, false);
@@ -40,12 +39,11 @@ public class JobResubmissionRequestProcessor extends JobRequestProcessor {
 	}
 
 	/**
-	 * Takes the previous job representation and treats it like a new job
-	 * submission. This is equivalent to calling {@link #processJob(JsonNode, false, false, false) }.
+	 * Submits a job request received as a json object.
 	 *
 	 * @param json a JsonNode containing the job request
 	 * @return validated job object ready for submission
-	 * @throws JobProcessingException
+	 * @throws JobProcessingException if the job request was invalid
 	 */
 	@Override
 	public Job processJob(JsonNode json)
@@ -139,7 +137,7 @@ public class JobResubmissionRequestProcessor extends JobRequestProcessor {
 	}
 
 	/**
-	 * @param ignoreParameterConflicts the ignoreParameterConflicts to set
+	 * @param ignoreInputConflicts the ignoreParameterConflicts to set
 	 */
 	public void setIgnoreParameterConflicts(boolean ignoreInputConflicts) {
 		this.ignoreParameterConflicts = ignoreInputConflicts;

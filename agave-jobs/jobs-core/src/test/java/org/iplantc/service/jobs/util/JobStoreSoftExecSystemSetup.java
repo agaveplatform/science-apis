@@ -1,10 +1,5 @@
 package org.iplantc.service.jobs.util;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.jobs.dao.AbstractDaoTest;
@@ -16,6 +11,11 @@ import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created with IntelliJ IDEA.
@@ -43,7 +43,7 @@ public class JobStoreSoftExecSystemSetup extends AbstractDaoTest {
         try {
             jsonTree = jtd.getTestDataObject(testDataPath);
             ExecutionSystem executionSystem = ExecutionSystem.fromJSON(jsonTree);
-            executionSystem.setOwner("sterry1");
+            executionSystem.setOwner("testuser");
             //System.out.println(jsonTree.get("name").toString());
             systemDao.persist(executionSystem);
         } catch (JSONException e) {
@@ -59,28 +59,24 @@ public class JobStoreSoftExecSystemSetup extends AbstractDaoTest {
         try {
             jsonTree = jtd.getTestDataObject(testDataPath);
             StorageSystem system = StorageSystem.fromJSON(jsonTree);
-            system.setOwner("sterry1");
+            system.setOwner("testuser");
             // System.out.println(testDataPath);
             systemDao.persist(system);
         } catch (JSONException e) {
             e.printStackTrace();  
         } catch (IOException e) {
             e.printStackTrace();  
-        } catch (SystemArgumentException e) {
-            e.printStackTrace();  
         }
-            
+
     }
 
     public void insertSoftware(String testDataPath){
         try {
             jsonTree = jtd.getTestDataObject(testDataPath);
-            Software software = Software.fromJSON(jsonTree, "sterry1");
-            software.setOwner("sterry1");
+            Software software = Software.fromJSON(jsonTree, "testuser");
+            software.setOwner("testuser");
             SoftwareDao.persist(software);
-        } catch (JSONException e) {
-            e.printStackTrace();  
-        } catch (IOException e) {
+        } catch (JSONException | IOException e) {
             e.printStackTrace();  
         }
 
@@ -175,7 +171,7 @@ public class JobStoreSoftExecSystemSetup extends AbstractDaoTest {
 //            e.printStackTrace();
 //        }
 
-        System.out.println("system id "+remoteSystem.getId().toString());
+//        System.out.println("system id "+remoteSystem.getId().toString());
 
         return job;
     }

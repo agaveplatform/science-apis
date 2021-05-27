@@ -3,25 +3,10 @@
  */
 package org.iplantc.service.notification.resources.impl;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifAttemptDelete;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifAttemptDetails;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.NOTIFICATIONS02;
-
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
-import org.iplantc.service.common.exceptions.UUIDException;
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.dao.NotificationAttemptDao;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
@@ -33,10 +18,14 @@ import org.restlet.Request;
 import org.restlet.data.Reference;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
-import org.testng.log4testng.Logger;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifAttemptDelete;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifAttemptDetails;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.NOTIFICATIONS02;
 
 /**
  * @author dooley
@@ -83,29 +72,29 @@ public class NotificationAttemptResourceImpl extends AbstractNotificationResourc
 		                    notificationUuid);
 		        } 
 				
-				ObjectMapper mapper = new ObjectMapper();
-				ObjectNode json = mapper.valueToTree(attempt);
-				
-				ObjectNode links = json.putObject("_links");
-	            links.putObject("self")
-	                 .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid() + "/attempts/" + attempt.getUuid());
-	            links.putObject("notification")
-	            	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid() );
-	            links.putObject("profile")
-	        		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + attempt.getOwner());
-	            
-	            try {
-	            	if (!StringUtils.contains("*", notification.getAssociatedUuid()) 
-	            			&& !StringUtils.isEmpty(notification.getAssociatedUuid())) {
-	            		AgaveUUID agaveUUID = new AgaveUUID(notification.getAssociatedUuid());
-	            		links.putObject(agaveUUID.getResourceType().name().toLowerCase())
-	            			.put("href", TenancyHelper.resolveURLToCurrentTenant(agaveUUID.getObjectReference()));
-	            	}
-	            } catch (UUIDException e) {
-	            	log.debug("Unknown associatedUuid found for notification attempt " + attempt.getUuid());
-	    		} 
+//				ObjectMapper mapper = new ObjectMapper();
+//				ObjectNode json = mapper.valueToTree(attempt);
+//
+//				ObjectNode links = json.putObject("_links");
+//	            links.putObject("self")
+//	                 .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid() + "/attempts/" + attempt.getUuid());
+//	            links.putObject("notification")
+//	            	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid() );
+//	            links.putObject("profile")
+//	        		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + attempt.getOwner());
+//
+//	            try {
+//	            	if (!StringUtils.contains("*", notification.getAssociatedUuid())
+//	            			&& !StringUtils.isEmpty(notification.getAssociatedUuid())) {
+//	            		AgaveUUID agaveUUID = new AgaveUUID(notification.getAssociatedUuid());
+//	            		links.putObject(agaveUUID.getResourceType().name().toLowerCase())
+//	            			.put("href", TenancyHelper.resolveURLToCurrentTenant(agaveUUID.getObjectReference()));
+//	            	}
+//	            } catch (UUIDException e) {
+//	            	log.debug("Unknown associatedUuid found for notification attempt " + attempt.getUuid());
+//	    		}
 					
-	            return Response.ok(new AgaveSuccessRepresentation()).build();
+	            return Response.ok(new AgaveSuccessRepresentation(attempt.toJson())).build();
 			}
 		}
 		catch (NotificationException e)
@@ -113,9 +102,6 @@ public class NotificationAttemptResourceImpl extends AbstractNotificationResourc
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to retrieve notifications.", e);
 		}
-		catch (ResourceException e) {
-			throw e;
-		} 
 		
 	}
 

@@ -3,30 +3,12 @@
  */
 package org.iplantc.service.jobs.model;
 
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-import javax.persistence.Version;
-
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.log4j.Logger;
@@ -34,6 +16,8 @@ import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.Filters;
 import org.hibernate.annotations.ParamDef;
+import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uri.UrlPathEscaper;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -42,6 +26,7 @@ import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.exceptions.JobEventProcessingException;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.managers.JobEventProcessor;
+import org.iplantc.service.jobs.managers.monitors.JobMonitor;
 import org.iplantc.service.jobs.model.dto.JobDTO;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.util.ServiceUtils;
@@ -49,18 +34,22 @@ import org.iplantc.service.jobs.util.Slug;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
+import org.iplantc.service.profile.model.InternalUser;
 import org.iplantc.service.systems.model.BatchQueue;
+import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.enumerations.ExecutionType;
+import org.iplantc.service.systems.model.enumerations.SchedulerType;
 import org.joda.time.DateTime;
 import org.json.JSONException;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * @author dooley
@@ -73,64 +62,168 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class Job {
 	
 	private static final Logger log = Logger.getLogger(Job.class);
-	
+
+	/**
+	 * Database id
+	 */
 	private Long				id;
-	private String				uuid; 			// Unique id not based on database id
-	private String				name;			// Human-readable name for this
-												// job. Defaults to $application
-	private String				owner;			// username of the user
-												// submitting the job
-	private String				internalUsername; // Username of InternalUser tied
-												// tied to this job.
-	private String				system;			// System on which this job ran.
-												// Type is specified by the
-												// software
-	private String				softwareName;	// Unique name of an application
-												// as given in the /apps/list
-	private Long				nodeCount;		// Requested nodes to use
-	private Long				processorsPerNode; // Requested processors per node
-	private Double				memoryPerNode;	// Requested memory per node
-	private String				batchQueue;		// Queue used to run the job
-	private String				maxRunTime;		// Requested time needed to run the job in 00:00:00 format
-	private String				outputPath;		// relative path of the job's output folder
-	private boolean				archiveOutput;	// Boolean. If 'true' stage
-												// job/output to $IPLANTHOME/job
-	private String				archivePath;	// Override default location for
-												// archiving job output
-	private RemoteSystem		archiveSystem;	// System on which to archive the output.
-												// Uses iPlant Data Store by default.
-	private String				workPath;		// Override default location for
-												// archiving job output
-	private JobStatusType		status = JobStatusType.PENDING;			// Enumerated status of the job
-	private Integer				statusChecks = 0; // number of times this job has been actively checked. 
-												// used in exponential backoff
-	private String				updateToken;	// Token needed to validate all
-												// callbacks to update job
-												// status
-	private String				inputs;			// JSON encoded list of inputs
-	private String				parameters;		// JSON encoded list of
-												// parameters
-	private String				localJobId;		// Local job or process id of
-												// the job on the remote system
-	private String				schedulerJobId; // Optional Unique job id given
-												// by the scheduler if used.
-	private Float				charge;			// Charge for this job against
-												// the user's allocation
-	private Date				submitTime;		// Date and time job was
-												// submitted to the remote
-												// system
-	private Date				startTime;		// Date and time job was started
-	private Date				endTime;		// Date and time job completed
-	private String				errorMessage;	// Error message of this job
-												// execution
-	private Date				lastUpdated;	// Last date and time job status
-												// was updated
-	private Date				created;		// Date job request was
-												// submitted
+	/**
+	 * Unique id not based on database id
+	 */
+	private String				uuid;
+	/**
+	 * Human-readable name for this job. Defaults to $application
+	 */
+	private String				name;
+	/**
+	 * Username of the user submitting the job
+	 */
+	private String				owner;
+	/**
+	 * Username of {@link InternalUser} tied tied to this job.
+	 */
+	private String				internalUsername;
+	/**
+	 * {@link ExecutionSystem#getSystemId()} on which this job ran.
+	 */
+	private String				system;
+	/**
+	 * {@link Software#getUniqueName()} that will be run by this job.
+	 */
+	private String				softwareName;
+	/**
+	 * Requested nodes to use.
+	 */
+	private Long				nodeCount;
+	/**
+	 * Requested processors per node.
+	 */
+	private Long				processorsPerNode;
+	/**
+	 * Requested memory per node
+	 */
+	private Double				memoryPerNode;
+	/**
+	 * {@link BatchQueue#getName()} assigned to the job.
+	 */
+	private String				batchQueue;
+	/**
+	 * Requested time needed to run the job in 00:00:00 format
+	 */
+	private String				maxRunTime;
+	/**
+	 * Dynamic path to the job output folder. When the job is active, and for all jobs with {@link #archiveOutput}
+	 * {@code false}, this points to {@link #workPath} on the
+	 * {@link #system}. Agave relative path of the job's output folder on the {@link #system}.
+	 */
+	private String				outputPath;
+	/**
+	 * Boolean indicating whether the job work directory should be archived after completion.
+	 */
+	private boolean				archiveOutput;
+	/**
+	 * The Agave path to which the job data should be archived on the {{@link #archiveSystem}
+	 */
+	private String				archivePath;
+	/**
+	 * The {@link RemoteSystem} to which the data will be archived if {@link #archiveOutput} is true.
+	 */
+	private RemoteSystem		archiveSystem;
+	/**
+	 * The path to the job work directory on the {@link #system}}
+	 */
+	private String				workPath;
+	/**
+	 * The current status of the job.
+	 */
+	private JobStatusType		status = JobStatusType.PENDING;
+	/**
+	 * Number of times this job's status has been checked by the {@link JobMonitor}. Used in exponential backoff calculation.
+	 */
+	private Integer				statusChecks = 0;
+	/**
+	 * Token needed to validate all callbacks to update job status.
+	 */
+	private String				updateToken;
+	/**
+	 * JSON encoded list of inputs.
+	 */
+	private String				inputs;
+	/**
+	 * JSON encoded list of parameters.
+	 */
+	private String				parameters;
+	/**
+	 * Local job or process id of the job on the {@link ExecutionSystem}
+	 */
+	private String				localJobId;
+	/**
+	 * Identifier of the job, process, service, etc. that this job represents on the {@link ExecutionSystem}.
+	 * For HPC and Condor jobs, this will be the job id assigned by the remote scheduler. For CLI jobs, it will be the
+	 * process id. For containers, pods, etc, it will be the UUID of the running container.
+	 */
+	private String				schedulerJobId;
+	/**
+	 * Normalized charge for this job.
+	 */
+	private Float				charge;
+	/**
+	 * Timestamp the remote job was submitted or forked on the {@link ExecutionSystem}
+	 */
+	private Date				submitTime;
+	/**
+	 * Timestamp the remote job entered a running state on the {@link ExecutionSystem}
+	 */
+	private Date				startTime;
+	/**
+	 * Timestamp the remote job completed on the {@link ExecutionSystem}
+	 */
+	private Date				endTime;
+	/**
+	 * Expanded message describing the current state of the job.
+	 */
+	private String				errorMessage;
+	/**
+	 * Timestamp the last time the job record was updated.
+	 */
+	private Date				lastUpdated;
+	/**
+	 * Timestamp the job record was created.
+	 */
+	private Date				created;
+	/**
+	 * Number of attempts made to submit this job to the remote {@link ExecutionSystem}
+	 */
 	private Integer				retries;		// Number of attempts to resubmit this job
+	/**
+	 * Boolean flag indicating whether this record has been "deleted" from site by the user.
+	 */
 	private boolean				visible;		// Can a user see the job?
+	/**
+	 * Counter providing optimistic locking for hibernate
+	 */
 	private Integer				version = 0;	// Entity version used for optimistic locking
+	/**
+	 * The {@link Tenant#getTenantCode()} to which this job was submitted.
+	 */
 	private String				tenantId;		// current api tenant
+	/**
+	 * The {@link ExecutionType} used to submit the job. We include this with the job record to avoid issues caused by
+	 * the {@link ExecutionSystem} or {@link Software} changing their values after the job is submitted and making it
+	 * impossible to properly monitor or cleanup after the job.
+	 *
+	 */
+	private ExecutionType		executionType;
+	/**
+	 * The {@link SchedulerType} used to submit the job. We include this with the job record to avoid issues caused by
+	 * the {@link ExecutionSystem} changing its value after the job is submitted and making it
+	 * impossible to properly monitor or cleanup after the job.
+	 *
+	 */
+	private SchedulerType		schedulerType;
+	/**
+	 * Lazy loaded list of persisted events to this job.
+	 */
 	private List<JobEvent>		events = new ArrayList<JobEvent>(); // complete history of events for this job
 	
 //	private Set<Notification>	notifications = new HashSet<Notification>(); // all notifications registered to this job
@@ -140,9 +233,9 @@ public class Job {
 		setCreated(new DateTime().toDate());
 		setLastUpdated(this.created);
 		updateToken = UUID.randomUUID().toString();
-		nodeCount = new Long(1);
-		processorsPerNode = new Long(1);
-		memoryPerNode = new Double(1);
+		nodeCount = 1L;
+		processorsPerNode = 1L;
+		memoryPerNode = 1d;
 		maxRunTime = BatchQueue.DEFAULT_MAX_RUN_TIME;
 		retries = 0;
 		archiveOutput = true;
@@ -357,7 +450,7 @@ public class Job {
 	}
 
 	/**
-	 * @param processorCount
+	 * @param processorsPerNode
 	 *            the processorCount to set
 	 */
 	public void setProcessorsPerNode(Long processorsPerNode) throws JobException
@@ -503,7 +596,7 @@ public class Job {
 	/**
 	 * @param workPath
 	 *            the workPath to set
-	 * @throws JobException 
+	 * @throws JobException  when work path is greater than 255 chars
 	 */
 	public void setWorkPath(String workPath) throws JobException
 	{
@@ -515,6 +608,45 @@ public class Job {
 	}
 
 	/**
+	 * @return the executionType
+	 */
+	@Enumerated(EnumType.STRING)
+	@Column(name = "execution_type", nullable = false, length = 32)
+	public ExecutionType getExecutionType()
+	{
+		return executionType;
+	}
+
+	/**
+	 * @param executionType
+	 *            the executionType to set
+	 */
+	public void setExecutionType(ExecutionType executionType)
+	{
+		this.executionType = executionType;
+	}
+
+
+	/**
+	 * @return the schedulerType
+	 */
+	@Enumerated(EnumType.STRING)
+	@Column(name = "scheduler_type", nullable = false, length = 32)
+	public SchedulerType getSchedulerType()
+	{
+		return schedulerType;
+	}
+
+	/**
+	 * @param schedulerType
+	 *            the schedulerType to set
+	 */
+	public void setSchedulerType(SchedulerType schedulerType)
+	{
+		this.schedulerType = schedulerType;
+	}
+
+	/**
 	 * @return the status
 	 */
 	@Enumerated(EnumType.STRING)
@@ -523,7 +655,7 @@ public class Job {
 	{
 		return status;
 	}
-	
+
 	/**
 	 * Returns number of times this job's status has been checked
 	 * by the monitoring tasks. This is used to calculate the exponential
@@ -554,7 +686,10 @@ public class Job {
 	}
 	
 	/**
-	 * @param events
+	 * Adds a {@link JobEvent} to the job's recorded history and publishes the event to the
+	 * notification queue.
+	 *
+	 * @param events the event to add
 	 */
 	public void setEvents(List<JobEvent> events) {
 		this.events = events;
@@ -564,17 +699,18 @@ public class Job {
 	 * Adds an event to the history of this job. This will automatically
 	 * be saved with the job when the job is persisted.
 	 * 
-	 * @param event
+	 * @param event the {@link JobEvent} to add to this job's history
 	 */
 	public void addEvent(JobEvent event) {
 		event.setJob(this);
 		this.events.add(event);
-		JobEventProcessor jep;
-        try {
-            jep = new JobEventProcessor(event);
+		try {
+			JobEventProcessor jep = new JobEventProcessor(event);
             jep.process();
         } catch (JobEventProcessingException e) {
-            e.printStackTrace();
+			String msg = String.format("Failed to process %s event for job %s: %s",
+                    event, event.getUuid(), e.getMessage());
+            log.error(msg);
         }
 	}
 	
@@ -583,7 +719,7 @@ public class Job {
 	 * defaults to false. 
 	 * 
 	 * @param event String notification event that will trigger the callback
-	 * @param callbackUrl A URL or email address that will be triggered by the event
+	 * @param callback A URL or email address that will be triggered by the event
 	 */
 	public void addNotification(String event, String callback) throws NotificationException 
 	{
@@ -594,7 +730,7 @@ public class Job {
 	 * Convenience endpoint to add a notification to this job. 
 	 * 
 	 * @param event String notification event that will trigger the callback
-	 * @param callbackUrl A URL or email address that will be triggered by the event
+	 * @param callback A URL or email address that will be triggered by the event
 	 * @param persistent Whether this notification should expire after the first successful trigger
 	 */
 	@Transient
@@ -624,43 +760,25 @@ public class Job {
 	}
 	
 	/**
-	 * Sets the job status and creates an job history event with 
-	 * the given status and message;
+	 * Sets the job status and creates an {@link JobEvent} with the given status and message;
 	 * 
-	 * @param status
-	 * @param message
+	 * @param status the status to assign to the job and {@link JobEvent}
+	 * @param message the message to assign to the {@link JobEvent}
 	 */
 	@Transient
 	public void setStatus(JobStatusType status, String message) throws JobException
 	{
 		setStatus(status, new JobEvent(this, status, message, getOwner()));
-//		// avoid adding duplicate entries over and over from watch 
-//		// and monitoring queue updates.
-//		if (!this.status.equals(status) || !StringUtils.equals(getErrorMessage(), message)) {
-//			// we don't want the job status being updated after the job is deleted as we
-//			// already move it to a terminal state when it's deleted. Here we check for 
-//			// job deletion and, then if visible, propagate the event. Otherwise, we 
-//			// simply add it to the history for reference and move on.
-//			if (this.isVisible()) {
-//				setStatus(status);
-//				setErrorMessage(message);
-//				addEvent(new JobEvent(status, message, getOwner()));
-//			}
-//			else {
-//				message += " Event will be ignored because job has been deleted.";
-//				this.events.add(new JobEvent(this, status, message, getOwner()));
-//			}
-//		} else {
-////			log.debug("Ignoring status update to " + status + " with same message");
-//		}
+
 	}
 	
 	/**
 	 * Sets the job status and associates the job history event with 
 	 * the job;
 	 * 
-	 * @param status
-	 * @param message
+	 * @param status the new job status
+	 * @param event the event to raise for this status update
+	 * @throws JobException if the event is not able to be raised
 	 */
 	@Transient
 	public void setStatus(JobStatusType status, JobEvent event) throws JobException
@@ -1271,7 +1389,7 @@ public class Job {
 	private ObjectNode getHypermedia() {
 		ObjectMapper mapper = new ObjectMapper();
 		ObjectNode linksObject = mapper.createObjectNode();
-		linksObject.set("self", (ObjectNode)mapper.createObjectNode()
+		linksObject.set("self", mapper.createObjectNode()
     		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_JOB_SERVICE, getTenantId()) + getUuid()));
 		linksObject.set("app", mapper.createObjectNode()
     		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_APPS_SERVICE, getTenantId()) + getSoftwareName()));
@@ -1304,7 +1422,7 @@ public class Job {
 	}
 	
 	@JsonValue
-	public String toJSON() throws JsonProcessingException, IOException
+	public String toJSON() throws IOException
 	{
 		ObjectMapper mapper = new ObjectMapper();
 		ObjectNode json = mapper.createObjectNode()
@@ -1321,6 +1439,8 @@ public class Job {
 			.put("archive", archiveOutput)
 			.put("retries", retries)
 			.put("localId", localJobId)
+		//	.put("executionType", executionType.name())
+		//	.put("schedulerType", schedulerType.name())
 			.put("created", new DateTime(created).toString())
 			.put("lastUpdated", new DateTime(lastUpdated).toString());
 			
@@ -1361,6 +1481,8 @@ public class Job {
 		job.setName(name);
 		job.setOwner(owner);
 		job.status = JobStatusType.PENDING;
+		job.setSchedulerType(schedulerType);
+		job.setExecutionType(executionType);
 		job.errorMessage = "Job resumitted for execution from job " + getUuid();
 		job.setSoftwareName(softwareName);
 		job.setSystem(system);
@@ -1408,6 +1530,10 @@ public class Job {
 			value = system;
 		} else if (attribute.equalsIgnoreCase("software")) {
 			value = softwareName;
+		} else if (attribute.equalsIgnoreCase("schedulerType")) {
+			value = schedulerType;
+		} else if (attribute.equalsIgnoreCase("executionType")) {
+			value = executionType;
 		} else if (attribute.equalsIgnoreCase("batchQueue")) {
 			value = batchQueue;
 		} else if (attribute.equalsIgnoreCase("processorsPerNode")) {
@@ -1518,7 +1644,7 @@ public class Job {
 	 * @throws IOException 
 	 */
 	public String toJsonWithNotifications(List<Notification> notifications)
-	throws JsonProcessingException, IOException
+	throws IOException
 	{
 		ObjectMapper mapper = new ObjectMapper();
 		ArrayNode notifArray = mapper.createArrayNode();
@@ -1549,6 +1675,8 @@ public class Job {
 			.put("archive", archiveOutput)
 			.put("retries", retries)
 			.put("localId", localJobId)
+			.put("executionType", executionType.name())
+			.put("schedulerType", schedulerType.name())
 			.put("created", new DateTime(created).toString())
 			.put("lastModified", new DateTime(lastUpdated).toString());
 			

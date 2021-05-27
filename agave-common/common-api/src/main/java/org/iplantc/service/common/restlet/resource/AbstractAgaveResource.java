@@ -1,25 +1,19 @@
 package org.iplantc.service.common.restlet.resource;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Iterator;
-import java.util.List;
-
-import javax.activation.MimetypesFileTypeMap;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Request;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -31,19 +25,22 @@ import org.restlet.ext.fileupload.RestletFileUpload;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.common.base.CharMatcher;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
+import javax.activation.MimetypesFileTypeMap;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.*;
+import javax.ws.rs.core.Response.Status;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * @author dooley
  *
  */
 public class AbstractAgaveResource {
+	
+	private static final Logger log = Logger.getLogger(AbstractAgaveResource.class);
 
 	@Context
 	protected UriInfo uriInfo;
@@ -238,7 +235,7 @@ public class AbstractAgaveResource {
 				} catch (Exception e) {
 					throw new ResourceException(org.restlet.data.Status.SERVER_ERROR_INTERNAL,
 							"Failed to parse file upload. Please make sure you included "
-							+ "a file in your POST request.");
+							+ "a file in your POST request.", e);
 				}
 		        
 		        for (FileItem item : items) {
@@ -285,8 +282,16 @@ public class AbstractAgaveResource {
 	 * @return
 	 */
 	public String resolveMimeTime(String filename) {
-		InputStream mimeTypesStream = AbstractAgaveResource.class.getResourceAsStream("mime.types");
-		MimetypesFileTypeMap mimeTypesMap = new MimetypesFileTypeMap(mimeTypesStream);
-		return mimeTypesMap.getContentType(filename);
+		InputStream mimeTypesStream = null;
+		try {
+			mimeTypesStream = AbstractAgaveResource.class.getResourceAsStream("mime.types");
+			MimetypesFileTypeMap mimeTypesMap = new MimetypesFileTypeMap(mimeTypesStream);
+			return mimeTypesMap.getContentType(filename);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw e;
+		} finally {
+			if (mimeTypesStream != null) try {mimeTypesStream.close();} catch (Exception e){}
+		}
 	}
 }

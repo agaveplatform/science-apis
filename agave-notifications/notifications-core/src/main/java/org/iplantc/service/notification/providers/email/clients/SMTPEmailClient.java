@@ -3,33 +3,20 @@
  */
 package org.iplantc.service.notification.providers.email.clients;
 
-import java.io.UnsupportedEncodingException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Map.Entry;
+import org.codehaus.plexus.util.StringUtils;
+import org.iplantc.service.notification.Settings;
+import org.iplantc.service.notification.exceptions.NotificationException;
+import org.iplantc.service.notification.providers.email.EmailClient;
 
-import javax.mail.Authenticator;
-import javax.mail.BodyPart;
-import javax.mail.Message;
-import javax.mail.MessagingException;
-import javax.mail.Multipart;
-import javax.mail.NoSuchProviderException;
-import javax.mail.PasswordAuthentication;
-import javax.mail.Session;
-import javax.mail.Transport;
+import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
-
-import org.codehaus.plexus.util.StringUtils;
-import org.iplantc.service.notification.exceptions.NotificationException;
-import org.iplantc.service.notification.Settings;
-import org.iplantc.service.notification.providers.email.EmailClient;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
 
 /**
  * @author dooley
@@ -38,14 +25,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class SMTPEmailClient implements EmailClient {
 
     protected Map<String, String> customHeaders = new HashMap<String, String>();
-    
-    public static void main(String[] args) throws Exception{
-        new SMTPEmailClient().send("Rion", 
-                "agaveapi@gmail.com", 
-                "Test email via smtp", 
-                "This is a simple smtp email fom the java client.",
-                "<p>This is a simple SMTP email fom the <a href=\"http://java.com\">Java</a> client.</p>");
-    }
     
     /* (non-Javadoc)
      * @see org.iplantc.service.notification.email.EmailClient#send(java.lang.String, java.lang.String, java.lang.String, java.lang.String)

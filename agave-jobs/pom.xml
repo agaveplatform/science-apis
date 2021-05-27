@@ -2,21 +2,18 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc</groupId>
-		<artifactId>agave</artifactId>
-		<version>2.1.11</version>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>science-apis</artifactId>
+		<version>2.2.27</version>
 	</parent>
-	<groupId>org.iplantc.agave</groupId>
 	<artifactId>jobs</artifactId>
-	<name>iPlant Agave API Jobs Services Parent POM</name>
+	<name>Agave Platform Jobs Services Parent POM</name>
 	<description>Parent pom for core, api, and worker projects.</description>
 	<packaging>pom</packaging>
 
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-jobs.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-jobs.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-jobs</url>
-	</scm>
+	<properties>
+		<main.basedir>${project.basedir}/../</main.basedir>
+	</properties>
 
 	<build>
 
@@ -42,47 +39,21 @@
 			<!-- ***           DEPLOYMENT          ** -->
 			<!-- ************************************ -->
 
-			<!-- Install a jar with the source code into maven when installing the
-				primary artifact -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>install</id>
-						<phase>install</phase>
-						<goals>
-							<goal>sources</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-
-
-			<!-- ************************************ -->
-			<!-- ***           COMPILE             ** -->
-			<!-- ************************************ -->
-
-			<!-- Boilerplace compile -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>default-compile</id>
-						<phase>compile</phase>
-						<goals>
-							<goal>compile</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					<proc>none</proc>
-					<debug>true</debug>
-					<source>1.7</source>
-					<target>1.7</target>
-				</configuration>
-			</plugin>
+<!--			&lt;!&ndash; Install a jar with the source code into maven when installing the-->
+<!--				primary artifact &ndash;&gt;-->
+<!--			<plugin>-->
+<!--				<groupId>org.apache.maven.plugins</groupId>-->
+<!--				<artifactId>maven-dependency-plugin</artifactId>-->
+<!--				<executions>-->
+<!--					<execution>-->
+<!--						<id>install</id>-->
+<!--						<phase>install</phase>-->
+<!--						<goals>-->
+<!--							<goal>sources</goal>-->
+<!--						</goals>-->
+<!--					</execution>-->
+<!--				</executions>-->
+<!--			</plugin>-->
 
 			<!-- ************************************ -->
 			<!-- ***           TESTING             ** -->
@@ -92,68 +63,68 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<configuration>
-					<suiteXmlFiles>
-						<suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
-					</suiteXmlFiles>
-				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
 			</plugin>
 
 			<!-- ************************************ -->
 			<!-- ***         CODE COVERAGE         ** -->
 			<!-- ************************************ -->
 
-			<plugin>
-                <groupId>org.codehaus.sonar</groupId>
-                <artifactId>sonar-maven-plugin</artifactId>
-            </plugin>
-
-            <!-- <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.6.3.201306030806</version>
-                <executions>
-                    <execution>
-                        <id>prepare-agent</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                        <configuration>
-                            <excludes>
-                                <exclude>org.testng.internal.Parameters</exclude>
-                            </excludes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>report</id>
-                        <phase>prepare-package</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>check</id>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <rule>
-                                    <element>BUNDLE</element>
-                                    <limits>
-                                        <limit>
-                                            <counter>COMPLEXITY</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>0.60</minimum>
-                                        </limit>
-                                    </limits>
-                                </rule>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin> -->
 		</plugins>
+		<pluginManagement>
+			<plugins>
+				<!-- iRODS containers take a while to startup, so we use a custom await config here
+                     to wait for them to start up completely. -->
+				<plugin>
+					<groupId>org.agaveplatform.ops</groupId>
+					<artifactId>await-maven-plugin</artifactId>
+					<version>${await-maven-plugin.version}</version>
+					<executions>
+						<execution>
+							<phase>pre-integration-test</phase>
+							<goals>
+								<goal>Await</goal>
+							</goals>
+							<configuration>
+								<initialWait>5000</initialWait>
+								<skip>${skip.integration.tests}</skip>
+								<poll>
+									<attempts>10</attempts>
+									<sleep>5000</sleep>
+								</poll>
+								<tcpConnections>
+									<tcpConnection>
+										<host>${irods3.host}</host>
+										<port>${irods3.port}</port>
+									</tcpConnection>
+									<tcpConnection>
+										<host>${irods4.host}</host>
+										<port>${irods4.port}</port>
+									</tcpConnection>
+									<tcpConnection>
+										<host>${irods3pam.host}</host>
+										<port>${irods3pam.port}</port>
+									</tcpConnection>
+								</tcpConnections>
+								<httpConnections>
+									<httpConnection>
+										<url>http://httpd:10080/public/</url>
+										<statusCode>200</statusCode>
+									</httpConnection>
+									<httpConnection>
+										<url>http://httpbin:8200/status/200</url>
+										<statusCode>200</statusCode>
+									</httpConnection>
+								</httpConnections>
+							</configuration>
+						</execution>
+					</executions>
+				</plugin>
+			</plugins>
+		</pluginManagement>
 	</build>
 	<dependencies>
 

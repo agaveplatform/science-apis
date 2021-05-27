@@ -1,0 +1,20 @@
+{	
+	"username": "irodriguez",
+	"email": "prodriguez@hof.mlb.com",
+	"firstName": "Ivan",
+	"lastName": "Rodriguez",
+	"position": "Catcher",
+	"institution": "Texas Rangers",
+	"phone": "501-555-5555",
+	"fax": "501-555-5556",
+	"researchArea": "Pitch Calling",
+	"department": "Analytics",
+	"city": "Arlington",
+	"state": "TX",
+	"country": "USA",
+	"fundingAgencies": [
+		"mlb",
+		"mlbpa"
+	],
+	"gender": "MALE"
+}

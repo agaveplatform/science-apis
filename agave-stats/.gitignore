@@ -55,3 +55,4 @@ docker-compose-prod.yml
 .phpstorm.meta.php
 _ide_helper.php
 rebel.xml
+!*/src/test/resources/docker-compose.yml

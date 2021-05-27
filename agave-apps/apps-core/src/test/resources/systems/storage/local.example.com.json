@@ -6,6 +6,9 @@
 	"description": "Example storage system accessible via local file system.",
 	"site": "example.com",
 	"storage": {
+		"rootDir": "/",
+		"homeDir": "/home/testuser",
+		"publicAppsDir": "/tmp",
 		"host": "localhost",
 		"port": 22,
 		"protocol": "LOCAL",

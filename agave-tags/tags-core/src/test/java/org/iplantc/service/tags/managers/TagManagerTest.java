@@ -1,5 +1,6 @@
 package org.iplantc.service.tags.managers;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.iplantc.service.tags.AbstractTagTest;
 import org.iplantc.service.tags.TestDataHelper;
 import org.iplantc.service.tags.model.Tag;
@@ -7,8 +8,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
+@Test(groups={"integration"})
 public class TagManagerTest extends AbstractTagTest {
 
 	@DataProvider

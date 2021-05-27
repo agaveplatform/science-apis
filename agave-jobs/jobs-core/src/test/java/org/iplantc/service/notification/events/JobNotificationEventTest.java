@@ -1,14 +1,8 @@
 package org.iplantc.service.notification.events;
 
-import java.io.IOException;
-import java.lang.reflect.Method;
-
-import org.hibernate.HibernateException;
-import org.hibernate.Session;
-import org.iplantc.service.apps.dao.SoftwareDao;
-import org.iplantc.service.apps.exceptions.SoftwareException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.jobs.dao.AbstractDaoTest;
 import org.iplantc.service.jobs.model.Job;
@@ -18,66 +12,21 @@ import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
 
 /**
  * Tests the processing of job event messages by the notifications api
  * @author dooley
  *
  */
+@Test(groups={"integration"})
 public class JobNotificationEventTest extends AbstractDaoTest {
 
-	protected NotificationDao ndao = new NotificationDao();
-	
-	@Override 
-	@BeforeClass
-	public void beforeClass() throws Exception {
-		super.beforeClass();
-		SoftwareDao.persist(software);
-	}
+	protected NotificationDao notificationDao = new NotificationDao();
 
-	@AfterClass
-	public void afterClass() throws Exception {
-		clearJobs();
-		clearSoftware();
-		clearSystems();
-		clearNotifications();
-	}
-	
-	@BeforeMethod
-	public void beforeMethod(Method m) throws Exception {
-		clearJobs();
-		clearNotifications();
-	}
-
-	@AfterClass
-	public void clearNotifications() throws NotificationException
-	{
-		Session session = null;
-		try
-		{
-			HibernateUtil.beginTransaction();
-			session = HibernateUtil.getSession();
-			session.clear();
-			HibernateUtil.disableAllFilters();
-            session.createQuery("delete Notification").executeUpdate();
-			session.flush();
-		}
-		catch (HibernateException ex) {
-			throw new SoftwareException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Throwable e) {}
-		}
-		
-	}
 	
 	protected Notification createNotification(Job job) 
 	throws NotificationException, IOException
@@ -85,10 +34,10 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 		Notification notification = new Notification(job.getUuid(), 
 													job.getOwner(), 
 													job.getStatus().name(), 
-													"http://httpbin.agaveapi.co/post", 
+													"http://httpbin:8000/post",
 													true);
 		
-		ndao.persist(notification);
+		notificationDao.persist(notification);
 		
 		return notification;
 	}
@@ -99,10 +48,10 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 		Notification notification = new Notification(software.getUuid(), 
 													job.getOwner(), 
 													"JOBS_" + job.getStatus().name(), 
-													"http://httpbin.agaveapi.co/post", 
+													"http://httpbin:8000/post",
 													true);
 		
-		ndao.persist(notification);
+		notificationDao.persist(notification);
 		
 		return notification;
 	}
@@ -114,10 +63,10 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 		Notification notification = new Notification(system.getUuid(), 
 													job.getOwner(), 
 													"JOB_" + job.getStatus().name(), 
-													"http://httpbin.agaveapi.co/post", 
+													"http://httpbin:8000/post",
 													true);
 		
-		ndao.persist(notification);
+		notificationDao.persist(notification);
 		
 		return notification;
 	}
@@ -144,7 +93,8 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 	public void processJobStatusEvents(JobStatusType status) 
 	throws Exception 
 	{
-		Job job = createJob(status);
+		Software software = createSoftware();
+		Job job = createJob(status, software);
 		
 		Notification notification = createNotification(job);
 		
@@ -186,7 +136,8 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 	public void processJobSoftwareEvents(JobStatusType status) 
 	throws Exception 
 	{
-		Job job = createJob(status);
+		Software software = createSoftware();
+		Job job = createJob(status, software);
 		
 		Notification notification = createJobSoftwareNotification(job, software);
 		
@@ -200,16 +151,16 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 		String resolvedTemplate = event.getEmailBody();
 		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the plain text email template body");
 //		Assert.assertTrue(resolvedTemplate.contains("Execution System: " + job.getSystem()), "Execution system should be resolved in email body.");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 		
 		resolvedTemplate = event.getHtmlEmailBody();
 		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the html email template body");
 //		Assert.assertTrue(resolvedTemplate.contains("<strong>Execution System:</strong> " + job.getSystem()), "Execution system should be resolved in email body.");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 		
 		resolvedTemplate = event.getEmailSubject();
 //		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the email subject");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 	}
 	
 	/**
@@ -222,7 +173,8 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 	public void processJobSystemEvents(JobStatusType status) 
 	throws Exception 
 	{
-		Job job = createJob(status);
+		Software software = createSoftware();
+		Job job = createJob(status, software);
 		
 		Notification notification = createJobSystemNotification(job, software.getExecutionSystem());
 		
@@ -237,16 +189,16 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 		String resolvedTemplate = event.getEmailBody();
 		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the plain text email template body");
 //		Assert.assertTrue(resolvedTemplate.contains("Execution System: " + job.getSystem()), "Execution system should be resolved in email body.");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 		
 		resolvedTemplate = event.getHtmlEmailBody();
 		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the html email template body");
 //		Assert.assertTrue(resolvedTemplate.contains("<strong>Execution System:</strong> " + job.getSystem()), "Execution system should be resolved in email body.");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 		
 		resolvedTemplate = event.getEmailSubject();
 		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the email subject");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 	}
 	
 }

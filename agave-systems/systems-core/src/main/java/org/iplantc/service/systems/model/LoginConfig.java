@@ -3,24 +3,15 @@
  */
 package org.iplantc.service.systems.model;
 
-import java.io.IOException;
-import java.util.Arrays;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.PrimaryKeyJoinColumn;
-import javax.persistence.Table;
-import javax.persistence.Transient;
-
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
 import org.iplantc.service.systems.util.ServiceUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import javax.persistence.*;
+import java.util.Arrays;
 
 /**
  * Contains the information needed to connect to login to a remote
@@ -225,11 +216,11 @@ public class LoginConfig extends RemoteConfig implements LastUpdatable
 	}
 	
 
-	@Override
-	public boolean testConnection() throws IOException
-	{
-		throw new NotImplementedException();
-	}
+//	@Override
+//	public boolean testConnection() throws IOException
+//	{
+//		throw new NotImplementedException();
+//	}
 	
 	@Override
 	@Transient

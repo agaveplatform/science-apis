@@ -3,22 +3,11 @@
  */
 package org.iplantc.service.io;
 
-import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.*;
-import java.io.File;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.util.List;
-import java.util.Properties;
-
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.io.model.JSONTestDataUtil;
-import org.iplantc.service.common.dao.TenantDao;
-import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.manager.SystemManager;
@@ -30,9 +19,15 @@ import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.json.JSONObject;
-import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+
+import java.io.File;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+
+import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.AZURE;
+import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.SWIFT;
 
 /**
  * @author dooley
@@ -46,48 +41,33 @@ public class BaseTestCase {
     public static final BatchQueue dedicatedQueue = new BatchQueue("dedicated", (long)1,        (long)1,        (long)1,        16.0,   (long)16,       "144:00:00", null, false);
     public static final BatchQueue unlimitedQueue = new BatchQueue("unlimited", (long)10000000, (long)10000000, (long)10000000, 2048.0, (long)10000000, "999:00:00", null, false);
 
-	public static final String SYSTEM_OWNER = "testuser";
+    public static final String ADMIN_USER = "testadmin";
+    public static final String TENANT_ADMIN = "testtenantadmin";
+    public static final String SYSTEM_OWNER = "testuser";
 	public static final String SYSTEM_SHARE_USER = "testshareuser";
 	public static final String SYSTEM_PUBLIC_USER = "public";
 	public static final String SYSTEM_UNSHARED_USER = "testotheruser";
 	public static final String SYSTEM_INTERNAL_USERNAME = "test_internal_user";
 
 	public static final String SHARED_SYSTEM_USER = "testshareuser";
-	public static final String TEST_PROPERTIES_FILE = "test.properties";
 	public static String EXECUTION_SYSTEM_TEMPLATE_DIR = "systems/execution";
 	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "systems/storage";
 	public static String SOFTWARE_SYSTEM_TEMPLATE_DIR = "software";
-	public static String INTERNAL_USER_TEMPLATE_DIR = "internal_users";
-	public static String CREDENTIALS_TEMPLATE_DIR = "credentials";
 
 	// standard directories and files for io tests
-	protected static String MISSING_DIRECTORY = "I/Do/Not/Exist/unless/some/evil/person/has/deliberately/created/a/ludicrous/directory/structure/just/to/break/this/test";
-	protected static String MISSING_FILE = "I/Do/Not/Exist/unless/some/evil/person/has/deliberately/created/a/ludicrous/directory/structure/just/to/break/this/test.txt";
-	protected static String LOCAL_DIR = "target/test-classes/transfer";
-	protected static String LOCAL_DOWNLOAD_DIR = "target/test-classes/download";
-	protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.txt";
-	protected static String LOCAL_BINARY_FILE = "target/test-classes/transfer/test_upload.bin";
+    protected static String MISSING_DIRECTORY = "I/Do/Not/Exist/unless/some/evil/person/has/this/test";
+    protected static String MISSING_FILE = "I/Do/Not/Exist/unless/some/evil/person/this/test.txt";
+    protected static String LOCAL_DIR = "target/test-classes/transfer";
+    protected static String LOCAL_DOWNLOAD_DIR = "target/test-classes/download";
+    protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.txt";
+    protected static String LOCAL_BINARY_FILE = "target/test-classes/transfer/test_upload.bin";
 
-	protected static String SOURCE_DIRNAME = "transfer";
-    protected static String DEST_DIRNAME = "transfer.copy";
-    protected static String SOURCE_FILENAME = "test_upload.bin";
-    protected static String DEST_FILENAME = "test_upload.bin.copy";
+    protected static String LOCAL_DIR_NAME = "transfer";
+    protected static String LOCAL_TXT_FILE_NAME = "test_upload.txt";
+    protected static String LOCAL_BINARY_FILE_NAME = "test_upload.bin";
 
 	protected JSONTestDataUtil jtd;
 	protected JSONObject jsonTree;
-
-	protected String username;
-	protected String password;
-	protected String uploadFilePath;
-	protected File testFileAnalysisDirectory;
-	protected String destPath;
-	protected URI ftpUri;
-	protected URI gridFtpUri;
-	protected URI httpUri = URI.create("http://docker.example.com:10080/public/" + SOURCE_FILENAME);
-	protected URI httpsUri = URI.create("https://docker.example.com:10443/public/" + SOURCE_FILENAME);
-	protected URI s3Uri;
-	protected URI sftpUri;
-
 	protected SystemDao systemDao = new SystemDao();
 
 	/* (non-Javadoc)
@@ -98,29 +78,32 @@ public class BaseTestCase {
 	{
 		jtd = JSONTestDataUtil.getInstance();
 
-		Properties props = new Properties();
-		props.load(getClass().getClassLoader().getResourceAsStream(TEST_PROPERTIES_FILE));
-		username = (String)props.getProperty("test.iplant.username");
-		password = (String)props.getProperty("test.iplant.password");
-		String urlencodedcredentials = URLEncoder.encode(username, "utf-8") + ":" + URLEncoder.encode(password, "utf-8");
+        clearSystems();
+        clearLogicalFiles();
 
-		uploadFilePath = (String)props.getProperty("test.file.path");
-		testFileAnalysisDirectory = new File((String)props.getProperty("test.file.analysis.dir.path"));
-		//ftpUri = new URI("ftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.ftp.uri")));
-		gridFtpUri = new URI("gsiftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.gridftp.uri"));
-		httpUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.http.uri"));
-		httpsUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.https.uri"));
-		s3Uri = new URI((String)props.getProperty("test.s3.uri"));
-		sftpUri = new URI("sftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.sftp.uri"));
+//		Properties props = new Properties();
+//		props.load(getClass().getClassLoader().getResourceAsStream(TEST_PROPERTIES_FILE));
+//		username = (String)props.getProperty("test.iplant.username");
+//		password = (String)props.getProperty("test.iplant.password");
+//		String urlencodedcredentials = URLEncoder.encode(username, "utf-8") + ":" + URLEncoder.encode(password, "utf-8");
+//
+//		uploadFilePath = (String)props.getProperty("test.file.path");
+//		testFileAnalysisDirectory = new File((String)props.getProperty("test.file.analysis.dir.path"));
+//		//ftpUri = new URI("ftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.ftp.uri")));
+//		gridFtpUri = new URI("gsiftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.gridftp.uri"));
+//		httpUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.http.uri"));
+//		httpsUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.https.uri"));
+//		s3Uri = new URI((String)props.getProperty("test.s3.uri"));
+//		sftpUri = new URI("sftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.sftp.uri"));
+//
+//		destPath = "/testparentparentparent/testparentparent/testparent/test.dat";
 
-		destPath = "/testparentparentparent/testparentparent/testparent/test.dat";
-
-		TenantDao tenantDao = new TenantDao();
-		Tenant tenant = tenantDao.findByTenantId("iplantc.org");
-		if (tenant == null) {
-			tenant = new Tenant("iplantc.org", "https://agave.iplantc.org", "dooley@tacc.utexas.edu", "Test Admin");
-			tenantDao.persist(tenant);
-		}
+//		TenantDao tenantDao = new TenantDao();
+//		Tenant tenant = tenantDao.findByTenantId("agave.dev");
+//		if (tenant == null) {
+//			tenant = new Tenant("iplantc.org", "https://agave.iplantc.org", "xxx@tacc.utexas.edu", "Test Admin");
+//			tenantDao.persist(tenant);
+//		}
 	}
 
 	@AfterClass
@@ -130,25 +113,37 @@ public class BaseTestCase {
 		clearLogicalFiles();
 	}
 
-	protected void clearSystems()
-    {
-	    Session session = null;
-        try
-        {
+    /**
+     * Clears all systems and related entity tables from db
+     * @throws Exception if something goes wrong
+     */
+    protected void clearSystems() throws Exception {
+        Session session = null;
+        try {
             HibernateUtil.beginTransaction();
             session = HibernateUtil.getSession();
             session.clear();
             HibernateUtil.disableAllFilters();
 
-            session.createQuery("DELETE RemoteSystem").executeUpdate();
+            session.createQuery("delete RemoteSystem").executeUpdate();
+            session.createQuery("delete BatchQueue").executeUpdate();
+            session.createQuery("delete StorageConfig").executeUpdate();
+            session.createQuery("delete LoginConfig").executeUpdate();
+            session.createQuery("delete AuthConfig").executeUpdate();
+            session.createQuery("delete SystemRole").executeUpdate();
+            session.createQuery("delete CredentialServer").executeUpdate();
             session.flush();
-        }
-        finally
-        {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+        } catch (Throwable t) {
+            t.printStackTrace();
+        } finally {
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
     }
 
+    /**
+     * Clears all logical files and related entity tables from db
+     * @throws Exception if something goes wrong
+     */
 	protected void clearLogicalFiles() throws Exception {
 		Session session = null;
 		try
@@ -159,10 +154,9 @@ public class BaseTestCase {
 			HibernateUtil.disableAllFilters();
 
 			session.createQuery("DELETE LogicalFile").executeUpdate();
-			session.createQuery("DELETE EncodingTask").executeUpdate();
-//			session.createQuery("DELETE FROM DecodingTask s WHERE 1=1").executeUpdate();
 			session.createQuery("DELETE StagingTask").executeUpdate();
 			session.createQuery("DELETE RemoteFilePermission").executeUpdate();
+			session.createQuery("DELETE TransferTaskPermission").executeUpdate();
 			session.createQuery("DELETE TransferTask").executeUpdate();
 			session.createQuery("DELETE Notification").executeUpdate();
 		}
@@ -172,7 +166,11 @@ public class BaseTestCase {
 		}
 		finally
 		{
-			try { session.close(); } catch (Exception e) {}
+			try {
+                if (session != null) {
+                    session.close();
+                }
+            } catch (Exception ignored) {}
 		}
 	}
 
@@ -183,8 +181,8 @@ public class BaseTestCase {
      * a larger permutation matrix of test cases.
      *
      * Templates used for these systems are taken from the
-     * {@code src/test/resources/systems/execution/execute.example.com.json} and
-     * {@code src/test/resources/systems/storage/storage.example.com.json} files.
+     * {@code target/test-classes/systems/execution/execute.example.com.json} and
+     * {@code target/test-classes/systems/storage/storage.example.com.json} files.
      *
      * @throws Exception
      */
@@ -212,7 +210,7 @@ public class BaseTestCase {
     /**
      * Creates and persists an {@link StorageSystem} for every template
      * with file name matching {@link StorageProtocolType}.example.com.json
-     * in the {@code src/test/resources/systems/storage} folder.
+     * in the {@code target/test-classes/systems/storage} folder.
      * @throws Exception
      */
     protected void initAllStorageSystems() throws Exception {
@@ -232,7 +230,7 @@ public class BaseTestCase {
     /**
      * Creates and persists an {@link ExecutionSystem} for every template
      * with file name matching {@link LoginProtocolType}.example.com.json
-     * in the {@code src/test/resources/systems/execution} folder.
+     * in the {@code target/test-classes/systems/execution} folder.
      * @throws Exception
      */
     protected void initAllExecutionSystems() throws Exception
@@ -258,7 +256,7 @@ public class BaseTestCase {
      * from one of the test templates. The returned {@link RemoteSystem} is unsaved and
      * unaltered from the original template.
      *
-     * @param type
+     * @param type the system type (storage or execution).
      * @param protocol valid {@link StorageProtocolType} or {@link LoginProtocolType} value
      * @return unaltered test template {@link RemoteSystem}
      * @throws Exception
@@ -274,7 +272,7 @@ public class BaseTestCase {
      * from one of the test templates. The returned {@link RemoteSystem} is unsaved and
      * unaltered from the original template.
      *
-     * @param type
+     * @param type the system type (storage or execution).
      * @param protocol valid {@link StorageProtocolType} or {@link LoginProtocolType} value
      * @param systemId custom systemid to assign to the new system
      * @return unaltered test template {@link RemoteSystem}
@@ -286,8 +284,9 @@ public class BaseTestCase {
         SystemManager systemManager = new SystemManager();
         JSONObject json = null;
         if (type == RemoteSystemType.STORAGE) {
-            json = jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR +
-                    File.separator + protocol.toLowerCase() + ".example.com.json");
+            String filename = protocol.equalsIgnoreCase("irods") ? "irods3" : protocol.toLowerCase() ;
+            json = jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + File.separator +
+                    filename + ".example.com.json");
         }
         else {
             json = jtd.getTestDataObject(EXECUTION_SYSTEM_TEMPLATE_DIR +
@@ -303,7 +302,7 @@ public class BaseTestCase {
 
     /**
      * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link StorageSystem}.
-     * @return
+     * @return a new default sftp storage system
      * @throws Exception
      */
     protected StorageSystem getNewInstanceOfStorageSystem()
@@ -315,7 +314,7 @@ public class BaseTestCase {
     /**
      * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link StorageSystem}.
      * @param systemId the custom systemId to assign to the new system
-     * @return
+     * @return a new persisted storage system with the systemId
      * @throws Exception
      */
     protected StorageSystem getNewInstanceOfStorageSystem(String systemId)
@@ -325,8 +324,8 @@ public class BaseTestCase {
     }
 
     /**
-     * Returns a new, unsaved {@link StorageProtocolType#SSH} {@link ExecutionSystem}.
-     * @return
+     * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link ExecutionSystem}.
+     * @return a new default ssh execution system
      * @throws Exception
      */
     protected ExecutionSystem getNewInstanceOfExecutionSystem()
@@ -338,7 +337,7 @@ public class BaseTestCase {
     /**
      * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link ExecutionSystem}.
      * @param systemId the custom systemId to assign to the new system
-     * @return
+     * @return a new persisted execution system with the systemId
      * @throws Exception
      */
     protected ExecutionSystem getNewInstanceOfExecutionSystem(String systemId)

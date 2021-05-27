@@ -1,13 +1,13 @@
 package org.iplantc.service.common.auth;
 
-import java.util.List;
-
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.restlet.Context;
 import org.restlet.data.ChallengeScheme;
 import org.restlet.data.Method;
 import org.restlet.data.Request;
+
+import java.util.List;
 
 public class LdapGuard extends AbstractGuard {
 	
@@ -17,7 +17,7 @@ public class LdapGuard extends AbstractGuard {
 		super(context, scheme, realm, unprotectedMethods);
 	}
 
-	private Logger log = Logger.getLogger(LdapGuard.class);
+	private final Logger log = Logger.getLogger(LdapGuard.class);
 	
 	/* (non-Javadoc)
 	 * @see org.restlet.Guard#authenticate(org.restlet.data.Request)
@@ -33,13 +33,9 @@ public class LdapGuard extends AbstractGuard {
 			if (new ProxyUserGuard().checkToken(identifier, secret)) {
 			    return true;
 			}
-			else if (isValidLdapUser(identifier, secret)) {
-			    return true;
-			}
-			
-			return false;
-		
-		} catch (Exception e) {
+			else return isValidLdapUser(identifier, secret);
+
+        } catch (Exception e) {
 			log.error("Failed to retrieve proxy: " + e.getMessage());
 			return false;
 		}

@@ -19,11 +19,7 @@ $config['service.version'] = '${foundation.service.version}';
 *						Trusted Users
 ****************************************************************************************/
 
-$config['iplant.service.trusted.users'][] = 'ipcservices';
 $config['iplant.service.trusted.users'][] = 'dooley';
-$config['iplant.service.trusted.users'][] = 'vaughn';
-$config['iplant.service.trusted.users'][] = 'sterry1';
-$config['iplant.service.trusted.users'][] = 'jstubbs';
 
 $config['iplant.service.trusted.ip'][] = '.*..*..*..*';
 

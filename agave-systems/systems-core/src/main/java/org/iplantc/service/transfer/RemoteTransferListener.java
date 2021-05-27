@@ -1,16 +1,9 @@
 package org.iplantc.service.transfer;
 
-import java.util.Date;
-import java.util.Observable;
-
+import com.sshtools.sftp.FileTransferProgress;
 import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.StringUtils;
-import org.globus.ftp.ByteRange;
-import org.globus.ftp.ByteRangeList;
-import org.globus.ftp.GridFTPRestartMarker;
-import org.globus.ftp.Marker;
-import org.globus.ftp.MarkerListener;
-import org.globus.ftp.PerfMarker;
+import org.globus.ftp.*;
 import org.globus.ftp.exception.PerfMarkerException;
 import org.hibernate.StaleObjectStateException;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
@@ -20,7 +13,8 @@ import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.transfer.TransferStatus;
 import org.irods.jargon.core.transfer.TransferStatusCallbackListener;
 
-import com.sshtools.sftp.FileTransferProgress;
+import java.util.Date;
+import java.util.Observable;
 
 public class RemoteTransferListener extends Observable  
 implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
@@ -113,6 +107,10 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 		TransferTask task = getTransferTask();
         if (task != null)
 		{
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task " +
+						transferTask.getUuid());
+        	
 			if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_INITIATION)) {
 				task.setStatus(TransferStatusType.TRANSFERRING);
 				task.setStartTime(new Date());
@@ -129,10 +127,14 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 			
 			setTransferTask(task);
 		}
+        else {
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer " + transferStatus.getTransferState().name() +
+						" callback received for task unknown.");
+        }
         
         if (hasChanged()) {
-			throw new JargonException("Listener received a cancel request for transfer " 
-					+ transferTask.getUuid());
+			throw new JargonException("Listener received a cancel request for transfer " + transferTask.getUuid());
 		}
 	}
 
@@ -149,6 +151,9 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 		TransferTask task = getTransferTask();
         if (task != null)
 		{
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task " + transferTask.getUuid());
+        	
 			if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_INITIATION)) {
 				task.setStatus(TransferStatusType.TRANSFERRING);
 				task.setStartTime(new Date());
@@ -187,13 +192,11 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 			task.setLastUpdated(new Date());
 			
 			setTransferTask(task);
-//			try {
-//				transferTask);
-//			} catch (TransferException e) {
-//				log.error("Failed to update status of irods transfer task " + task.getUuid() + " to " + task.getStatus(), e);
-//			}
 		}
-		
+        else {
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task unknown.");
+        }
         return FileStatusCallbackResponse.CONTINUE;
 	}
 
@@ -218,6 +221,9 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 		TransferTask task = getTransferTask();
         if (task != null)
 		{
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer started callback received for task " + task.getUuid() + ".\n" + remoteFile + " => " + bytesTotal);
+        	
 			task.setTotalFiles(task.getTotalFiles() + 1);
 			task.setStatus(TransferStatusType.TRANSFERRING);
 			task.setStartTime(new Date());
@@ -231,6 +237,10 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 			
 			setTransferTask(task);
 		}
+        else {
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer started callback received for task unknown.\n" + remoteFile + " => " + bytesTotal);
+        }
 	}
 
 	@Override
@@ -249,22 +259,24 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 	    TransferTask task = getTransferTask();
         if (task != null)
 		{
-//			if (task.getBytesTransferred() > bytesSoFar) {
-//				task.setBytesTransferred(task.getBytesTransferred() + bytesSoFar);
-//			} else {
-                task.setBytesTransferred(bytesSoFar);
-//			}
+            task.setBytesTransferred(bytesSoFar);
 			long currentTime = System.currentTimeMillis();
 			if (( currentTime - lastUpdated) >= 15000) {
 			    double progress = bytesSoFar - bytesLastCheck;
-			    task.setTransferRate(((double)progress / ((double)(currentTime - lastUpdated) /  1000.0) ));
+			    task.setTransferRate((progress / ((double)(currentTime - lastUpdated) /  1000.0) ));
                 setTransferTask(task);
                 lastUpdated = currentTime;
                 bytesLastCheck = bytesSoFar;
-//			    log.debug("Moved " + bytesSoFar + " bytes @ " + progress + "B/s");
+                
+                if (log.isDebugEnabled())
+                	log.debug("Transfer prograess callback received for task " + task.getUuid() + ".\n" + task.getSource() + " => " + bytesSoFar);
 		        
 			}
 		}
+        else {
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer progress callback received for task unknown.\nunknown => " + bytesSoFar);
+        }
 	}
 	
 	/**
@@ -277,15 +289,23 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 		TransferTask task = getTransferTask();
         if (task != null)
 		{
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer progress callback received for task " + task.getUuid() + ".\n" + task.getSource());
+        	
 			task.setStatus(TransferStatusType.CANCELLED);
 			task.setEndTime(new Date());
 			task.updateTransferRate();
 			setTransferTask(task);
 		}
+        else {
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer progress callback received for task unknown.\nunknown");
+        }
         
         // set this listener to dirty
-        log.debug("RemoteTransferListender for " + (task == null ? " anonymous transfer " : task.getUuid()) + 
-					" was notified of an interrupt");
+        if (log.isDebugEnabled())
+        	log.debug("RemoteTransferListender for " + (task == null ? " anonymous transfer " : task.getUuid()) + 
+					  " was notified of an interrupt");
 		setChanged();
 	}
 
@@ -298,11 +318,19 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 		TransferTask task = getTransferTask();
         if (task != null)
 		{
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer completed callback received for task " + task.getUuid() + ".\n" + task.getSource());
+        	
 			task.setStatus(TransferStatusType.COMPLETED);
 			task.setEndTime(new Date());
 			task.updateTransferRate();
 			setTransferTask(task);
 		}
+        else {
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer completed callback received for task unknown.\nunknown");
+        	
+        }
 	}
 	
 	public void failed()
@@ -310,10 +338,17 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 		TransferTask task = getTransferTask();
         if (task != null)
 		{
-			task.setStatus(TransferStatusType.FAILED);
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer failed callback received for task " + task.getUuid() + ".\n" + task.getSource());
+        	
+        	task.setStatus(TransferStatusType.FAILED);
 			task.setEndTime(new Date());
 			setTransferTask(task);
 		}
+        else {
+        	if (log.isDebugEnabled())
+        		log.debug("Transfer failed callback received for task unknown.\nunknown");
+        }
 	}
 	
 	/*************************************************************
@@ -336,7 +371,7 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
         } else {
             log.error("Received unsupported marker type");
         }
-    };
+    }
 
     private void restartMarkerArrived(GridFTPRestartMarker marker) 
     {

@@ -1,6 +1,6 @@
 <!DOCTYPE hibernate-configuration PUBLIC
- "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
- "http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 
 	<!-- DO NOT EDIT: This is a generated file that is synchronized -->
 	<!-- by MyEclipse Hibernate tool integration.                   -->
@@ -22,14 +22,5 @@
         <property name="connection.autoReconnectForPools">true</property>
         <property name="connection.is-connection-validation-required">true</property>
 		<property name="javax.persistence.validation.mode">none</property>
-
-		<!-- configuration pool via c3p0-->
-		<property name="c3p0.acquire_increment">1</property>
-		<property name="c3p0.idle_test_period">100</property> <!-- seconds -->
-		<property name="c3p0.max_size">100</property>
-		<property name="c3p0.max_statements">0</property>
-		<property name="c3p0.min_size">10</property>
-		<property name="c3p0.timeout">100</property> <!-- seconds -->
-
 	</session-factory>
 </hibernate-configuration>

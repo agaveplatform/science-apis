@@ -3,8 +3,8 @@
  */
 package org.iplantc.service.notification.events;
 
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -14,8 +14,7 @@ import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.model.Notification;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 
 /**
  * @author dooley
@@ -24,9 +23,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class SoftwareNotificationEvent extends AbstractEventFilter {
 
 	private static final Logger log = Logger.getLogger(SoftwareNotificationEvent.class);
-	
+
 	/**
+	 *
+	 * @param associatedUuid
 	 * @param notification
+	 * @param event
+	 * @param owner
 	 */
 	public SoftwareNotificationEvent(AgaveUUID associatedUuid, Notification notification, String event, String owner)
 	{
@@ -129,7 +132,7 @@ public class SoftwareNotificationEvent extends AbstractEventFilter {
 			body = StringUtils.replace(body, "${UUID}", associatedUuid.toString());
 			body = StringUtils.replace(body, "${EVENT}", event);
 			body = StringUtils.replace(body, "${OWNER}", owner);
-			String softwareUniqueName = (String)jobFieldMap.get("name") + "-" + (String)jobFieldMap.get("version");
+			String softwareUniqueName = jobFieldMap.get("name") + "-" + jobFieldMap.get("version");
 			if (jobFieldMap.get("publicly_available") instanceof Byte) {
                 if ((Byte)jobFieldMap.get("publicly_available") == 1) {
                     softwareUniqueName += "u" + ((Integer)jobFieldMap.get("revision_count")).toString();
@@ -179,7 +182,7 @@ public class SoftwareNotificationEvent extends AbstractEventFilter {
                             body = StringUtils.replace(body, "${JOB_TENANT}", TenancyHelper.getCurrentTenantId());
                             body = StringUtils.replace(body, "${JOB_URL}", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_JOB_SERVICE) + jsonJob.get("id").asText());
                             
-                            boolean archive = jsonJob.hasNonNull("archive") ? jsonJob.get("archive").asBoolean(false) : false;
+                            boolean archive = jsonJob.hasNonNull("archive") && jsonJob.get("archive").asBoolean(false);
                             if (archive) {
                             	body = StringUtils.replace(body, "${JOB_ARCHIVE}", "true");
                             	body = StringUtils.replace(body, "${JOB_ARCHIVE_SYSTEM}", jsonJob.hasNonNull("archiveSystem") ? jsonJob.get("archiveSystem").asText() : "");

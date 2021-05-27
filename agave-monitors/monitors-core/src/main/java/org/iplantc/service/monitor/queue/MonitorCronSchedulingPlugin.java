@@ -1,7 +1,6 @@
 package org.iplantc.service.monitor.queue;
 
 import org.iplantc.service.common.queue.GenericSchedulingPlugin;
-import org.iplantc.service.monitor.Settings;
 
 /**
  * Class to initialize worker tasks to process monitor events.
@@ -36,11 +35,5 @@ public class MonitorCronSchedulingPlugin extends GenericSchedulingPlugin
 	protected int getTaskCount()
 	{
         return 1;
-//		try {
-//            getClass().getClassLoader().loadClass("org.iplantc.service.monitor.Settings");
-//            return Settings.MAX_MONITOR_TASKS;
-//        } catch (ClassNotFoundException e) {
-//            return 0;
-//        }
 	}
 }

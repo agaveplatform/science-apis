@@ -1,17 +1,17 @@
 package org.teragrid.service.util;
 
-import java.util.Hashtable;
-import java.util.Set;
-
 import org.teragrid.service.tgcdb.dto.ComputeDTO;
 import org.teragrid.service.tgcdb.dto.Service;
+
+import java.util.Hashtable;
+import java.util.Set;
 
 @SuppressWarnings("unused")
 public class ServiceResolver {
 
 	// table of services for each resource keyed off the info service resource
 	// id
-	private static Hashtable<String, Set<Service>>	serviceCache	= new Hashtable<String, Set<Service>>();
+	private static final Hashtable<String, Set<Service>>	serviceCache	= new Hashtable<String, Set<Service>>();
 
 	public static void resolve(ComputeDTO system)
 	{

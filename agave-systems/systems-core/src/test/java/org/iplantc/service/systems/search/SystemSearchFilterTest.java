@@ -1,25 +1,16 @@
 package org.iplantc.service.systems.search;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.systems.model.SystemsModelTestCommon;
-import org.iplantc.service.systems.model.enumerations.AuthConfigType;
-import org.iplantc.service.systems.model.enumerations.ExecutionType;
-import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
-import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
-import org.iplantc.service.systems.model.enumerations.SchedulerType;
-import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
-import org.iplantc.service.systems.model.enumerations.SystemStatusType;
+import org.iplantc.service.systems.model.enumerations.*;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.*;
+
+@Test(groups={"integration"})
 public class SystemSearchFilterTest extends SystemsModelTestCommon
 {
     
@@ -84,7 +75,10 @@ public class SystemSearchFilterTest extends SystemsModelTestCommon
             for (SearchTerm.Operator operator: SearchTerm.Operator.values()) {
 				if (searchTypeMappings.get(key) == Date.class && operator.isSetOperator() && SearchTerm.Operator.BETWEEN != operator) {
 				    continue;
+				} else if (searchTypeMappings.get(key) == Boolean.class && !operator.isEqualityOperator()) {
+					continue;
 				}
+
 				String op =  "." + operator.name();
                 
 				testData.add(new Object[]{ key + op, true, "Exact terms with uppercase operator should be accepted" });
@@ -195,7 +189,7 @@ public class SystemSearchFilterTest extends SystemsModelTestCommon
 	}
 	
 	@SuppressWarnings("rawtypes")
-	public void _filterInvalidSearchCriteria(String testField, boolean shouldExistAfterFiltering, String message) throws Exception
+	protected void _filterInvalidSearchCriteria(String testField, boolean shouldExistAfterFiltering, String message) throws Exception
 	{
 		SystemSearchFilter systemSearchFilter = new SystemSearchFilter();
 		Map<String, String> searchCriteria = new HashMap<String, String>();

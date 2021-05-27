@@ -1,49 +1,5 @@
 package org.iplantc.service.common.auth;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.EOFException;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
-import java.net.InetAddress;
-import java.net.ProtocolException;
-import java.security.GeneralSecurityException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.security.cert.CertPath;
-import java.security.cert.CertPathValidator;
-import java.security.cert.CertPathValidatorException;
-import java.security.cert.CertificateEncodingException;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
-import java.security.cert.PKIXParameters;
-import java.security.cert.TrustAnchor;
-import java.security.cert.X509CRL;
-import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Set;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import javax.security.auth.login.FailedLoginException;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.ASN1InputStream;
@@ -61,8 +17,20 @@ import org.gridforum.jgss.ExtendedGSSCredential;
 import org.gridforum.jgss.ExtendedGSSManager;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
+import org.iplantc.service.common.exceptions.MyProxyGatewayException;
 import org.iplantc.service.common.util.Slug;
-import org.testng.Assert;
+
+import javax.net.ssl.*;
+import javax.security.auth.login.FailedLoginException;
+import java.io.*;
+import java.net.InetAddress;
+import java.net.ProtocolException;
+import java.security.GeneralSecurityException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PrivateKey;
+import java.security.cert.*;
+import java.util.*;
 
 /**
  * The MyProxyLogon class provides an interface for retrieving credentials from
@@ -93,7 +61,7 @@ public class AgaveMyProxyLogon {
 	}
 
 	private class MyTrustManager implements X509TrustManager {
-		private String trustrootPath = null;
+		private final String trustrootPath;
 		
 		public MyTrustManager(String trustrootPath) {
 			this.trustrootPath = trustrootPath;
@@ -110,7 +78,7 @@ public class AgaveMyProxyLogon {
 				return null;
 			}
 			String[] certFilenames = dir.list();
-			String[] certData = new String[certFilenames.length];
+			String[] certData = new String[Objects.requireNonNull(certFilenames).length];
 			for (int i = 0; i < certFilenames.length; i++) {
 				try {
 					FileInputStream fileStream = new FileInputStream(
@@ -151,10 +119,10 @@ public class AgaveMyProxyLogon {
 		private void checkServerCertPath(X509Certificate[] certs, boolean forceBootstrap)
 		throws CertificateException 
 		{
-			CertPathValidator validator = null;
-			CertificateFactory certFactory = null;
-			CertPath certPath = null;
-			X509Certificate[] acceptedIssuers = null;
+			CertPathValidator validator;
+			CertificateFactory certFactory;
+			CertPath certPath;
+			X509Certificate[] acceptedIssuers;
 			try 
 			{
 				validator = CertPathValidator
@@ -180,8 +148,8 @@ public class AgaveMyProxyLogon {
 				}
 				Set<TrustAnchor> trustAnchors = new HashSet<TrustAnchor>(
 						acceptedIssuers.length);
-				for (int i = 0; i < acceptedIssuers.length; i++) {
-					TrustAnchor ta = new TrustAnchor(acceptedIssuers[i], null);
+				for (X509Certificate acceptedIssuer : acceptedIssuers) {
+					TrustAnchor ta = new TrustAnchor(acceptedIssuer, null);
 					trustAnchors.add(ta);
 				}
 				PKIXParameters pkixParameters = new PKIXParameters(trustAnchors);
@@ -589,7 +557,7 @@ public class AgaveMyProxyLogon {
 	/**
 	 * Retrieves credentials from the MyProxy server.
 	 */
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({"rawtypes", "deprecation"})
 	public GSSCredential getCredentials() throws MyProxyException 
 	{
 		try 
@@ -606,7 +574,7 @@ public class AgaveMyProxyLogon {
 			keyGenerator = KeyPairGenerator.getInstance(keyAlg);
 			keyGenerator.initialize(keySize);
 			this.keypair = keyGenerator.genKeyPair();
-	
+
 			pkcs10 = new PKCS10CertificationRequest(pkcs10SigAlgName, new X509Name(
 					DN), this.keypair.getPublic(), null, this.keypair.getPrivate(),
 					pkcs10Provider);
@@ -616,9 +584,9 @@ public class AgaveMyProxyLogon {
 			numCertificates = this.socketIn.read();
 			if (numCertificates == -1) {
 				throw new MyProxyException("Invalid number of certifications. connection aborted");
-			} else if (numCertificates == 0 || numCertificates < 0) {
+			} else if (numCertificates == 0) {
 				throw new MyProxyException("Bad number of certificates sent by server: " + 
-						Integer.toString(numCertificates));
+						numCertificates);
 			}
 			certFactory = CertificateFactory.getInstance("X.509");
 			this.certificateChain = certFactory.generateCertificates(this.socketIn);
@@ -861,7 +829,7 @@ public class AgaveMyProxyLogon {
      */
     public String getTrustRootPath() 
     {
-    	String path = null;
+    	String path;
     	
     	if (this.trustedCALocation == null || 
     			StringUtils.isEmpty(this.trustedCALocation.getCaPath())) 
@@ -877,8 +845,13 @@ public class AgaveMyProxyLogon {
     	{
     		path = trustedCALocation.getCaPath();
     	}
-    	
-    	new File(path).mkdirs();
+
+    	File trustRootPath;
+    	trustRootPath = new File(path);
+
+    	if (!trustRootPath.exists()) {
+    		trustRootPath.mkdirs();
+		}
     	
         return path;
     }
@@ -913,7 +886,7 @@ public class AgaveMyProxyLogon {
 	 */
 	public String getProxyLocation() throws IOException {
 		
-		String suffix = null;
+		String suffix;
 
 		File proxyDir = new File(System.getProperty("java.io.tmpdir") + File.separator + 
 				Slug.toSlug(host));
@@ -935,13 +908,12 @@ public class AgaveMyProxyLogon {
 	 */
 	public static void main(String[] args) {
 		try {
-			AgaveMyProxyLogon m = new AgaveMyProxyLogon("myproxy.teragrid.org", DEFAULT_PORT);
+			AgaveMyProxyLogon m;
+			m = new AgaveMyProxyLogon("myproxy.teragrid.org", DEFAULT_PORT);
 			// Console cons = System.console();
-			String passphrase = null;
-			X509Certificate[] CAcerts;
-			X509CRL[] CRLs;
-			
-			m.setUsername("dooley");
+			String passphrase;
+
+			m.setUsername("xxx");
 			System.out.println("Warning: terminal will echo passphrase as you type.");
 			System.out.print("MyProxy Passphrase: ");
 			passphrase = readLine(System.in);
@@ -954,10 +926,15 @@ public class AgaveMyProxyLogon {
 			m.requestTrustRoots(true);
 			GSSCredential proxy = m.getCredentials();
 			m.writeProxyFile();
-			
-			Assert.assertNotNull(proxy, "No proxy retrieved");
-			Assert.assertTrue(new File(m.getTrustRootPath()).exists(), "Trusted CA folder was not created");
-			Assert.assertTrue(new File(m.getTrustRootPath()).list().length > 0, "Trusted CA folder is empty");
+
+			if (proxy == null)
+				throw new MyProxyGatewayException("No proxy retrieved");
+			if (! new File(m.getTrustRootPath()).exists())
+				throw new MyProxyGatewayException("Trusted CA folder was not created");
+
+			String[] trustRootPaths = new File(m.getTrustRootPath()).list();
+			if (trustRootPaths == null || trustRootPaths.length == 0 )
+				throw new MyProxyGatewayException("Trusted CA folder is empty");
 			
 		} catch (Exception e) {
 			e.printStackTrace(System.err);
@@ -969,11 +946,7 @@ public class AgaveMyProxyLogon {
 
 		b64data = Base64.encode(data);
 		for (int i = 0; i < b64data.length; i += b64linelen) {
-			if ((b64data.length - i) > b64linelen) {
-				out.write(b64data, i, b64linelen);
-			} else {
-				out.write(b64data, i, b64data.length - i);
-			}
+			out.write(b64data, i, Math.min((b64data.length - i), b64linelen));
 			out.println();
 		}
 	}

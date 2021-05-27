@@ -1,11 +1,5 @@
 package org.iplantc.service.common.auth;
 
-import static org.iplantc.service.common.auth.roles.AgaveRole.ROLE_NONE;
-
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.restlet.Request;
@@ -15,6 +9,12 @@ import org.restlet.data.Method;
 import org.restlet.security.Role;
 import org.restlet.security.Verifier;
 import org.restlet.util.Series;
+
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import static org.iplantc.service.common.auth.roles.AgaveRole.ROLE_NONE;
 
 public class JWTVerifier implements Verifier {
     private static final Logger log = Logger.getLogger(JWTVerifier.class);
@@ -31,9 +31,9 @@ public class JWTVerifier implements Verifier {
         {
             if (key.toLowerCase().startsWith(JWT_HEADER_NAME.toLowerCase())) 
             {
-                String jwtHeader = (String)series.getFirstValue(key);
+                String jwtHeader = series.getFirstValue(key);
                 
-                Form queryForm = (Form)request.getOriginalRef().getQueryAsForm();
+                Form queryForm = request.getOriginalRef().getQueryAsForm();
                 if (queryForm != null && !queryForm.isEmpty()) {
                     String debugJWT = queryForm.getFirstValue("debugjwt");
                     if (!StringUtils.isEmpty(debugJWT)) {
@@ -46,7 +46,7 @@ public class JWTVerifier implements Verifier {
                 
                 if (JWTClient.parse(jwtHeader, tenantId)) 
                 {
-                    String bearerToken = (String)series.getFirstValue("Authorization");
+                    String bearerToken = series.getFirstValue("Authorization");
                     if (StringUtils.isNotEmpty(bearerToken)) {
                         bearerToken = StringUtils.removeStart(bearerToken, "Bearer");
                         bearerToken = StringUtils.strip(bearerToken);
@@ -67,7 +67,7 @@ public class JWTVerifier implements Verifier {
             }
             else if (key.toLowerCase().startsWith(INTERNALUSER_HEADER_NAME.toLowerCase())) 
             {
-                String internalUsername = (String)series.getFirstValue(key);
+                String internalUsername = series.getFirstValue(key);
                 Request.getCurrent().getAttributes().put("internal.user", internalUsername);
             }
         }

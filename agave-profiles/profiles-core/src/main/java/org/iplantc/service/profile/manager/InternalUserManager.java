@@ -1,8 +1,5 @@
 package org.iplantc.service.profile.manager;
 
-import java.util.Date;
-import java.util.List;
-
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.profile.dao.InternalUserDao;
 import org.iplantc.service.profile.exceptions.InternalUsernameConflictException;
@@ -10,6 +7,9 @@ import org.iplantc.service.profile.exceptions.ProfileArgumentException;
 import org.iplantc.service.profile.exceptions.ProfileException;
 import org.iplantc.service.profile.model.InternalUser;
 import org.json.JSONObject;
+
+import java.util.Date;
+import java.util.List;
 
 /**
  * Provides the logic in front of the dao class to manage internal users.
@@ -19,7 +19,7 @@ import org.json.JSONObject;
  */
 public class InternalUserManager {
 
-	private InternalUserDao dao;
+	private final InternalUserDao dao;
 	
 	public InternalUserManager()
 	{
@@ -66,13 +66,9 @@ public class InternalUserManager {
 			
 			return internalUser;
 		} 
-		catch(InternalUsernameConflictException e) {
+		catch(InternalUsernameConflictException | ProfileException e) {
 			throw e;
-		}
-		catch(ProfileException e) {
-			throw e;
-		}
-		catch(ProfileArgumentException e) {
+		} catch(ProfileArgumentException e) {
 			throw new ProfileException(e.getMessage(), e);
 		}
 		catch(Exception e) {
@@ -85,7 +81,7 @@ public class InternalUserManager {
 	 * information from the json representation of this InternalUser.
 	 * 
 	 * @param jsonInternalUser
-	 * @param currentUser
+	 * @param currentInternalUser
 	 * @return
 	 * @throws ProfileException
 	 */
@@ -115,7 +111,6 @@ public class InternalUserManager {
 	 * cancels any running jobs, and deletes their credentials on all the API user's
 	 * systems.
 	 * 
-	 * @param json
 	 * @param currentUser
 	 * @return
 	 * @throws ProfileException, RemoteDataException

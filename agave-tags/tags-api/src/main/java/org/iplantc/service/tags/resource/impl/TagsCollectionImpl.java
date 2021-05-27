@@ -3,41 +3,27 @@
  */
 package org.iplantc.service.tags.resource.impl;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.tags.dao.TagDao;
-import org.iplantc.service.tags.events.TagEventProcessor;
 import org.iplantc.service.tags.exceptions.TagException;
 import org.iplantc.service.tags.exceptions.TagValidationException;
 import org.iplantc.service.tags.managers.TagManager;
-import org.iplantc.service.tags.managers.TagPermissionManager;
 import org.iplantc.service.tags.model.Tag;
-import org.iplantc.service.tags.model.TagEvent;
-import org.iplantc.service.tags.model.TagPermission;
-import org.iplantc.service.tags.model.enumerations.PermissionType;
-import org.iplantc.service.tags.model.enumerations.TagEventType;
 import org.iplantc.service.tags.resource.TagsCollection;
 import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.type.CollectionType;
+import javax.ws.rs.Path;
+import javax.ws.rs.core.Response;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author dooley
@@ -47,7 +33,8 @@ import com.fasterxml.jackson.databind.type.CollectionType;
 public class TagsCollectionImpl extends AbstractTagCollection implements TagsCollection {
 
 	private static final Logger log = Logger.getLogger(TagsCollectionImpl.class);
-	
+	private static final ObjectMapper mapper = new ObjectMapper();
+
 	public TagsCollectionImpl() {}
 
 	/* (non-Javadoc)
@@ -65,13 +52,7 @@ public class TagsCollectionImpl extends AbstractTagCollection implements TagsCol
 			
         	List<Tag> tags = dao.findMatching(getAuthenticatedUsername(), searchCriteria, getOffset(), getLimit());
 				
-        	ObjectMapper mapper = new ObjectMapper();
-//        	ArrayNode json = mapper.createArrayNode();
-//        	for(Tag tag: tags) {
-//        		json.add(mapper.readTree(tag.toJSON().toString()));
-//        	}
-        	
-    		return Response.ok(new AgaveSuccessRepresentation(mapper.writeValueAsString(tags))).build();
+        	return Response.ok(new AgaveSuccessRepresentation(mapper.writeValueAsString(tags))).build();
             
         }
         catch (ResourceException e) {
@@ -83,6 +64,9 @@ public class TagsCollectionImpl extends AbstractTagCollection implements TagsCol
             		"An unexpected error occurred while fetching the tag. "
                 			+ "If this continues, please contact your tenant administrator.", e);
         }
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 		
 	}
 
@@ -99,7 +83,7 @@ public class TagsCollectionImpl extends AbstractTagCollection implements TagsCol
           	JsonNode contentJson = getPostedContentAsJsonNode(input);  	
           	TagManager manager = new TagManager();
           	Tag tag = manager.addTagForUser(contentJson, getAuthenticatedUsername());
-          	return Response.ok().entity(new AgaveSuccessRepresentation(tag.toJSON().toString())).build();
+          	return Response.ok().entity(new AgaveSuccessRepresentation(tag.toJSON().toString())).status(201).build();
         }
         catch (TagException e) {
         	log.error(e);
@@ -116,5 +100,8 @@ public class TagsCollectionImpl extends AbstractTagCollection implements TagsCol
         			"An unexpected error occurred while adding the tag. "
                 			+ "If this continues, please contact your tenant administrator.", e);
         }
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 }

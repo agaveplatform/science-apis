@@ -1,51 +1,29 @@
 package org.iplantc.service.jobs.scheduling;
 
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_OWNER;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_SOFTWARE_SYSTEM_FILE;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE;
-
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.TreeMap;
-
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.math.RandomUtils;
 import org.apache.log4j.Logger;
-import org.codehaus.plexus.util.StringUtils;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.apps.model.SoftwareInput;
-import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.jobs.dao.AbstractDaoTest;
-import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.dao.TaskDistributor;
 import org.iplantc.service.jobs.model.JSONTestDataUtil;
 import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
-import org.iplantc.service.transfer.model.TransferTask;
-import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
-import org.joda.time.DateTime;
 import org.json.JSONObject;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.*;
 
+import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE;
+import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_OWNER;
+
+@Test(groups={"integration"})
 public class AbstractJobSchedulingTest extends AbstractDaoTest 
 {
     private static final Logger log = Logger.getLogger(AbstractJobSchedulingTest.class);
@@ -56,9 +34,9 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
 	public static final BatchQueue dedicatedQueue = new BatchQueue("dedicated", (long)1, (long)1, (long)1, 16.0, (long)16, "144:00:00", null, false);
 	public static final BatchQueue unlimitedQueue = new BatchQueue("dedicated", (long)-1, 2048.0);
 	
-	private StorageSystem publicStorageSystem = null;
+	private final StorageSystem publicStorageSystem = null;
 	protected List<String> testUsernames = new ArrayList<String>();
-	private List<Integer> testUserIds = new ArrayList<Integer>();
+	private final List<Integer> testUserIds = new ArrayList<Integer>();
 	protected static final int TEST_USER_COUNT = 10;
 
 	public AbstractJobSchedulingTest() {
@@ -68,9 +46,7 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
 	@Override
 	@BeforeClass
 	public void beforeClass() throws Exception {
-    	systemDao = new SystemDao();
-    	
-    	jtd = JSONTestDataUtil.getInstance();
+    	super.beforeClass();
     	
     	for (int i=0;i<TEST_USER_COUNT;i++) {
     		testUsernames.add("user-" + i);
@@ -79,98 +55,139 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
     	
     	Collections.shuffle(testUsernames);
     	Collections.shuffle(testUserIds);
-    	
-    	initSystems();
-        initSoftware();
-        clearJobs();
-        
-    //		HibernateUtil.getConfiguration().getProperties().setProperty("hibernate.show_sql", "true");
-    	
     }
 
-	@AfterMethod
-	public void afterMethod() throws Exception {
-		clearJobs();
-	}
+	public void initSystemsAndSoftware() throws Exception {
+		SystemDao systemDao = new SystemDao();
 
-	@AfterClass
-	@Override
-	public void afterClass() throws Exception {
-		super.afterClass();
-	}
+		StorageSystem privateStorageSystem = createStorageSystem();
+		privateStorageSystem.setGlobalDefault(true);
+		privateStorageSystem.setPubliclyAvailable(true);
+//		log.debug("Inserting public storage system " + privateStorageSystem.getSystemId());
+		systemDao.persist(privateStorageSystem);
 
-	@Override
-	protected void initSystems() throws Exception {
-		clearSystems();
-		
-		JSONObject exeSystemJson = jtd.getTestDataObject(TEST_EXECUTION_SYSTEM_FILE);
-		privateExecutionSystem = ExecutionSystem.fromJSON(exeSystemJson);
+		ExecutionSystem privateExecutionSystem = createExecutionSystem();
 		privateExecutionSystem.setOwner(TEST_OWNER);
 		privateExecutionSystem.setType(RemoteSystemType.EXECUTION);
 		privateExecutionSystem.getBatchQueues().clear();
-		privateExecutionSystem.addBatchQueue(unlimitedQueue.clone());
-		privateExecutionSystem.addBatchQueue(mediumQueue.clone());
-		privateExecutionSystem.addBatchQueue(longQueue.clone());
+//		log.debug("Inserting private execution system " + privateExecutionSystem.getSystemId());
 		systemDao.persist(privateExecutionSystem);
-		
-		for (int i =0; i< 1; i++) {
-			ExecutionSystem exeSystem = ExecutionSystem.fromJSON(exeSystemJson);
-			exeSystem.setSystemId(exeSystem.getSystemId() + "-" + i);
-			exeSystem.setOwner(TEST_OWNER);
-			exeSystem.getBatchQueues().clear();
-			exeSystem.addBatchQueue(dedicatedQueue.clone());
-			exeSystem.addBatchQueue(longQueue.clone());
-			exeSystem.addBatchQueue(mediumQueue.clone());
-			exeSystem.addBatchQueue(shortQueue.clone());
-			exeSystem.setPubliclyAvailable(true);
-			exeSystem.setType(RemoteSystemType.EXECUTION);
-			log.debug("Inserting execution system " + exeSystem.getSystemId());
-			systemDao.persist(exeSystem);
-		}
-		
-		publicStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(TEST_STORAGE_SYSTEM_FILE));
-		publicStorageSystem.setOwner(TEST_OWNER);
-		publicStorageSystem.setType(RemoteSystemType.STORAGE);
-		publicStorageSystem.setGlobalDefault(true);
-		publicStorageSystem.setPubliclyAvailable(true);
-		log.debug("Inserting public storage system " + publicStorageSystem.getSystemId());
-	    systemDao.persist(publicStorageSystem);
-	}
+		privateExecutionSystem.addBatchQueue(UNLIMITED_QUEUE.clone());
+		privateExecutionSystem.addBatchQueue(MEDIUM_QUEUE.clone());
+		privateExecutionSystem.addBatchQueue(LONG_QUEUE.clone());
+		systemDao.persist(privateExecutionSystem);
 
-	protected void initSoftware() throws Exception {
-		clearSoftware(); 
-		
-		JSONObject json = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
-		this.software = Software.fromJSON(json, TEST_OWNER);
-		this.software.setPubliclyAvailable(true);
-		this.software.setOwner(TEST_OWNER);
-		this.software.setDefaultQueue(unlimitedQueue.getName());
-		this.software.setDefaultMaxRunTime(null);
-		this.software.setDefaultMemoryPerNode(null);
-		this.software.setDefaultNodes(null);
-		this.software.setDefaultProcessorsPerNode(null);
-		
-		int i = 0;
-		for (RemoteSystem exeSystem: systemDao.getAllExecutionSystems()) 
-		{
-			if (exeSystem.getSystemId().equals(privateExecutionSystem.getSystemId())) continue;
-			
-			for(BatchQueue q: ((ExecutionSystem)exeSystem).getBatchQueues()) 
+		Software baseSoftware = createSoftware(privateExecutionSystem, privateStorageSystem);
+		baseSoftware.setPubliclyAvailable(true);
+		baseSoftware.setOwner(privateExecutionSystem.getOwner());
+		baseSoftware.setDefaultQueue(UNLIMITED_QUEUE.getName());
+		baseSoftware.setDefaultMaxRunTime(null);
+		baseSoftware.setDefaultMemoryPerNode(null);
+		baseSoftware.setDefaultNodes(null);
+		baseSoftware.setDefaultProcessorsPerNode(null);
+
+		JSONObject execSystemJson = JSONTestDataUtil.getInstance().getTestDataObject(TEST_EXECUTION_SYSTEM_FILE);
+		for (int i =0; i< 1; i++) {
+			execSystemJson.put("id", UUID.randomUUID().toString());
+			ExecutionSystem execSystem = createExecutionSystem();
+			execSystem.getBatchQueues().clear();
+			systemDao.persist(execSystem);
+			execSystem.addBatchQueue(DEDICATED_QUEUE.clone());
+			execSystem.addBatchQueue(LONG_QUEUE.clone());
+			execSystem.addBatchQueue(MEDIUM_QUEUE.clone());
+			execSystem.addBatchQueue(SHORT_QUEUE.clone());
+			execSystem.setPubliclyAvailable(true);
+			systemDao.persist(execSystem);
+//			log.debug("Inserting execution system " + privateExecutionSystem.getSystemId());
+			systemDao.persist(execSystem);
+
+			for(BatchQueue q: execSystem.getBatchQueues())
 			{
-				Software software = this.software.clone();
-				software.setExecutionSystem((ExecutionSystem)exeSystem);
-				software.setName("test-" + exeSystem.getSystemId() + "-" + q.getName() );
-				software.setDefaultQueue(q.getName());
-				software.setDefaultMaxRunTime(q.getMaxRequestedTime());
-				software.setDefaultMemoryPerNode(q.getMaxMemoryPerNode());
-				software.setDefaultNodes(q.getMaxNodes());
-				software.setDefaultProcessorsPerNode(q.getMaxProcessorsPerNode());
-				log.debug("Adding software " + software.getUniqueName());
-				SoftwareDao.persist(software);
-				i++;
+				Software testSoftware = createSoftware(execSystem, privateStorageSystem);
+				testSoftware.setName(createNonce() + execSystem.getSystemId() + "-" + q.getName() );
+				testSoftware.setDefaultQueue(q.getName());
+				testSoftware.setDefaultMaxRunTime(q.getMaxRequestedTime());
+				testSoftware.setDefaultMemoryPerNode(q.getMaxMemoryPerNode());
+				testSoftware.setDefaultNodes(q.getMaxNodes());
+				testSoftware.setDefaultProcessorsPerNode(q.getMaxProcessorsPerNode());
+//				log.debug("Adding software " + testSoftware.getUniqueName());
+				SoftwareDao.persist(testSoftware);
 			}
 		}
 	}
+
+//
+////	@Override
+//	protected void initSystems() throws Exception {
+//
+//		JSONObject exeSystemJson = jtd.getTestDataObject(TEST_EXECUTION_SYSTEM_FILE);
+//		privateExecutionSystem = ExecutionSystem.fromJSON(exeSystemJson);
+//		privateExecutionSystem.setOwner(TEST_OWNER);
+//		privateExecutionSystem.setType(RemoteSystemType.EXECUTION);
+//		privateExecutionSystem.getBatchQueues().clear();
+//		privateExecutionSystem.addBatchQueue(unlimitedQueue.clone());
+//		privateExecutionSystem.addBatchQueue(mediumQueue.clone());
+//		privateExecutionSystem.addBatchQueue(longQueue.clone());
+//		systemDao.persist(privateExecutionSystem);
+//
+//		for (int i =0; i< 1; i++) {
+//			ExecutionSystem exeSystem = ExecutionSystem.fromJSON(exeSystemJson);
+//			exeSystem.setSystemId(exeSystem.getSystemId() + "-" + i);
+//			exeSystem.setOwner(TEST_OWNER);
+//			exeSystem.getBatchQueues().clear();
+//			exeSystem.addBatchQueue(dedicatedQueue.clone());
+//			exeSystem.addBatchQueue(longQueue.clone());
+//			exeSystem.addBatchQueue(mediumQueue.clone());
+//			exeSystem.addBatchQueue(shortQueue.clone());
+//			exeSystem.setPubliclyAvailable(true);
+//			exeSystem.setType(RemoteSystemType.EXECUTION);
+//			log.debug("Inserting execution system " + exeSystem.getSystemId());
+//			systemDao.persist(exeSystem);
+//		}
+//
+//		publicStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(TEST_STORAGE_SYSTEM_FILE));
+//		publicStorageSystem.setOwner(TEST_OWNER);
+//		publicStorageSystem.setType(RemoteSystemType.STORAGE);
+//		publicStorageSystem.setGlobalDefault(true);
+//		publicStorageSystem.setPubliclyAvailable(true);
+//		log.debug("Inserting public storage system " + publicStorageSystem.getSystemId());
+//	    systemDao.persist(publicStorageSystem);
+//	}
+//
+//	protected void initSoftware() throws Exception {
+//		clearSoftware();
+//
+//		JSONObject json = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
+//		this.software = Software.fromJSON(json, TEST_OWNER);
+//		this.software.setPubliclyAvailable(true);
+//		this.software.setOwner(TEST_OWNER);
+//		this.software.setDefaultQueue(unlimitedQueue.getName());
+//		this.software.setDefaultMaxRunTime(null);
+//		this.software.setDefaultMemoryPerNode(null);
+//		this.software.setDefaultNodes(null);
+//		this.software.setDefaultProcessorsPerNode(null);
+//
+//		int i = 0;
+//		for (RemoteSystem exeSystem: systemDao.getAllExecutionSystems())
+//		{
+//			if (exeSystem.getSystemId().equals(privateExecutionSystem.getSystemId())) continue;
+//
+//			for(BatchQueue q: ((ExecutionSystem)exeSystem).getBatchQueues())
+//			{
+//				Software software = this.software.clone();
+//				software.setExecutionSystem((ExecutionSystem)exeSystem);
+//				software.setName("test-" + exeSystem.getSystemId() + "-" + q.getName() );
+//				software.setDefaultQueue(q.getName());
+//				software.setDefaultMaxRunTime(q.getMaxRequestedTime());
+//				software.setDefaultMemoryPerNode(q.getMaxMemoryPerNode());
+//				software.setDefaultNodes(q.getMaxNodes());
+//				software.setDefaultProcessorsPerNode(q.getMaxProcessorsPerNode());
+//				log.debug("Adding software " + software.getUniqueName());
+//				SoftwareDao.persist(software);
+//				i++;
+//			}
+//		}
+//	}
 
 	public TreeMap<String,List<String>> createJobDistribution(JobStatusType status) 
 	throws Exception {
@@ -178,15 +195,15 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
 		for (String username: testUsernames) {
 			jobDistribution.put(username, new ArrayList<String>());
 		}
-		
-		for (RemoteSystem exeSystem: systemDao.getAllExecutionSystems()) 
+
+		for(Software software: SoftwareDao.getAll())
 		{
-			for(BatchQueue q: ((ExecutionSystem)exeSystem).getBatchQueues()) 
+			for(BatchQueue q: software.getExecutionSystem().getBatchQueues())
 			{
-				int maxQueueJobs = q.getMaxJobs() > 0 ? new Long(q.getMaxJobs()).intValue() : 1000;
-				int maxUserQueueJobs = Math.min(maxQueueJobs, (q.getMaxUserJobs() > 0 ? new Long(q.getMaxUserJobs()).intValue() : 1000));
+				long maxQueueJobs = q.getMaxJobs() > 0 ? q.getMaxJobs() : 1000L;
+				long maxUserQueueJobs = Math.min(maxQueueJobs, (q.getMaxUserJobs() > 0 ? q.getMaxUserJobs() : 1000L));
 				
-				int activeCount = RandomUtils.nextInt(maxQueueJobs);
+				int activeCount = RandomUtils.nextInt((int)Math.min(1000, maxQueueJobs));
 				
 				//int activeUserCount = RandomUtils.nextInt(maxUserQueueJobs);
 				
@@ -203,7 +220,7 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
 					
 					for(int j=0; j<buckets.get(i).size(); j++)
 					{
-						Job job = createJob(status, (ExecutionSystem)exeSystem, q, username);
+						Job job = createJob(status, software, software.getExecutionSystem(), q, username);
 					
 						jobDistribution.get(username).add(job.getUuid());
 					}
@@ -214,184 +231,184 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
 		return jobDistribution;
 	}
 
-	public Job createJob(JobStatusType status, ExecutionSystem exeSystem, BatchQueue queue, String username)
-	throws Exception {
-		ObjectMapper mapper = new ObjectMapper();
-		
-		Job job = new Job();
-		job.setName("test-" + exeSystem.getName() + "_" + queue.getName());
-		job.setOutputPath(exeSystem.getScratchDir() + "/" + username + "job-" + job.getUuid());
-		job.setOwner(username);
-		job.setInternalUsername(null);
-		
-		job.setArchiveOutput(true);
-		job.setArchiveSystem(publicStorageSystem);
-		job.setArchivePath(username + "/archive/test-job-999");
-		
-		job.setSoftwareName("test-" + exeSystem.getName() + "_" + queue.getName());
-		job.setSystem(exeSystem.getSystemId());
-		job.setBatchQueue(queue.getName());
-		job.setMaxRunTime(StringUtils.isEmpty(software.getDefaultMaxRunTime()) ? "00:30:00" : software.getDefaultMaxRunTime());
-		job.setMemoryPerNode((software.getDefaultMemoryPerNode() == null) ? (double)1 : software.getDefaultMemoryPerNode());
-		job.setNodeCount((software.getDefaultNodes() == null) ? (long)1 : software.getDefaultNodes());
-		job.setProcessorsPerNode((software.getDefaultProcessorsPerNode() == null) ? (long)1 : software.getDefaultProcessorsPerNode());
-		
-		ObjectNode inputs = mapper.createObjectNode();
-		for(SoftwareInput swInput: this.software.getInputs()) {
-			inputs.put(swInput.getKey(), swInput.getDefaultValueAsJsonArray());
-		}
-		job.setInputsAsJsonObject(inputs);
-		
-		ObjectNode parameters = mapper.createObjectNode();
-		for(SoftwareParameter swParameter: software.getParameters()) {
-			parameters.put(swParameter.getKey(), swParameter.getDefaultValueAsJsonArray());
-		}
-		job.setParametersAsJsonObject(parameters);
-		int minutesAgoJobWasCreated = RandomUtils.nextInt(360)+1;
-		DateTime created = new DateTime().minusMinutes(minutesAgoJobWasCreated+20);
-		job.setCreated(created.toDate());
-		
-		if (JobStatusType.isExecuting(status) || status == JobStatusType.CLEANING_UP) {
-			job.setLocalJobId("q." + System.currentTimeMillis());
-			job.setSchedulerJobId(job.getUuid());
-			job.setStatus(status, status.getDescription());
-			
-			int minutesAgoJobWasSubmitted = RandomUtils.nextInt(minutesAgoJobWasCreated)+1;
-			int minutesAgoJobWasStarted = minutesAgoJobWasSubmitted + RandomUtils.nextInt(minutesAgoJobWasSubmitted);
-			job.setSubmitTime(created.plusMinutes(minutesAgoJobWasSubmitted).toDate());
-			job.setStartTime(created.plusMinutes(minutesAgoJobWasStarted).toDate());
-			
-			if (status == JobStatusType.CLEANING_UP) {
-			    int minutesAgoJobWasEnded =  minutesAgoJobWasStarted + RandomUtils.nextInt(minutesAgoJobWasStarted);
-			    job.setEndTime(created.plusMinutes(minutesAgoJobWasEnded).toDate());
-			}
-		} else if (JobStatusType.isFinished(status) || JobStatusType.isArchived(status)) {
-			job.setLocalJobId("q." + System.currentTimeMillis());
-			job.setSchedulerJobId(job.getUuid());
-			job.setStatus(status, status.getDescription());
-			
-			int minutesAgoJobWasSubmitted = RandomUtils.nextInt(minutesAgoJobWasCreated)+1;
-			int minutesAgoJobWasStarted = minutesAgoJobWasSubmitted + RandomUtils.nextInt(minutesAgoJobWasSubmitted);
-			int minutesAgoJobWasEnded = minutesAgoJobWasStarted + RandomUtils.nextInt(minutesAgoJobWasStarted);
-			job.setSubmitTime(created.plusMinutes(minutesAgoJobWasSubmitted).toDate());
-			job.setStartTime(created.plusMinutes(minutesAgoJobWasStarted).toDate());
-			job.setEndTime(created.plusMinutes(minutesAgoJobWasEnded).toDate());
-			
-		} else if (status == JobStatusType.STAGING_INPUTS) {
-			
-			int minutesAgoJobStartedStaging = RandomUtils.nextInt(minutesAgoJobWasCreated)+1;
-			DateTime stagingTime = created.plusMinutes(minutesAgoJobStartedStaging);
-			
-			for(SoftwareInput input: this.software.getInputs()) 
-			{
-				for (Iterator<JsonNode> iter = input.getDefaultValueAsJsonArray().iterator(); iter.hasNext();)
-				{
-					String val = iter.next().asText();
-					
-					TransferTask stagingTransferTask = new TransferTask(
-							val, 
-							"agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()), 
-							job.getOwner(), 
-							null, 
-							null);
-					stagingTransferTask.setStatus(TransferStatusType.TRANSFERRING);
-					stagingTransferTask.setCreated(stagingTime.toDate());
-					stagingTransferTask.setLastUpdated(stagingTime.toDate());
-					
-					TransferTaskDao.persist(stagingTransferTask);
-					
-					JobEvent event = new JobEvent(
-							JobStatusType.STAGING_INPUTS, 
-							"Copy in progress", 
-							stagingTransferTask, 
-							job.getOwner());
-					event.setCreated(stagingTime.toDate());
-					
-					job.setStatus(JobStatusType.STAGING_INPUTS, event);
-				}
-			}
-			
-			job.setLastUpdated(stagingTime.toDate());
-			
-		} else if (status == JobStatusType.ARCHIVING) {
-			
-			DateTime stagingTime = created.plusMinutes(5);
-			DateTime stagingEnded = stagingTime.plusMinutes(1);
-			DateTime startTime = stagingEnded.plusMinutes(1);
-			DateTime endTime = startTime.plusMinutes(1);
-			DateTime archiveTime = endTime.plusMinutes(1);
-			
-			for(SoftwareInput input: this.software.getInputs()) 
-			{
-				for (Iterator<JsonNode> iter = input.getDefaultValueAsJsonArray().iterator(); iter.hasNext();)
-				{
-					String val = iter.next().asText();
-					
-					TransferTask stagingTransferTask = new TransferTask(
-							val, 
-							"agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()), 
-							job.getOwner(), 
-							null, 
-							null);
-					
-					stagingTransferTask.setStatus(TransferStatusType.COMPLETED);
-					stagingTransferTask.setCreated(stagingTime.toDate());
-					stagingTransferTask.setStartTime(stagingTime.toDate());
-					stagingTransferTask.setEndTime(stagingEnded.toDate());
-					stagingTransferTask.setLastUpdated(stagingEnded.toDate());
-					
-					TransferTaskDao.persist(stagingTransferTask);
-					
-					JobEvent event = new JobEvent(
-							JobStatusType.STAGING_INPUTS, 
-							"Staging completed", 
-							stagingTransferTask, 
-							job.getOwner());
-					event.setCreated(stagingTime.toDate());
-					
-					job.setStatus(JobStatusType.STAGING_INPUTS, event);
-				}
-			}
-			
-			job.setStatus(JobStatusType.STAGED, JobStatusType.STAGED.getDescription());
-			job.setLocalJobId("q." + System.currentTimeMillis());
-			job.setSchedulerJobId(job.getUuid());
-			job.setStatus(status, status.getDescription());
-			
-			job.setSubmitTime(stagingEnded.toDate());
-			job.setStartTime(startTime.toDate());
-			job.setEndTime(endTime.toDate());
-			
-			TransferTask archivingTransferTask = new TransferTask(
-					"agave://" + job.getSystem() + "/" + job.getWorkPath(),
-					job.getArchiveCanonicalUrl(), 
-					job.getOwner(), 
-					null, 
-					null);
-			
-			archivingTransferTask.setCreated(archiveTime.toDate());
-			archivingTransferTask.setStartTime(archiveTime.toDate());
-			TransferTaskDao.persist(archivingTransferTask);
-			
-			JobEvent event = new JobEvent(
-					JobStatusType.ARCHIVING ,
-					JobStatusType.ARCHIVING.getDescription(), 
-					archivingTransferTask, 
-					job.getOwner());
-			event.setCreated(archiveTime.toDate());
-			job.setStatus(status, event);
-			
-			job.setLastUpdated(archiveTime.toDate());
-		}
-		else {
-		    job.setStatus(status, status.getDescription());
-		}
-		
-		log.debug("Adding job " + job.getId() + " - " + job.getUuid());
-		JobDao.persist(job, false);
-		
-		return job;
-	}
+//	public Job createJob(JobStatusType status, ExecutionSystem exeSystem, BatchQueue queue, String username)
+//	throws Exception {
+//		ObjectMapper mapper = new ObjectMapper();
+//
+//		Job job = new Job();
+//		job.setName("test-" + exeSystem.getName() + "_" + queue.getName());
+//		job.setOutputPath(exeSystem.getScratchDir() + "/" + username + "job-" + job.getUuid());
+//		job.setOwner(username);
+//		job.setInternalUsername(null);
+//
+//		job.setArchiveOutput(true);
+//		job.setArchiveSystem(publicStorageSystem);
+//		job.setArchivePath(username + "/archive/test-job-999");
+//
+//		job.setSoftwareName("test-" + exeSystem.getName() + "_" + queue.getName());
+//		job.setSystem(exeSystem.getSystemId());
+//		job.setBatchQueue(queue.getName());
+//		job.setMaxRunTime(StringUtils.isEmpty(software.getDefaultMaxRunTime()) ? "00:30:00" : software.getDefaultMaxRunTime());
+//		job.setMemoryPerNode((software.getDefaultMemoryPerNode() == null) ? (double)1 : software.getDefaultMemoryPerNode());
+//		job.setNodeCount((software.getDefaultNodes() == null) ? (long)1 : software.getDefaultNodes());
+//		job.setProcessorsPerNode((software.getDefaultProcessorsPerNode() == null) ? (long)1 : software.getDefaultProcessorsPerNode());
+//
+//		ObjectNode inputs = mapper.createObjectNode();
+//		for(SoftwareInput swInput: this.software.getInputs()) {
+//			inputs.put(swInput.getKey(), swInput.getDefaultValueAsJsonArray());
+//		}
+//		job.setInputsAsJsonObject(inputs);
+//
+//		ObjectNode parameters = mapper.createObjectNode();
+//		for(SoftwareParameter swParameter: software.getParameters()) {
+//			parameters.set(swParameter.getKey(), swParameter.getDefaultValueAsJsonArray());
+//		}
+//		job.setParametersAsJsonObject(parameters);
+//		int minutesAgoJobWasCreated = RandomUtils.nextInt(360)+1;
+//		DateTime created = new DateTime().minusMinutes(minutesAgoJobWasCreated+20);
+//		job.setCreated(created.toDate());
+//
+//		if (JobStatusType.isExecuting(status) || status == JobStatusType.CLEANING_UP) {
+//			job.setLocalJobId("q." + System.currentTimeMillis());
+//			job.setSchedulerJobId(job.getUuid());
+//			job.setStatus(status, status.getDescription());
+//
+//			int minutesAgoJobWasSubmitted = RandomUtils.nextInt(minutesAgoJobWasCreated)+1;
+//			int minutesAgoJobWasStarted = minutesAgoJobWasSubmitted + RandomUtils.nextInt(minutesAgoJobWasSubmitted);
+//			job.setSubmitTime(created.plusMinutes(minutesAgoJobWasSubmitted).toDate());
+//			job.setStartTime(created.plusMinutes(minutesAgoJobWasStarted).toDate());
+//
+//			if (status == JobStatusType.CLEANING_UP) {
+//			    int minutesAgoJobWasEnded =  minutesAgoJobWasStarted + RandomUtils.nextInt(minutesAgoJobWasStarted);
+//			    job.setEndTime(created.plusMinutes(minutesAgoJobWasEnded).toDate());
+//			}
+//		} else if (JobStatusType.isFinished(status) || JobStatusType.isArchived(status)) {
+//			job.setLocalJobId("q." + System.currentTimeMillis());
+//			job.setSchedulerJobId(job.getUuid());
+//			job.setStatus(status, status.getDescription());
+//
+//			int minutesAgoJobWasSubmitted = RandomUtils.nextInt(minutesAgoJobWasCreated)+1;
+//			int minutesAgoJobWasStarted = minutesAgoJobWasSubmitted + RandomUtils.nextInt(minutesAgoJobWasSubmitted);
+//			int minutesAgoJobWasEnded = minutesAgoJobWasStarted + RandomUtils.nextInt(minutesAgoJobWasStarted);
+//			job.setSubmitTime(created.plusMinutes(minutesAgoJobWasSubmitted).toDate());
+//			job.setStartTime(created.plusMinutes(minutesAgoJobWasStarted).toDate());
+//			job.setEndTime(created.plusMinutes(minutesAgoJobWasEnded).toDate());
+//
+//		} else if (status == JobStatusType.STAGING_INPUTS) {
+//
+//			int minutesAgoJobStartedStaging = RandomUtils.nextInt(minutesAgoJobWasCreated)+1;
+//			DateTime stagingTime = created.plusMinutes(minutesAgoJobStartedStaging);
+//
+//			for(SoftwareInput input: this.software.getInputs())
+//			{
+//				for (Iterator<JsonNode> iter = input.getDefaultValueAsJsonArray().iterator(); iter.hasNext();)
+//				{
+//					String val = iter.next().asText();
+//
+//					TransferTask stagingTransferTask = new TransferTask(
+//							val,
+//							"agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()),
+//							job.getOwner(),
+//							null,
+//							null);
+//					stagingTransferTask.setStatus(TransferStatusType.TRANSFERRING);
+//					stagingTransferTask.setCreated(stagingTime.toDate());
+//					stagingTransferTask.setLastUpdated(stagingTime.toDate());
+//
+//					TransferTaskDao.persist(stagingTransferTask);
+//
+//					JobEvent event = new JobEvent(
+//							JobStatusType.STAGING_INPUTS,
+//							"Copy in progress",
+//							stagingTransferTask,
+//							job.getOwner());
+//					event.setCreated(stagingTime.toDate());
+//
+//					job.setStatus(JobStatusType.STAGING_INPUTS, event);
+//				}
+//			}
+//
+//			job.setLastUpdated(stagingTime.toDate());
+//
+//		} else if (status == JobStatusType.ARCHIVING) {
+//
+//			DateTime stagingTime = created.plusMinutes(5);
+//			DateTime stagingEnded = stagingTime.plusMinutes(1);
+//			DateTime startTime = stagingEnded.plusMinutes(1);
+//			DateTime endTime = startTime.plusMinutes(1);
+//			DateTime archiveTime = endTime.plusMinutes(1);
+//
+//			for(SoftwareInput input: this.software.getInputs())
+//			{
+//				for (Iterator<JsonNode> iter = input.getDefaultValueAsJsonArray().iterator(); iter.hasNext();)
+//				{
+//					String val = iter.next().asText();
+//
+//					TransferTask stagingTransferTask = new TransferTask(
+//							val,
+//							"agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()),
+//							job.getOwner(),
+//							null,
+//							null);
+//
+//					stagingTransferTask.setStatus(TransferStatusType.COMPLETED);
+//					stagingTransferTask.setCreated(stagingTime.toDate());
+//					stagingTransferTask.setStartTime(stagingTime.toDate());
+//					stagingTransferTask.setEndTime(stagingEnded.toDate());
+//					stagingTransferTask.setLastUpdated(stagingEnded.toDate());
+//
+//					TransferTaskDao.persist(stagingTransferTask);
+//
+//					JobEvent event = new JobEvent(
+//							JobStatusType.STAGING_INPUTS,
+//							"Staging completed",
+//							stagingTransferTask,
+//							job.getOwner());
+//					event.setCreated(stagingTime.toDate());
+//
+//					job.setStatus(JobStatusType.STAGING_INPUTS, event);
+//				}
+//			}
+//
+//			job.setStatus(JobStatusType.STAGED, JobStatusType.STAGED.getDescription());
+//			job.setLocalJobId("q." + System.currentTimeMillis());
+//			job.setSchedulerJobId(job.getUuid());
+//			job.setStatus(status, status.getDescription());
+//
+//			job.setSubmitTime(stagingEnded.toDate());
+//			job.setStartTime(startTime.toDate());
+//			job.setEndTime(endTime.toDate());
+//
+//			TransferTask archivingTransferTask = new TransferTask(
+//					"agave://" + job.getSystem() + "/" + job.getWorkPath(),
+//					job.getArchiveCanonicalUrl(),
+//					job.getOwner(),
+//					null,
+//					null);
+//
+//			archivingTransferTask.setCreated(archiveTime.toDate());
+//			archivingTransferTask.setStartTime(archiveTime.toDate());
+//			TransferTaskDao.persist(archivingTransferTask);
+//
+//			JobEvent event = new JobEvent(
+//					JobStatusType.ARCHIVING ,
+//					JobStatusType.ARCHIVING.getDescription(),
+//					archivingTransferTask,
+//					job.getOwner());
+//			event.setCreated(archiveTime.toDate());
+//			job.setStatus(status, event);
+//
+//			job.setLastUpdated(archiveTime.toDate());
+//		}
+//		else {
+//		    job.setStatus(status, status.getDescription());
+//		}
+//
+//		log.debug("Adding job " + job.getId() + " - " + job.getUuid());
+//		JobDao.persist(job, false);
+//
+//		return job;
+//	}
 
 	/**
 	 * Creates a distribution of jobs uniformly spread across all users.
@@ -412,18 +429,15 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
 		
 		// generates a list of buckets with the task indices arranged in a list within each bucket
 		List<List<Integer>> buckets = TaskDistributor.getDistribution(weights, totalJobs);
-		
+
+		Software software = createSoftware();
 		for (int i=0;i<TEST_USER_COUNT; i++)
 		{
 			String username = "user-"+i;
 			
 			for(int j=0; j<buckets.get(i).size(); j++)
 			{
-				Job job = createJob(status, 
-									software.getExecutionSystem(), 
-									software.getExecutionSystem().getQueue(software.getDefaultQueue()), 
-									username);
-			
+				Job job = createJob(status, software);
 				jobDistribution.get(username).add(job.getUuid());
 			}
 		}
@@ -459,9 +473,8 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
                 
                 for(int j=0; j<buckets.get(i).size(); j++)
                 {   
-                    Job job = createJob(status, 
-                                    software.getExecutionSystem(), 
-                                    software.getExecutionSystem().getQueue(software.getDefaultQueue()), 
+                    Job job = createJob(status, software, software.getExecutionSystem(),
+                                    software.getExecutionSystem().getQueue(software.getDefaultQueue()),
                                     username);
             
                     jobDistribution.get(username).add(job.getUuid());
@@ -487,6 +500,8 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
 			jobDistribution.put(username, new ArrayList<String>());
 		}
 
+		Software software = createSoftware();
+
 		// generates a list of buckets with the task indices arranged in a list
 		// within each bucket
 		for (int i = 0; i < TEST_USER_COUNT; i++) {
@@ -495,6 +510,7 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
 			for (int j = 0; j < totalJobs / TEST_USER_COUNT; j++) {
 				Job job = createJob(
 						status,
+						software,
 						software.getExecutionSystem(),
 						software.getExecutionSystem().getQueue(
 								software.getDefaultQueue()), username);

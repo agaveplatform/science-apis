@@ -1,84 +1,87 @@
 <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+         xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.iplantc.agave</groupId>
-		<artifactId>profiles</artifactId>
-		<version>2.1.11</version>
-	</parent>
-	<artifactId>profiles-core</artifactId>
-	<name>iPlant Agave API Profile ServiceCore</name>
-	<description>Core classes for the Agave Profile Services</description>
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.agaveplatform</groupId>
+        <artifactId>profiles</artifactId>
+        <version>2.2.27</version>
+    </parent>
+    <artifactId>profiles-core</artifactId>
+    <name>Agave Platform Profile Service Core</name>
+    <description>Core classes for the Agave Profile Services</description>
+    <packaging>jar</packaging>
 
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-profiles.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-profiles.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-profiles</url>
-	</scm>
+    <properties>
+        <force.check.update>false</force.check.update>
+        <main.basedir>${project.basedir}/../../</main.basedir>
+    </properties>
 
-	<properties>
-		<force.check.update>false</force.check.update>
-	</properties>
+    <build>
+        <resources>
+            <resource>
+                <filtering>true</filtering>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
+        <testResources>
+            <testResource>
+                <filtering>true</filtering>
+                <directory>src/test/resources</directory>
+            </testResource>
+        </testResources>
+        <plugins>
+            <plugin>
+                <groupId>com.dkanejs.maven.plugins</groupId>
+                <artifactId>docker-compose-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.agaveplatform.ops</groupId>
+                <artifactId>await-maven-plugin</artifactId>
+            </plugin>
 
-	<build>
-		<resources>
-			<resource>
-				<filtering>true</filtering>
-				<directory>src/main/resources</directory>
-			</resource>
-		</resources>
-		<testResources>
-			<testResource>
-				<filtering>true</filtering>
-				<directory>src/test/resources</directory>
-			</testResource>
-		</testResources>
-	</build>
+        </plugins>
+    </build>
 
-	<dependencies>
-		<dependency>
-			<groupId>org.json</groupId>
-			<artifactId>json</artifactId>
-			<version>${json.version}</version>
-		</dependency>
-		<!-- <dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>${slf4j-api.version}</version>
-		</dependency> -->
-		<!-- <dependency>
-			<groupId>org.hibernate</groupId>
-			<artifactId>hibernate-validator-annotation-processor</artifactId>
-			<version>${hibernate-validator-annotation-processor.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.hibernate</groupId>
-			<artifactId>hibernate-validator</artifactId>
-			<version>${hibernate-validator.PROFILES.version}</version>
-		</dependency> -->
-		<dependency>
-			<groupId>javax.el</groupId>
-			<artifactId>el-api</artifactId>
-			<version>${el-api.version}</version>
-			<scope>provided</scope>
-		</dependency>
+    <dependencies>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>${json.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.el</groupId>
+            <artifactId>el-api</artifactId>
+            <version>${el-api.version}</version>
+            <scope>provided</scope>
+        </dependency>
 
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>auth-core</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>notifications-core</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>${junit.version}</version>
-			<scope>compile</scope>
-		</dependency>
-	</dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>notifications-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.unboundid.product.scim2</groupId>
+            <artifactId>scim2-sdk-client</artifactId>
+            <version>2.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.ws.rs</groupId>
+            <artifactId>javax.ws.rs-api</artifactId>
+            <version>2.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax.xml.bind</groupId>
+            <artifactId>jaxb-api</artifactId>
+            <version>${jaxb.version}</version>
+        </dependency>
+    </dependencies>
 </project>

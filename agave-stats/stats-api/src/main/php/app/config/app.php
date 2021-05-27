@@ -93,7 +93,7 @@ return array(
 
 	'key' => 'F4Glk03IlvGWAMik7GuQps9ilTbIlf31',
 
-  	'cipher' => MCRYPT_RIJNDAEL_128,
+  	'cipher' => 'AES-256-CBC',
 
 	/*
 	|--------------------------------------------------------------------------

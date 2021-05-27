@@ -1,20 +1,10 @@
 package org.iplantc.service.transfer.ftp;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.FileUtils;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.transfer.AbstractRemoteDataClientTest;
 import org.iplantc.service.transfer.BaseTransferTestCase;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -26,7 +16,9 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-@Test(groups= {"gridftp","performance","broken"})
+import java.io.*;
+
+@Test(enabled = false, groups= {"ftp","performance","broken"})
 public class FTPLoadTest extends BaseTransferTestCase 
 {
 	private static final Logger log = Logger.getLogger(FTPLoadTest.class);
@@ -36,7 +28,7 @@ public class FTPLoadTest extends BaseTransferTestCase
     	super.beforeClass();
     	
     	JSONObject json = getSystemJson();
-    	system = (StorageSystem)StorageSystem.fromJSON(json);
+    	system = StorageSystem.fromJSON(json);
     	system.setOwner(SYSTEM_USER);
     	system.getStorageConfig().setHomeDir(system.getStorageConfig().getHomeDir() + "/agave-data-unittests4");
         storageConfig = system.getStorageConfig();

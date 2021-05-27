@@ -8,7 +8,7 @@ import org.quartz.UnableToInterruptJobException;
 
 public interface WorkerWatch<T extends QueueTask> extends InterruptableJob {
 
-    public abstract void doExecute() throws JobExecutionException;
+    void doExecute() throws JobExecutionException;
     
     /**
      * Selects the next available job for processing by a 
@@ -17,33 +17,33 @@ public interface WorkerWatch<T extends QueueTask> extends InterruptableJob {
      * 
      * @return
      */
-    public abstract Long selectNextAvailableQueueTask() throws TaskException ;
+    Long selectNextAvailableQueueTask() throws TaskException ;
 
-    public abstract T getQueueTask();
+    T getQueueTask();
 
-    public abstract void setQueueTask(T queueTask);
+    void setQueueTask(T queueTask);
 
     /**
      * @return the stopped
      */
-    public abstract boolean isStopped();
+    boolean isStopped();
 
     /**
-     * @param stopped the stopped to set
+     * @param killed the stopped to set
      * @throws UnableToInterruptJobException 
      */
-    public abstract void setStopped(boolean killed) throws UnableToInterruptJobException;
+    void setStopped(boolean killed) throws UnableToInterruptJobException;
 
     /**
      * @return true of the task has completed, false otherwise
      */
-    public abstract boolean isTaskComplete();
+    boolean isTaskComplete();
 
     /**
-     * @param taskComplete the taskComplete to set
+     * @param complete the taskComplete to set
      */
-    public abstract void setTaskComplete(boolean complete);
+    void setTaskComplete(boolean complete);
 
-    public abstract void setQueueTaskId(Long queueTaskId);
+    void setQueueTaskId(Long queueTaskId);
 
 }

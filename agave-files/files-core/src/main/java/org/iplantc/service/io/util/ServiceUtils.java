@@ -3,37 +3,40 @@
  */
 package org.iplantc.service.io.util;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.net.URL;
-import java.net.UnknownHostException;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import com.fasterxml.jackson.core.TreeNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.TextNode;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.commons.validator.routines.UrlValidator;
+import org.apache.log4j.Logger;
+import org.iplantc.service.common.exceptions.AgaveNamespaceException;
+import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.common.uri.UrlPathEscaper;
+import org.iplantc.service.io.model.LogicalFile;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
+import org.iplantc.service.systems.exceptions.SystemUnavailableException;
+import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.enumerations.SystemStatusType;
+import org.iplantc.service.systems.util.ApiUriUtil;
+import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.exceptions.AuthenticationException;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.TextNode;
+import java.io.*;
+import java.net.*;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 /**
@@ -41,6 +44,8 @@ import com.fasterxml.jackson.databind.node.TextNode;
  *
  */
 public class ServiceUtils {
+	
+	private static final Logger log = Logger.getLogger(ServiceUtils.class);
 
 	@SuppressWarnings("unused")
 	public static String exec(String command) throws IOException {
@@ -103,19 +108,19 @@ public class ServiceUtils {
 	 */
 	public static boolean isAlphaNumeric(String s) {
 		if (!isValid(s)) return false;
-	    boolean valid = true;
-	    if (s == null || 
-	            s.indexOf(":") > -1 ||
-	            s.indexOf(";") > -1 || 
-	            s.indexOf(",") > -1 || 
-	            s.indexOf(" ") > -1 ||
-	            //s.indexOf("#") > -1 ||
-	            s.indexOf("\\") > -1 /*||
+	    boolean valid = s != null &&
+                s.indexOf(":") <= -1 &&
+                s.indexOf(";") <= -1 &&
+                s.indexOf(",") <= -1 &&
+                s.indexOf(" ") <= -1 &&
+                //s.indexOf("#") > -1 ||
+                s.indexOf("\\") <= -1;
+	    /*||
 	            s.indexOf("/") > -1 ||
 	            s.indexOf("%") > -1 ||
 	            s.indexOf("$") > -1 ||
 	            s.indexOf("@") > -1 ||
-	            s.indexOf("!") > -1 || 
+	            s.indexOf("!") > -1 ||
 	            s.indexOf("^") > -1 ||
 	            s.indexOf("&") > -1 ||
 	            s.indexOf("*") > -1 ||
@@ -134,11 +139,9 @@ public class ServiceUtils {
 	            s.indexOf("<") > -1 ||
 	            s.indexOf(">") > -1 ||
 	            //s.indexOf("=") > -1 ||
-	            s.indexOf("+") > -1*/) {
-	        valid = false;
-	    }
-	    
-	    return valid;
+	            s.indexOf("+") > -1*/
+
+        return valid;
 	}
 	
 	public static boolean isValidEmailAddress(String value) {
@@ -237,23 +240,20 @@ public class ServiceUtils {
 		} else {
 			try {
 				URL url = new URL(sCallback);
-				if (!url.getProtocol().equals("http") && !url.getProtocol().equals("https") ) {
-					return false;
-				}	
-				return true;
-			} catch (Exception e) {
+                return url.getProtocol().equals("http") || url.getProtocol().equals("https");
+            } catch (Exception e) {
 				return false;
 			}
 		}
 	}
 	
-	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
+	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
 		return node != null && (node instanceof TextNode) && ((TextNode)node).asText() != null;
 	}
 	
-	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
+	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
 		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
@@ -285,9 +285,10 @@ public class ServiceUtils {
 	{	
 		if (TenancyHelper.getCurrentEndUser().equals(username) && TenancyHelper.isTenantAdmin()) return true;
 		
-		InputStream stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");
+		InputStream stream = null;
 		try
 		{
+			stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");
 			String trustedUserList = IOUtils.toString(stream, "UTF-8");
 			if (isValid(trustedUserList)) {
 				for(String user: trustedUserList.split(",")) {
@@ -302,8 +303,11 @@ public class ServiceUtils {
 		}
 		catch (IOException e)
 		{
-			 //log.error("Failed to locate trusted user file");
+			log.warn("Failed to load trusted user file", e);
 			return false;
+		}
+		finally {
+			if (stream != null) try {stream.close();} catch (Exception e){}
 		}
 	}
 	
@@ -419,4 +423,125 @@ public class ServiceUtils {
 			return getLocalIP();
 		}
 	}
+	
+    /**
+     * Returns an authenticated {@link RemoteDataClient} for the given {@link LogicalFile}. 
+     * Exceptions will be thrown rather than null returned if the {@link RemoteSystem} on 
+     * which the data resides was not available.
+     * @param logicalFile
+     * @return
+     * @throws AuthenticationException
+     * @throws SystemUnavailableException
+     * @throws SystemUnknownException
+     * @throws RemoteDataException
+     */
+    public static RemoteDataClient getDestinationRemoteDataClient(LogicalFile logicalFile) 
+    throws AuthenticationException, SystemUnavailableException, SystemUnknownException, 
+            RemoteDataException
+    {
+        RemoteSystem system = null;
+        RemoteDataClient remoteDataClient = null;
+        
+        system = logicalFile.getSystem();
+        
+        if (system == null) 
+        {
+            throw new SystemUnknownException("No destination system was found for user " 
+                    + logicalFile + " satisfying the URI.");
+        } 
+        else if (!system.isAvailable())
+        {
+            throw new SystemUnavailableException("The destination system is currently unavailable.");
+        } 
+        else if ( system.getStatus() != SystemStatusType.UP)
+        {
+            throw new SystemUnavailableException(system.getStatus().getExpression() );
+        }
+        else {
+            try {
+                remoteDataClient = system.getRemoteDataClient(logicalFile.getInternalUsername());
+                remoteDataClient.authenticate();
+            } 
+            catch (IOException e) {
+                throw new RemoteDataException("Failed to connect to the remote destination system", e);
+            }
+            catch (RemoteCredentialException e) {
+                throw new AuthenticationException("Failed to authenticate to remote destination system ", e);
+            } 
+        }
+        
+        return remoteDataClient;
+    }
+    
+    /** This method is called from both synchronous REST methods and asynchronous quartz jobs so that the 
+     * same path transformation can be applied uniformly.  This method is part of a refactorization that
+     * moves this code from StagingJob so that is can be accessed in the synchronous part of a task 
+     * triggered by a REST call.  Ideally, the asynchronous post-processing of a REST call should never
+     * alter a logical file since the synchronous response already contains links that the user is expecting.   
+     * 
+     * @param destClient the client proxy to a destination system where one or more files will be copied
+     * @param file an existing logical file whose paths may need to be adjusted
+     * @param userName the logged on user that triggered the work
+     * @return
+     * @throws URISyntaxException
+     * @throws SystemUnknownException
+     * @throws PermissionException
+     * @throws AgaveNamespaceException
+     * @throws FileNotFoundException
+     * @throws IOException
+     * @throws RemoteDataException
+     */
+	public static String getAdjustedDestinationPath(RemoteDataClient destClient, LogicalFile file, String userName)
+	 throws URISyntaxException, SystemUnknownException, PermissionException, AgaveNamespaceException, 
+	        FileNotFoundException, IOException, RemoteDataException
+	{
+	    // Initialize output to the file's current path.
+	    String adjustedPath = file.getPath();
+	    
+	    // Create a uri from the logical file's source field.
+	    URI sourceUri = new URI(file.getSourceUri());
+	    
+	    // Calculate the absolute source path.
+	    String srcAbsolutePath = null;
+        if (ApiUriUtil.isInternalURI(sourceUri))
+            srcAbsolutePath = UrlPathEscaper.decode(ApiUriUtil.getAbsolutePath(userName, sourceUri));
+          else 
+            srcAbsolutePath = StringUtils.removeEnd(sourceUri.getPath(), "/");
+        
+        // Adjust the destination path by appending the source directory name
+
+        if (destClient.doesExist(file.getAgaveRelativePathFromAbsolutePath())) 
+        {
+            if (destClient.isDirectory(file.getAgaveRelativePathFromAbsolutePath())) 
+            {
+                if (StringUtils.isEmpty(file.getAgaveRelativePathFromAbsolutePath())) {
+                    adjustedPath = srcAbsolutePath;
+                } else if (StringUtils.endsWith(file.getAgaveRelativePathFromAbsolutePath(), "/")) {
+                    adjustedPath = destClient.resolvePath(file.getAgaveRelativePathFromAbsolutePath() + 
+                                                           FilenameUtils.getName(srcAbsolutePath));
+                } else {
+                    adjustedPath = destClient.resolvePath(file.getAgaveRelativePathFromAbsolutePath() + 
+                                                           File.separator + FilenameUtils.getName(srcAbsolutePath));
+                }
+            }
+        }
+        else if (!destClient.doesExist(file.getAgaveRelativePathFromAbsolutePath() + (StringUtils.isEmpty(file.getAgaveRelativePathFromAbsolutePath()) ? ".." : "/..")))
+        {
+            throw new FileNotFoundException("Destination directory not found.");
+        }
+        
+	    return adjustedPath;
+	}
+
+	/*
+	 * This function generates a MD5 hash from a string, takes the first 8 bytes out of it and generates a signed integer value out of the byte array 
+	 * assuming the array to be in BigEndian formatted.
+	 */
+	
+	public static long getMD5LongHash(String str) throws NoSuchAlgorithmException {		
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			md.update(str.getBytes());
+			return ByteBuffer.wrap(Arrays.copyOf(md.digest(), 8)).asLongBuffer().get();
+	}
+
 }

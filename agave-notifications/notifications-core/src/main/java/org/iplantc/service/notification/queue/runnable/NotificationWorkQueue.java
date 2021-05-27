@@ -3,12 +3,6 @@
  */
 package org.iplantc.service.notification.queue.runnable;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
-
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.JndiSetup;
 import org.iplantc.service.notification.Settings;
@@ -16,6 +10,12 @@ import org.iplantc.service.notification.exceptions.NotificationException;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.impl.StdSchedulerFactory;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 
 /**
  * Entrypoint for starting standalone work queue to process 
@@ -185,7 +185,7 @@ public class NotificationWorkQueue {
 	        return properties;
 	    } 
 	    finally {
-	        try { in.close(); } catch (Exception e) {}
+	        if (in != null) try { in.close(); } catch (Exception e) {}
 	    }
 	}
 	

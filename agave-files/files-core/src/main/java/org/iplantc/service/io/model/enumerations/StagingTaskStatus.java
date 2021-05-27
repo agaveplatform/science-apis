@@ -12,8 +12,7 @@ public enum StagingTaskStatus
 	STAGING_QUEUED("File/folder queued for staging"), 
 	STAGING("Staging file/folder"), 
 	STAGING_FAILED("Staging failed"), 
-	STAGING_COMPLETED("Staging completed successfully"), 
-	PREPROCESSING("Prepairing file for processing");
+	STAGING_COMPLETED("Staging completed successfully");
 	
 	private final String description;
 	

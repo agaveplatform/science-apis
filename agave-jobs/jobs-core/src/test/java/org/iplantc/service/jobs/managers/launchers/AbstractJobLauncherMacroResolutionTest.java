@@ -1,8 +1,24 @@
 package org.iplantc.service.jobs.managers.launchers;
 
-import static org.iplantc.service.systems.model.enumerations.StartupScriptSystemVariableType.*;
-import static org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType.*;
-import static org.mockito.Mockito.when;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.common.util.Slug;
+import org.iplantc.service.common.uuid.AgaveUUID;
+import org.iplantc.service.common.uuid.UUIDType;
+import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
+import org.iplantc.service.jobs.model.JSONTestDataUtil;
+import org.iplantc.service.jobs.model.Job;
+import org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType;
+import org.iplantc.service.jobs.submission.AbstractJobSubmissionTest;
+import org.iplantc.service.systems.model.ExecutionSystem;
+import org.iplantc.service.systems.model.enumerations.StartupScriptSystemVariableType;
+import org.json.JSONObject;
+import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,25 +27,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.util.Slug;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.jobs.exceptions.JobException;
-import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.jobs.model.JSONTestDataUtil;
-import org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType;
-import org.iplantc.service.jobs.submission.AbstractJobSubmissionTest;
-import org.iplantc.service.systems.model.enumerations.StartupScriptSystemVariableType;
-import org.json.JSONObject;
-import org.mockito.Mockito;
-import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import static org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType.*;
+import static org.iplantc.service.systems.model.enumerations.StartupScriptSystemVariableType.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJobSubmissionTest
 {
@@ -118,14 +119,13 @@ public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJob
 	}
 	
 	@Test(dataProvider="resolveForSystemProvider", enabled=true)
-	public void resolveForSystemProvider(StartupScriptSystemVariableType variable, String startupScriptValue, String expectedValue) {
+	public void resolveForSystemProvider(StartupScriptSystemVariableType variable, String startupScriptValue, String expectedValue) throws JobMacroResolutionException {
 		
-		Job job = Mockito.mock(Job.class);
+		Job job = mock(Job.class);
 		when(job.getUuid()).thenReturn(new AgaveUUID(UUIDType.JOB).toString());
 		when(job.getTenantId()).thenReturn(TenancyHelper.getCurrentTenantId());
 		when(job.getUpdateToken()).thenReturn(UUID.randomUUID().toString());
-		CLILauncher launcher = new CLILauncher(job);
-		launcher.setExecutionSystem(executionSystem);
+		CLILauncher launcher = new CLILauncher(job, null, executionSystem);
 		String resolvedStartupScript = launcher.resolveStartupScriptMacros(startupScriptValue);
 		
 		Assert.assertEquals(resolvedStartupScript, expectedValue);
@@ -153,13 +153,14 @@ public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJob
 	}
 	
 	@Test(dataProvider="resolveForSystemJobAttributeProvider", dependsOnMethods={"resolveForSystemProvider"}, enabled=true)
-	public void resolveForSystemJobAttribute(StartupScriptJobVariableType variable, String startupScriptValue, Job job, String expectedValue) {
+	public void resolveForSystemJobAttribute(StartupScriptJobVariableType variable, String startupScriptValue, Job job, String expectedValue) throws JobMacroResolutionException {
 		
-		CLILauncher clilLauncher = new CLILauncher(job);
-		CLILauncher launcher = Mockito.spy(clilLauncher);
-		launcher.setExecutionSystem(executionSystem);
-		when(launcher.resolveStartupScriptMacros(startupScriptValue)).thenCallRealMethod();
-		String resolvedStartupScript = launcher.resolveStartupScriptMacros(startupScriptValue);
+		CLILauncher cliLauncher = mock(CLILauncher.class);
+		when(cliLauncher.getJob()).thenReturn(job);
+		when(cliLauncher.getExecutionSystem()).thenReturn(executionSystem);
+		when(cliLauncher.resolveStartupScriptMacros(startupScriptValue)).thenCallRealMethod();
+
+		String resolvedStartupScript = cliLauncher.resolveStartupScriptMacros(startupScriptValue);
 		
 		Assert.assertEquals(resolvedStartupScript, expectedValue);
 	}
@@ -179,13 +180,13 @@ public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJob
 	@Test(dataProvider="resolveRuntimeNotificationMacrosWithoutEventAndDataProvider", dependsOnMethods={"resolveForSystemJobAttribute"})
 	public void resolveRuntimeNotificationMacrosWithoutEventAndData(String wrapperTemplate, String expectedEvent) {
 		
-		Job job = Mockito.mock(Job.class);
+		Job job = mock(Job.class);
 		when(job.getUuid()).thenReturn(new AgaveUUID(UUIDType.JOB).toString());
 		when(job.getTenantId()).thenReturn(TenancyHelper.getCurrentTenantId());
 		when(job.getUpdateToken()).thenReturn(UUID.randomUUID().toString());
-		CLILauncher launcher = new CLILauncher(job);
+
+		CLILauncher launcher = new CLILauncher(job, null, null);
 		String resolvedWrapperCode = launcher.resolveRuntimeNotificationMacros(wrapperTemplate);
-		System.out.println(resolvedWrapperCode);
 		Assert.assertTrue(resolvedWrapperCode.contains("\"CUSTOM_USER_JOB_EVENT_NAME\": \""+expectedEvent+"\""), "Empty user event name should write default custom user event name");
 	}
 	
@@ -208,11 +209,12 @@ public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJob
 	@Test(dataProvider="resolveRuntimeNotificationMacrosWithoutEventProvider", dependsOnMethods={"resolveRuntimeNotificationMacrosWithoutEventAndData"})
 	public void resolveRuntimeNotificationMacrosWithoutEvent(String wrapperTemplate, String expectedEvent, List<String> expectedValues) {
 		
-		Job job = Mockito.mock(Job.class);
+		Job job = mock(Job.class);
 		when(job.getUuid()).thenReturn(new AgaveUUID(UUIDType.JOB).toString());
 		when(job.getTenantId()).thenReturn(TenancyHelper.getCurrentTenantId());
 		when(job.getUpdateToken()).thenReturn(UUID.randomUUID().toString());
-		CLILauncher launcher = new CLILauncher(job);
+		CLILauncher launcher = new CLILauncher(job, null, null);
+
 		String resolvedWrapperCode = launcher.resolveRuntimeNotificationMacros(wrapperTemplate);
 //		System.out.println(resolvedWrapperCode);
 		for (String uniqueName: new HashSet<String>(expectedValues)) {
@@ -248,13 +250,12 @@ public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJob
 	@Test(dataProvider="resolveRuntimeNotificationMacrosWithoutDataProvider", dependsOnMethods={"resolveRuntimeNotificationMacrosWithoutEvent"})
 	public void resolveRuntimeNotificationMacrosWithoutData(String wrapperTemplate, String expectedEvent) {
 		
-		Job job = Mockito.mock(Job.class);
+		Job job = mock(Job.class);
 		when(job.getUuid()).thenReturn(new AgaveUUID(UUIDType.JOB).toString());
 		when(job.getTenantId()).thenReturn(TenancyHelper.getCurrentTenantId());
 		when(job.getUpdateToken()).thenReturn(UUID.randomUUID().toString());
-		CLILauncher launcher = new CLILauncher(job);
+		CLILauncher launcher = new CLILauncher(job, null, null);
 		String resolvedWrapperCode = launcher.resolveRuntimeNotificationMacros(wrapperTemplate);
-		System.out.println(resolvedWrapperCode);
 		Assert.assertTrue(resolvedWrapperCode.contains("\"CUSTOM_USER_JOB_EVENT_NAME\": \""+expectedEvent+"\""), "Empty user event name should write default custom user event name");
 	}
 	
@@ -283,13 +284,13 @@ public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJob
 	@Test(dataProvider="resolveRuntimeNotificationMacrosProvider", dependsOnMethods={"resolveRuntimeNotificationMacrosWithoutData"})
 	public void resolveRuntimeNotificationMacros(String wrapperTemplate, String expectedEvent, List<String> expectedValues) {
 		
-		Job job = Mockito.mock(Job.class);
+		Job job = mock(Job.class);
 		when(job.getUuid()).thenReturn(new AgaveUUID(UUIDType.JOB).toString());
 		when(job.getTenantId()).thenReturn(TenancyHelper.getCurrentTenantId());
 		when(job.getUpdateToken()).thenReturn(UUID.randomUUID().toString());
-		CLILauncher launcher = new CLILauncher(job);
+		CLILauncher launcher = new CLILauncher(job, null, null);
 		String resolvedWrapperCode = launcher.resolveRuntimeNotificationMacros(wrapperTemplate);
-		System.out.println(resolvedWrapperCode);
+//		System.out.println(resolvedWrapperCode);
 		for (String uniqueName: new HashSet<String>(expectedValues)) {
 			String expectedString = String.format("echo '  \"%s\": \"'$(printf %%q \"$%s\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n", uniqueName, uniqueName);
 //			String expectedString = String.format("echo '  \"%s\": '$(printf %%q \"$%s\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n", uniqueName, uniqueName);
@@ -309,13 +310,13 @@ public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJob
 		String expectedEvent = "JOB_RUNTIME_CALLBACK_EVENT";
 		List<String> expectedValues = Arrays.asList("CALLBACK");
  		
-		Job job = Mockito.mock(Job.class);
+		Job job = mock(Job.class);
 		when(job.getUuid()).thenReturn(new AgaveUUID(UUIDType.JOB).toString());
 		when(job.getTenantId()).thenReturn(TenancyHelper.getCurrentTenantId());
 		when(job.getUpdateToken()).thenReturn(UUID.randomUUID().toString());
-		CLILauncher launcher = new CLILauncher(job);
+		CLILauncher launcher = new CLILauncher(job, null, null);
 		String resolvedWrapperCode = launcher.resolveRuntimeNotificationMacros(wrapperTemplate);
-		System.out.println(resolvedWrapperCode);
+//		System.out.println(resolvedWrapperCode);
 		for (String uniqueName: new HashSet<String>(expectedValues)) {
 			String expectedString = String.format("echo '  \"%s\": \"'$(printf %%q \"$%s\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n", uniqueName, uniqueName);
 //			String expectedString = String.format("echo '  \"%s\": '$(printf %%q \"$%s\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n", uniqueName, uniqueName);

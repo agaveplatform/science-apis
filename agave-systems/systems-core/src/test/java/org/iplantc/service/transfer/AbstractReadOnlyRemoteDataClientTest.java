@@ -1,44 +1,23 @@
 package org.iplantc.service.transfer;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
-import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
-//import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-//import org.iplantc.service.transfer.model.TransferTask;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.mockito.Mockito;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.io.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
 @Test(singleThreaded=true, groups= {"transfer", "irods.filesystem.init"})
 public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferTestCase 
@@ -84,7 +63,7 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
         JSONObject json = getSystemJson();
         json.remove("id");
         json.put("id", this.getClass().getSimpleName());
-        system = (StorageSystem)StorageSystem.fromJSON(json);
+        system = StorageSystem.fromJSON(json);
         system.setOwner(SYSTEM_USER);
         storageConfig = system.getStorageConfig();
         salt = system.getSystemId() + storageConfig.getHost() + 
@@ -167,7 +146,7 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
     @Test(dataProvider="doesExistProvider", dependsOnGroups= {"proxy"})
     public void doesExist(String remotedir, boolean shouldExist, String message)
     {
-//        _doesExist(remotedir, shouldExist, message);
+        _doesExist(remotedir, shouldExist, message);
     }
     
     protected void _doesExist(String remotedir, boolean shouldExist, String message)
@@ -181,7 +160,7 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
         }
     }
    
-    @Test//(dependsOnMethods= {"doesExist"})
+    @Test(dependsOnMethods= {"doesExist"})
     public void length()
     {
         _length();
@@ -191,9 +170,12 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
     {
         try 
         {
-            Assert.assertTrue(getClient().doesExist(LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME), 
+            getClient().put(LOCAL_BINARY_FILE, "");
+            String remotePutPath = LOCAL_BINARY_FILE_NAME;
+
+            Assert.assertTrue(getClient().doesExist(remotePutPath),
                     "Data not found on remote system.");
-            Assert.assertTrue(new File(LOCAL_BINARY_FILE).length() == getClient().length(LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME),
+            Assert.assertTrue(new File(LOCAL_BINARY_FILE).length() == getClient().length(remotePutPath),
                     "remote length does not match local length.");
         } 
         catch (Exception e) {
@@ -393,7 +375,7 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
         }
     }
     
-    @Test(groups={"get", "download"}, dependsOnMethods={"getThrowsExceptionOnMissingRemotePath"})
+    @Test(groups={"get", "download"}, dataProvider = "getDirectoryRetrievesToCorrectLocationProvider", dependsOnMethods={"getThrowsExceptionOnMissingRemotePath"})
     public void getDirectoryRetrievesToCorrectLocation(String localdir, boolean createTestDownloadFolder, String expectedDownloadPath, String message) 
     {
         _getDirectoryRetrievesToCorrectLocation(localdir, createTestDownloadFolder, expectedDownloadPath, message);
@@ -413,7 +395,7 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
             }
             
             remotePutPath = LOCAL_DIR_NAME;
-            
+
             getClient().put(LOCAL_DIR, "");
             
             Assert.assertTrue(getClient().doesExist(remotePutPath), "Data not found on remote system after put.");
@@ -473,7 +455,7 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
         };
     }
     
-    @Test(groups={"stream", "get"}, dataProvider="getInputStreamProvider", dependsOnGroups= {"download"})
+    @Test(groups={"stream", "get"}, dataProvider="getInputStreamProvider", dependsOnGroups={"download"})
     public void getInputStream(String localFile, String remotedir, boolean shouldThrowException, String message)
     {
         _getInputStream(localFile, remotedir, shouldThrowException, message);

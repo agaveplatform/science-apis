@@ -1,11 +1,11 @@
 package org.iplantc.service.io.manager;
 
-import java.util.List;
-
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.restlet.data.Range;
+
+import java.util.List;
 
 public class AgaveFileUploadProcessor extends AbstractFileUploadProcessor{
 	public String owner;

@@ -1,167 +1,97 @@
 ##############################################################
-#  Development Stack of Dependent Services
+#  Core Services Persistence Stack
 #############################################################
-
-##############################################################
-# MySQL
-##############################################################
 version: '2'
 
 services:
+  ##############################################################
+  # MySQL 5.7 / MariaDB 10.3
+  ##############################################################
   mysql:
-    image: agaveapi/mysql:5.6-dev
-    hostname: mysql.example.com
-    mem_limit: 512m
-    restart: on-failure
+    image: agave-mariadb:2.2.27
     ports:
       - '3306:3306'
-    volumes_from:
-      - 'mysqlvol'
     environment:
-      MYSQL_ROOT_PASSWORD: changeit
-      MYSQL_DATABASE: agavecore
-      MYSQL_USER: agaveuser
-      MYSQL_PASSWORD: password
-      MYSQL_TEST_DATABASE: test
+      MARIADB_ROOT_PASSWORD: changeit
+      MARIADB_DATABASE: agavecore
+      MARIADB_USER: agaveuser
+      MARIADB_PASSWORD: password
     labels:
       - "traefik.enable=false"
-    networks:
-      - services   
-        
-  mysqlvol:
-    image: agaveapi/mysql:5.6-dev
-    command: sleep 90
-    mem_limit: 64m
-    labels:
-      - "traefik.enable=false"
-    networks:
-      - services   
-      
+    restart: on-failure
+    mem_limit: 512M
+    mem_reservation: 256M
+
+
   ##############################################################
-  # MongoDB
+  # MongoDB 4.2.8
   ##############################################################
   mongodb:
-    image: agaveapi/mongodb:2.6
-    hostname: mongodb
-    mem_limit: 512m
-    restart: on-failure
+    image: agaveplatform/mongodb:4.2.8
     environment:
       - MONGODB_ADMIN_PASS=changeit
       - MONGODB_PASSWORD=password
       - MONGODB_USERNAME=agaveuser
       - MONGODB_DATABASE=api
-    volumes_from:
-      - mongodbvol
+      - JOURNALING=no
     ports:
       - '27017:27017'
     labels:
       - "traefik.enable=false"
-    networks:
-      - services   
-        
-  mongodbvol:
-    image: agaveapi/mongodb:2.6
-    command: sleep 120
-    mem_limit: 64m
-    labels:
-      - "traefik.enable=false"
-    networks:
-      - services   
-      
-      
-#  ##############################################################
-#  # MongoDB - 3.4
-#  ##############################################################
-#  mongodb34:
-#    image: agaveapi/mongodb:3.4
-#    hostname: mongodb
-#    mem_limit: 512m
-#    restart: on-failure
-#    environment:
-#      - MONGODB_ADMIN_PASS=changeit
-#      - MONGODB_PASSWORD=password
-#      - MONGODB_USERNAME=agaveuser
-#      - MONGODB_DATABASE=api
-#    volumes_from:
-#      - mongodbvol
-#    ports:
-#      - '27018:27017'
-#    labels:
-#      - "traefik.enable=false"
-#    networks:
-#      - services   
-#        
-#  mongodb34vol:
-#    image: agaveapi/mongodb:3.4
-#    command: sleep 120
-#    mem_limit: 64m
-#    labels:
-#      - "traefik.enable=false"
-#    networks:
-#      - services
-        
+    restart: on-failure
+    mem_limit: 512M
+    mem_reservation: 256M
+
   ##############################################################
   # Beanstalkd
   ##############################################################
   beanstalkd:
-    image: agaveapi/beanstalkd:latest
+    image: agaveplatform/beanstalkd:latest
     command: /usr/bin/beanstalkd -b /var/lib/beanstalkd/binlog
-    hostname: beanstalkd
-    mem_limit: 512m
-    restart: on-failure
-    volumes_from:
-      - beanstalkdvol
     ports:
       - '11300:11300'
     labels:
       - "traefik.enable=false"
-    networks:
-      - services   
-        
-  beanstalkdvol:
-    image: agaveapi/beanstalkd:latest
-    command: sleep 60
-    mem_limit: 64m
-    labels:
-      - "traefik.enable=false"
-    networks:
-      - services   
-        
+    restart: on-failure
+    mem_limit: 512M
+    mem_reservation: 128M
+
+#  beanstalkd-console:
+#      image: kusmierz/beanstalk-console:latest
+#      ports:
+#        - '9999:80'
+#      labels:
+#        - "traefik.enable=false"
+#      networks:
+#        - core_persistence
+#      deploy:
+#        restart_policy:
+#          condition: on-failure
+#        resources:
+#          limits:
+#            memory: 512M
+#          reservations:
+#            memory: 128M
+
   ##############################################################
   # Pushpin
   ##############################################################
-  pushpin:
-    image: agaveapi/pushpin:1.6.0
-    hostname: realtime.example.com
-    mem_limit: 512m\
-    restart: on-failure
-    ports:
-      - '7999:7999'
-      - '5561:5561'
-    labels:
-      - "traefik.enable=false"
-    networks:
-      - realtime
+#  pushpin:
+#    image: agaveplatform/pushpin:1.6.0
+#    hostname: realtime.example.com
+#    ports:
+#      - '7999:7999'
+#      - '5561:5561'
+#    labels:
+#      - "traefik.enable=false"
+#    networks:
+#      - realtime
+#    deploy:
+#      restart_policy:
+#        condition: on-failure
+#      resources:
+#        limits:
+#          memory: 512M
+#        reservations:
+#          memory: 256M
 
-  ##############################################################
-  # Fluentd
-  ##############################################################
-  
-  fluentd: 
-    image: fluent/fluentd
-    hostname: fluentd.example.com
-    restart: on-failure
-    ports:
-      - 24224:24224
-    volumes:
-      - ../logs/fluentd:/fluentd/log
-    labels:
-      - "traefik.enable=false"
-    networks:
-      - default
-      
-networks:
-  services: 
-  realtime: 
-  
-      

@@ -1,11 +1,11 @@
 package org.iplantc.service.jobs.managers.launchers.parsers;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.RemoteJobIDParsingException;
 import org.iplantc.service.jobs.exceptions.SchedulerException;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Parses the output from a qsub command into a local job id 
@@ -26,6 +26,18 @@ public class SGEJobIdParser implements RemoteJobIdParser {
 		if (matcher.find())
 		{
 			return matcher.group(1);
+		}
+		else if (output.toLowerCase().contains("error")) {
+			for (String line : output.split("\\r?\\n|\\r")) {
+				if (line.contains("sbatch: error") ||
+						line.contains("slurm_load_jobs error") ||
+						line.contains("slurm_load_jobs error") ||
+						line.contains("ERROR: Unknown project")) {
+					throw new SchedulerException(output);
+				}
+			}
+			// no obvious scheduler error was found. we fail with a generic job exception and continue to retry
+			throw new JobException(output);
 		}
 		// otherwise, see what we can learn about the cause of the failure.
 		else if (output.contains("You have exceeded the max job time limit.")) {

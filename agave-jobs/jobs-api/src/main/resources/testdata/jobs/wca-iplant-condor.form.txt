@@ -3,4 +3,4 @@ jobName=test-steve1&softwareName=wca-1.00&requestedTime=01%3A00%3A00&maxMemory=&
 
 
 new:
-jobName=test-steve1&softwareName=wca-1.00&requestedTime=01%3A00%3A00&maxMemory=&callbackUrl=&archive=true&archivePath=%2sterry1%2archive%2test-job-999&query1=read1.fq&printLongestLine=false
+jobName=test-steve1&softwareName=wca-1.00&requestedTime=01%3A00%3A00&maxMemory=&callbackUrl=&archive=true&archivePath=%2testuser%2archive%2test-job-999&query1=read1.fq&printLongestLine=false

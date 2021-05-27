@@ -3,36 +3,20 @@
  */
 package org.iplantc.service.systems.model;
 
-import static javax.persistence.GenerationType.IDENTITY;
-
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.StringUtils;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.systems.Settings;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.util.Date;
+
+import static javax.persistence.GenerationType.IDENTITY;
 
 /**
  * Class to represent individual user roles on a system. Roles
@@ -123,8 +107,7 @@ public class SystemRole implements LastUpdatable, Comparable<SystemRole> {
 	}
 
 	/**
-	 * @param permission
-	 *            the permission to set
+	 * @param role the permission to set
 	 */
 	public void setRole(RoleType role)
 	{
@@ -259,12 +242,9 @@ public class SystemRole implements LastUpdatable, Comparable<SystemRole> {
 		if (role != other.role)
 			return false;
 		if (username == null) {
-			if (other.username != null)
-				return false;
-		} else if (!username.equals(other.username))
-			return false;
-		return true;
-	}
+            return other.username == null;
+		} else return username.equals(other.username);
+    }
 
 
 	@Override
@@ -298,19 +278,11 @@ public class SystemRole implements LastUpdatable, Comparable<SystemRole> {
 					return 0;
 				}
 			}
+			else if (o.role == null) {
+				return 1;
+			}
 			else {
-				if (this.role == null) {
-					if (o.role != null)
-						return -1;
-					else
-						return 0;
-				}
-				else if (o.role == null) {
-					return 1;
-				}
-				else {
-					return new Integer(role.intVal()).compareTo(new Integer(o.role.intVal()));
-				}
+				return Integer.compare(role.intVal(), o.role.intVal());
 			}
 		}
 	}

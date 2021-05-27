@@ -5,6 +5,7 @@ package org.iplantc.service.jobs.resources;
 
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
@@ -31,7 +32,7 @@ import org.restlet.resource.Variant;
  */
 public class JobStatusResource extends AbstractJobResource 
 {
-	private String	sJobId;
+	private final String	sJobId;
 
 	private Job		job;
 	/**
@@ -63,104 +64,71 @@ public class JobStatusResource extends AbstractJobResource
 	 * <p>
 	 * The format for the job list will be:
 	 * <p>
-	 * [{<br>
-	 * &nbsp "created":"2010-03-01 15:01:37.0",<br>
-	 * &nbsp "localId":"4936233",<br>
-	 * &nbsp "submitTime":"2010-03-01 15:01:38.0",<br>
-	 * &nbsp "updateToken":"d9463c48-f86b-469f-a037-b00892464d78",<br>
-	 * &nbsp "status":"SUBMITTING",<br>
-	 * &nbsp "id":2,<br>
-	 * &nbsp "endTime":null,<br>
-	 * &nbsp "ownerDn":"uid=dooley,ou=People,dc=iplantcollaborative,dc=org",<br>
-	 * &nbsp "inputListing":null,<br>
-	 * &nbsp "running":true,<br>
-	 * &nbsp "lastUpdated":"2010-03-01 15:01:38.0",<br>
-	 * &nbsp "system":"slogin2",<br>
-	 * &nbsp "startTime":null,<br>
-	 * &nbsp "outputListing":null,<br>
-	 * &nbsp "name":"test_job"<br>
-	 * },{<br>
-	 * &nbsp "created":"2010-03-01 15:01:37.0",<br>
-	 * &nbsp "localId":"4936232",<br>
-	 * &nbsp "submitTime":"2010-03-01 15:01:38.0",<br>
-	 * &nbsp "updateToken":"d9463c48-f86b-469f-a037-b00892464d78",<br>
-	 * &nbsp "status":"FINISHED",<br>
-	 * &nbsp "id":1,<br>
-	 * &nbsp "endTime":2010-03-01 15:03:21.0,<br>
-	 * &nbsp "ownerDn":"uid=dooley,ou=People,dc=iplantcollaborative,dc=org",<br>
-	 * &nbsp "inputListing":null,<br>
-	 * &nbsp "running":false,<br>
-	 * &nbsp "lastUpdated":"2010-03-01 15:03:21.0",<br>
-	 * &nbsp "system":"slogin2",<br>
-	 * &nbsp "startTime":"2010-03-01 15:01:40.0",<br>
-	 * &nbsp "outputListing":null,<br>
-	 * &nbsp "name":"test_job"<br>
-	 * }]<br>
+	 * <code>
+	 * [
+	 *   {
+	 *     "created":"2010-03-01 15:01:37.0",
+	 *     "localId":"4936233",
+	 *     "submitTime":"2010-03-01 15:01:38.0",
+	 *     "updateToken":"d9463c48-f86b-469f-a037-b00892464d78",
+	 *     "status":"SUBMITTING",
+	 *     "id":2,
+	 *     "endTime":null,
+	 *     "ownerDn":"uid=xxx,ou=People,dc=iplantcollaborative,dc=org",
+	 *     "inputListing":null,
+	 *     "running":true,
+	 *     "lastUpdated":"2010-03-01 15:01:38.0",
+	 *     "system":"slogin2",
+	 *     "startTime":null,
+	 *     "outputListing":null,
+	 *     "name":"test_job"
+	 *   }
+	 * ]
+	 * </code>
 	 */
 	@Override
 	public Representation represent(Variant variant) throws ResourceException
 	{
-
-//		Long jobId = null;
-
-		if (!ServiceUtils.isValid(sJobId))
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Job id cannot be empty");
-		}
-		else
-		{
-//			try
-//			{
-//				jobId = Long.valueOf(sJobId);
-//			}
-//			catch (Exception e)
-//			{
-//				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-//				return new IplantErrorRepresentation("Invalid job id");
-//			}
-		}
-
-		try
-		{
-			job = JobDao.getByUuid(sJobId, true);
-			
-			if (job == null || !job.isVisible()) 
-			{
-			    
-				getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-				return new IplantErrorRepresentation(
-						"Not job found with job id " + sJobId);
+		try {
+			if (!ServiceUtils.isValid(sJobId)) {
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return new IplantErrorRepresentation("Job id cannot be empty");
 			}
-			else if (new JobPermissionManager(job, username).canRead(username))
-			{
-				JSONObject json = new JSONObject();
-				
-				json.put("id", sJobId);
-				json.put("status", job.getStatus().name());
-				json.put("_links",
-						new JSONObject().put("self", 
-								new JSONObject().put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_JOB_SERVICE) + job.getUuid())));
-				return new IplantSuccessRepresentation(json.toString());
-			}
-			else
-			{
-				getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
-				return new IplantErrorRepresentation(
-						"User does not have permission to view this job");
+
+			try {
+				job = JobDao.getByUuid(sJobId, true);
+
+				if (job == null || !job.isVisible()) {
+
+					getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+					return new IplantErrorRepresentation(
+							"Not job found with job id " + sJobId);
+				} else if (new JobPermissionManager(job, username).canRead(username)) {
+					JSONObject json = new JSONObject();
+
+					json.put("id", sJobId);
+					json.put("status", job.getStatus().name());
+					json.put("_links",
+							new JSONObject().put("self",
+									new JSONObject().put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_JOB_SERVICE) + job.getUuid())));
+					return new IplantSuccessRepresentation(json.toString());
+				} else {
+					getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
+					return new IplantErrorRepresentation(
+							"User does not have permission to view this job");
+				}
+			} catch (JobException e) {
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return new IplantErrorRepresentation("Invalid job id "
+						+ e.getMessage());
+			} catch (Exception e) {
+				// can't set a stopped job back to running. Bad request
+				getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+				return new IplantErrorRepresentation(e.getMessage());
 			}
 		}
-		catch (JobException e)
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Invalid job id "
-					+ e.getMessage());
-		}
-		catch (Exception e)
-		{
-			// can't set a stopped job back to running. Bad request
-			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-			return new IplantErrorRepresentation(e.getMessage());
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 

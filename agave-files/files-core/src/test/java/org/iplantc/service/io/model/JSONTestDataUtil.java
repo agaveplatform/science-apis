@@ -1,41 +1,38 @@
 package org.iplantc.service.io.model;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.POJONode;
 import org.apache.commons.io.IOUtils;
+import org.apache.log4j.Logger;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.POJONode;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Contains constants and test data for unit testing.
  *  
  */
 public class JSONTestDataUtil {
+	private static final Logger log = Logger.getLogger(JSONTestDataUtil.class);
+
 	public static String TEST_SOFTWARE_FOLDER = "software/";
-	public static String TEST_SOFTWARE_FILE = TEST_SOFTWARE_FOLDER + "head-lonestar.tacc.teragrid.org.json";
 	public static String TEST_SYSTEM_FOLDER = "systems/";
 	public static String TEST_SOFTWARE_SYSTEM_FILE = TEST_SOFTWARE_FOLDER + "system-software.json";
 	public static String TEST_EXECUTION_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "execution/execute.example.com.json";
 //	public static String TEST_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/storage.example.com.json";
 	public static String TEST_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/sftp.example.com.json";
-	public static String TEST_IRODS_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/data.iplantcollaborative.org.json";
-	public static String TEST_AUTHENTICATION_SYSTEM_FILE = "authentication-system.json";
-    
+
 	public static JSONTestDataUtil jsonTestData;
-	public static String TEST_OWNER = "api_sample_user";
-	public static String TEST_SHARED_OWNER = "ipctestshare";
+	public static String TEST_OWNER = "testuser";
+	public static String TEST_SHARED_OWNER = "testshareuser";
 	public static String TEST_PUBLIC_OWNER = "guest";
 	
     /**
@@ -45,21 +42,12 @@ public class JSONTestDataUtil {
             "label","shortDescription","longDescription","tags","ontology",
             "executionHost","executionType","deploymentPath","templatePath","executablePath",
             "testPath","checkpointable","modules","inputs","parameters","outputs"};
-
-
-
-/*
-    private Object[][] softwareFields(){
-        JSONTestDataUtil.concatAll()
-    }
-*/
-
     /**
      * Get a test data file from disk and deserializes to a JSONObject.
      *
      * @return An ObjectNode which can be traversed using json.org api
-     * @throws IOException 
-     * @throws JsonProcessingException 
+     * @throws IOException if file is missing or cannot be read
+     * @throws JSONException if json in given file is bad
      */
     public JSONObject getTestDataObject(String file) throws JSONException, IOException
     {
@@ -67,12 +55,26 @@ public class JSONTestDataUtil {
     	try 
     	{
             in = JSONTestDataUtil.class.getClassLoader().getResourceAsStream(file);
-    		String json = IOUtils.toString(in, "UTF-8");
-    		
-	    	return new JSONObject(json);
-    	} 
+			String json = null;
+			if (in != null) {
+				json = IOUtils.toString(in, StandardCharsets.UTF_8.name());
+			}
+			else {
+				throw new FileNotFoundException("No file found for path, " + file + " in classloader.");
+			}
+
+			return new JSONObject(json);
+    	}
+    	catch (IOException e) {
+    		log.error("Failed to read test data object for " + file);
+    		throw e;
+		}
+    	catch (JSONException e) {
+    		log.error("Failed to parse JSON content from " + file);
+    		throw e;
+		}
     	finally {
-    		try { in.close(); } catch (Exception e) {}
+    		if (in != null) try { in.close(); } catch (Exception ignored) {}
     	}
     }
 
@@ -94,7 +96,7 @@ public class JSONTestDataUtil {
             return new JSONObject(json);
         }
         finally {
-            try { in.close(); } catch (Exception e) {}
+            try { in.close(); } catch (Exception ignored) {}
         }
     }
 
@@ -314,10 +316,10 @@ public class JSONTestDataUtil {
             {"validator","","set input.value.validator to empty string",false},
             {"validator",new Object(),"set input.value.validator to empty object",false},
             {"validator",Arrays.asList(new Object(),new Object(),new Object()),"set input.value.validator to array of empty objects",true},
-            {"validator",new String("/(foo"),"set validator to bad regex string",false},
-            {"validator",Arrays.asList(new String("/(foo"),new String("/(foo2"),new String("/(foou")),"set input.value.validator to array of bad regex strings",false},
+            {"validator", "/(foo","set validator to bad regex string",false},
+            {"validator",Arrays.asList("/(foo", "/(foo2", "/(foou"),"set input.value.validator to array of bad regex strings",false},
             {"validator","\\d+","set validator to valid regex string",false},
-            {"validator",Arrays.asList(new String("^(\\/)?(\\/[a-z_\\-\\s0-9\\.]+)+"), new String(".pdf"), new String("[A-Z][a-z]{1,}")),"set input.value.validator to array of valid regex strings",false},
+            {"validator",Arrays.asList("^(\\/)?(\\/[a-z_\\-\\s0-9\\.]+)+", ".pdf", "[A-Z][a-z]{1,}"),"set input.value.validator to array of valid regex strings",false},
             {"validator",null,"set input.value.validator to null",false},
             {"required","","set input.value.required to empty string",true},
             {"required",Boolean.TRUE,"set input.value.required to true",false},
@@ -444,10 +446,10 @@ public class JSONTestDataUtil {
 			{"validator","","set parameter.value.validator to empty string",false},
             {"validator",new Object(),"set parameter.value.validator to empty object",false},
             {"validator",Arrays.asList(new Object(),new Object(),new Object()),"set parameter.value.validator to array of empty objects",true},
-            {"validator",new String("/(foo"),"set validator to bad regex string",false},
-            {"validator",Arrays.asList(new String("/(foo"),new String("/(foo2"),new String("/(foou")),"set parameter.value.validator to array of bad regex strings",false},
+            {"validator", "/(foo","set validator to bad regex string",false},
+            {"validator",Arrays.asList("/(foo", "/(foo2", "/(foou"),"set parameter.value.validator to array of bad regex strings",false},
             {"validator","\\d+","set validator to valid regex string",false},
-            {"validator",Arrays.asList(new String("\\d+"), new String(".pdf"), new String("[A-Z][a-z]{1,}")),"set parameter.value.validator to array of valid regex strings",false},
+            {"validator",Arrays.asList("\\d+", ".pdf", "[A-Z][a-z]{1,}"),"set parameter.value.validator to array of valid regex strings",false},
             {"validator",null,"set parameter.value.validator to null",false},
             {"required","","set parameter.value.required to empty string",true},
             {"required",Boolean.TRUE,"set parameter.value.required to true",false},

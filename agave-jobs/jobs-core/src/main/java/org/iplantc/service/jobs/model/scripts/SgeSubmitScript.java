@@ -3,11 +3,15 @@
  */
 package org.iplantc.service.jobs.model.scripts;
 
+import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.apps.model.enumerations.ParallelismType;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
+import org.iplantc.service.jobs.model.Job;
+import org.iplantc.service.systems.model.ExecutionSystem;
+
 import java.util.Arrays;
 import java.util.Hashtable;
-
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.jobs.model.Job;
 
 /**
  * Concreate class for SGE batch submit scripts.
@@ -18,18 +22,23 @@ import org.iplantc.service.jobs.model.Job;
 public class SgeSubmitScript extends AbstractSubmitScript 
 {
 	public static final String DIRECTIVE_PREFIX = "#$ ";
-	
+
 	/**
-	 * 
+	 * Default constructor used by all {@link SubmitScript}. Note that node count will be forced to 1
+	 * whenever the {@link Software#getParallelism()} is {@link ParallelismType#SERIAL} or null.
+	 *
+	 * @param job the job for which the submit script is being created
+	 * @param software the app being run by the job
+	 * @param executionSystem the system on which the app will be run
 	 */
-	public SgeSubmitScript(Job job)
+	public SgeSubmitScript(Job job, Software software, ExecutionSystem executionSystem)
 	{
-		super(job);
+		super(job, software, executionSystem);
 	}
 	
 	
 	@Override
-	public String getScriptText()
+	public String getScriptText() throws JobMacroResolutionException
 	{
 		String result = "#!/bin/bash\n\n" 
 				+ DIRECTIVE_PREFIX + "-N " + name + "\n"
@@ -40,7 +49,7 @@ public class SgeSubmitScript extends AbstractSubmitScript
 				+ DIRECTIVE_PREFIX + "-l h_rt=" + time + "\n" 
 				// we can remote to the system and find the correct parallel environment
 				// using the "qconf -spl" command.
-				+ DIRECTIVE_PREFIX + "-pe " + nodes + "way " + processors + "\n"
+				// + DIRECTIVE_PREFIX + "-pe " + nodes + "way " + processors + "\n"
 				+ DIRECTIVE_PREFIX + "-q " + queue.getEffectiveMappedName() + "\n";
 				if (!StringUtils.isEmpty(queue.getCustomDirectives())) {
 					result += DIRECTIVE_PREFIX + queue.getCustomDirectives() + "\n";

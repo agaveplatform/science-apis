@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.common.auth;
 
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.restlet.Context;
@@ -13,6 +11,8 @@ import org.restlet.data.ChallengeScheme;
 import org.restlet.data.Form;
 import org.restlet.data.Method;
 import org.restlet.data.Request;
+
+import java.util.List;
 
 /**
  * @author rion1
@@ -43,7 +43,7 @@ public class JWTGuard extends AbstractGuard {
 		{
 			if (key.toLowerCase().startsWith(JWT_HEADER_NAME.toLowerCase())) 
 			{
-				String jwtHeader = (String)headers.getFirstValue(key);
+				String jwtHeader = headers.getFirstValue(key);
 				
 				String tenantId = key.toLowerCase().substring(JWT_HEADER_NAME.length() + 1);
 				
@@ -51,7 +51,7 @@ public class JWTGuard extends AbstractGuard {
 			}
 			else if (key.toLowerCase().startsWith(INTERNALUSER_HEADER_NAME.toLowerCase())) 
 			{
-				String internalUsername = (String)headers.getFirstValue(key);
+				String internalUsername = headers.getFirstValue(key);
 				Request.getCurrent().getAttributes().put("internal.user", internalUsername);
 			}
 		}
@@ -73,9 +73,9 @@ public class JWTGuard extends AbstractGuard {
 				if (key.toLowerCase().startsWith(JWT_HEADER_NAME.toLowerCase())) 
 				{
 					
-					String jwtHeader = (String)headers.getFirstValue(key);
+					String jwtHeader = headers.getFirstValue(key);
 					
-					Form queryForm = (Form)request.getOriginalRef().getQueryAsForm();
+					Form queryForm = request.getOriginalRef().getQueryAsForm();
 					if (queryForm != null && !queryForm.isEmpty()) {
 						String debugJWT = queryForm.getFirstValue("debugjwt");
 						if (!StringUtils.isEmpty(debugJWT)) {
@@ -110,7 +110,7 @@ public class JWTGuard extends AbstractGuard {
 				}
 				else if (key.toLowerCase().startsWith(INTERNALUSER_HEADER_NAME.toLowerCase())) 
 				{
-					String internalUsername = (String)headers.getFirstValue(key);
+					String internalUsername = headers.getFirstValue(key);
 					Request.getCurrent().getAttributes().put("internal.user", internalUsername);
 				}
 			}

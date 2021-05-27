@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.apps.dao;
 
-import java.util.List;
-
 import org.hibernate.HibernateException;
 import org.hibernate.ObjectNotFoundException;
 import org.hibernate.Session;
@@ -12,6 +10,8 @@ import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.model.SoftwarePermission;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.persistence.HibernateUtil;
+
+import java.util.List;
 
 /**
  * @author dooley

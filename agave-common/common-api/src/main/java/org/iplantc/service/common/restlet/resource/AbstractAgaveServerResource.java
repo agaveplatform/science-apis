@@ -1,14 +1,14 @@
 package org.iplantc.service.common.restlet.resource;
 
-import static org.restlet.data.MediaType.*;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Iterator;
-import java.util.List;
-
-import javax.activation.MimetypesFileTypeMap;
-
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.lang.BooleanUtils;
@@ -32,15 +32,13 @@ import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.common.base.CharMatcher;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
+import javax.activation.MimetypesFileTypeMap;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Iterator;
+import java.util.List;
+
+import static org.restlet.data.MediaType.*;
 
 /**
  * @author dooley
@@ -297,12 +295,22 @@ public class AbstractAgaveServerResource extends ServerResource {
 	 * @return
 	 */
 	public String resolveMimeTime(String filename) {
+		InputStream mimeTypesStream = null;
 		try {
-			InputStream mimeTypesStream = this.getClass().getClassLoader().getResourceAsStream("mime.types");
+			mimeTypesStream = this.getClass().getClassLoader().getResourceAsStream("mime.types");
 			MimetypesFileTypeMap mimeTypesMap = new MimetypesFileTypeMap(mimeTypesStream);
 			return mimeTypesMap.getContentType(filename);
 		} catch (Exception e) {
-			return new MimetypesFileTypeMap().getContentType(filename);
+			log.error(e.getMessage(), e);
+			
+			// Try again on a different map.
+			try {return new MimetypesFileTypeMap().getContentType(filename);}
+				catch (Exception e2) {
+					log.error(e2.getMessage(), e2);
+					throw e2;
+				}
+		} finally {
+			if (mimeTypesStream != null) try {mimeTypesStream.close();} catch (Exception e){}
 		}
 	}
 	

@@ -3,21 +3,17 @@
  */
 package org.iplantc.service.jobs.resources;
 
-import static org.iplantc.service.common.search.AgaveResourceResultOrdering.ASCENDING;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang.StringUtils;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.SearchableAgaveResource;
-import org.iplantc.service.common.search.AgaveResourceSearchFilter;
 import org.iplantc.service.common.search.AgaveResourceResultOrdering;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.jobs.Settings;
@@ -26,13 +22,11 @@ import org.iplantc.service.jobs.exceptions.JobProcessingException;
 import org.iplantc.service.jobs.managers.JobRequestProcessor;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.dto.JobDTO;
-import org.iplantc.service.jobs.model.dto.JobDTOSummaryFilter;
 import org.iplantc.service.jobs.search.JobSearchFilter;
 import org.joda.time.DateTime;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 import org.restlet.Context;
-import org.restlet.data.Form;
 import org.restlet.data.MediaType;
 import org.restlet.data.Request;
 import org.restlet.data.Response;
@@ -41,10 +35,8 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The JobResource object enables HTTP GET and POST actions on contrast jobs.
@@ -57,7 +49,7 @@ import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 public class JobsResource extends SearchableAgaveResource<JobSearchFilter> {
 	private static final Logger	log	= Logger.getLogger(JobsResource.class);
 
-	private String internalUsername;
+	private final String internalUsername;
 
 //	private List<String> jobAttributes = new ArrayList<String>();
 //
@@ -195,6 +187,9 @@ public class JobsResource extends SearchableAgaveResource<JobSearchFilter> {
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			return new IplantErrorRepresentation(e.getMessage());
 		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 
 	/**
@@ -246,6 +241,9 @@ public class JobsResource extends SearchableAgaveResource<JobSearchFilter> {
 					new IplantErrorRepresentation("Failed to submit job: " + e.getMessage()));
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			log.error("Job submission failed for user " + getAuthenticatedUsername(), e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 

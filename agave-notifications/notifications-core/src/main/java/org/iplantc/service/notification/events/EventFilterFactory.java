@@ -6,8 +6,7 @@ import org.iplantc.service.notification.model.Notification;
 
 public class EventFilterFactory {
 
-	public static EventFilter getInstance(AgaveUUID uuid, Notification notification, String event, String owner)
-	{
+	public static EventFilter getInstance(AgaveUUID uuid, Notification notification, String event, String owner) {
 		UUIDType eventResourceType = uuid.getResourceType();
 		
 		if (eventResourceType.equals(UUIDType.APP)) {
@@ -36,14 +35,11 @@ public class EventFilterFactory {
 			return new SystemNotificationEvent(uuid, notification,event, owner);
 		} else if (eventResourceType.equals(UUIDType.TAG)) {
 			return new TagNotificationEvent(uuid, notification,event, owner);
-		} else if (eventResourceType.equals(UUIDType.TOKEN)) {
-			return new TokenNotificationEvent(uuid, notification,event, owner);
 		} else if (eventResourceType.equals(UUIDType.TRANSFER)) {
 			return new TransferNotificationEvent(uuid, notification,event, owner);
-		} else if (eventResourceType.equals(UUIDType.TRANSFORM)) {
-			return new TransformNotificationEvent(uuid, notification,event, owner);
 		} else {
-			return null;
+			return new DefaultResourceEventFilter(uuid, notification, event, owner);
+//			throw new UnsupportedUUIDTypeException("No event resource type found for " + eventResourceType.name());
 		}
 	}
 

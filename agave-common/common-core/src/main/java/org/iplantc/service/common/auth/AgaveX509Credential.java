@@ -1,21 +1,8 @@
 package org.iplantc.service.common.auth;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.GeneralSecurityException;
-import java.security.KeyStore;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.cert.CertStore;
-import java.security.cert.X509Certificate;
-
-import org.apache.commons.lang.StringUtils;
-import org.globus.common.CoGProperties;
 import org.globus.gsi.CredentialException;
 import org.globus.gsi.X509Credential;
 import org.globus.gsi.X509ProxyCertPathParameters;
-import org.globus.gsi.bc.BouncyCastleOpenSSLKey;
 import org.globus.gsi.provider.GlobusProvider;
 import org.globus.gsi.provider.KeyStoreParametersFactory;
 import org.globus.gsi.stores.ResourceCertStoreParameters;
@@ -23,6 +10,14 @@ import org.globus.gsi.stores.ResourceSigningPolicyStore;
 import org.globus.gsi.stores.ResourceSigningPolicyStoreParameters;
 import org.globus.gsi.trustmanager.X509ProxyCertPathValidator;
 import org.globus.gsi.util.CertificateUtil;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.CertStore;
+import java.security.cert.X509Certificate;
 
 /**
  * Extension of {@link X509Credential} class that disables caching for
@@ -94,7 +89,7 @@ public class AgaveX509Credential extends X509Credential {
 	}
 
 	protected CertStore getCRLStore()
-			throws GeneralSecurityException, NoSuchAlgorithmException {
+			throws GeneralSecurityException {
 		String crlPattern = caCertsLocation + "/*.r*";
 		CertStore crlStore = CertStore.getInstance(
 				GlobusProvider.CERTSTORE_TYPE, new ResourceCertStoreParameters(

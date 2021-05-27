@@ -3,16 +3,9 @@
  */
 package org.iplantc.service.apps.resources.impl;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.Settings;
@@ -38,9 +31,14 @@ import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author dooley
@@ -50,7 +48,7 @@ public class SoftwareCollectionImpl extends AbstractSoftwareCollection implement
     
     private static final Logger log = Logger.getLogger(SoftwareCollectionImpl.class);
     
-    private SoftwareEventProcessor eventProcessor = new SoftwareEventProcessor();
+    private final SoftwareEventProcessor eventProcessor = new SoftwareEventProcessor();
 	
     public SoftwareCollectionImpl() {}
 

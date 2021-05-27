@@ -1,18 +1,13 @@
 package org.iplantc.service.jobs.model.scripts;
 
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.apps.model.enumerations.ParallelismType;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
+import org.iplantc.service.jobs.managers.launchers.WrapperTemplateMacroResolver;
 import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.jobs.model.enumerations.WrapperTemplateAttributeVariableType;
 import org.iplantc.service.jobs.util.Slug;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
-
-import com.fasterxml.jackson.databind.JsonNode;
 
 public abstract class AbstractSubmitScript implements SubmitScript {
 
@@ -28,12 +23,23 @@ public abstract class AbstractSubmitScript implements SubmitScript {
 	protected long				processors					= 1;
 	protected double			memoryPerNode				= 1.0;
 	protected String			batchInstructions;
-	protected ExecutionSystem	system;
+	protected ExecutionSystem 	executionSystem;
+	protected Software			software;
 	protected Job				job;
 
-	public AbstractSubmitScript(Job job)
+	/**
+	 * Default constructor used by all {@link SubmitScript}. Note that node count will be forced to 1
+	 * whenever the {@link Software#getParallelism()} is {@link ParallelismType#SERIAL} or null.
+	 *
+	 * @param job the job for which the submit script is being created
+	 * @param software the app being run by the job
+	 * @param executionSystem the system on which the app will be run
+	 */
+	public AbstractSubmitScript(Job job, Software software, ExecutionSystem executionSystem)
 	{
 		this.job = job;
+		this.executionSystem = executionSystem;
+		this.software = software;
 		setName(job.getName());
 		this.standardOutputFile = name + "-" + job.getUuid() + ".out";
 		this.standardErrorFile = name + "-" + job.getUuid() + ".err";
@@ -42,10 +48,8 @@ public abstract class AbstractSubmitScript implements SubmitScript {
 		this.memoryPerNode = job.getMemoryPerNode();
 		this.processors = job.getProcessorsPerNode();
 		this.time = job.getMaxRunTime();
-		setParallelismType(SoftwareDao.getSoftwareByUniqueName(
-				job.getSoftwareName()).getParallelism());
-		this.system = (ExecutionSystem)new SystemDao().findBySystemId(job.getSystem());
-		this.queue = system.getQueue(job.getBatchQueue());
+		setParallelismType(software.getParallelism());
+		this.queue = this.executionSystem.getQueue(job.getBatchQueue());
 	}
 	
 	/* (non-Javadoc)
@@ -181,9 +185,8 @@ public abstract class AbstractSubmitScript implements SubmitScript {
 	@Override
 	public void setParallelismType(ParallelismType parallelismType)
 	{
-		this.parallelismType = parallelismType;
-		if (parallelismType.equals(ParallelismType.SERIAL))
-		{
+		this.parallelismType = parallelismType == null ? ParallelismType.SERIAL : parallelismType;
+		if (parallelismType == ParallelismType.SERIAL) {
 			this.nodes = 1;
 		}
 	}
@@ -223,22 +226,57 @@ public abstract class AbstractSubmitScript implements SubmitScript {
 	{
 		return batchInstructions;
 	}
-	
+
+	/**
+	 * @return the executionSystem
+	 */
+	public ExecutionSystem getExecutionSystem() {
+		return executionSystem;
+	}
+
+	/**
+	 * @param executionSystem the executionSystem to set
+	 */
+	public void setExecutionSystem(ExecutionSystem executionSystem) {
+		this.executionSystem = executionSystem;
+	}
+
+	/**
+	 * @return the software
+	 */
+	public Software getSoftware() {
+		return software;
+	}
+
+	/**
+	 * @param software the software to set
+	 */
+	public void setSoftware(Software software) {
+		this.software = software;
+	}
+
+	/**
+	 * @return the job being submitted
+	 */
+	public Job getJob() {
+		return job;
+	}
 	/**
 	 * Resolves any user-defined job variables from the input script against the given string.
 	 * This is called as a filter to the {@link BatchQueue#getCustomDirectives()} before 
 	 * adding to the batch script.
 	 * 
-	 * @param wrapperTemplate
-	 * @return
+	 * @param wrapperTemplate the template contents from which any job attribute macros will be resolved
+	 * @return the wrapper template with all job attribute macros resolved.
 	 */
-	public String resolveMacros(String wrapperTemplate) {
-		
-		for (WrapperTemplateAttributeVariableType macro: WrapperTemplateAttributeVariableType.values()) {
-			wrapperTemplate = StringUtils.replace(wrapperTemplate, "${" + macro.name() + "}", macro.resolveForJob(job));
-		}
-		
-		return wrapperTemplate;
+	public String resolveMacros(String wrapperTemplate) throws JobMacroResolutionException {
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob(), getExecutionSystem());
+		return resolver.resolveJobAttributeMacros(wrapperTemplate);
+//		for (WrapperTemplateAttributeVariableType macro: WrapperTemplateAttributeVariableType.values()) {
+//			wrapperTemplate = StringUtils.replace(wrapperTemplate, "${" + macro.name() + "}", macro.resolveForJob(job));
+//		}
+//
+//		return wrapperTemplate;
 	}
 
 }

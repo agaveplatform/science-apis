@@ -1,0 +1,15 @@
+{
+    "name": "testuserwc-demo-stampede",
+    "appId": "testuserwc-2.0-stampede",
+    "memoryPerNode": 1,
+    "notifications": [
+    	{ 
+    		"url" : "testuser@example.com",
+    		"event": "*",
+            "persistent": true
+    	}
+    ],
+    "parameters":{
+        "printLongestLine" : "-L"
+    }
+}

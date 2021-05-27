@@ -3,27 +3,13 @@
  */
 package org.iplantc.service.common.auth;
 
-import java.io.ByteArrayInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.Security;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.concurrent.ConcurrentHashMap;
-
+import com.nimbusds.jose.*;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.ReadOnlyJWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import net.minidev.json.JSONObject;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.Settings;
@@ -34,26 +20,26 @@ import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.exceptions.TenantException;
 import org.iplantc.service.common.model.Tenant;
 import org.joda.time.DateTime;
-import org.testng.Assert;
-import org.testng.annotations.Test;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
-import com.nimbusds.jose.JWSVerifier;
-import com.nimbusds.jose.Requirement;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.crypto.RSASSAVerifier;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.ReadOnlyJWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
+import javax.naming.AuthenticationException;
+import java.io.ByteArrayInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.*;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.text.ParseException;
+import java.util.Date;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author rion1
  *
  */
-@Test(singleThreaded=true)
 @SuppressWarnings("unused")
 public class JWTClient 
 {
@@ -75,8 +61,7 @@ public class JWTClient
 	}
 			
 	private static InputStream getTenantPublicKeyInputStream(String tenantId) 
-	throws IOException, FileNotFoundException
-	{	
+	throws IOException {
 		HTTPSClient client = null;
 		try {
 			String publicKeyUrl = getTenantPublicKeyUrl(tenantId);
@@ -208,11 +193,13 @@ public class JWTClient
 				ReadOnlyJWTClaimsSet claims = signedJWT.getJWTClaimsSet();
 				
 				Date expirationDate = claims.getExpirationTime();
-				
-				Assert.assertNotNull(expirationDate, 
+
+				if (expirationDate == null)
+					throw new AuthenticationException(
 						"No expiration date in the JWT header. Authentication failed.");
 				
-				Assert.assertTrue(expirationDate.after(new Date()), 
+				if (expirationDate.before(new Date()))
+					throw new AuthenticationException(
 						"JWT has expired. Authentication failed.");
 				
 				JSONObject json = claims.toJSONObject();
@@ -225,19 +212,21 @@ public class JWTClient
 				setCurrentJWSObject(json);
 				
 				setCurrentRawJWT(serializedToken);
+
+				if (getCurrentEndUser() == null)
+					throw new AuthenticationException(
+							"No end user specified in the JWT header. Authentication failed.");
+
+				if (getCurrentTenant() == null)
+					throw new AuthenticationException(
+							"No tenant specified in the JWT header. Authentication failed.");
 				
-				Assert.assertNotNull(getCurrentEndUser(), 
-						"No end user specified in the JWT header. Authentication failed.");
-				
-				Assert.assertNotNull(getCurrentTenant(), 
-						"No tenant specified in the JWT header. Authentication failed.");
-				
-				Assert.assertNotNull(getCurrentSubscriber(), 
-						"No subscriber specified in the JWT header. Authentication failed.");
+				if (getCurrentSubscriber() == null)
+					throw new AuthenticationException(
+							"No subscriber specified in the JWT header. Authentication failed.");
 				
 				return true;
 			}
-			
 		} 
 		catch (TenantException e) {
 			log.error("Failed to validate JWT object.", e);
@@ -384,7 +373,7 @@ public class JWTClient
 			
 			String roles = (String)claims.get("http://wso2.org/claims/role");
 			if (!StringUtils.isEmpty(roles)) {
-				for(String role: Arrays.asList(StringUtils.split(roles, ","))) {
+				for(String role: StringUtils.split(roles, ",")) {
 					if (StringUtils.endsWith(role, "-services-admin") || StringUtils.endsWith(role, "-super-admin")) {
 						if (role.contains("/")) {
 							role = role.substring(role.lastIndexOf("/") + 1);
@@ -402,14 +391,34 @@ public class JWTClient
 			return false;
 		}
 	}
-	
+
+	public static boolean isWorldAdmin() {
+		try {
+			JSONObject claims = getCurrentJWSObject();
+
+			String roles = (String)claims.get("http://wso2.org/claims/role");
+			if (!StringUtils.isEmpty(roles)) {
+				for(String role: StringUtils.split(roles, ",")) {
+					if (StringUtils.endsWith(role, "world_admin") ) {
+						return true;
+					}
+				}
+				return false;
+			} else {
+				return false;
+			}
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
 	public static boolean isSuperAdmin() {
 		try {
 			JSONObject claims = getCurrentJWSObject();
 			
 			String roles = (String)claims.get("http://wso2.org/claims/role");
 			if (!StringUtils.isEmpty(roles)) {
-				for(String role: Arrays.asList(StringUtils.split(roles, ","))) {
+				for(String role: StringUtils.split(roles, ",")) {
 					if (StringUtils.endsWith(role, "-super-admin")) {
 						if (role.contains("/")) {
 							role = role.substring(role.lastIndexOf("/") + 1);
@@ -512,7 +521,7 @@ public class JWTClient
 			claimsSet.setCustomClaim("http://wso2.org/claims/applicationid", "-9999");
 			claimsSet.setCustomClaim("http://wso2.org/claims/applicationname", "SSOInternal");
 			claimsSet.setCustomClaim("http://wso2.org/claims/applicationtier", "Unlimited");
-			claimsSet.setCustomClaim("http://wso2.org/claims/apicontext", "/myproxy");
+			claimsSet.setCustomClaim("http://wso2.org/claims/apicontext", "/internal");
 			claimsSet.setCustomClaim("http://wso2.org/claims/version", Settings.SERVICE_VERSION);
 			claimsSet.setCustomClaim("http://wso2.org/claims/tier", "Unlimited");
 			claimsSet.setCustomClaim("http://wso2.org/claims/keytype", "PRODUCTION");

@@ -45,10 +45,6 @@
         {
             "description": "Register and manage systems",
             "path": "/systems"
-        },
-        {
-            "description": "Transform and stage data",
-            "path": "/transforms"
         }
     ],
     "authorizations": {
@@ -83,10 +79,10 @@
 	},
 	"info": {
 	    "title": "iPlant Agave API",
-	    "description": "Your Science-as-a-Service API Platform. \nFor more information, visit <a href=\"http://agaveapi.co\">http://agaveapi.co</a>",
-	    "termsOfServiceUrl": "http://agaveapi.co/terms/",
-	    "contact": "dooley@tacc.utexas.edu",
-	    "licenseUrl": "http://agaveapi.co/terms"
+	    "description": "Your Science-as-a-Service API Platform. \nFor more information, visit <a href=\"https://agaveplatform.org\">https://agaveplatform.org</a>",
+	    "termsOfServiceUrl": "https://agaveplatform.org/terms/",
+	    "contact": "help@agaveplatform.org",
+	    "licenseUrl": "https://agaveplatform.org/terms"
 	}
 
 }

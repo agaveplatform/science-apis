@@ -3,16 +3,8 @@
  */
 package org.iplantc.service.systems;
 
-import org.iplantc.service.common.persistence.JndiSetup;
 import org.iplantc.service.common.restlet.AgaveApplication;
-import org.iplantc.service.systems.resources.BatchQueueManagementResource;
-import org.iplantc.service.systems.resources.BatchQueueResource;
-import org.iplantc.service.systems.resources.SystemCredentialResource;
-import org.iplantc.service.systems.resources.SystemHistoryResource;
-import org.iplantc.service.systems.resources.SystemManagementResource;
-import org.iplantc.service.systems.resources.SystemRoleResource;
-import org.iplantc.service.systems.resources.SystemsDocumentationResource;
-import org.restlet.Component;
+import org.iplantc.service.systems.resources.*;
 import org.restlet.Router;
 
 /**
@@ -38,7 +30,7 @@ public class SystemsApplication extends AgaveApplication
 			secureEndpoint(router, "/{systemid}/history", SystemHistoryResource.class); 
             secureEndpoint(router, "/{systemid}/history/", SystemHistoryResource.class);
             secureEndpoint(router, "/{systemid}/queues", BatchQueueResource.class); 
-            secureEndpoint(router, "/{systemid}/queues/", BatchQueueResource.class);
+            secureEndpoint(router,  "/{systemid}/queues/", BatchQueueResource.class);
             secureEndpoint(router, "/{systemid}/queues/{queueid}", BatchQueueManagementResource.class); 
             secureEndpoint(router, "/{systemid}/queues/{queueid}/", BatchQueueManagementResource.class); 
             secureEndpoint(router, "/{systemid}/roles", SystemRoleResource.class); 
@@ -59,18 +51,4 @@ public class SystemsApplication extends AgaveApplication
 		return !isStandaloneMode() ? "" : "/systems";
 	}
     
-    public static void main(String[] args) throws Exception 
-	{	
-		JndiSetup.init();
-		
-		// Create a new Component.
-        Component component = new Component();
-
-        // Attach the AppsApplication
-        SystemsApplication application = new SystemsApplication();
-        application.setStandaloneMode(true);
-        component.getDefaultHost().attach(application);
-        
-        launchServer(component);
-    }
 }

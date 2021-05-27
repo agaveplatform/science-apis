@@ -1,8 +1,5 @@
 package org.iplantc.service.systems.model;
 
-import java.io.File;
-import java.util.HashMap;
-
 import org.iplantc.service.systems.model.enumerations.AuthConfigType;
 import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
@@ -11,11 +8,14 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"broken"})
+import java.io.File;
+import java.util.HashMap;
+
+@Test(groups={"unit"})
 public class RemoteConfigTest extends SystemsModelTestCommon{
 
-	private HashMap<StorageProtocolType, StorageConfig> storageConfigs = new HashMap<StorageProtocolType, StorageConfig>();
-	private HashMap<LoginProtocolType, LoginConfig> loginConfigs = new HashMap<LoginProtocolType, LoginConfig>();
+	private final HashMap<StorageProtocolType, StorageConfig> storageConfigs = new HashMap<StorageProtocolType, StorageConfig>();
+	private final HashMap<LoginProtocolType, LoginConfig> loginConfigs = new HashMap<LoginProtocolType, LoginConfig>();
 	
     @BeforeClass
     public void beforeClass() throws Exception  
@@ -25,8 +25,10 @@ public class RemoteConfigTest extends SystemsModelTestCommon{
         try {
         // pull in storage configs
     	for(StorageProtocolType storageProtocol: StorageProtocolType.values()) {
-    		File testSystem = new File(JSONTestDataUtil.TEST_SYSTEM_FOLDER + "storage/" + 
-    				storageProtocol.name().toLowerCase() + ".example.com.json");
+    		String protocolName = storageProtocol == StorageProtocolType.IRODS ?
+					"irods3" : storageProtocol.name().toLowerCase();
+    		File testSystem = new File(JSONTestDataUtil.TEST_SYSTEM_FOLDER + "storage/" +
+					protocolName + ".example.com.json");
     		if (testSystem.exists()) {
 	    		jsonTree = jtd.getTestDataObject(testSystem.getPath())
 	    				.getJSONObject("storage");

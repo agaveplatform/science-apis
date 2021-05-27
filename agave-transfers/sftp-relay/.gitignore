@@ -1,0 +1,8 @@
+/vendor/
+/release/
+*.iml
+/.idea/
+*.log
+!/docker-compose.yml
+/scratch
+!/pom.xml

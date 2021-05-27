@@ -1,16 +1,5 @@
 package org.iplantc.service.transfer;
 
-import static org.mockito.Mockito.*;
-
-import java.io.File;
-import java.io.IOException;
-
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -18,13 +7,15 @@ import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.model.TransferTask;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.mockito.*;
+import org.testng.Assert;
+import org.testng.annotations.*;
 
-@Test(singleThreaded = true, groups = { "transfer", "irods.filesystem.init",
-		"broken" })
+import java.io.File;
+import java.io.IOException;
+
+@Test(singleThreaded = true, groups = { "transfer", "irods.filesystem.init", "broken" })
 public class RemoteTransferListenerTest extends BaseTransferTestCase {
 
 	protected File tmpFile = null;
@@ -77,7 +68,7 @@ public class RemoteTransferListenerTest extends BaseTransferTestCase {
 		JSONObject json = getSystemJson();
 		json.remove("id");
 		json.put("id", this.getClass().getSimpleName());
-		system = (StorageSystem) StorageSystem.fromJSON(json);
+		system = StorageSystem.fromJSON(json);
 		system.setOwner(SYSTEM_USER);
 		String homeDir = system.getStorageConfig().getHomeDir();
 		homeDir = StringUtils.isEmpty(homeDir) ? "" : homeDir;

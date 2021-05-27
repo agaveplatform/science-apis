@@ -1,19 +1,18 @@
 package org.iplantc.service.common.representation.xstream;
 
-import java.io.IOException;
-import java.io.Writer;
-
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.io.HierarchicalStreamDriver;
+import com.thoughtworks.xstream.io.json.JsonHierarchicalStreamDriver;
+import com.thoughtworks.xstream.io.xml.DomDriver;
+import com.thoughtworks.xstream.mapper.MapperWrapper;
 import org.iplantc.service.common.response.ApiClassAliasingMapper;
 import org.restlet.data.CharacterSet;
 import org.restlet.data.MediaType;
 import org.restlet.representation.Representation;
 import org.restlet.representation.WriterRepresentation;
 
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.HierarchicalStreamDriver;
-import com.thoughtworks.xstream.io.json.JsonHierarchicalStreamDriver;
-import com.thoughtworks.xstream.io.xml.DomDriver;
-import com.thoughtworks.xstream.mapper.MapperWrapper;
+import java.io.IOException;
+import java.io.Writer;
 
 /**
  * Representation based on the XStream library. It can serialize and deserialize
@@ -31,13 +30,13 @@ public class XstreamRepresentation<T> extends WriterRepresentation {
     private Class<? extends HierarchicalStreamDriver> jsonDriverClass;
 
     /** The (parsed) object to format. */
-    private T object;
+    private final T object;
 
     /** The target class of the object to serialize. */
     private Class<T> targetClass;
 
     /** The representation to parse. */
-    private Representation representation;
+    private final Representation representation;
 
     /** The XStream XML driver class. */
     private Class<? extends HierarchicalStreamDriver> xmlDriverClass;
@@ -137,8 +136,7 @@ public class XstreamRepresentation<T> extends WriterRepresentation {
             result.autodetectAnnotations(true);
         } catch (Exception e) {
             IOException ioe = new IOException(
-                    "Unable to create the XStream driver: " + e.getMessage());
-            ioe.initCause(e);
+                    "Unable to create the XStream driver: " + e.getMessage(), e);
             throw ioe;
         }
 

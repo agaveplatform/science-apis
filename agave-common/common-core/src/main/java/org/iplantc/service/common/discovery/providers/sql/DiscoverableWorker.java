@@ -5,8 +5,6 @@ import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 
-import org.iplantc.service.common.discovery.PlatformWorker;
-
 /**
  * POJO for an Worker {@link DiscoveryService}s. WorkerDiscoveryService 
  * can be any elastically scalable process used across the platform. 

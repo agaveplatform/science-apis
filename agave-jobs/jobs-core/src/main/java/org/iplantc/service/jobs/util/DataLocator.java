@@ -3,9 +3,6 @@
  */
 package org.iplantc.service.jobs.util;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.dao.SoftwareDao;
@@ -27,6 +24,9 @@ import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.Settings;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * This class resolves the location of job data at any given time by examining job 
  * history, status, and the existence of data at the expected location.
@@ -36,14 +36,29 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
  */
 public class DataLocator {
 
-	private Job					job;
+	private final Job					job;
+
+	protected JobManager jobManager = null;
 
 	/**
-	 *
+	 * Default contructor
+	 * @param job the job for which to locate data
 	 */
 	public DataLocator(Job job)
 	{
 		this.job = job;
+	}
+
+	/**
+	 * Basic getter for job manager instance. Useful for testing
+	 * @return JobManager instance
+	 */
+	protected JobManager getJobManager() {
+		if (jobManager == null) {
+			jobManager = new JobManager();
+		}
+
+		return jobManager;
 	}
 
 	/**
@@ -60,19 +75,19 @@ public class DataLocator {
 		// if the job was archived, we need to figure out where the data might be
 		if (job.isArchiveOutput()) {
 			// fully archived jobs should refer to the archive system.
-			if (JobManager.isJobDataFullyArchived(job)) {
+			if (getJobManager().isJobDataFullyArchived(job)) {
 				return job.getArchiveSystem();
 			}
 			// otherwise partially archived jobs should default to the execution system
 			// since that's where the data would be
 			else {
-				return JobManager.getJobExecutionSystem(job);
+				return getJobManager().getJobExecutionSystem(job);
 			}
 		}
 		// otherwise, we go to the execution system since it's the only place
 		// the data could be.
 		else {
-			return JobManager.getJobExecutionSystem(job);
+			return getJobManager().getJobExecutionSystem(job);
 		}
 	}
 
@@ -80,7 +95,7 @@ public class DataLocator {
 	 * Returns a directory listing of {@link RemoteFileInfo} objects from the {@code path}
 	 * relative to the job output directory.
 	 *
-	 * @param path
+	 * @param path the path for which to list the output directory
 	 * @return
 	 * @throws RemoteDataException
 	 * @throws MissingDataException
@@ -93,7 +108,7 @@ public class DataLocator {
 		RemoteDataClient remoteExecutionSystemDataClient = null;
 		try
 		{
-			if (!JobManager.isJobDataFullyArchived(job))
+			if (!getJobManager().isJobDataFullyArchived(job))
 			{
 			    // get files from remote system
 				Software software = SoftwareDao.getSoftwareByUniqueName(job.getSoftwareName());
@@ -109,7 +124,7 @@ public class DataLocator {
 				    RemoteSystem executionSystem = null;
 					try
 					{
-						executionSystem = JobManager.getJobExecutionSystem(job);
+						executionSystem = getJobManager().getJobExecutionSystem(job);
 
 						remoteExecutionSystemDataClient = executionSystem.getRemoteDataClient(job.getInternalUsername());
 
@@ -279,7 +294,11 @@ public class DataLocator {
 						"Unable to locate job data because the job was not archived.");
 			}
 		} finally {
-			try { remoteExecutionSystemDataClient.disconnect(); } catch (Exception e) {}
+			try {
+				if (remoteExecutionSystemDataClient != null) {
+					remoteExecutionSystemDataClient.disconnect();
+				}
+			} catch (Exception ignored) {}
 		}
 
 	}

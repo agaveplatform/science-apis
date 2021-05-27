@@ -17,8 +17,8 @@
         }
     ],
 	"login": {
-		"host": "docker.example.com",
-		"port": 10155,
+      "host": "${condor.host}",
+      "port": ${condor.port},
 		"protocol": "SSH",
 		"auth":{
          "username":"testuser",
@@ -27,11 +27,12 @@
       }
 	},
 	"storage":{
-      "host":"docker.example.com",
-      "port":10155,
+      "host": "${condor.host}",
+      "port": ${condor.data.port},
       "protocol":"SFTP",
       "rootDir":"/",
       "homeDir":"/home/testuser",
+      "publicAppsDir": "/tmp",
       "auth":{
          "username":"testuser",
          "password":"testuser",
@@ -42,5 +43,5 @@
 	"workDir": "/tmp",
 	"scheduler": "CONDOR",
 	"environment": "",
-	"startupScript": "./bashrc"
+	"startupScript": "~/.bashrc"
 }

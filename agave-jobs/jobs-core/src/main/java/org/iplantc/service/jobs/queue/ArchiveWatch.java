@@ -1,15 +1,10 @@
 package org.iplantc.service.jobs.queue;
 
-import java.nio.channels.ClosedByInterruptException;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.hibernate.StaleObjectStateException;
 import org.hibernate.UnresolvableObjectException;
-import org.iplantc.service.apps.dao.SoftwareDao;
-import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.common.messaging.MessageQueueClient;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.Settings;
@@ -23,13 +18,14 @@ import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.joda.time.DateTime;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionException;
+
+import java.nio.channels.ClosedByInterruptException;
 
 /**
  * Class to pull a job from the db queue and attempt to archive its data.
@@ -47,8 +43,6 @@ public class ArchiveWatch extends AbstractJobWatch
 	public ArchiveWatch(boolean allowFailure) {
 	    super(allowFailure);
 	}
-
-	private MessageQueueClient messageClient = null;
 
 	/* (non-Javadoc)
      * @see org.iplantc.service.jobs.queue.WorkerWatch#selectNextAvailableJob()
@@ -135,7 +129,7 @@ public class ArchiveWatch extends AbstractJobWatch
             						executionSystem.getSystemId() + " is currently unavailable.");
             			}
             			this.job = JobManager.updateStatus(job, JobStatusType.CLEANING_UP,
-							"Archiving is current paused waiting for the execution system " + executionSystem.getSystemId() +
+							"Archiving is currently paused waiting for the execution system " + executionSystem.getSystemId() +
 							" to become available. If the system becomes available again within 7 days, this job " +
 							"will resume archiving. After 7 days it will be killed.");
 					}
@@ -161,7 +155,7 @@ public class ArchiveWatch extends AbstractJobWatch
             						job.getArchiveSystem().getSystemId() + " is currently unavailable. ");
             			}
             			this.job = JobManager.updateStatus(getJob(), JobStatusType.CLEANING_UP,
-							"Archiving is current paused waiting for the archival system " + job.getArchiveSystem().getSystemId() +
+							"Archiving is currently paused waiting for the archival system " + job.getArchiveSystem().getSystemId() +
 							" to become available. If the system becomes available again within 7 days, this job " +
 							"will resume archiving. After 7 days it will be killed.");
 						return;
@@ -188,7 +182,7 @@ public class ArchiveWatch extends AbstractJobWatch
 
         				this.job.setRetries(attempts-1);
 
-        				log.debug("Attempt " + attempts + " to archive job " + getJob().getUuid() + " output");
+        				log.debug("Attempt " + attempts + " to archive job " + getJob().getUuid() + " output.");
 
     					// mark the job as submitting so no other process claims it
 						this.job = JobManager.updateStatus(this.job, JobStatusType.ARCHIVING,
@@ -245,7 +239,7 @@ public class ArchiveWatch extends AbstractJobWatch
 							    this.job = JobDao.getById(this.job.getId());
 								log.debug("System for job " + getJob().getUuid() + " is currently unavailable. " + e.getMessage());
 								this.job = JobManager.updateStatus(job, JobStatusType.CLEANING_UP,
-									"Job output archiving is current paused waiting for a system containing " +
+									"Job output archiving is currently paused waiting for a system containing " +
 									"input data to become available. If the system becomes available again within 7 days, this job " +
 									"will resume staging. After 7 days it will be killed.");
 							}

@@ -3,33 +3,21 @@
  */
 package org.iplantc.service.io.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.SerializationException;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.io.model.enumerations.FileEventType;
-import org.iplantc.service.io.util.ServiceUtils;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Entity class for persisting job events. This creates a history log 
@@ -207,7 +195,7 @@ public class FileEvent {
     }
 
     /**
-     * @param username
+     * @param createdBy
      *            the creator to set
      */
     public void setCreatedBy(String createdBy) {
@@ -266,7 +254,7 @@ public class FileEvent {
     }
 	
 	public String toString() {
-		return logicalFile + " " + status + " " + new DateTime(created).toString();
+		return logicalFile + " " + status + " " + new DateTime(created);
 	}
 	
 
@@ -284,17 +272,17 @@ public class FileEvent {
         ObjectNode linksObject = json.putObject("_links");
         linksObject.put(
                 "self",
-                (ObjectNode) mapper.createObjectNode().put(
+                mapper.createObjectNode().put(
                         "href",
                         logicalFile.getEventLink()));
         
-        linksObject.put("file", (ObjectNode)mapper.createObjectNode()
+        linksObject.put("file", mapper.createObjectNode()
                 .put("href", 
                 		logicalFile.getPublicLink()));
         
         linksObject.put(
                 "profile",
-                (ObjectNode) mapper.createObjectNode().put(
+                mapper.createObjectNode().put(
                         "href",
                         TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE)
                                 + getCreatedBy()));

@@ -1,24 +1,7 @@
 package org.iplantc.service.systems.model;
 
-import java.math.BigDecimal;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -34,8 +17,13 @@ import org.iplantc.service.systems.util.ServiceUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Contains the bean to define a batch queue. Each queue
@@ -49,20 +37,20 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @Table(name = "batchqueues")
 public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 
-	public static final Long DEFAULT_MAX_JOBS = new Long(10);
-	public static final Long DEFAULT_MAX_MEMORY = new Long(64);
+	public static final Long DEFAULT_MAX_JOBS = 10L;
+	public static final Long DEFAULT_MAX_MEMORY = 64L;
 	public static final String DEFAULT_MAX_RUN_TIME = "9999:23:59";
 	public static final String DEFAULT_MIN_RUN_TIME = "00:00:01";
 
-	private Integer			id;
+	private Long			id;
 	private String 			name;
 	private String 			mappedName;
 	private String 			description;
-	private Long			maxJobs = new Long(-1);
-	private Long			maxUserJobs = new Long(-1);
-	private Long			maxNodes = new Long(-1);
-	private Double			maxMemoryPerNode = new Double(-1);
-	private Long			maxProcessorsPerNode = new Long(-1);
+	private Long			maxJobs = (long) -1;
+	private Long			maxUserJobs = (long) -1;
+	private Long			maxNodes = (long) -1;
+	private Double			maxMemoryPerNode = (double) -1;
+	private Long			maxProcessorsPerNode = (long) -1;
 	private String			maxRequestedTime = "999:59:59";
 	private String 			customDirectives;
 	private ExecutionSystem executionSystem;
@@ -104,12 +92,12 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 	@Id
 	@GeneratedValue
 	@Column(name = "id", unique = true, nullable = false)
-	public Integer getId()
+	public Long getId()
 	{
 		return this.id;
 	}
 
-	public void setId(Integer id)
+	public void setId(Long id)
 	{
 		this.id = id;
 	}
@@ -306,7 +294,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 	}
 
 	/**
-	 * @param maxProcessors
+	 * @param maxProcessorsPerNode
 	 */
 	public void setMaxProcessorsPerNode(Long maxProcessorsPerNode)
 	{
@@ -319,7 +307,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 
 	/**
 	 * Maximum run time of any job in this queue in (h)hh:mm:ss format
-	 * @return
+	 * @return String
 	 */
 	public String getMaxRequestedTime() {
 		return maxRequestedTime;
@@ -331,11 +319,9 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 	@Column(name = "`max_requested_time`", nullable = true, length = 19)
 	public void setMaxRequestedTime(String maxRequestedTime)
 	{
-        if(maxRequestedTime.equals("")){
+        if (StringUtils.isBlank(maxRequestedTime)){
             throw new SystemException("'system.queues.maxRequestedTime' must not be an empty string.");
-        }
-		if (!StringUtils.isEmpty(maxRequestedTime))
-		{
+        } else {
 			if (maxRequestedTime.length() > 19) {
 				throw new SystemException("'system.queues.maxRequestedTime' must be less than 19 characters.");
 			} else if (!TimeUtils.isValidRequestedJobTime(maxRequestedTime)) {
@@ -477,7 +463,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
         json.set("load", mapper.valueToTree(load));
 
         ObjectNode linksObject = mapper.createObjectNode();
-        linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+        linksObject.put("self", mapper.createObjectNode()
             .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_SYSTEM_SERVICE, getExecutionSystem().getTenantId()) + getExecutionSystem().getSystemId() + "/queues/" + getUuid()));
         linksObject.put("executionSystem", mapper.createObjectNode()
             .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_SYSTEM_SERVICE, getExecutionSystem().getTenantId()) + getExecutionSystem().getSystemId()));
@@ -579,7 +565,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 				}
 			}
 			else {
-				batchQueue.setMaxJobs(new Long(-1));
+				batchQueue.setMaxJobs((long) -1);
 			}
 
 			if (jsonBatchQueue.has("maxUserJobs") && !jsonBatchQueue.isNull("maxUserJobs"))
@@ -612,7 +598,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 				}
 			}
 			else {
-				batchQueue.setMaxUserJobs(new Long(-1));
+				batchQueue.setMaxUserJobs((long) -1);
 			}
 
 			if (jsonBatchQueue.has("maxNodes") && !jsonBatchQueue.isNull("maxNodes"))
@@ -630,7 +616,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 							"maxNodes should be a positive integer value or -1 for no limit.");
 				}
 			} else {
-				batchQueue.setMaxNodes(new Long(-1));
+				batchQueue.setMaxNodes((long) -1);
 			}
 
 			if (jsonBatchQueue.has("maxProcessorsPerNode") && !jsonBatchQueue.isNull("maxProcessorsPerNode"))
@@ -648,7 +634,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 							"maxProcessorsPerNode should be a positive integer value or -1 for no limit.");
 				}
 			} else {
-				batchQueue.setMaxProcessorsPerNode(new Long(-1));
+				batchQueue.setMaxProcessorsPerNode((long) -1);
 			}
 
 			if (jsonBatchQueue.has("maxRequestedTime") && !jsonBatchQueue.isNull("maxRequestedTime"))
@@ -705,11 +691,11 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 
 	public static Double parseMaxMemoryPerNode(String memoryLimit) throws NumberFormatException
 	{
-		if (StringUtils.isEmpty(memoryLimit)) {
+		if (StringUtils.isBlank(memoryLimit)) {
 			throw new NumberFormatException("Memory limit cannot be null or empty.");
 		}
 
-		Double returnValue = new Double(-1);
+		Double returnValue = (double) -1;
 
 		// default numeric values to GB
 		if (NumberUtils.isNumber(memoryLimit)) {
@@ -728,6 +714,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 	    powerMap.put("PB", 2);
 	    powerMap.put("TB", 1);
 	    powerMap.put("GB", 0);
+		powerMap.put("MB", -1);
 	    if (matcher.find()) {
 			String number = matcher.group(1);
 			int pow = powerMap.get(matcher.group(2).toUpperCase());
@@ -752,6 +739,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 		queue.maxProcessorsPerNode = getMaxProcessorsPerNode();
 		queue.maxMemoryPerNode = getMaxMemoryPerNode();
 		queue.customDirectives = getCustomDirectives();
+		queue.maxRequestedTime = getMaxRequestedTime();
 		queue.systemDefault = isSystemDefault();
 		return queue;
 	}
@@ -763,6 +751,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 		result = prime * result
 				+ ((executionSystem == null) ? 0 : executionSystem.hashCode());
 		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		result = prime * result + ((mappedName == null) ? 0 : mappedName.hashCode());
 		return result;
 	}
 
@@ -786,12 +775,9 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 		} else if (!name.equals(other.name))
 			return false;
 		if (mappedName == null) {
-			if (other.mappedName != null)
-				return false;
-		} else if (!mappedName.equals(other.mappedName))
-			return false;
-		return true;
-	}
+            return other.mappedName == null;
+		} else return mappedName.equals(other.mappedName);
+    }
 
 	@Override
 	public int compareTo(BatchQueue q)

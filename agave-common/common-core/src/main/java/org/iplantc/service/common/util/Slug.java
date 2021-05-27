@@ -58,8 +58,8 @@ public class Slug {
 		setLowerCase(lowerCase);
 		InputStream replacementsStream = getClass().getClassLoader().getResourceAsStream("replacements.properties");
 		if (replacementsStream != null) {
-			replacements.load(replacementsStream);
-			replacementsStream.close();
+			try {replacements.load(replacementsStream);}
+			finally {try {replacementsStream.close();} catch (Exception e){}}
 		}
 	}
 
@@ -181,7 +181,7 @@ public class Slug {
 		this.lowerCase = lowerCase;
 	}
 
-	public static void main(String args[]) {
+	public static void main(String[] args) {
 
 		String input = "";
 

@@ -14,16 +14,6 @@
  */
 package org.iplantc.service.common.auth;
 
-import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.Provider;
-import java.util.Iterator;
-import java.util.Set;
-
-import javax.security.auth.Subject;
-
 import org.apache.log4j.Logger;
 import org.globus.gsi.CredentialException;
 import org.globus.gsi.gssapi.GSSConstants;
@@ -32,18 +22,23 @@ import org.globus.gsi.gssapi.GlobusGSSName;
 import org.globus.gsi.gssapi.jaas.JaasSubject;
 import org.gridforum.jgss.ExtendedGSSCredential;
 import org.gridforum.jgss.ExtendedGSSManager;
-import org.ietf.jgss.GSSContext;
-import org.ietf.jgss.GSSCredential;
-import org.ietf.jgss.GSSException;
-import org.ietf.jgss.GSSName;
-import org.ietf.jgss.Oid;
+import org.ietf.jgss.*;
+
+import javax.security.auth.Subject;
+import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.Provider;
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * An implementation of <code>GlobusGSSManager</code>.
  */
 public class AgaveGSSManagerImpl extends ExtendedGSSManager {
 
-	private static Logger logger = Logger.getLogger(AgaveGSSManagerImpl.class);
+	private static final Logger logger = Logger.getLogger(AgaveGSSManagerImpl.class);
 
 	static final Oid[] MECHS;
 
@@ -148,7 +143,7 @@ public class AgaveGSSManagerImpl extends ExtendedGSSManager {
 	 * @see #createCredential(GSSName, int, Oid, int)
 	 */
 	public GSSCredential createCredential(GSSName name, int lifetime,
-			Oid mechs[], int usage) throws GSSException {
+                                          Oid[] mechs, int usage) throws GSSException {
 		if (mechs == null || mechs.length == 0) {
 			return createCredential(name, lifetime, (Oid) null, usage);
 		} else {
@@ -327,14 +322,14 @@ public class AgaveGSSManagerImpl extends ExtendedGSSManager {
 	/**
 	 * Currently not implemented.
 	 */
-	public GSSName createName(byte name[], Oid nameType) throws GSSException {
+	public GSSName createName(byte[] name, Oid nameType) throws GSSException {
 		throw new GSSException(GSSException.UNAVAILABLE);
 	}
 
 	/**
 	 * Currently not implemented.
 	 */
-	public GSSName createName(byte name[], Oid nameType, Oid mech)
+	public GSSName createName(byte[] name, Oid nameType, Oid mech)
 			throws GSSException {
 		throw new GSSException(GSSException.UNAVAILABLE);
 	}

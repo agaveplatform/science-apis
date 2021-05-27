@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.agaveplatform</groupId>
+        <artifactId>science-apis</artifactId>
+        <version>2.2.27</version>
+    </parent>
+
+    <artifactId>protos</artifactId>
+    <version>2.2.27</version>
+    <name>Agave Platform Protobuffer Parent POM</name>
+    <description>Proto file generation for all Agave grpc services</description>
+    <packaging>pom</packaging>
+
+    <properties>
+        <grpc.version>1.24.0</grpc.version><!-- CURRENT_GRPC_VERSION -->
+        <protobuf.version>3.15.3</protobuf.version>
+        <protoc.version>3.10.0</protoc.version>
+        <protoc-gen-grpc-java.version>1.23.1</protoc-gen-grpc-java.version>
+        <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
+
+    </properties>
+
+    <dependencies>
+    </dependencies>
+
+    <build>
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.6.2</version>
+            </extension>
+        </extensions>
+    </build>
+
+    <modules>
+        <module>protos-java</module>
+    </modules>
+</project>

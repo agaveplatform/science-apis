@@ -1,14 +1,12 @@
 package org.iplantc.service.systems.model;
 
-import java.util.Collection;
-
-import org.hibernate.Session;
-import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
+
+import java.util.Collection;
 
 /**
  * Created with IntelliJ IDEA.
@@ -19,12 +17,12 @@ import org.testng.annotations.BeforeTest;
  */
 public class SystemsModelTestCommon 
 {
-    public static final String TENANT_ADMIN = "dooley";
+    public static final String TENANT_ADMIN = "testadmin";
 	public static final String SYSTEM_OWNER = "testuser";
-	public static final String SYSTEM_SHARE_USER = "bob";
+	public static final String SYSTEM_SHARE_USER = "testshare";
 	public static final String SYSTEM_PUBLIC_USER = "public";
-	public static final String SYSTEM_UNSHARED_USER = "dan";
-	public static final String SYSTEM_INTERNAL_USERNAME = "test_user";
+	public static final String SYSTEM_UNSHARED_USER = "testunshared";
+	public static final String SYSTEM_INTERNAL_USERNAME = "test_internal_user";
 	
 	public static String EXECUTION_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/execution";
 	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/storage";
@@ -38,27 +36,6 @@ public class SystemsModelTestCommon
 	@BeforeTest
 	protected void beforeClass() throws Exception {
 		jtd = JSONTestDataUtil.getInstance();
-	}
-	
-	protected void clearSystems() throws Exception 
-	{
-	    Session session = null;
-        try
-        {
-            HibernateUtil.beginTransaction();
-            session = HibernateUtil.getSession();
-            session.clear();
-            HibernateUtil.disableAllFilters();
-            session.createQuery("DELETE RemoteSystem").executeUpdate();
-            session.flush();
-        }
-        catch (Throwable t) {
-        	t.printStackTrace();
-        }
-        finally
-        {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
-        }
 	}
 	
 	public void commonBatchQueueFromJSON(String name, Object changeValue, String message, boolean exceptionThrown)
@@ -80,9 +57,9 @@ public class SystemsModelTestCommon
 				Assert.fail(exceptionMsg, se);
 		}
 
-		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
+		// System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 
-		Assert.assertTrue(exceptionFlag == exceptionThrown, exceptionMsg);
+		Assert.assertEquals(exceptionFlag, exceptionThrown, exceptionMsg);
 	}
 	
 	public void commonAuthConfigFromJSON(String name, Object changeValue, String message, boolean exceptionThrown)
@@ -104,9 +81,9 @@ public class SystemsModelTestCommon
 				se.printStackTrace();
 		}
 
-		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
+		// System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 
-		Assert.assertTrue(exceptionFlag == exceptionThrown, exceptionMsg);
+		Assert.assertEquals(exceptionFlag, exceptionThrown, exceptionMsg);
 	}
 	
 	public void commonStorageConfigFromJSON(String name, Object changeValue, String message, boolean exceptionThrown)
@@ -137,7 +114,7 @@ public class SystemsModelTestCommon
             throw new SystemArgumentException(exceptionMsg);
 		}
 
-		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
+		// System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 
 		// Assert.assertTrue(exceptionFlag == exceptionThrown, exceptionMsg);
 	}
@@ -161,9 +138,9 @@ public class SystemsModelTestCommon
 				se.printStackTrace();
 		}
 
-		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
+		// System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 
-		Assert.assertTrue(exceptionFlag == exceptionThrown, exceptionMsg);
+		Assert.assertEquals(exceptionFlag, exceptionThrown, exceptionMsg);
 	}
 
 
@@ -186,9 +163,9 @@ public class SystemsModelTestCommon
 				se.printStackTrace();
 		}
 
-		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
+		// System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 
-		Assert.assertTrue(exceptionFlag == exceptionThrown, exceptionMsg);
+		Assert.assertEquals(exceptionFlag, exceptionThrown, exceptionMsg);
 	}
 
 	public void commonAuthenticationSystemFromJSON(String name, Object changeValue, String message, boolean exceptionThrown)
@@ -210,9 +187,9 @@ public class SystemsModelTestCommon
 				se.printStackTrace();
 		}
 
-		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
+		// System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 
-		Assert.assertTrue(exceptionFlag == exceptionThrown, exceptionMsg);
+		Assert.assertEquals(exceptionFlag, exceptionThrown, exceptionMsg);
 	}
 	
 	protected JSONObject updateTestData(String attribute, Object newValue)
@@ -239,12 +216,12 @@ public class SystemsModelTestCommon
 		else if (newValue instanceof Long) {
 			jsonTree.put(attribute, ( (Long) newValue ).longValue());
 		}
-		else if (newValue instanceof Object) {
+		else {
 			jsonTree.put(attribute, new JSONObject(newValue));
 		}
-		else {
-			jsonTree.put(attribute, newValue);
-		}
+//		else {
+//			jsonTree.put(attribute, newValue);
+//		}
 		
 		return jsonTree;
 	}

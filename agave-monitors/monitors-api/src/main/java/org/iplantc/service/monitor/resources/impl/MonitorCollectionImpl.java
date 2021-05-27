@@ -1,42 +1,29 @@
-/**
- * 
- */
 package org.iplantc.service.monitor.resources.impl;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorAdd;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorsList;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.MONITORS02;
-
-import java.util.Arrays;
-import java.util.List;
-
-import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.hibernate.HibernateException;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.restlet.resource.AbstractAgaveResource;
+import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.monitor.Settings;
 import org.iplantc.service.monitor.dao.MonitorDao;
 import org.iplantc.service.monitor.events.MonitorEventProcessor;
 import org.iplantc.service.monitor.exceptions.MonitorException;
-import org.iplantc.service.monitor.managers.MonitorPermissionManager;
 import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.model.enumeration.MonitorEventType;
 import org.iplantc.service.monitor.resources.MonitorCollection;
+import org.iplantc.service.monitor.search.MonitorSearchFilter;
 import org.iplantc.service.monitor.util.ServiceUtils;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
@@ -45,15 +32,23 @@ import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.joda.time.DateTime;
 import org.restlet.Request;
+import org.restlet.data.Form;
 import org.restlet.data.Status;
 import org.restlet.ext.fileupload.RestletFileUpload;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorAdd;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorsList;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.MONITORS02;
 
 /**
  * @author dooley
@@ -63,8 +58,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @Produces(MediaType.APPLICATION_JSON)
 public class MonitorCollectionImpl extends AbstractAgaveResource implements MonitorCollection
 {
+	private static final ObjectMapper mapper = new ObjectMapper();
 	protected MonitorDao dao = new MonitorDao();
-	protected MonitorPermissionManager pm = null;
+//	protected MonitorPermissionManager pm = null;
 	protected MonitorEventProcessor eventProcessor = new MonitorEventProcessor();
 	
 	
@@ -82,17 +78,19 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 		
 		try
 		{
-			List<Monitor> monitors = null;
+			List<Monitor> monitors;
 			boolean includeActive = false;
 			boolean includeInactive = false;
 			if (!StringUtils.isEmpty(active)) {
 				includeActive = Boolean.parseBoolean(active);
 				includeInactive = !Boolean.parseBoolean(active);
 			}
-			
-			monitors = dao.getUserMonitors(getAuthenticatedUsername(), includeActive, includeInactive, systemId);
-			
-			ObjectMapper mapper = new ObjectMapper();
+
+			//			Request.getCurrent().getResourceRef().getQueryAsForm().getValuesMap()
+			Map<SearchTerm, Object> searchCriteria = getQueryParameters();
+
+			monitors = dao.findMatching(getAuthenticatedUsername(), searchCriteria, getLimit(), getOffset(), hasJsonPathFilters());
+
 			ArrayNode arrayNode = mapper.createArrayNode();
 			
 			for (int i=getOffset(); i< Math.min((getLimit()+getOffset()), monitors.size()); i++)
@@ -109,13 +107,13 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 					.put("lastUpdated", new DateTime(monitor.getLastUpdated()).toString());
 					
 					ObjectNode linksObject = mapper.createObjectNode();
-					linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+					linksObject.set("self", mapper.createObjectNode()
 			    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + monitor.getUuid()));
-					linksObject.put("history", (ObjectNode)mapper.createObjectNode()
+					linksObject.set("history", mapper.createObjectNode()
 				    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + monitor.getUuid() + "/history"));
-					linksObject.put("checks", (ObjectNode)mapper.createObjectNode()
+					linksObject.set("checks", mapper.createObjectNode()
 				    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + monitor.getUuid() + "/checks"));
-					linksObject.put("target", (ObjectNode)mapper.createObjectNode()
+					linksObject.set("target", mapper.createObjectNode()
 				    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_SYSTEM_SERVICE) + monitor.getSystem().getSystemId()));
 					
 					json.set("_links", linksObject);
@@ -125,21 +123,18 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			
 			return Response.ok(new AgaveSuccessRepresentation(arrayNode.toString())).build();
 		}
-		catch (MonitorException e)
-		{
-			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-					"Failed to retrieve monitors.", e);
-		}
 		catch (ResourceException e) {
 			throw e;
 		}
-		catch (Throwable e)
-		{
+		catch (Throwable e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to retrieve monitors.", e);
 		}
-		
-		
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
+
+
 	}
 
 	/* (non-Javadoc)
@@ -169,59 +164,63 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 						"Permission denied. You do not have permission to view this system");
 			}
 		}
-		
-		try
-		{	
-			ObjectMapper mapper = new ObjectMapper();
+
+		try {
 			ObjectNode jsonMonitor = mapper.createObjectNode()
 					.put("target", systemId)
-					.put("frequency", Integer.parseInt(frequency))
-					.put("updateSystemStatus", StringUtils.equalsIgnoreCase(updateSystemStatus, "true") || 
-											   StringUtils.equalsIgnoreCase(updateSystemStatus, "1"))
-					.put("internalUsername", internalUsername)
-					.put("active", StringUtils.equalsIgnoreCase(active, "true") || 
-                                   StringUtils.equalsIgnoreCase(active, "1"));
-			
-    		Monitor monitor = Monitor.fromJSON(jsonMonitor, null, getAuthenticatedUsername());
-    		monitor.setOwner(getAuthenticatedUsername());
-			
+					.put("internalUsername", "null".equalsIgnoreCase(internalUsername) ? null : internalUsername);
+
+			// Form submissions come in as strings. Fields will be properly validated on the backend, but we
+			// need to properly convert the value to the proper type
+			if (NumberUtils.isNumber(updateSystemStatus)) {
+				jsonMonitor.put("updateSystemStatus", NumberUtils.toFloat(updateSystemStatus));
+			} else if (updateSystemStatus != null) {
+				jsonMonitor.put("updateSystemStatus", updateSystemStatus);
+			}
+
+			// form submissions come in as strings. Frequency will be properly validated on the backend, but we
+			// need to properly convert the value to the proper numberic type
+			if (NumberUtils.isNumber(active)) {
+				jsonMonitor.put("active", NumberUtils.toFloat(active));
+			} else if (active != null) {
+				jsonMonitor.put("active", frequency);
+			}
+
+			// form submissions come in as strings. Frequency will be properly validated on the backend, but we
+			// need to properly convert the value to the proper numberic type
+			if (NumberUtils.isNumber(frequency)) {
+				jsonMonitor.put("frequency", NumberUtils.toFloat(frequency));
+			} else if (frequency != null) {
+				jsonMonitor.put("frequency", frequency);
+			}
+
+			Monitor monitor = Monitor.fromJSON(jsonMonitor, null, getAuthenticatedUsername());
+			monitor.setOwner(getAuthenticatedUsername());
+
 			dao.persist(monitor);
-			
-			if (jsonMonitor.has("notifications")) 
-			{	
+
+			if (jsonMonitor.has("notifications")) {
 				processNotifications(jsonMonitor, monitor);
 			}
-			
+
 			eventProcessor.processContentEvent(monitor, MonitorEventType.CREATED, getAuthenticatedUsername());
 			// NotificationManager.process(monitor.getUuid(), MonitorEventType.CREATED.name(), monitor.getOwner());
-			
-			return Response.status(javax.ws.rs.core.Response.Status.CREATED)
+
+			return Response.status(Response.Status.CREATED)
 					.entity(new AgaveSuccessRepresentation(monitor.toJSON()))
 					.build();
-    	} 
-		catch (MonitorException e) {
+		} catch (MonitorException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					e.getLocalizedMessage(), e);
-		}
-		catch (IllegalArgumentException e) {
+					e.getLocalizedMessage());
+		} catch (NumberFormatException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					"Unable to save monitor: " + e.getMessage(), e);
-	    } 
-		catch (HibernateException e) {
-			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					"Unable to save monitor: " + e.getMessage(), e);
-	    }
-//		catch (JsonException e)
-//		{
-//			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-//					"Unable to process the monitor json description.", e);
-//		}
-		catch (ResourceException e) {
-			throw e;
-		} 
-		catch (Exception e) {
+					"Unable to save monitor: " + e.getMessage());
+		} catch (NotificationException e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-					"Failed to save monitor: " + e.getMessage(), e);
+					"Failed to save monitor: " + e.getMessage());
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -250,7 +249,7 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 
 		        // this list is always empty !!
 		        List<FileItem> fileItems = fileUpload.parseRepresentation(input);
-		        ObjectMapper mapper = new ObjectMapper();
+
 		        JsonNode jsonMonitor = null;
 		        for (FileItem fileItem : fileItems) {
 		            if (!fileItem.isFormField()) {
@@ -301,9 +300,11 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			throw e;
 		} 
 		catch (Throwable e) {
-			e.printStackTrace();
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to save monitor: " + e.getMessage(), e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -330,7 +331,7 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			else 
 			{
 				
-				JsonNode jsonMonitor = new ObjectMapper().readTree(bytes);
+				JsonNode jsonMonitor = mapper.readTree(bytes);
 		        
 				Monitor monitor = Monitor.fromJSON(jsonMonitor, null, getAuthenticatedUsername());
 	    		
@@ -355,12 +356,12 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			}
 		} 
 		catch (MonitorException e) {
-			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					e.getMessage(), e);
+			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST.getCode(),
+					e, e.getMessage(), e.getMessage());
 		}
 		catch (IllegalArgumentException e) {
-			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					"Unable to save monitor. " + e.getMessage(), e);
+			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST.getCode(),
+					e, "Unable to save monitor. " + e.getMessage(), e.getMessage());
 	    } 
 		catch (HibernateException e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
@@ -370,9 +371,11 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			throw e;
 		} 
 		catch (Throwable e) {
-			e.printStackTrace();
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to save monitor: " + e.getMessage(), e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -390,8 +393,6 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 		}
 		else
 		{
-			currentKey = "notifications";
-			
 			ArrayNode jsonNotifications = (ArrayNode)json.get("notifications");
 			for (int i=0; i<jsonNotifications.size(); i++) 
 			{
@@ -459,9 +460,23 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 					}
 					
 					notificationDao.persist(notification);
-					try { Thread.sleep(5); } catch (Exception e){}
+					try { Thread.sleep(5); } catch (Exception ignored){}
 				}
 			}
+		}
+	}
+
+	/**
+	 * Parses url query looking for a search string
+	 * @return
+	 */
+	protected Map<SearchTerm, Object> getQueryParameters()
+	{
+		Form form = Request.getCurrent().getResourceRef().getQueryAsForm();
+		if (form != null && !form.isEmpty()) {
+			return new MonitorSearchFilter().filterCriteria(form.getValuesMap());
+		} else {
+			return new HashMap<SearchTerm, Object>();
 		}
 	}
 }

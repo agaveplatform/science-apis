@@ -3,6 +3,9 @@
  */
 package org.iplantc.service.io.resources;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.auth.AuthorizationHelper;
@@ -31,10 +34,6 @@ import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.resource.Get;
 import org.restlet.resource.ResourceException;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * The JobManageResource is the job management interface for users. Through the
@@ -86,11 +85,11 @@ public class FileHistoryResource extends AbstractFileResource {
 		catch (Throwable e) {
             log.error("Failed to connect to remote system", e);
             // is this needed?
-            try { remoteDataClient.disconnect(); } catch (Exception e1) {}
-            
+            try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
+
         }
 	      
-	    AgaveLogServiceClient.log(AgaveLogServiceClient.ServiceKeys.FILES02.name(), 
+	    AgaveLogServiceClient.log(AgaveLogServiceClient.ServiceKeys.FILES02.name(),
 				AgaveLogServiceClient.ActivityKeys.FilesGetHistory.name(), 
 				username, "", getRequest().getClientInfo().getUpstreamAddress());
 	}
@@ -147,7 +146,7 @@ public class FileHistoryResource extends AbstractFileResource {
 				}
 				
 	            LogicalFile logicalFile = null;
-	            try {logicalFile=LogicalFileDao.findBySystemAndPath(remoteSystem, remoteDataClient.resolvePath(path));} catch(Exception e) {}
+	            try {logicalFile=LogicalFileDao.findBySystemAndPath(remoteSystem, remoteDataClient.resolvePath(path));} catch(Exception ignored) {}
 	
 	            PermissionManager pm = new PermissionManager(remoteSystem, remoteDataClient, logicalFile, username);
 	            
@@ -157,6 +156,7 @@ public class FileHistoryResource extends AbstractFileResource {
 				try 
 				{
 	                remoteDataClient.authenticate();
+
 	                exists = remoteDataClient.doesExist(path);
 	 
 	                if (!exists && logicalFile == null) {
@@ -183,7 +183,7 @@ public class FileHistoryResource extends AbstractFileResource {
 	                    }
 	
 	                    if (logicalFile == null) {
-	                    	throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN, 
+	                    	throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, 
 	    							"No history found on system " + remoteSystem.getSystemId() + " for " + (StringUtils.isEmpty(path)? "user home" : path));
 	                    }
 	                    else
@@ -243,7 +243,7 @@ public class FileHistoryResource extends AbstractFileResource {
 			}
 		}
 		finally {
-			try {remoteDataClient.disconnect();} catch (Exception e) {}
+			try { if (remoteDataClient != null) remoteDataClient.disconnect();} catch (Exception ignored) {}
 		}
 
 	}

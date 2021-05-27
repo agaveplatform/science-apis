@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.common.dao;
 
-import java.util.List;
-
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.iplantc.service.common.discovery.ServiceCapability;
@@ -13,6 +11,8 @@ import org.iplantc.service.common.discovery.providers.sql.DiscoverableService;
 import org.iplantc.service.common.discovery.providers.sql.DiscoverableWorker;
 import org.iplantc.service.common.exceptions.ServiceDiscoveryException;
 import org.iplantc.service.common.persistence.HibernateUtil;
+
+import java.util.List;
 
 /**
  * @author dooley

@@ -3,16 +3,9 @@
  */
 package org.iplantc.service.apps;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
 import org.ietf.jgss.GSSCredential;
+
+import java.util.*;
 
 /**
  * @author dooley
@@ -22,7 +15,7 @@ public class Settings {
 
 	private static Properties					props			= new Properties();
 
-	private static Map<String, GSSCredential>	userProxies		= Collections
+	private static final Map<String, GSSCredential>	userProxies		= Collections
 																		.synchronizedMap(new HashMap<String, GSSCredential>());
 
 	/* Trusted user settings */
@@ -116,9 +109,9 @@ public class Settings {
 			}
 		}
 		
-		API_VERSION = (String)props.getProperty("iplant.api.version");
+		API_VERSION = props.getProperty("iplant.api.version");
 		
-		SERVICE_VERSION = (String)props.getProperty("iplant.service.version");
+		SERVICE_VERSION = props.getProperty("iplant.service.version");
 		
 //        IRODS_ZONE = (String)props.get("iplant.irods.zone");
 //
@@ -183,13 +176,13 @@ public class Settings {
 		
 		TRUSTED_CA_CERTS_DIRECTORY = (String) props.get("system.ca.certs.path");
 		
-		MAIL_SERVER = (String) props.getProperty("mail.smtps.host");
+		MAIL_SERVER = props.getProperty("mail.smtps.host");
 		
-		MAILSMTPSPROTOCOL = (String) props.getProperty("mail.smtps.auth");
+		MAILSMTPSPROTOCOL = props.getProperty("mail.smtps.auth");
 		
-		MAILLOGIN = (String) props.getProperty("mail.smtps.user");
+		MAILLOGIN = props.getProperty("mail.smtps.user");
 		
-		MAILPASSWORD = (String) props.getProperty("mail.smtps.passwd");
+		MAILPASSWORD = props.getProperty("mail.smtps.passwd");
 
 		SLAVE_MODE = Boolean.valueOf((String) props.get("iplant.slave.mode"));
 //		
@@ -223,7 +216,7 @@ public class Settings {
 
 		WORLD_USER_USERNAME = (String) props.get("iplant.world.user");
 		
-		PUBLIC_APPS_DEFAULT_DIRECTORY = (String) props.getProperty("iplant.default.apps.dir", "/api/" + API_VERSION + "/apps/");
+		PUBLIC_APPS_DEFAULT_DIRECTORY = props.getProperty("iplant.default.apps.dir", "/api/" + API_VERSION + "/apps/");
 		if (!PUBLIC_APPS_DEFAULT_DIRECTORY.endsWith("/")) PUBLIC_APPS_DEFAULT_DIRECTORY += "/";
 		
 
@@ -237,7 +230,7 @@ public class Settings {
 //        
 //        DEFAULT_PARALLEL_SYSTEM = (String) props.get("iplant.default.parallel.system");
 //        DEFAULT_SERIAL_SYSTEM = (String) props.get("iplant.default.serial.system");
-        DEFAULT_PAGE_SIZE = Integer.parseInt((String) props.getProperty("iplant.default.page.size", "25"));
+        DEFAULT_PAGE_SIZE = Integer.parseInt(props.getProperty("iplant.default.page.size", "25"));
 	}
 
 	public static GSSCredential getProxyForUser(String username)

@@ -3,36 +3,30 @@
  */
 package org.iplantc.service.transfer.util;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import com.fasterxml.jackson.core.TreeNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.TextNode;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.TextNode;
+import java.io.*;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author dooley
  *
  */
 public class ServiceUtils {
+	
+	private static final Logger log = Logger.getLogger(ServiceUtils.class);
 
 	@SuppressWarnings("unused")
 	public static String exec(String command) throws IOException {
@@ -97,19 +91,19 @@ public class ServiceUtils {
 	 */
 	public static boolean isAlphaNumeric(String s) {
 		if (!isValid(s)) return false;
-	    boolean valid = true;
-	    if (s == null || 
-	            s.indexOf(":") > -1 ||
-	            s.indexOf(";") > -1 || 
-	            s.indexOf(",") > -1 || 
-	            s.indexOf(" ") > -1 ||
-	            //s.indexOf("#") > -1 ||
-	            s.indexOf("\\") > -1 /*||
+	    boolean valid = s != null &&
+                s.indexOf(":") <= -1 &&
+                s.indexOf(";") <= -1 &&
+                s.indexOf(",") <= -1 &&
+                s.indexOf(" ") <= -1 &&
+                //s.indexOf("#") > -1 ||
+                s.indexOf("\\") <= -1;
+	    /*||
 	            s.indexOf("/") > -1 ||
 	            s.indexOf("%") > -1 ||
 	            s.indexOf("$") > -1 ||
 	            s.indexOf("@") > -1 ||
-	            s.indexOf("!") > -1 || 
+	            s.indexOf("!") > -1 ||
 	            s.indexOf("^") > -1 ||
 	            s.indexOf("&") > -1 ||
 	            s.indexOf("*") > -1 ||
@@ -128,11 +122,9 @@ public class ServiceUtils {
 	            s.indexOf("<") > -1 ||
 	            s.indexOf(">") > -1 ||
 	            //s.indexOf("=") > -1 ||
-	            s.indexOf("+") > -1*/) {
-	        valid = false;
-	    }
-	    
-	    return valid;
+	            s.indexOf("+") > -1*/
+
+        return valid;
 	}
 	
 	public static boolean isValidEmailAddress(String value) {
@@ -224,11 +216,8 @@ public class ServiceUtils {
 			
 				try {
 					URL url = new URL(sCallback);
-					if (!url.getProtocol().equals("http") && !url.getProtocol().equals("https") ) {
-						return false;
-					}	
-					return true;
-				} catch (Exception e) {
+                    return url.getProtocol().equals("http") || url.getProtocol().equals("https");
+                } catch (Exception e) {
 					return false;
 				}
 			} else {
@@ -237,13 +226,13 @@ public class ServiceUtils {
 		}
 	}
 	
-	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
+	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
 		return node != null && (node instanceof TextNode) && ((TextNode)node).asText() != null;
 	}
 	
-	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
+	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
 		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
@@ -275,10 +264,11 @@ public class ServiceUtils {
 	{	
 		if (TenancyHelper.isTenantAdmin()) return true;
 		
-		InputStream stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");
+		InputStream stream = null;
 		try
 		{
-			String trustedUserList = IOUtils.toString(stream, "UTF-8");
+			stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");
+			String trustedUserList = IOUtils.toString(stream, StandardCharsets.UTF_8);
 			if (isValid(trustedUserList)) {
 				for(String user: trustedUserList.split(",")) {
 					if (username.equalsIgnoreCase(user.trim())) {
@@ -292,8 +282,11 @@ public class ServiceUtils {
 		}
 		catch (IOException e)
 		{
-			 //log.error("Failed to locate trusted user file");
+			log.warn("Failed to load trusted user file", e);
 			return false;
+		}
+		finally {
+			if (stream != null) try {stream.close();} catch (Exception e){}
 		}
 	}
 	

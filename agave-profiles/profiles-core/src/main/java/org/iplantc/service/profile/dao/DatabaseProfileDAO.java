@@ -4,19 +4,6 @@ package org.iplantc.service.profile.dao;
  * @author dooley
  *
  */
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
-import javax.sql.DataSource;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -25,11 +12,20 @@ import org.iplantc.service.profile.exceptions.RemoteDataException;
 import org.iplantc.service.profile.model.Profile;
 import org.iplantc.service.profile.model.TrellisDatabaseProfile;
 
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+
 public class DatabaseProfileDAO extends AbstractProfileDAO {
     @SuppressWarnings("unused")
-	private Logger log = LogManager.getLogger(DatabaseProfileDAO.class);
+	private final Logger log = LogManager.getLogger(DatabaseProfileDAO.class);
     
-    private String baseQuery = "SELECT p.id as id, " + 
+    private final String baseQuery = "SELECT p.id as id, " +
 											 	"p.gender as gender,  " + 
 											    "p.first_name as first_name,  " + 
 											    "p.last_name as last_name, " + 
@@ -157,9 +153,21 @@ public class DatabaseProfileDAO extends AbstractProfileDAO {
 			throw new RemoteDataException("Failed to query remote profile database", ex);
 		} 
     	finally {
-			try { rs.close(); } catch (Exception e) {}
-            try { ps.close(); } catch (Exception e) {}
-            try { conn.close(); } catch (Exception e) {}
+			try {
+				if (rs != null) {
+					rs.close();
+				}
+			} catch (Exception ignored) {}
+            try {
+				if (ps != null) {
+					ps.close();
+				}
+			} catch (Exception ignored) {}
+            try {
+				if (conn != null) {
+					conn.close();
+				}
+			} catch (Exception ignored) {}
         }
         
         return profiles;

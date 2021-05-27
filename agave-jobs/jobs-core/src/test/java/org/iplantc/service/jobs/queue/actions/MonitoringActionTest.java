@@ -3,11 +3,6 @@
  */
 package org.iplantc.service.jobs.queue.actions;
 
-import java.io.File;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.jobs.dao.JobDao;
@@ -24,10 +19,15 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @author dooley
  *
  */
+@Test(groups={"integration"})
 public class MonitoringActionTest extends AbstractJobSubmissionTest {
     
     
@@ -44,19 +44,7 @@ public class MonitoringActionTest extends AbstractJobSubmissionTest {
         
         super.afterClass();
     }
-    @Test
-    protected void garbage() {
-        System.out.println(URI.create("/Users/dooley").toString());
-        System.out.println(URI.create("//Users/dooley").toString());
-        System.out.println(URI.create("/Users//dooley/").toString());
-        System.out.println(URI.create("/Users/dooley//").toString());
-        System.out.println(URI.create("Users/dooley").toString());
-        System.out.println(URI.create("Users/dooley/").toString());
-        System.out.println(URI.create("Users//dooley/").toString());
-        System.out.println(URI.create("Users/dooley//").toString());
-        
-    }
-    
+
     /**
      * Generic submission test used by all the methods testing job submission is some
      * form or fashion.

@@ -3,19 +3,17 @@ package org.iplantc.service.metadata.util;
 import com.thoughtworks.xstream.core.util.Base64Encoder;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
 public class HTTPSClient {
-	private String				url;
-	private String				username;
-	private String				password;
-	private Map<String, String>	headers;
+	private final String				url;
+	private final String				username;
+	private final String				password;
+	private final Map<String, String>	headers;
 
 	public HTTPSClient(String url, Map<String, String> headers)
 	{
@@ -67,14 +65,6 @@ public class HTTPSClient {
 			}
 
 		}
-		catch (MalformedURLException mue)
-		{
-			throw mue;
-		}
-		catch (IOException ioe)
-		{
-			throw ioe;
-		}
 		catch (Exception e)
 		{
 			throw e;
@@ -82,21 +72,4 @@ public class HTTPSClient {
 
 		return content;
 	}
-
-	public static void main(String[] args)
-	{
-
-		HTTPSClient httpsTest = new HTTPSClient(
-				"https://info.teragrid.org:8444/web-apps/json/profile-v1/", "",
-				"");
-		try
-		{
-			System.out.println(httpsTest.getText());
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-		}
-	}
-
 }

@@ -3,29 +3,22 @@
  */
 package org.iplantc.service.notification.providers.email.clients;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Map.Entry;
+import com.sun.mail.smtp.SMTPTransport;
+import org.apache.log4j.Logger;
+import org.codehaus.plexus.util.StringUtils;
+import org.iplantc.service.notification.Settings;
+import org.iplantc.service.notification.exceptions.NotificationException;
+import org.iplantc.service.notification.providers.email.EmailClient;
 
-import javax.mail.Address;
-import javax.mail.BodyPart;
-import javax.mail.Message;
-import javax.mail.Multipart;
-import javax.mail.NoSuchProviderException;
-import javax.mail.Session;
+import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
-
-import org.apache.log4j.Logger;
-import org.codehaus.plexus.util.StringUtils;
-import org.iplantc.service.notification.exceptions.NotificationException;
-import org.iplantc.service.notification.Settings;
-import org.iplantc.service.notification.providers.email.EmailClient;
-
-import com.sun.mail.smtp.SMTPTransport;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
 
 /**
  * Email client to send mail using the locally installed Postfix server.
@@ -39,15 +32,7 @@ public class LocalEmailClient implements EmailClient {
     public static Logger log = Logger.getLogger(LocalEmailClient.class);
             
     protected Map<String, String> customHeaders = new HashMap<String, String>();
-    
-    public static void main(String[] args) throws Exception{
-        new SMTPEmailClient().send("Rion", 
-                "agaveapi@gmail.com", 
-                "Test email via smtp", 
-                "This is a simple smtp email fom the java client.",
-                "<p>This is a simple SMTP email fom the <a href=\"http://java.com\">Java</a> client.</p>");
-    }
-    
+
     /* (non-Javadoc)
      * @see org.iplantc.service.notification.email.EmailClient#send(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
      */

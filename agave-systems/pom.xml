@@ -1,34 +1,53 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.iplantc</groupId>
-		<artifactId>agave</artifactId>
-		<version>2.1.11</version>
-	</parent>
-	<groupId>org.iplantc.agave</groupId>
-	<artifactId>systems</artifactId>
-	<name>iPlant Agave API Systems Service Parent POM</name>
-	<description>This is the parent project for the Agave Systems services.</description>
-	<packaging>pom</packaging>
-	
-	<repositories>
-		<repository>
-			<id>renci.repository</id>
-			<name>renci.repository</name>
-			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/renci.repository</url>
-		</repository>
-	</repositories>
-	
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-systems.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-systems.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-systems</url>
-	</scm>
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.agaveplatform</groupId>
+        <artifactId>science-apis</artifactId>
+        <version>2.2.27</version>
+    </parent>
 
-	<modules>
-		<module>systems-core</module>
-		<module>systems-api</module>
-	</modules>
+    <artifactId>systems</artifactId>
+    <name>Agave Platform Systems Service Parent POM</name>
+    <description>This is the parent project for the Agave Systems services.</description>
+    <packaging>pom</packaging>
+
+    <properties>
+        <main.basedir>${project.basedir}/..</main.basedir>
+    </properties>
+
+    <build>
+        <plugins>
+            <!-- Default unit testing for all submodules. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+
+            <!-- Default integration testing for all submodules. Note that integration testing
+				requires persistence, queueing, etc. These are provided as containers and
+				managed by Docker Compose through the managed docker-compose-maven-plugin.
+				We omit the inclusion of those plugins here due to this being a parent folder
+				and not containing any tests that require orchestration. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+        </plugins>
+
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>metadata-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+    <modules>
+        <module>systems-core</module>
+        <module>systems-api</module>
+    </modules>
 </project>

@@ -1,17 +1,15 @@
 package org.iplantc.service.profile.dao;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
-import javax.naming.directory.Attributes;
-
 import org.iplantc.service.common.auth.LDAPClient;
 import org.iplantc.service.profile.Settings;
 import org.iplantc.service.profile.exceptions.RemoteDataException;
 import org.iplantc.service.profile.model.LdapProfile;
 import org.iplantc.service.profile.model.Profile;
 import org.iplantc.service.profile.util.ServiceUtils;
+
+import javax.naming.directory.Attributes;
+import java.util.ArrayList;
+import java.util.List;
 
 public class LDAPProfileDAO extends AbstractProfileDAO {
 
@@ -37,9 +35,7 @@ public class LDAPProfileDAO extends AbstractProfileDAO {
 		
 		try {
 			if (list != null) {
-				for (Iterator<Attributes> iterator = list.iterator(); iterator
-						.hasNext();) {
-					Attributes attrs = (Attributes) iterator.next();
+				for (Attributes attrs : list) {
 					Profile profile = new LdapProfile(attrs);
 					profiles.add(profile);
 				}
@@ -66,11 +62,9 @@ public class LDAPProfileDAO extends AbstractProfileDAO {
 			 */
 			if (attrs == null) {
 				return null;
-			}		
-			
-			Profile profile = new LdapProfile(attrs);
-			
-			return profile;
+			}
+
+			return new LdapProfile(attrs);
 		
 		} catch (Exception e) {
 			throw new RemoteDataException("Failed to retrieve user " + username + " from LDAP", e);

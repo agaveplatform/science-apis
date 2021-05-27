@@ -1,20 +1,5 @@
 package org.iplantc.service.common.auth;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.nio.charset.Charset;
-import java.security.MessageDigest;
-import java.security.cert.X509Certificate;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.security.auth.x500.X500Principal;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -22,6 +7,16 @@ import org.bouncycastle.jce.X509Principal;
 import org.globus.gsi.util.CertificateIOUtil;
 import org.globus.myproxy.MyProxyException;
 import org.globus.myproxy.MyTrustManager;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.security.auth.x500.X500Principal;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.cert.X509Certificate;
 
 
 public class MyProxy extends org.globus.myproxy.MyProxy
@@ -111,7 +106,7 @@ public class MyProxy extends org.globus.myproxy.MyProxy
                 if (tmpDir.mkdir() == true)
                 {
                     String hash = opensslHash(acceptedIssuers[idx]);
-                    String filename = tmpDir.getPath() + tmpDir.separator + hash + ".0";
+                    String filename = tmpDir.getPath() + File.separator + hash + ".0";
 
                     FileOutputStream os = new FileOutputStream(new File(filename));
                     CertificateIOUtil.writeCertificate(os, acceptedIssuers[idx]);
@@ -121,10 +116,10 @@ public class MyProxy extends org.globus.myproxy.MyProxy
                         logger.debug("wrote trusted certificate to " + filename);
                     }
 
-                    filename = tmpDir.getPath() + tmpDir.separator + hash + ".signing_policy";
+                    filename = tmpDir.getPath() + File.separator + hash + ".signing_policy";
 
                     os = new FileOutputStream(new File(filename));
-                    Writer wr = new OutputStreamWriter(os, Charset.forName("UTF-8"));
+                    Writer wr = new OutputStreamWriter(os, StandardCharsets.UTF_8);
                     wr.write("access_id_CA X509 '");
                     wr.write(subject);
                     wr.write("'\npos_rights globus CA:sign\ncond_subjects globus \"*\"\n");

@@ -3,8 +3,8 @@
  */
 package org.iplantc.service.common.discovery;
 
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.discovery.providers.sql.DatabaseServiceDiscoveryClient;
-import org.testng.log4testng.Logger;
 
 /**
  * Service discovery factory to obtain a service discovery client
@@ -15,7 +15,7 @@ import org.testng.log4testng.Logger;
  */
 public class ServiceDiscoveryFactory
 {
-	private Logger log = Logger.getLogger(ServiceDiscoveryFactory.class);
+	private final Logger log = Logger.getLogger(ServiceDiscoveryFactory.class);
 	
 	public static ServiceDiscoveryClient<?, ?> getInstance() {
 		

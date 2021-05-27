@@ -3,30 +3,15 @@
  */
 package org.iplantc.service.jobs.dao;
 
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.hibernate.CacheMode;
-import org.hibernate.HibernateException;
-import org.hibernate.LockMode;
-import org.hibernate.ObjectNotFoundException;
-import org.hibernate.Query;
-import org.hibernate.SQLQuery;
-import org.hibernate.Session;
-import org.hibernate.StaleObjectStateException;
-import org.hibernate.StaleStateException;
-import org.hibernate.UnresolvableObjectException;
+import org.hibernate.*;
 import org.hibernate.transform.AliasToEntityMapResultTransformer;
 import org.hibernate.transform.Transformers;
 import org.hibernate.type.StandardBasicTypes;
 import org.iplantc.service.apps.util.ServiceUtils;
-//import org.iplantc.service.common.dao.SearchTerm;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.search.AgaveResourceResultOrdering;
@@ -35,12 +20,15 @@ import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.dto.JobDTO;
-//import org.iplantc.service.jobs.model.SummaryTenantJobActivity;
-//import org.iplantc.service.jobs.model.SummaryTenantUserJobActivity;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.model.enumerations.PermissionType;
 import org.iplantc.service.jobs.search.JobSearchFilter;
+import org.iplantc.service.systems.model.BatchQueue;
+import org.iplantc.service.systems.model.ExecutionSystem;
 import org.joda.time.DateTime;
+
+import java.math.BigInteger;
+import java.util.*;
 
 /**
  * @author dooley
@@ -49,6 +37,32 @@ import org.joda.time.DateTime;
 public class JobDao
 {
     private static final Logger log = Logger.getLogger(JobDao.class);
+    
+    // The mapping below is used to skip printing sql query statements to the log when
+    // the current query text is the same as the last query text.  The map's keys are
+    // sql query names and the values are the hashes of the last logged query of each type.
+    //
+    // The job's sql polling query text is written to the log by setting the environment
+    // variable that corresponds to the settings field for each polling query.  Here are
+    // how the values are related:
+    //
+    //  Environment Variable           Settings Field            Polling Quartz Job
+    //  --------------------           --------------            ------------------
+    // iplant.debug.sql.pending.job    DEBUG_SQL_PENDING_JOB     StagingWatch, SubmissionWatch
+    // iplant.debug.sql.executing.job  DEBUG_SQL_EXECUTING_JOB   MonitoringWatch
+    // iplant.debug.sql.archiving.job  DEBUG_SQL_ARCHIVING_JOBv  ArchiveWatch
+    // 
+    // See the org.iplantc.service.jobs.Settings class for details about how environment
+    // variable values are assigned to settings fields.  See the selectNextAvailableJob()
+    // method on each of the watch classes to see how database polling is initiated.
+    //
+    // When sql query logging is enabled in this class, the last polling query text in the
+    // log applies to all subsequent polling calls up until the next query text appears for 
+    // that query type.  The idea is to avoid writing large amounts of redundant text to the
+    // logs.
+    //
+    private enum SqlQueryEnum {PENDING_1, PENDING_2, STAGED_1, STAGED_2, EXECUTING, ARCHIVING_1, ARCHIVING_2}
+    private static final HashMap<SqlQueryEnum,Integer> sqlQueryMap = initSqlQueryMap();
 	
 	protected static Session getSession() {
 		Session session = HibernateUtil.getSession();
@@ -68,11 +82,11 @@ public class JobDao
 	}
 	
 	/**
-	 * Returns all jobs for a given username.
-	 * 
-	 * @param username
-	 * @return
-	 * @throws JobException
+	 * Returns {@link Settings#DEFAULT_PAGE_SIZE} jobs for a given username.
+	 *
+	 * @param username the user making the query
+	 * @return list of jobs for the user
+	 * @throws JobException if the query cannot be completed
 	 */
 	public static List<Job> getByUsername(String username) throws JobException
 	{
@@ -81,13 +95,13 @@ public class JobDao
 	
 	/**
 	 * Returns all jobs for a given username.
-	 * @param username
-	 * @param offset
-	 * @param limit
-	 * @return
-	 * @throws JobException
+	 * @param username the user making the query
+	 * @param offset the number of records to skip in the result set
+	 * @param limit the max records to return
+	 * @return list of jobs for the user
+	 * @throws JobException if the query cannot be completed
 	 * @deprecated 
-	 * @see {@link #getByUsername(String, int, int, AgaveResourceSearchResultOrdering, SearchTerm)
+	 * @see #getByUsername(String, int, int, AgaveResourceResultOrdering, SearchTerm)
 	 */
 	public static List<Job> getByUsername(String username, int offset, int limit) 
 	throws JobException
@@ -96,12 +110,14 @@ public class JobDao
 	}
 	
 	/**
-	 * Returns all jobs for a given username with optional search result ordering
-	 * @param username
-	 * @param offset
-	 * @param limit
-	 * @return
-	 * @throws JobException
+	 * Returns all jobs for a given username with optional search result ordering. Permissions will be honored .
+	 * @param username the username by which to filter results.
+	 * @param offset the number of records to skip in the result set
+	 * @param limit the maximum number of records  to return.
+	 * @param order the direction to order
+	 * @param orderBy the search field by which to order.
+	 * @return list of jobs for the given user with pagination
+	 * @throws JobException if unable to perform the query
 	 */
 	@SuppressWarnings("unchecked")
 	public static List<Job> getByUsername(String username, int offset, int limit, AgaveResourceResultOrdering order, SearchTerm orderBy) 
@@ -131,8 +147,7 @@ public class JobDao
 					+ "		) \n"
 					+ "		and j.visible = :visible \n"
 					+ "		and j.tenant_id = :tenantid \n"
-					+ "order by " + String.format(orderBy.getMappedField(), orderBy.getPrefix()) + " " +  order.toString() + " \n";
-			
+					+ "order by " + String.format(orderBy.getMappedField(), orderBy.getPrefix()) + " " + order + " \n";
 			
 			String q = sql;
 			q = StringUtils.replace(q, ":owner", String.format("'%s'", username));
@@ -144,7 +159,7 @@ public class JobDao
 			List<Job> jobs = session.createSQLQuery(sql).addEntity(Job.class)
 					.setString("owner",username)
 					.setString("none",PermissionType.NONE.name())
-					.setInteger("visible", new Integer(1))
+					.setInteger("visible", 1)
 					.setString("tenantid", TenancyHelper.getCurrentTenantId())
 					.setFirstResult(offset)
 					.setMaxResults(limit)
@@ -154,58 +169,46 @@ public class JobDao
 			
 			return jobs;
 
-		}
-		catch (ObjectNotFoundException e) {
+		} catch (ObjectNotFoundException e) {
+			// not found is a valid result. return an empty list in that event
 			return new ArrayList<Job>();
-		}
-		catch (HibernateException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 
 	/**
-	 * Gets a job by its unique id.
-	 * @param jobId
-	 * @return
-	 * @throws JobException
+	 * Gets a job by its database id. This method bypasses the tenant filter and is capable of
+	 * querying across tenants.
+	 * @param jobId the database id of the job for which to query
+	 * @return the {@link Job} with the given {@code jobId} or {@code null} if no matching job found.
+	 * @throws JobException if unable to perform the query
 	 */
 	public static Job getById(long jobId) throws JobException
 	{
-		try
-		{
+		try {
 			Session session = getSession();
-//			session.clear();
 			session.disableFilter("jobTenantFilter");
-			Job job = (Job) session.get(Job.class, jobId);
-			
-//			session.flush();
-			
-			return job;
-
-		}
-		catch (ObjectNotFoundException ex)
-		{
-			return null;
-		}
-		catch (HibernateException ex)
-		{
+			return (Job) session.get(Job.class, jobId);
+		} catch (ObjectNotFoundException ex) {
+            // not found is a valid result. return a null value
+            return null;
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		finally {
-//			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
 	/**
-     * Gets a {@link Job} by its uuid.
+     * Gets a {@link Job} by its uuid, forcing the cache to flush.
      * 
-     * @param uuid identifier for the job
-     * @return {@link Job} object
-     * @throws JobException
+     * * @param uuid agave uuid for the job
+     * @return the {@link Job} with the given {@code uuid} or {@code null} if no matching job found.
+     * @throws JobException if unable to perform the query.
+     * @see #getByUuid(String, boolean)
      */
 	public static Job getByUuid(String uuid) throws JobException
     {
@@ -215,22 +218,23 @@ public class JobDao
 	/**
 	 * Gets a {@link Job} by its uuid, optionally forcing cache eviction
 	 * 
-	 * @param uuid identifier for the job
+	 * @param uuid agave uuid for the job
 	 * @param forceFlush should the cache be flushed on this request?
-	 * @return {@link Job} object
-	 * @throws JobException
+	 * @return the {@link Job} with the given {@code uuid} or {@code null} if no matching job found.
+	 * @throws JobException if unable to perform the query.
 	 */
 	public static Job getByUuid(String uuid, boolean forceFlush) throws JobException
 	{
+	    // empty uuid should return null.
 		if (StringUtils.isEmpty(uuid)) return null;
 		
 		try
 		{
 		    HibernateUtil.beginTransaction();
 			Session session = HibernateUtil.getSession();
-			
 			session.clear();
-			
+
+			// force a query that bypasses the hibernate cache
 			Job job = (Job) session.createSQLQuery("select * from jobs where uuid = :uuid")
 			        .addEntity(Job.class)
 					.setString("uuid",  uuid)
@@ -241,27 +245,21 @@ public class JobDao
 			if (forceFlush) session.flush();
 			
 			return job;
-
-		}
-		catch (ObjectNotFoundException ex)
-		{
+		} catch (ObjectNotFoundException ex) {
+		    // if unable to find the object, just return null. this is a valid result.
 			return null;
-		}
-		catch (HibernateException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		finally {
-//		    if (forceFlush)
-		        try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+            try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
 	/**
-	 * Refreshes a stale job
-	 * @param job
-	 * @return
-	 * @throws JobException
+	 * Refreshes a stale job. This is helpful to call after a failed concurrent modification update to get the
+     * latest revision number for future updates.
+	 * @param job the updated job to refresh
+	 * @throws JobException if unable to refresh. This is usually due to a subsequent concurrent modification issue
 	 */
 	public static void refresh(Job job) throws JobException
 	{
@@ -271,14 +269,12 @@ public class JobDao
 			session.clear();
 			session.refresh(job);
 			session.flush();
-		}
-		catch (HibernateException ex)
-		{
+		} catch (HibernateException ex) {
 		    log.error("Concurrency issue with job " + job.getUuid());
 			throw new JobException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
@@ -286,9 +282,9 @@ public class JobDao
 	 * Merges the current cached job object with the persisted value. The 
 	 * current instance is not updated. The merged instance is returned.
 	 * 
-	 * @param job
-	 * @return merged job.
-	 * @throws JobException
+	 * @param job the updated job to merge with the db version
+	 * @return merged job
+	 * @throws JobException if unable to merge. This is usually due to a concurrent modification issue
 	 */
 	public static Job merge(Job job) throws JobException
 	{
@@ -298,22 +294,22 @@ public class JobDao
 			Session session = HibernateUtil.getSession();
 			return (Job)session.merge(job);
 		}
-		catch (HibernateException ex)
-		{
+		catch (HibernateException ex) {
 		    log.error("Concurrency issue with job " + job.getUuid());
 			throw new JobException(ex);
 		}
 	}
 	
 	/**
-	 * Returns a job owned by the user with teh given job id. This is essentially
+	 * Returns a job owned by the user with the given {@code jobId}. This is essentially
 	 * just a security check to make sure the owner matches the job id. ACL are 
 	 * not taken into consideration here, just ownership.
-	 * 
-	 * @param username
-	 * @param jobId
-	 * @return
-	 * @throws JobException
+	 *
+     * TODO: this should return null if no job was found, not throw an exception
+	 * @param username the job owner's username for which to filter the job
+	 * @param jobId database id of the job for which to lookup
+	 * @return the job with the given id or {@code null}
+	 * @throws JobException if unable to perform the query, or if the job is null
 	 */
 	public static Job getByUsernameAndId(String username, long jobId) throws JobException
 	{
@@ -341,73 +337,24 @@ public class JobDao
 				return job;
 			}
 
-		}
-		catch (ObjectNotFoundException ex)
-		{
-			return null;
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
-		}
-	}
-
-
-    /**
-     * Gets the least recently updated job for a given system id with the given
-     * status. 
-     * @param system
-     * @param jobStatus
-     * @return
-     * @throws JobException
-     * @deprecated
-     */
-    public static Job getNextJobOnSystemByStatus(String system, JobStatusType jobStatus) throws JobException
-    {
-        try
-        {
-        	Session session = getSession();
-        	session.clear();
-        	session.disableFilter("jobTenantFilter");
-			
-			String sql = "select distinct j.* "
-					+ "from jobs j "
-					+ "where ("
-					+ "			j.execution_system = :system"
-                    + " 		and j.status = :status"
-                    + "		) "
-                    + "order by j.last_updated desc";
-
-            Job job = (Job) session.createSQLQuery(sql).addEntity(Job.class)
-                    .setParameter("system",system)
-                    .setParameter("status", jobStatus.toString())
-                    .setLockMode("j", LockMode.PESSIMISTIC_FORCE_INCREMENT)
-					.setMaxResults(1)
-                    .uniqueResult();
-
-//            session.flush();
-            
-            return job;
-        } 
-        catch (HibernateException ex) {
+        } catch (ObjectNotFoundException ex) {
+            // if unable to find the object, just return null. this is a valid result.
+            return null;
+        } catch (HibernateException ex) {
             throw new JobException(ex);
-        }
-        finally {
-//			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
-    
+
 	/**
 	 * Returns a {@link List} of {@link Job}s belonging to the given user with the given status.
 	 * Permissions are observed in this query.
 	 * 
-	 * @param username
-	 * @param jobStatus
-	 * @return
-	 * @throws JobException
+	 * @param username the user for whom to query for jobs
+	 * @param jobStatus the status of the user jobs for which to query
+	 * @return list of jobs for the user with the given status.
+	 * @throws JobException if unable to perform the query
 	 */
 	@SuppressWarnings("unchecked")
 	public static List<Job> getByUsernameAndStatus(String username, JobStatusType jobStatus) 
@@ -434,7 +381,7 @@ public class JobDao
 			List<Job> jobs = session.createSQLQuery(sql).addEntity(Job.class)
 					.setString("owner",username)
 					.setString("none",PermissionType.NONE.name())
-					.setInteger("isadmin", new Integer(BooleanUtils.toInteger(ServiceUtils.isAdmin(username))) )
+					.setInteger("isadmin", BooleanUtils.toInteger(ServiceUtils.isAdmin(username)))
 					.setBoolean("visible", true)
 					.setString("status", jobStatus.name())
 					.list();
@@ -443,16 +390,13 @@ public class JobDao
 			
 			return jobs;
 
-		}
-		catch (ObjectNotFoundException e) {
-			return new ArrayList<Job>();
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+        } catch (ObjectNotFoundException ex) {
+            // if unable to find the object, just return empty list. this is a valid result.
+            return new ArrayList<Job>();
+        } catch (HibernateException ex) {
+            throw new JobException(ex);
+        } finally {
+		  	try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
@@ -462,12 +406,12 @@ public class JobDao
 	 * on a given system. Active states are defined by 
 	 * JobStatusType.getActiveStatuses().
 	 * 
-	 * @param username
-	 * @param system
-	 * @return
-	 * @throws JobException
+	 * @param username the user for whome to count active jobs
+     * @param systemId The user-defined name of the system for which to count active jobs.
+	 * @return the number of active jobs for {@code username} on the {@code systemId}}
+	 * @throws JobException if unable to perform the query.
 	 */
-	public static long countActiveUserJobsOnSystem(String username, String system) throws JobException
+	public static long countActiveUserJobsOnSystem(String username, String systemId) throws JobException
 	{
 		try
 		{
@@ -481,77 +425,24 @@ public class JobDao
 					+ "		and j.status in "
 					+ "(" + JobStatusType.getActiveStatusValues() + ") ";
 			
-			long currentUserJobCount = ((Long)session.createQuery(hql)
+			long currentUserJobCount = (Long)session.createQuery(hql)
 					.setBoolean("visible", true)
 					.setString("jobowner",username)
-					.setString("jobsystem", system)
-					.uniqueResult()).longValue();
+					.setString("jobsystem", systemId)
+					.uniqueResult();
 			
 			session.flush();
 			
 			return currentUserJobCount;
 
 		}
-		catch (ObjectNotFoundException ex)
-		{
-			throw new JobException(ex);
-		}
-		catch (HibernateException ex)
-		{
+		catch (HibernateException ex) {
 			throw new JobException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
-	
-//	/**
-//	 * Returns the least recently checked active job for monitoring.
-//	 * 
-//	 * @return
-//	 * @throws JobException
-//	 */
-//	public static Job getNextActiveJob() throws JobException
-//	{
-//		try
-//		{
-//			Session session = getSession();
-//			session.clear();
-//			session.disableFilter("jobTenantFilter");
-//			
-//			String hql = "from Job j where "
-//					+ "j.lastUpdated > :refreshRate and "
-//					+ "j.status in (" + JobStatusType.getActiveStatusValues() + ") " +
-//					"order by rand()";
-//			
-//			Job job = (Job)session.createQuery(hql)
-//					.setTimestamp("refreshRate", new Date(System.currentTimeMillis() - 300000))
-//					.setLockMode("j", LockMode.PESSIMISTIC_FORCE_INCREMENT)
-//					.setMaxResults(1)
-//					.uniqueResult();
-//			
-////            if (job != null) {
-////            	session.buildLockRequest(LockOptions.UPGRADE).setLockMode(LockMode.PESSIMISTIC_WRITE).setTimeOut(0).lock(job);           
-////            }
-////			session.flush();
-//			
-//			return job;
-//		}
-//		catch (StaleObjectStateException ex) {
-//			return null;
-//		}
-//		catch (ObjectNotFoundException ex)
-//		{
-//			return null;
-//		}
-//		catch (HibernateException ex)
-//		{
-//			throw new JobException(ex);
-//		}
-//		finally {
-////			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
-//		}
-//	}
 	
 	/**
 	 * Returns the least recently checked active job for monitoring.
@@ -562,6 +453,25 @@ public class JobDao
 	public static String getNextExecutingJobUuid(String tenantId, String[] owners, String[] systemIds) 
 	throws JobException
 	{
+        // Tracing.
+        if (Settings.DEBUG_SQL_EXECUTING_JOB && log.isDebugEnabled()) {
+            StringBuilder buf = new StringBuilder(200);
+            buf.append("JobDao.getNextExecutingJobUuid() input: tenantId=");
+            buf.append(tenantId);
+            buf.append(", owners=(");
+            for (int i = 0; i < owners.length; i++) {
+                if (i != 0) buf.append(", "); 
+                buf.append(owners[i]);
+            }
+            buf.append("), systemIds=(");
+            for (int i = 0; i < systemIds.length; i++) {
+                if (i != 0) buf.append(", "); 
+                buf.append(systemIds[i]);
+            }
+            buf.append(").");
+            log.debug(buf.toString());
+        }
+        
 	    boolean excludeTenant = false;
 	    if (StringUtils.isEmpty(tenantId)) {
             tenantId = "%";
@@ -655,6 +565,7 @@ public class JobDao
 			sql = StringUtils.replace(sql, ":excludetenant", excludeTenant ? "not" : "");
 			sql = StringUtils.replace(sql, ":excludesystems", excludeSystems ? "not" : "");
     			
+			// This parallel query string is for debugging purposes only.
             String q = StringUtils.replace(sql, ":queuedstatus", "'QUEUED'");
             q = StringUtils.replace(q, ":runningstatus", "'RUNNING'");
             q = StringUtils.replace(q, ":pausedstatus", "'PAUSED'");
@@ -700,8 +611,14 @@ public class JobDao
                     }
                 }
             }
-			
-            // log.debug(q);
+            
+            // Print the separately constructed query string after parameter substitution.
+            if (Settings.DEBUG_SQL_EXECUTING_JOB && log.isDebugEnabled() && 
+                !sameAsLastQuery(SqlQueryEnum.EXECUTING, q))
+            {
+                log.debug("JobDao.getNextExecutingJobUuid() query: " + q);
+                sqlQueryMap.put(SqlQueryEnum.EXECUTING, q.hashCode());
+            }
 			   
             String uuid = (String)query
 			        .setCacheable(false)
@@ -709,27 +626,18 @@ public class JobDao
                     .setMaxResults(1)
                     .uniqueResult();
             
+            if (Settings.DEBUG_SQL_EXECUTING_JOB && log.isDebugEnabled())
+                log.debug("Next executing job is " + uuid + ".");
             return uuid;
             
-//            if (!results.isEmpty() && results.get(0).length > 0) {
-//                return (String) results.get(0)[0];
-//            } else {
-//                return null;
-//            }
-		}
-		catch (StaleObjectStateException ex) {
-			return null;
-		}
-		catch (ObjectNotFoundException ex)
-		{
-			return null;
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
+		} catch (ObjectNotFoundException|StaleObjectStateException ex) {
+            log.error("Unable to select monitoring job on tenant " + tenantId + " due to concurrency issue.", ex);
+            return null;
+        } catch (HibernateException ex) {
+            throw new JobException(ex);
+        }
 		finally {
-//			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
@@ -737,13 +645,12 @@ public class JobDao
 	 * Returns the total number of jobs in an active state 
 	 * on a given system. Active states are defined by 
 	 * JobStatusType.getActiveStatuses().
-	 * 
-	 * @param username
-	 * @param system
-	 * @return jobCount 
-	 * @throws JobException
+	 *
+	 * @param systemId The user-defined name of the system for which to count active jobs.
+	 * @return the number of current jobs for the system
+	 * @throws JobException if unable to query the db
 	 */
-	public static long countActiveJobsOnSystem(String system) throws JobException
+	public static long countActiveJobsOnSystem(String systemId) throws JobException
 	{
 		try
 		{
@@ -753,36 +660,41 @@ public class JobDao
 					"where system = :jobsystem and " +
 					"status in (" + JobStatusType.getActiveStatusValues() + ")";
 			
-			long currentUserJobCount = ((Long)session.createQuery(hql)
-					.setString("jobsystem", system)
-					.uniqueResult()).longValue();
+			long currentUserJobCount = (Long) session.createQuery(hql)
+					.setString("jobsystem", systemId)
+					.uniqueResult();
 			
 			session.flush();
-			
 			return currentUserJobCount;
-
-		}
-		catch (ObjectNotFoundException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
-	
-	public static void persist(Job job) 
+
+    /**
+     * Saves or updates a job. This will force the lastUpdated timestamp to update every time.
+     *
+     * @param job the job to save
+     * @throws JobException if unable to save the job
+     * @see #persist(Job, boolean)
+     */
+    public static void persist(Job job)
 	throws JobException, UnresolvableObjectException 
 	{
 		persist(job, true);
 	}
-	
+
+    /**
+     * Saves or updates a job, optionally forcing the lastUpdated timestamp to update.
+     *
+     * @param job the job to save
+     * @param forceTimestamp true if a timestamp should be set, false otherwise
+     * @throws JobException if unable to save the job
+     */
 	public static void persist(Job job, boolean forceTimestamp) 
-	throws JobException, UnresolvableObjectException
+	throws JobException, StaleStateException
 	{
 		if (job == null)
 			throw new JobException("Job cannot be null");
@@ -798,37 +710,32 @@ public class JobDao
 			}
 			
 			session.saveOrUpdate(job);
-		}
-		catch (UnresolvableObjectException ex) {
-//		    throw ex;
-		}
-		catch (StaleStateException ex) {
-		    throw ex;
-		}
-		catch (HibernateException ex)
-		{
-			try
-			{
-				if (session != null && session.isOpen())
-				{
-					HibernateUtil.rollbackTransaction();
-					session.close();
-				}
-			}
-			catch (Exception e) {}
-			log.error("Concurrency issue with job " + job.getUuid());
-			
-			throw new JobException(ex);
-		}
-		finally {
-		    try {HibernateUtil.commitTransaction(); } catch (Exception e) {}
-		}
+        } catch (StaleStateException ex) {
+            // TODO: swallow this and rethrow a JobException for consistent behavior and easier exception handling upstream
+            throw ex;
+        } catch (HibernateException ex) {
+            log.error("Concurrency issue experienced updating job " + job.getUuid() + " aborting save.");
+            try {
+                if (session != null && session.isOpen()) {
+                    HibernateUtil.rollbackTransaction();
+                    session.close();
+                }
+            } catch (Exception ignored) {
+            }
+
+            throw new JobException(ex);
+        } finally {
+            try {
+                HibernateUtil.commitTransaction();
+            } catch (Exception ignored) {
+            }
+        }
 	}
 
 	/**
 	 * Deletes a job from the db.
-	 * @param job
-	 * @throws JobException
+	 * @param job the job to delete
+	 * @throws JobException if the delete operation fails
 	 */
 	public static void delete(Job job) throws JobException
 	{
@@ -854,12 +761,12 @@ public class JobDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Throwable e) {}
+			catch (Throwable ignored) {}
 				
 			throw new JobException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
@@ -871,16 +778,35 @@ public class JobDao
      * enable restriction of job selection by tenant, owner, system, and batch queue are taken
      * into consideration.
 	 * 
-	 * @param tenantid tenant to include or exclude from selection.
+	 * @param tenantId tenant to include or exclude from selection.
      * @param owners array of owners to include or exclude from the selection process 
 	 * @param systemIds array of systems and queues to include or exclude from the selectino process. 
 	 * @return uuid of next job to archive.
-	 * @throws JobException
+	 * @throws JobException if the query fails
 	 */
 	@SuppressWarnings("unchecked")
 	public static String getFairButRandomJobUuidForNextArchivingTask(String tenantId, String[] owners, String[] systemIds)
 	throws JobException
 	{
+        // Tracing.
+        if (Settings.DEBUG_SQL_ARCHIVING_JOB && log.isDebugEnabled()) {
+            StringBuilder buf = new StringBuilder(200);
+            buf.append("JobDao.getFairButRandomJobUuidForNextArchivingTask() input: tenantId=");
+            buf.append(tenantId);
+            buf.append(", owners=(");
+            for (int i = 0; i < owners.length; i++) {
+                if (i != 0) buf.append(", "); 
+                buf.append(owners[i]);
+            }
+            buf.append("), systemIds=(");
+            for (int i = 0; i < systemIds.length; i++) {
+                if (i != 0) buf.append(", "); 
+                buf.append(systemIds[i]);
+            }
+            buf.append(").");
+            log.debug(buf.toString());             
+        }
+        
 	    boolean excludeTenant = false;
         if (StringUtils.isEmpty(tenantId)) {
             tenantId = "%";
@@ -992,10 +918,8 @@ public class JobDao
 			sql = StringUtils.replace(sql, ":excludetenant", excludeTenant ? "not" : "");
 			sql = StringUtils.replace(sql, ":excludesystems", excludeSystems ? "not" : "");
            
-			String q = StringUtils.replace(sql, ":queuedstatus", "'QUEUED'");
-			q = StringUtils.replace(q, ":runningstatus", "'RUNNING'");
-			q = StringUtils.replace(q, ":pausedstatus", "'PAUSED'");
-			q = StringUtils.replace(q, ":tenantid", "'" + tenantId + "'");    
+			// This parallel query string is for debugging purposes only.
+			String q = StringUtils.replace(sql, ":tenantid", "'" + tenantId + "'");
 			
 //			log.debug(sql);
 			Query query = session.createSQLQuery(sql)
@@ -1032,17 +956,29 @@ public class JobDao
                 }
             }
             
-//            log.debug(q);
+            // Print the separately constructed query string after parameter substitution.
+            if (Settings.DEBUG_SQL_ARCHIVING_JOB && log.isDebugEnabled() && 
+                !sameAsLastQuery(SqlQueryEnum.ARCHIVING_1, q)) 
+            {
+                log.debug("JobDao.getFairButRandomJobUuidForNextArchivingTask() query 1:\n" + q);
+                sqlQueryMap.put(SqlQueryEnum.ARCHIVING_1, q.hashCode());
+            }
             
             List<Map<String,Object>> aliasToValueMapList = query.setCacheable(false)
                                                                 .setCacheMode(CacheMode.REFRESH)
                                                                 .setMaxResults(1).list();
 			
 			if (aliasToValueMapList.isEmpty()) {
+                if (Settings.DEBUG_SQL_ARCHIVING_JOB && log.isDebugEnabled())
+                    log.debug("No user/tenant selected for archiving.");
 				return null;
 			} else {
 				String username = (String) aliasToValueMapList.get(0).get("owner");
 				String tid = (String) aliasToValueMapList.get(0).get("tenant_id");
+				
+				if (Settings.DEBUG_SQL_ARCHIVING_JOB && log.isDebugEnabled())
+				    log.debug("User " + username + " in tenant " + tid + " selected for archiving.");
+				
 				sql = "select j.uuid \n";
 				if (!ArrayUtils.isEmpty(systemIds)) 
 	            {   
@@ -1080,7 +1016,7 @@ public class JobDao
 					+ "order by rand() ";
 				
 				
-				
+				// This parallel query string is for debugging purposes only.
 				String jq = StringUtils.replace(sql, ":excludesystems", excludeSystems ? "not" : "");
 				jq = StringUtils.replace(jq, ":tenantid", tid);
 				jq = StringUtils.replace(jq, ":owner", username);
@@ -1112,7 +1048,13 @@ public class JobDao
 	                }
 	            }
 				
-				// log.debug(jq);
+				// Print the separately constructed query string after parameter substitution.
+				if (Settings.DEBUG_SQL_ARCHIVING_JOB && log.isDebugEnabled() && 
+				    !sameAsLastQuery(SqlQueryEnum.ARCHIVING_2, jq)) 
+				{
+				    log.debug("JobDao.getFairButRandomJobUuidForNextArchivingTask() query 2:\n" + jq);
+				    sqlQueryMap.put(SqlQueryEnum.ARCHIVING_2, jq.hashCode());
+				}
 				
 				List<String> uuids = (List<String>)jobQuery.setCacheable(false)
 						.setCacheMode(CacheMode.REFRESH)
@@ -1121,26 +1063,29 @@ public class JobDao
 				
 				if (uuids.isEmpty()) {
 					// should never happen
+				    log.error("Unable to select archiving job for " + username + " on tenant " + tid + ".");
 					return null;
 				} else {
+	                if (Settings.DEBUG_SQL_ARCHIVING_JOB && log.isDebugEnabled())
+	                    log.debug("Selected " + uuids.get(0) + " as the next archiving job on tenant " + tid + ".");
 					return uuids.get(0);
 				}
-			}
-		}
-		catch (StaleObjectStateException ex) {
-			return null;
-		}
-		catch (ObjectNotFoundException ex)
-		{
-			return null;
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
-		}
+            }
+        } catch (StaleObjectStateException ex) {
+            log.error("Unable to select archiving job on tenant " + tenantId + " due to stale object.", ex);
+            return null;
+        } catch (ObjectNotFoundException ex) {
+            log.warn("Unable to select archiving job on tenant " + tenantId + " due to object not found.", ex);
+            return null;
+        } catch (HibernateException ex) {
+            log.error("Unable to select archiving job on tenant " + tenantId + " due to hibernate problem.", ex);
+            throw new JobException(ex);
+        } finally {
+            try {
+                HibernateUtil.commitTransaction();
+            } catch (Exception ignored) {
+            }
+        }
 		
 	}
 	
@@ -1150,11 +1095,11 @@ public class JobDao
 	 * enable restriction of job selection by tenant, owner, system, and batch queue.
 	 * 
 	 * @param status by which to filter the list of active jobs.
-	 * @param tenantid tenant to include or exclude from selection.
+	 * @param tenantId tenant to include or exclude from selection.
      * @param owners array of owners to include or exclude from the selection process 
      * @param systemIds array of systems and queues to include or exclude from the selectino process. 
      * @return username of user with pending job
-	 * @throws JobException
+	 * @throws JobException if the query failed
 	 */
 	@SuppressWarnings("unchecked")
 	public static String getRandomUserForNextQueuedJobOfStatus(JobStatusType status, String tenantId, String[] systemIds, String[] owners)
@@ -1189,17 +1134,16 @@ public class JobDao
 			session = HibernateUtil.getSession();
 			session.clear();
 			
-//			String sql = "select jq.owner, jq.execution_system, jq.queue_request, jq.status, jq.jq.tenant_id  " + 
 			String sql = "select jq.owner, jq.tenant_id   \n" +
-    			        "from (    \n" + 
-    			        "       select sq.system_id, sq.name, sq.max_jobs, sq.max_user_jobs, t.system_backlogged_queue_jobs, t.system_queue_jobs, sq.tenant_id    \n" + 
+    			        "from (    \n" +
+    			        "       select sq.system_id, sq.name, sq.max_jobs, sq.max_user_jobs, t.system_backlogged_queue_jobs, t.system_queue_jobs, sq.tenant_id    \n" +
     			        "       from (    \n";
 			if (JobStatusType.PENDING == status) {
                 sql +=  "               select bqj.execution_system, bqj.queue_request, sum( if(bqj.status not in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as system_queue_jobs, sum( if(bqj.status in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as system_backlogged_queue_jobs, bqj.tenant_id     \n";
 			} else {
 			    sql +=  "               select bqj.execution_system, bqj.queue_request, sum( if(bqj.status not in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as system_queue_jobs, sum( if(bqj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as system_backlogged_queue_jobs, bqj.tenant_id     \n";
 			}
-    		sql +=      "               from jobs bqj     \n" + 
+    		sql +=      "               from jobs bqj     \n" +
     			        "               where bqj.visible = 1 and bqj.status in ('PENDING','PROCESSING_INPUTS', 'RUNNING', 'PAUSED', 'QUEUED', 'CLEANING_UP', 'SUBMITTING', 'STAGING_INPUTS', 'STAGING_JOB', 'STAGED') \n" +
     			        "                     and bqj.tenant_id :excludetenant like :tenantid \n";
 	        
@@ -1227,70 +1171,64 @@ public class JobDao
                 sql += "        ) \n";
             }
                     
-    		sql +=      "               group by bqj.execution_system, bqj.queue_request, bqj.tenant_id    \n" + 
-    			        "           ) as t  \n" + 
-    			        "           left join (  \n" + 
-    			        "               select ss.system_id, q.name, q.max_jobs, q.max_user_jobs, ss.tenant_id   \n" + 
-    			        "               from batchqueues q  \n" + 
-    			        "                   left join systems ss on ss.id = q.execution_system_id  \n" + 
-    			        "                   where ss.type = 'EXECUTION'  \n" + 
-    			        "           ) as sq on sq.system_id = t.execution_system and sq.name = t.queue_request and t.tenant_id = sq.tenant_id    \n" + 
-    			        "       where t.system_queue_jobs < sq.max_jobs     \n" + 
-    			        "           or sq.max_jobs = -1    \n" + 
-    			        "           or sq.max_jobs is NULL  \n" + 
-    			        "   ) as sysq   \n" + 
-    			        "   left join (    \n" + 
-    			        "       select buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs, buqj.tenant_id     \n" + 
-    			        "       from jobs buqj  \n" + 
+    		sql +=      "               group by bqj.execution_system, bqj.queue_request, bqj.tenant_id    \n" +
+    			        "           ) as t  \n" +
+    			        "           left join (  \n" +
+    			        "               select ss.system_id, q.name, q.max_jobs, q.max_user_jobs, ss.tenant_id   \n" +
+    			        "               from batchqueues q  \n" +
+    			        "                   left join systems ss on ss.id = q.execution_system_id  \n" +
+    			        "                   where ss.type = 'EXECUTION'  \n" +
+    			        "           ) as sq on sq.system_id = t.execution_system and sq.name = t.queue_request and t.tenant_id = sq.tenant_id    \n" +
+    			        "       where t.system_queue_jobs < sq.max_jobs     \n" +
+    			        "           or sq.max_jobs = -1    \n" +
+    			        "           or sq.max_jobs is NULL  \n" +
+    			        "   ) as sysq   \n" +
+    			        "   left join (    \n" +
+    			        "       select buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs, buqj.tenant_id     \n" +
+    			        "       from jobs buqj  \n" +
     			        "           left join ( \n";
     		if (JobStatusType.PENDING == status) {
                 sql +=  "               select aj.owner, aj.execution_system, aj.queue_request, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS'), 0, 1)) as user_system_queue_jobs, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as total_backlogged_user_jobs, aj.tenant_id \n";
     		} else {
     		    sql +=  "               select aj.owner, aj.execution_system, aj.queue_request, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 0, 1)) as user_system_queue_jobs, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as total_backlogged_user_jobs, aj.tenant_id \n";
     		}
-    		sql +=      "               from jobs aj  \n" + 
-    			        "               where aj.visible = 1 and aj.status in ( 'PENDING','PROCESSING_INPUTS', 'RUNNING', 'PAUSED', 'QUEUED', 'CLEANING_UP', 'SUBMITTING', 'STAGING_INPUTS', 'STAGING_JOB', 'STAGED')   \n" + 
-    			        "               group by aj.owner, aj.execution_system, aj.queue_request, aj.tenant_id \n" + 
-    			        "           ) as auj on buqj.owner = auj.owner and buqj.execution_system = auj.execution_system and buqj.queue_request = auj.queue_request and buqj.tenant_id = auj.tenant_id \n" + 
-    			        "       group by buqj.tenant_id, buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs \n" + 
-    			        "   ) as jq on jq.execution_system = sysq.system_id and jq.queue_request = sysq.name and jq.tenant_id = sysq.tenant_id    \n" + 
-    			        "where     \n" + 
-    			        "   jq.status like :status      \n" + 
-    			        "   and (    \n" + 
-    			        "       jq.user_system_queue_jobs < sysq.max_user_jobs    \n" + 
-    			        "       or sysq.max_user_jobs = -1    \n" + 
-    			        "       or sysq.max_user_jobs is NULL   \n" + 
-    			        "   ) \n"; 
+    		sql +=      "               from jobs aj  \n" +
+    			        "               where aj.visible = 1 and aj.status in ( 'PENDING','PROCESSING_INPUTS', 'RUNNING', 'PAUSED', 'QUEUED', 'CLEANING_UP', 'SUBMITTING', 'STAGING_INPUTS', 'STAGING_JOB', 'STAGED')   \n" +
+    			        "               group by aj.owner, aj.execution_system, aj.queue_request, aj.tenant_id \n" +
+    			        "           ) as auj on buqj.owner = auj.owner and buqj.execution_system = auj.execution_system and buqj.queue_request = auj.queue_request and buqj.tenant_id = auj.tenant_id \n" +
+    			        "       group by buqj.tenant_id, buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs \n" +
+    			        "   ) as jq on jq.execution_system = sysq.system_id and jq.queue_request = sysq.name and jq.tenant_id = sysq.tenant_id    \n" +
+    			        "where     \n" +
+    			        "   jq.status like :status      \n" +
+    			        "   and (    \n" +
+    			        "       jq.user_system_queue_jobs < sysq.max_user_jobs    \n" +
+    			        "       or sysq.max_user_jobs = -1    \n" +
+    			        "       or sysq.max_user_jobs is NULL   \n" +
+    			        "   ) \n";
     			        
 			if (JobStatusType.PENDING == status) {
-				sql +=	"	and jq.total_backlogged_user_jobs > 0 \n"; 	
+				sql +=	"	and jq.total_backlogged_user_jobs > 0 \n";
 			}
 			if (!ArrayUtils.isEmpty(owners)) {
                 sql += "    and jq.owner :excludeowners in :owners \n";
             }
-			sql +=		"	and jq.queue_request is not NULL    \n" + 
+			sql +=		"	and jq.queue_request is not NULL    \n" +
 						"	and jq.queue_request <> ''    \n" +
-						
+
 						"	and jq.tenant_id :excludetenant like :tenantid \n" +
-//						"group by jq.owner, jq.execution_system, jq.queue_request, jq.status, jq.jq.tenant_id    \n" +
 						"group by jq.owner, jq.tenant_id   \n" +
 						"order by rand() \n";
-	//					"order by jq.execution_system, jq.queue_request, jq.owner ";
 			
 			sql = StringUtils.replace(sql, ":excludeowners", excludeOwners ? "not" : "");
 			sql = StringUtils.replace(sql, ":excludetenant", excludeTenant ? "not" : "");
 			sql = StringUtils.replace(sql, ":excludesystems", excludeSystems ? "not" : "");
            
-            
+            // This parallel query string is for debugging purposes only.
 			String q = StringUtils.replace(sql, ":status", "'" + status + "'");
             q = StringUtils.replace(q, ":tenantid", "'" + tenantId + "'");
 			
 			Query query = session.createSQLQuery(sql)
 			        .addScalar("owner", StandardBasicTypes.STRING)
-//					.addScalar("execution_system", StandardBasicTypes.STRING)
-//					.addScalar("batch_queue", StandardBasicTypes.STRING)
-//					.addScalar("user_system_queue_jobs", StandardBasicTypes.INTEGER)
-//					.addScalar("total_backlogged_user_jobs", StandardBasicTypes.INTEGER)
 					.addScalar("tenant_id", StandardBasicTypes.STRING) 
 					.setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE)
 					.setString("status", status.name())
@@ -1321,7 +1259,21 @@ public class JobDao
                 }
 			}
 			
-//			log.debug(q);
+			// Print the separately constructed query string after parameter substitution.
+			if (Settings.DEBUG_SQL_PENDING_JOB && log.isDebugEnabled()) 
+			{
+                // Only the PENDING and STAGED statuses are passed to this method.
+                SqlQueryEnum queryName = null;
+                if (status == JobStatusType.PENDING) queryName = SqlQueryEnum.PENDING_1;
+                 else queryName = SqlQueryEnum.STAGED_1;
+                
+                // Use the query name to determine if the current query text needs to be logged. 
+                if (!sameAsLastQuery(queryName, q)) {
+                    log.debug("JobDao.getRandomUserForNextQueuedJobOfStatus() query:\n" + q);
+                    sqlQueryMap.put(queryName, q.hashCode()); 
+                }
+			}
+			
 //			log.debug(query.getQueryString());
 			List<Map<String,Object>> aliasToValueMapList = query
 			        .setCacheable(false)
@@ -1330,27 +1282,32 @@ public class JobDao
 					.list();
 			
 			if (aliasToValueMapList.isEmpty()) {
+			    if (Settings.DEBUG_SQL_PENDING_JOB && log.isDebugEnabled())
+			       log.debug("No username selected for the next job of status " + status.name() + ".");
 				return null;
 			} else {
-//				long randomIndex = RandomUtils.nextInt(aliasToValueMapList.size());
 			    String username = (String) aliasToValueMapList.get(0).get("owner");
-//			     log.debug("Selected " + username + " for the next job of status " + status.name());
+                if (Settings.DEBUG_SQL_PENDING_JOB && log.isDebugEnabled()) 
+                   log.debug("Selected " + username + " as next " + status.name() + " job.");
 				return username;
 			}
 		}
-		catch (StaleObjectStateException ex) {
-			return null;
-		}
-		catch (ObjectNotFoundException ex)
-		{
-			return null;
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
+        catch (StaleObjectStateException ex) {
+            log.error("Random user selection failed for " + status.name() + " due to stale object.", ex);
+            return null;
+        }
+        catch (ObjectNotFoundException ex)
+        {
+            log.warn("Random user selection failed for " + status.name() + " due to object not found.", ex);
+            return null;
+        }
+        catch (HibernateException ex)
+        {
+            log.error("Random user selection failed for " + status.name() + " due to hibernate problem.", ex);
+            throw new JobException(ex);
+        }
 		finally {
-            try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+            try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
         }
 	}
 
@@ -1362,21 +1319,49 @@ public class JobDao
      * selection by tenant, owner, system, and batch queue.
      * 
      * @param status by which to filter the list of active jobs.
-     * @param tenantid tenant to include or exclude from selection.
+     * @param tenantId tenant to include or exclude from selection.
      * @param owners array of owners to include or exclude from the selection process 
      * @param systemIds array of systems and queues to include or exclude from the selectino process. 
      * @return username of user with pending job
-     * @see {@link #getRandomUserForNextQueuedJobOfStatus(JobStatusType, String, String[], String[])}
-     * @throws JobException
+     * @see JobDao#getRandomUserForNextQueuedJobOfStatus(JobStatusType, String, String[], String[])
+     * @throws JobException when the query fails to complete
      */
     @SuppressWarnings("unchecked")
     public static String getNextQueuedJobUuid(JobStatusType status, String tenantId, String[] owners, String[] systemIds)
 	throws JobException
 	{
+        // Tracing.
+        if (Settings.DEBUG_SQL_PENDING_JOB && log.isDebugEnabled()) {
+            StringBuilder buf = new StringBuilder(200);
+            buf.append("JobDao.getNextQueuedJobUuid() input: status=");
+            buf.append(status.name()); 
+            buf.append(", tenantId=");
+            buf.append(tenantId);
+            buf.append(", owners=(");
+            for (int i = 0; i < owners.length; i++) {
+                if (i != 0) buf.append(", "); 
+                buf.append(owners[i]);
+            }
+            buf.append("), systemIds=(");
+            for (int i = 0; i < systemIds.length; i++) {
+                if (i != 0) buf.append(", "); 
+                buf.append(systemIds[i]);
+            }
+            buf.append(").");
+            log.debug(buf.toString());             
+        }
+        
     	// we don't need to clone these arrays, they should be safe, but I'm tired and this is safe, so we'll do this
 		// until i come back and add formal whitelist/blacklist support.
 		String nextUser = getRandomUserForNextQueuedJobOfStatus(status, tenantId, (String[])ArrayUtils.clone(systemIds), (String[])ArrayUtils.clone(owners));
-        
+
+		// Is any user ready to have a job run?
+		if (StringUtils.isBlank(nextUser)){
+		    if (log.isTraceEnabled())
+		        log.trace("Skipping " + status.name() + " job selection because no qualified user.");
+		    return null;
+		}
+
 		boolean excludeTenant = false;
 	    if (StringUtils.isEmpty(tenantId)) {
             tenantId = "%";
@@ -1388,99 +1373,94 @@ public class JobDao
 		try
 		{
 		    
-			if (StringUtils.isNotEmpty(nextUser))
-			{
-			    HibernateUtil.beginTransaction();
+		    HibernateUtil.beginTransaction();
 			    
-    			Session session = HibernateUtil.getSession();
+		    Session session = HibernateUtil.getSession();
     			
-                String sql = "select jq.owner, jq.tenant_id, jq.uuid   \n" +
-                            "from (    \n" + 
-                            "       select sq.system_id, sq.name, sq.max_jobs, sq.max_user_jobs, t.system_backlogged_queue_jobs, t.system_queue_jobs, sq.tenant_id    \n" + 
-                            "       from (    \n";
-                if (JobStatusType.PENDING == status) {
-                    sql +=  "               select bqj.execution_system, bqj.queue_request, sum( if(bqj.status not in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as system_queue_jobs, sum( if(bqj.status in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as system_backlogged_queue_jobs, bqj.tenant_id     \n";
-                } else {
-                    sql +=  "               select bqj.execution_system, bqj.queue_request, sum( if(bqj.status not in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as system_queue_jobs, sum( if(bqj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as system_backlogged_queue_jobs, bqj.tenant_id     \n";
-                }
-                sql +=      "               from jobs bqj     \n" + 
-                            "               where bqj.visible = 1 and bqj.status in ('PENDING','PROCESSING_INPUTS', 'RUNNING', 'PAUSED', 'QUEUED', 'CLEANING_UP', 'SUBMITTING', 'STAGING_INPUTS', 'STAGING_JOB', 'STAGED') \n" +
-                            "                     and bqj.tenant_id :excludetenant like :tenantid \n" + 
-                            "                     and bqj.owner = :owner \n";
+            String sql = "select jq.owner, jq.tenant_id, jq.uuid   \n" +
+                         "from (    \n" + 
+                         "       select sq.system_id, sq.name, sq.max_jobs, sq.max_user_jobs, t.system_backlogged_queue_jobs, t.system_queue_jobs, sq.tenant_id    \n" + 
+                         "       from (    \n";
+            if (JobStatusType.PENDING == status) {
+                sql +=  "               select bqj.execution_system, bqj.queue_request, sum( if(bqj.status not in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as system_queue_jobs, sum( if(bqj.status in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as system_backlogged_queue_jobs, bqj.tenant_id     \n";
+            } else {
+                sql +=  "               select bqj.execution_system, bqj.queue_request, sum( if(bqj.status not in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as system_queue_jobs, sum( if(bqj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as system_backlogged_queue_jobs, bqj.tenant_id     \n";
+            }
+            sql +=      "               from jobs bqj     \n" + 
+                        "               where bqj.visible = 1 and bqj.status in ('PENDING','PROCESSING_INPUTS', 'RUNNING', 'PAUSED', 'QUEUED', 'CLEANING_UP', 'SUBMITTING', 'STAGING_INPUTS', 'STAGING_JOB', 'STAGED') \n" +
+                        "                     and bqj.tenant_id :excludetenant like :tenantid \n" + 
+                        "                     and bqj.owner = :owner \n";
                 
-                if (!ArrayUtils.isEmpty(systemIds)) 
-                {
-                    boolean exclusive = false;
-                    if (StringUtils.join(systemIds, ",").contains("!")) {
-                        exclusive = true;
+            if (!ArrayUtils.isEmpty(systemIds)) 
+            {
+                boolean exclusive = StringUtils.join(systemIds, ",").contains("!");
+
+				sql += "    and ( \n";
+                    
+                for (int i=0;i<systemIds.length;i++) {
+                        
+                    if (StringUtils.contains(systemIds[i], "#")) {
+                        sql += "         (bqj.execution_system " + (exclusive ? " <> " : " = ") + " :systemid" + i + " and bqj.queue_request " + (exclusive ? " <> " : " = ") + " :queuename" + i + ") ";
+                    } else {
+                        sql += "         (bqj.execution_system " + (exclusive ? " <> " : " = ") + " :systemid" + i + ") ";
                     }
-                    
-                    sql += "    and ( \n";
-                    
-                    for (int i=0;i<systemIds.length;i++) {
                         
-                        if (StringUtils.contains(systemIds[i], "#")) {
-                            sql += "         (bqj.execution_system " + (exclusive ? " <> " : " = ") + " :systemid" + i + " and bqj.queue_request " + (exclusive ? " <> " : " = ") + " :queuename" + i + ") ";
-                        } else {
-                            sql += "         (bqj.execution_system " + (exclusive ? " <> " : " = ") + " :systemid" + i + ") ";
-                        }
-                        
-                        if (systemIds.length > (i+1)) {
-                            sql += " or \n";
-                        }
+                    if (systemIds.length > (i+1)) {
+                        sql += " or \n";
                     }
+                }
                     
-                    sql += "        ) \n";
-                }
+                sql += "        ) \n";
+            }
                         
-                sql +=      "               group by bqj.execution_system, bqj.queue_request, bqj.tenant_id    \n" + 
-                            "           ) as t  \n" + 
-                            "           left join (  \n" + 
-                            "               select ss.system_id, q.name, q.max_jobs, q.max_user_jobs, ss.tenant_id   \n" + 
-                            "               from batchqueues q  \n" + 
-                            "                   left join systems ss on ss.id = q.execution_system_id  \n" + 
-                            "                   where ss.type = 'EXECUTION'  \n" + 
-                            "           ) as sq on sq.system_id = t.execution_system and sq.name = t.queue_request and t.tenant_id = sq.tenant_id    \n" + 
-                            "       where t.system_queue_jobs < sq.max_jobs     \n" + 
-                            "           or sq.max_jobs = -1    \n" + 
-                            "           or sq.max_jobs is NULL  \n" + 
-                            "   ) as sysq   \n" + 
-                            "   left join (    \n" + 
-                            "       select buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs, buqj.tenant_id, buqj.uuid     \n" + 
-                            "       from jobs buqj  \n" + 
-                            "           left join ( \n";
-                if (JobStatusType.PENDING == status) {
-                    sql +=  "               select aj.owner, aj.execution_system, aj.queue_request, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS'), 0, 1)) as user_system_queue_jobs, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as total_backlogged_user_jobs, aj.tenant_id \n";
-                } else {
-                    sql +=  "               select aj.owner, aj.execution_system, aj.queue_request, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 0, 1)) as user_system_queue_jobs, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as total_backlogged_user_jobs, aj.tenant_id \n";
-                }
-                sql +=      "               from jobs aj  \n" + 
-                            "               where aj.visible = 1 and aj.status in ( 'PENDING','PROCESSING_INPUTS', 'RUNNING', 'PAUSED', 'QUEUED', 'CLEANING_UP', 'SUBMITTING', 'STAGING_INPUTS', 'STAGING_JOB', 'STAGED')   \n" + 
-                            "               group by aj.owner, aj.execution_system, aj.queue_request, aj.tenant_id \n" + 
-                            "           ) as auj on buqj.owner = auj.owner and buqj.execution_system = auj.execution_system and buqj.queue_request = auj.queue_request and buqj.tenant_id = auj.tenant_id \n" + 
-                            "       group by buqj.tenant_id, buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs, buqj.uuid \n" + 
-                            "   ) as jq on jq.execution_system = sysq.system_id and jq.queue_request = sysq.name and jq.tenant_id = sysq.tenant_id    \n" + 
-                            "where     \n" + 
-                            "   jq.status like :status      \n" + 
-                            "   and (    \n" + 
-                            "       jq.user_system_queue_jobs < sysq.max_user_jobs    \n" + 
-                            "       or sysq.max_user_jobs = -1    \n" + 
-                            "       or sysq.max_user_jobs is NULL   \n" + 
-                            "   ) \n"; 
+            sql +=      "               group by bqj.execution_system, bqj.queue_request, bqj.tenant_id    \n" + 
+                        "           ) as t  \n" + 
+                        "           left join (  \n" + 
+                        "               select ss.system_id, q.name, q.max_jobs, q.max_user_jobs, ss.tenant_id   \n" + 
+                        "               from batchqueues q  \n" + 
+                        "                   left join systems ss on ss.id = q.execution_system_id  \n" + 
+                        "                   where ss.type = 'EXECUTION'  \n" + 
+                        "           ) as sq on sq.system_id = t.execution_system and sq.name = t.queue_request and t.tenant_id = sq.tenant_id    \n" + 
+                        "       where t.system_queue_jobs < sq.max_jobs     \n" + 
+                        "           or sq.max_jobs = -1    \n" + 
+                        "           or sq.max_jobs is NULL  \n" + 
+                        "   ) as sysq   \n" + 
+                        "   left join (    \n" + 
+                        "       select buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs, buqj.tenant_id, buqj.uuid     \n" + 
+                        "       from jobs buqj  \n" + 
+                        "           left join ( \n";
+            if (JobStatusType.PENDING == status) {
+                sql +=  "               select aj.owner, aj.execution_system, aj.queue_request, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS'), 0, 1)) as user_system_queue_jobs, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as total_backlogged_user_jobs, aj.tenant_id \n";
+            } else {
+                sql +=  "               select aj.owner, aj.execution_system, aj.queue_request, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 0, 1)) as user_system_queue_jobs, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as total_backlogged_user_jobs, aj.tenant_id \n";
+            }
+            sql +=      "               from jobs aj  \n" + 
+                        "               where aj.visible = 1 and aj.status in ( 'PENDING','PROCESSING_INPUTS', 'RUNNING', 'PAUSED', 'QUEUED', 'CLEANING_UP', 'SUBMITTING', 'STAGING_INPUTS', 'STAGING_JOB', 'STAGED')   \n" + 
+                        "               group by aj.owner, aj.execution_system, aj.queue_request, aj.tenant_id \n" + 
+                        "           ) as auj on buqj.owner = auj.owner and buqj.execution_system = auj.execution_system and buqj.queue_request = auj.queue_request and buqj.tenant_id = auj.tenant_id \n" + 
+                        "       group by buqj.tenant_id, buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs, buqj.uuid \n" + 
+                        "   ) as jq on jq.execution_system = sysq.system_id and jq.queue_request = sysq.name and jq.tenant_id = sysq.tenant_id    \n" + 
+                        "where     \n" + 
+                        "   jq.status like :status      \n" + 
+                        "   and (    \n" + 
+                        "       jq.user_system_queue_jobs < sysq.max_user_jobs    \n" + 
+                        "       or sysq.max_user_jobs = -1    \n" + 
+                        "       or sysq.max_user_jobs is NULL   \n" + 
+                        "   ) \n"; 
                             
-                if (JobStatusType.PENDING == status) {
-                    sql +=  "   and jq.total_backlogged_user_jobs > 0 \n";    
-                }
+            if (JobStatusType.PENDING == status) {
+                sql +=  "   and jq.total_backlogged_user_jobs > 0 \n";    
+            }
                 
-                sql +=      "   and jq.queue_request is not NULL    \n" + 
-                            "   and jq.queue_request <> ''    \n" + 
-                            "   and jq.tenant_id :excludetenant like :tenantid \n" +
-                            "group by jq.owner, jq.execution_system, jq.queue_request, jq.status, jq.tenant_id, jq.uuid    \n" +
-                            "order by rand() \n";
+            sql +=      "   and jq.queue_request is not NULL    \n" + 
+                        "   and jq.queue_request <> ''    \n" + 
+                        "   and jq.tenant_id :excludetenant like :tenantid \n" +
+                        "group by jq.owner, jq.execution_system, jq.queue_request, jq.status, jq.tenant_id, jq.uuid    \n" +
+                        "order by rand() \n";
                 
-                sql = StringUtils.replace(sql, ":excludetenant", excludeTenant ? "not" : "");
+            sql = StringUtils.replace(sql, ":excludetenant", excludeTenant ? "not" : "");
     			
-                Query query = session.createSQLQuery(sql)
+            Query query = session.createSQLQuery(sql)
                         .addScalar("owner", StandardBasicTypes.STRING)
                         .addScalar("tenant_id", StandardBasicTypes.STRING)
                         .addScalar("uuid", StandardBasicTypes.STRING)
@@ -1489,67 +1469,86 @@ public class JobDao
                         .setString("tenantid", tenantId)
                         .setString("owner", nextUser);
                 
-                String q = StringUtils.replace(sql, ":status", "'" + status + "'");
-                q = StringUtils.replace(q, ":tenantid", "'" + tenantId + "'");
-                q = StringUtils.replace(q, ":owner", nextUser);
+            // This parallel query string is for debugging purposes only.
+            String q = StringUtils.replace(sql, ":status", "'" + status + "'");
+            q = StringUtils.replace(q, ":tenantid", "'" + tenantId + "'");
+            q = StringUtils.replace(q, ":owner", nextUser);
                 
-                if (!ArrayUtils.isEmpty(systemIds)) 
+            if (!ArrayUtils.isEmpty(systemIds)) 
+            {
+                // remove leading negation if present
+                for (int i = 0; i < systemIds.length; i++)
+                    systemIds[i] = StringUtils.removeStart(systemIds[i], "!");
+                    
+                    
+                for (int i=0;i<systemIds.length;i++) 
                 {
-                    // remove leading negation if present
-                    for (int i = 0; i < systemIds.length; i++)
-                        systemIds[i] = StringUtils.removeStart(systemIds[i], "!");
-                    
-                    
-                    for (int i=0;i<systemIds.length;i++) 
-                    {
-                        if (StringUtils.contains(systemIds[i], "#")) {
-                            String[] tokens = StringUtils.split(systemIds[i], "#");
-                            query.setString("systemid" + i, tokens[0]);
-                            q = StringUtils.replace(q, ":systemid"+i, "'" + tokens[0] +"'");
-                            if (tokens.length > 1) {
-                                query.setString("queuename" + i, tokens[1]); 
-                                q = StringUtils.replace(q, ":queuename"+i, "'" + tokens[1] +"'");
-                            }
-                        }
-                        else
-                        {
-                            query.setString("systemid" + i, systemIds[i]);
-                            q = StringUtils.replace(q, ":systemid"+i, "'" + systemIds[i] +"'");
+                    if (StringUtils.contains(systemIds[i], "#")) {
+                        String[] tokens = StringUtils.split(systemIds[i], "#");
+                        query.setString("systemid" + i, tokens[0]);
+                        q = StringUtils.replace(q, ":systemid"+i, "'" + tokens[0] +"'");
+                        if (tokens.length > 1) {
+                            query.setString("queuename" + i, tokens[1]); 
+                            q = StringUtils.replace(q, ":queuename"+i, "'" + tokens[1] +"'");
                         }
                     }
+                    else
+                    {
+                        query.setString("systemid" + i, systemIds[i]);
+                        q = StringUtils.replace(q, ":systemid"+i, "'" + systemIds[i] +"'");
+                    }
+                }
+            }
+                
+            // Print the separately constructed query string after parameter substitution.
+            if (Settings.DEBUG_SQL_PENDING_JOB && log.isDebugEnabled()) 
+            {
+                // Only the PENDING and STAGED statuses are passed to this method.
+                SqlQueryEnum queryName = null;
+                if (status == JobStatusType.PENDING) queryName = SqlQueryEnum.PENDING_2;
+                 else queryName = SqlQueryEnum.STAGED_2;
+                
+                // Use the query name to determine if the current query text needs to be logged. 
+                if (!sameAsLastQuery(queryName, q)) {
+                    log.debug("JobDao.getNextQueuedJobUuid() query:\n" + q);
+                    sqlQueryMap.put(queryName, q.hashCode());
                 }
                 
-//                 log.debug(q);              
-                List<Map<String,Object>> aliasToValueMapList = query
+            }
+            List<Map<String,Object>> aliasToValueMapList = query
                         .setCacheable(false)
                         .setCacheMode(CacheMode.REFRESH)
                         .setMaxResults(1)
                         .list();
                 
-                if (aliasToValueMapList.isEmpty()) {
-                    return null;
-                } else {
-                    String uuid = (String) aliasToValueMapList.get(0).get("uuid");
-                    // log.debug("Selected " + uuid + " for the next job of status " + status.name());
-//                    return JobDao.getByUuid(uuid);
-                    return uuid;
-                }
-    		}
-			return null;
+            if (aliasToValueMapList.isEmpty()) {
+                if (Settings.DEBUG_SQL_PENDING_JOB && log.isDebugEnabled())
+                    log.debug("No job uuid selected for the next job with status " + status.name() + ".");
+                return null;
+            } else {
+                String uuid = (String) aliasToValueMapList.get(0).get("uuid");
+                if (Settings.DEBUG_SQL_PENDING_JOB && log.isDebugEnabled())
+                    log.debug("Selected " + uuid + " as the next " + status.name() + " job.");
+                return uuid;
+            }
+			
 		}
 		catch (StaleObjectStateException ex) {
+		    log.error("Database polling failed for " + status.name() + " due to stale object.", ex);
 			return null;
 		}
 		catch (ObjectNotFoundException ex)
 		{
+		    log.warn("Database polling failed for " + status.name() + " due to object not found.", ex);
 			return null;
 		}
 		catch (HibernateException ex)
 		{
+		    log.error("Database polling failed for " + status.name() + " due to hibernate problem.", ex);
 			throw new JobException(ex);
 		}
 		finally {
-            try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+            try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
         }
 	}
 	
@@ -1558,10 +1557,10 @@ public class JobDao
 	 * given id. This is only needed because job inputs are not a 
 	 * separate table.
 	 * 
-	 * @param jobId
-	 * @param source
-	 * @param dest
-	 * @throws JobException
+	 * @param jobId the db id of the job to update
+	 * @param source the value within the inputs column to be replaced
+	 * @param dest the value with which to replace {@code source} in the inputs column
+	 * @throws JobException when the query fails to complete
 	 */
 	public static void updateInputs(long jobId, String source, String dest)
 	throws JobException
@@ -1575,13 +1574,13 @@ public class JobDao
 					"dest", dest).executeUpdate();
 			
 			session.flush();
-		}
-		catch (HibernateException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 
 	}
@@ -1590,10 +1589,10 @@ public class JobDao
 	 * Searches for jobs by the given user who matches the given set of 
 	 * parameters. Permissions are honored in this query.
 	 * 
-	 * @param username
+	 * @param username the user for whom to search for user jobs
 	 * @param searchCriteria Map of key value pairs by which to query.
-	 * @return
-	 * @throws JobException
+	 * @return list of matching jobs, marshalled to {@link JobDTO}
+	 * @throws JobException if unable to perform the query
 	 */
 	public static List<JobDTO> findMatching(String username,
 			Map<SearchTerm, Object> searchCriteria) throws JobException
@@ -1605,12 +1604,12 @@ public class JobDao
 	 * Searches for jobs by the given user who matches the given set of 
 	 * parameters. Permissions are honored in this query.
 	 *
-	 * @param username
-	 * @param searchCriteria
-	 * @param offset
-	 * @param limit
-	 * @return
-	 * @throws JobException
+	 * @param username the user for whom to search for user jobs
+	 * @param searchCriteria Map of key value pairs by which to query.
+	 * @param offset the number of records to skip in the result set
+	 * @param limit the maximum number of records  to return.
+	 * @return list of matching jobs, marshalled to {@link JobDTO}
+	 * @throws JobException if unable to perform the query
 	 */
 	public static List<JobDTO> findMatching(String username,
 			Map<SearchTerm, Object> searchCriteria,
@@ -1620,15 +1619,17 @@ public class JobDao
 	}
 	
 	/**
-	 * Searches for jobs by the given user who matches the given set of 
-	 * parameters. Permissions are honored in this query.
+	 * Searches for jobs by the given user who matches the given map of {@link SearchTerm}s parameters.
+	 * Permissions are honored in this query.
 	 *
-	 * @param username
-	 * @param searchCriteria
-	 * @param offset
-	 * @param limit
-	 * @return
-	 * @throws JobException
+	 * @param username the user for whom to search for user jobs
+	 * @param searchCriteria Map of key value pairs by which to query.
+	 * @param offset the number of records to skip in the result set
+	 * @param limit the maximum number of records  to return.
+	 * @param order the direction to order
+	 * @param orderBy the search field by which to order.
+     * @return list of matching jobs, marshalled to {@link JobDTO}
+	 * @throws JobException if unable to perform the query
 	 */
 	@SuppressWarnings("unchecked")
 	public static List<JobDTO> findMatching(String username,
@@ -1641,13 +1642,11 @@ public class JobDao
 		
 		if (orderBy == null) {
 			orderBy = new JobSearchFilter().filterAttributeName("lastupdated");
-//			if (orderBy == null) {
-//				orderBy = j.last_updated
-//			}
 		}
 		
 		try
 		{
+			Map<String, Class> searchTypeMappings = new JobSearchFilter().getSearchTypeMappings();
 			Session session = getSession();
 			session.clear();
 			String sql = "SELECT j.archive_output, \n" + 
@@ -1658,7 +1657,8 @@ public class JobDao
 					"       j.created, \n" + 
 					"       j.end_time, \n" + 
 					"       j.error_message, \n" + 
-					"       j.execution_system, \n" + 
+					"       j.execution_system, \n" +
+					"       j.execution_type, \n" +
 					"       j.id, \n" + 
 					"       j.inputs, \n" + 
 					"       j.internal_username, \n" + 
@@ -1672,8 +1672,9 @@ public class JobDao
 					"       j.processor_count, \n" + 
 					"       j.queue_request, \n" + 
 					"       j.requested_time, \n" + 
-					"       j.retries, \n" + 
-					"       j.scheduler_job_id, \n" + 
+					"       j.retries, \n" +
+					"       j.scheduler_type, \n" +
+					"       j.scheduler_job_id, \n" +
 					"       j.software_name, \n" + 
 					"       j.start_time, \n" + 
 					"       j.status, \n" + 
@@ -1703,25 +1704,17 @@ public class JobDao
 			
 			for (SearchTerm searchTerm: searchCriteria.keySet()) 
 			{
-				// we have to format
-//				if (searchTerm.getSafeSearchField().equalsIgnoreCase("runtime") || 
-//						searchTerm.getSafeSearchField().equalsIgnoreCase("walltime")) {
-//					sql += "\n       AND       " + 
-//						StringUtils.replace(searchTerm.getExpression(), "__MYSQL_DATE_FORMAT__", "%Y-%m-%d %H:%i:%s.0");
-//				}
-//				else {
-					sql += "\n       AND       " + searchTerm.getExpression();
-//				}
+				sql += "\n       AND       " + searchTerm.getExpression();
 			}
 			
 			if (!sql.contains("j.visible")) {
 				sql +=  "\n       AND j.visible = :visiblebydefault ";
 			}
 			
-			sql +=	"\n ORDER BY " + String.format(orderBy.getMappedField(), orderBy.getPrefix()) + " " + order.toString() + " \n";
+			sql +=	"\n ORDER BY " + String.format(orderBy.getMappedField(), orderBy.getPrefix()) + " " + order + " \n";
 			
 			String q = sql;
-			//log.debug(q);
+//			log.debug(q);
 			SQLQuery query = session.createSQLQuery(sql);
 			query.addScalar("id", StandardBasicTypes.LONG)
 				.addScalar("charge", StandardBasicTypes.DOUBLE)
@@ -1738,6 +1731,7 @@ public class JobDao
 				.addScalar("end_time", StandardBasicTypes.TIMESTAMP)
 				.addScalar("error_message", StandardBasicTypes.STRING)
 				.addScalar("execution_system", StandardBasicTypes.STRING)
+				.addScalar("execution_type", StandardBasicTypes.STRING)
 				.addScalar("inputs", StandardBasicTypes.STRING)
 				.addScalar("internal_username", StandardBasicTypes.STRING)
 				.addScalar("last_updated", StandardBasicTypes.TIMESTAMP)
@@ -1747,6 +1741,7 @@ public class JobDao
 				.addScalar("parameters", StandardBasicTypes.STRING)
 				.addScalar("queue_request", StandardBasicTypes.STRING)
 				.addScalar("requested_time", StandardBasicTypes.STRING)
+				.addScalar("scheduler_type", StandardBasicTypes.STRING)
 				.addScalar("scheduler_job_id", StandardBasicTypes.STRING)
 				.addScalar("software_name", StandardBasicTypes.STRING)
 				.addScalar("start_time", StandardBasicTypes.TIMESTAMP)
@@ -1789,11 +1784,23 @@ public class JobDao
 					query.setParameterList(searchTerm.getSearchField(), (List<Object>)searchCriteria.get(searchTerm));
 					q = StringUtils.replace(q, ":" + searchTerm.getSearchField(), "('" + StringUtils.join((List<String>)searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)), "','") + "')" );
 				}
+				else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Date.class ) {
+					query.setDate(searchTerm.getSafeSearchField(), (java.util.Date)searchCriteria.get(searchTerm));
+
+					q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+							"'" + searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)) + "'");
+				}
+				else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Integer.class) {
+					query.setInteger(searchTerm.getSafeSearchField(), (Integer)searchCriteria.get(searchTerm));
+
+					q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+							"'" + searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)) + "'");
+				}
 				else 
 				{
 					query.setParameter(searchTerm.getSearchField(), 
 							searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)));
-					q = StringUtils.replace(q, ":" + searchTerm.getSearchField(), "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+					q = StringUtils.replace(q, ":" + searchTerm.getSearchField(), "'" + searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)) + "'");
 				}
 			    
 			}
@@ -1811,16 +1818,25 @@ public class JobDao
 			
 			return jobs;
 
-		}
-		catch (Throwable ex)
-		{
+		} catch (Throwable ex) {
+			// general catchall here since several things could go wrong
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
-	
+
+	/**
+	 * Returns the wall clock time for this job as computed from the {@link Job#getEndTime()} and
+	 * {@link Job#getCreated()}. If the job has not yet finished, the time since creation will be used.
+	 *
+	 * @param uuid the agave uuid of the job for which the wall time will be calculated
+	 * @return the wall time in seconds
+	 * @throws JobException if unable to perform the calculation
+	 */
 	public static int getJobWallTime(String uuid) throws JobException {
 		try
 		{
@@ -1832,17 +1848,27 @@ public class JobDao
 					.addScalar("walltime")
 					.setString("uuid", uuid)
 					.uniqueResult()).intValue();
-			
-		}
-		catch (Throwable ex)
-		{
+
+		} catch (Throwable ex) {
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
-	
+
+	/**
+	 * Returns the job's remote execution time, independent of queue wait and data staging, etc. The job's
+	 * {@link Job#getEndTime()} and {@link Job#getStartTime()} are used for this calculation. If the job has
+	 * not yet finished, the current run time will be used. If the job has not yet started running, 0 will
+	 * be returned.
+	 *
+	 * @param uuid the agave uuid of the job for which the wall time will be calculated
+	 * @return the wall time in seconds or 0 if it has not yet started to run.
+	 * @throws JobException if unable to perform the calculation
+	 */
 	public static int getJobRunTime(String uuid) throws JobException {
 		try
 		{
@@ -1854,17 +1880,22 @@ public class JobDao
 					.addScalar("runtime")
 					.setString("uuid", uuid)
 					.uniqueResult()).intValue();
-			
-		}
-		catch (Throwable ex)
-		{
+
+		} catch (Throwable ex) {
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
 
+	/**
+	 * Fetches all jobs from the current tenant. No pagination is performed here, so beware this result set.
+	 * @return list of all jobs
+	 * @throws JobException if the query cannot be performed.
+	 */
 	@SuppressWarnings("unchecked")
 	public static List<Job> getAll() throws JobException
 	{
@@ -1877,16 +1908,21 @@ public class JobDao
 			session.flush();
 			
 			return jobs;
-		}
-		catch (HibernateException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
 
+	/**
+	 * Counts the number of active jobs in a tenant.
+	 * @return number of currently active jobs.
+	 * @throws JobException if the query cannot be performed.
+	 */
 	public static Integer countTotalActiveJobs() throws JobException
 	{
 		try
@@ -1912,79 +1948,20 @@ public class JobDao
 			throw new JobException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
-	
-//	/**
-//	 * Collects current active job activity stats for a single tenant using 
-//	 * formula driven attributes.
-//	 *  
-//	 * @param tenantCode The unique code of the tenant
-//	 * @return {@link TenantJobActivity} containing stats on active jobs in the tenant
-//	 * @throws JobException
-//	 */
-//	public static SummaryTenantJobActivity getSummaryTenantJobActivity(String tenantCode)
-//	throws JobException
-//	{
-//		try
-//		{
-//			HibernateUtil.beginTransaction();
-//			Session session = HibernateUtil.getSession();
-//			String hql = "from SummaryTenantJobActivity where id.tenantId = :tenantCode";
-//			SummaryTenantJobActivity tenantJobActivity = (SummaryTenantJobActivity)(session.createQuery(hql)
-//					.setString("tenantCode", tenantCode)
-//					.uniqueResult());
-//			
-//			session.flush();
-//			
-//			return tenantJobActivity;
-//
-//		}
-//		catch (Throwable ex)
-//		{
-//			throw new JobException(ex);
-//		}
-//		finally {
-//			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
-//		}
-//	}
-//	
-//	/**
-//	 * Collects current active job activity stats for all tenants using 
-//	 * formula driven attributes.
-//	 *  
-//	 * @return {@link List} of {@link TenantJobActivity} containing stats on active jobs for each tenant
-//	 * @throws JobException
-//	 */
-//	@SuppressWarnings("unchecked")
-//	public static List<SummaryTenantJobActivity> getSummaryTenantJobActivityForAllTenants()
-//	throws JobException
-//	{
-//		try
-//		{
-//			HibernateUtil.beginTransaction();
-//			Session session = HibernateUtil.getSession();
-//			String hql = "from SummaryTenantJobActivity";
-//			List<SummaryTenantJobActivity> tenantJobActivities = (List<SummaryTenantJobActivity>)session
-//					.createQuery(hql)
-//					.list();
-//			
-//			session.flush();
-//			
-//			return tenantJobActivities;
-//
-//		}
-//		catch (Throwable ex)
-//		{
-//			throw new JobException(ex);
-//		}
-//		finally {
-//			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
-//		}
-//	}
 
-	public static Long countActiveJobsOnSystemQueue(String system, String queueName) 
+	/**
+	 * Counts the number of active jobs on a {@link BatchQueue}. The {@code systemId} and {@code queueName} are given
+	 * instead of domain objects to avoid redundant validation within this method.
+	 *
+	 * @param systemId the system id {@link ExecutionSystem} with the named {@link BatchQueue}
+	 * @param queueName the name of the {@link BatchQueue} for which to count active jobs
+	 * @return the number of active jobs associated with a {@link BatchQueue}.
+	 * @throws JobException if the query cannot be performed
+	 */
+	public static Long countActiveJobsOnSystemQueue(String systemId, String queueName)
 	throws JobException
 	{
 		try
@@ -1997,31 +1974,37 @@ public class JobDao
 					+ "		status in " + "(" + JobStatusType.getActiveStatusValues() + ") and "
 					+ "		visible = :visible ";
 			
-			long currentUserJobCount = ((Long)session.createQuery(hql)
+			long currentUserJobCount = (Long) session.createQuery(hql)
 					.setBoolean("visible", true)
 					.setString("queuerequest", queueName)
-					.setString("jobsystem", system)
-					.uniqueResult()).longValue();
+					.setString("jobsystem", systemId)
+					.uniqueResult();
 			
 			session.flush();
 			
 			return currentUserJobCount;
 
-		}
-		catch (ObjectNotFoundException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
 
-	public static Long countActiveUserJobsOnSystemQueue(String owner, String system, String queueName) 
+	/**
+	 * Counts the number of active jobs on a {@link BatchQueue} for a given {@code username}. The {@code systemId}
+	 * and {@code queueName} are given instead of domain objects to avoid redundant validation within this method.
+	 *
+	 * @param owner the user for whom to count active jobs
+	 * @param systemId the system id {@link ExecutionSystem} with the named {@link BatchQueue}
+	 * @param queueName the name of the {@link BatchQueue} for which to count active jobs
+	 * @return the number of active jobs associated with a {@link BatchQueue}.
+	 * @throws JobException if the query cannot be performed
+	 */
+	public static Long countActiveUserJobsOnSystemQueue(String owner, String systemId, String queueName)
 	throws JobException
 	{
 		try
@@ -2036,70 +2019,23 @@ public class JobDao
 					+ "		status in " + "(" + JobStatusType.getActiveStatusValues() + ") and "
 					+ "		visible = :visible ";
 			
-			long jobCount = ((Long)session.createQuery(hql)
+			long jobCount = (Long) session.createQuery(hql)
 					.setBoolean("visible", true)
-					.setString("jobowner",owner)
+					.setString("jobowner", owner)
 					.setString("queuerequest", queueName)
-					.setString("jobsystem", system)
-					.uniqueResult()).longValue();
+					.setString("jobsystem", systemId)
+					.uniqueResult();
 			
 			session.flush();
 			
 			return jobCount;
-
-		}
-		catch (ObjectNotFoundException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
-		}
-	}
-
-	public static String getNextActiveJobUuidForUser(String username, String tenantCode)
-	throws JobException
-	{
-		Session session = null;
-		try
-		{
-			session = HibernateUtil.getSession();
-			session.clear();
-			
-			String hql = "select j.uuid "
-					+ "from Job j "
-					+ "where j.owner = :owner "
-					+ "		and tenantId = :tenantid "
-					+ "		and j.status in (" + JobStatusType.getActiveStatusValues() + ") "
-					+ "		and visible = :visible "
-					+ "order by j.created asc ";
-			
-			String uuid = (String)session.createQuery(hql)
-					.setBoolean("visible", true)
-					.setString("owner", username)
-					.setString("tenantid", tenantCode)
-					.setMaxResults(1)
-					.uniqueResult();
-			
-			return uuid;
-		}
-		catch (StaleObjectStateException ex) {
-			return null;
-		}
-		catch (ObjectNotFoundException ex)
-		{
-			return null;
-		}
-		catch (Throwable ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
 
@@ -2107,7 +2043,8 @@ public class JobDao
 	 * Returns all zombie jobs which have active transfers that have not been 
 	 * updated in the last 15 minutes or which have been in intermediate 
 	 * statuses without transfers for over an hour.
-	 * 
+	 *
+	 * @param tenantId the tenant for which to search.
 	 * @return {@link List<Long>} of zombie {@link Job} ids
 	 */
 	@SuppressWarnings("unchecked")
@@ -2147,17 +2084,51 @@ public class JobDao
 					.list();
 			
 			return jobIds;
-		}
-		catch (StaleObjectStateException e) {
+		} catch (StaleObjectStateException e) {
+			// unable to perform the query due to stale data. return null and try again later
 			return null;
-		}
-		catch (Throwable e)
-		{
+		} catch (Throwable e) {
 			throw new JobException("Failed to retrieve zombie archiving jobs", e);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
 
+	/** Compare the current query text to the last query text for the same named query.
+	 * 
+	 * @param queryName the name of the sql query to be checked
+	 * @param query the current query that will be logged only if it's different 
+	 *     than the preceding query of the same name
+	 * @return true if the current query and the last query text is the same; false otherwise
+	 */
+	private static boolean sameAsLastQuery(SqlQueryEnum queryName, String query)
+	{
+	    Integer hashCode = sqlQueryMap.get(queryName);
+	    if (hashCode == null) return false;
+	    return hashCode == query.hashCode();
+	}
+		
+	/** Initialize the static mapping of sql query names to query string hashcodes.
+	 * The mapping is used to skip printing sql query statements to the log when
+	 * the current query text is the same as the last query text. 
+	 * 
+	 * @return the map initialized with all possible keys.
+	 */
+	private static HashMap<SqlQueryEnum,Integer> initSqlQueryMap()
+	{
+	    // Create and initialize the map with all possible keys.
+	    HashMap<SqlQueryEnum,Integer> map = new HashMap<>();
+	    map.put(SqlQueryEnum.PENDING_1, null);
+	    map.put(SqlQueryEnum.PENDING_2, null);
+	    map.put(SqlQueryEnum.STAGED_1, null);
+	    map.put(SqlQueryEnum.STAGED_2, null);
+	    map.put(SqlQueryEnum.EXECUTING, null);
+	    map.put(SqlQueryEnum.ARCHIVING_1, null);
+	    map.put(SqlQueryEnum.ARCHIVING_2, null);
+	    
+	    return map;
+	}
 }

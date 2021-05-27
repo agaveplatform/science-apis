@@ -2,26 +2,19 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc.agave</groupId>
+		<groupId>org.agaveplatform</groupId>
 		<artifactId>files</artifactId>
-		<version>2.1.11</version>
+		<version>2.2.27</version>
 	</parent>
 	<artifactId>files-api</artifactId>
-	<name>iPlant Agave API Files Service API Endpoints</name>
+	<name>Agave Platform Files Service API Endpoints</name>
 	<description>Webapp that contains the REST endpoints for the Files Service</description>
 	<packaging>war</packaging>
-
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-files.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-files.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-files</url>
-	</scm>
 
 	<properties>
 		<force.check.update>false</force.check.update>
 		<service.war.name>files</service.war.name>
-		<hibernate.hbm2ddl>update</hibernate.hbm2ddl>
-		<jetty.daemon>true</jetty.daemon>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
 	<build>
@@ -40,27 +33,11 @@
 			</testResource>
 		</testResources>
 		<plugins>
+			<!-- Starts and stops integration test containers with Docker Compose -->
 			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>default-compile</id>
-						<phase>compile</phase>
-						<goals>
-							<goal>compile</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					<proc>none</proc>
-					<debug>true</debug>
-					<source>1.7</source>
-					<target>1.7</target>
-					<testSource>1.6</testSource>
-					<testTarget>1.6</testTarget>
-				</configuration>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
 			</plugin>
-
 
 			<!-- ************************************ -->
 			<!-- *** WAR BUILDER ** -->
@@ -96,7 +73,7 @@
 							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
 						</manifest>
 						<manifestEntries>
-							<Implementation-Build>$\{buildNumber}</Implementation-Build>
+							<Implementation-Build>${buildNumber}</Implementation-Build>
 						</manifestEntries>
 					</archive>
 					<webResources>
@@ -143,149 +120,6 @@
 					<skip>true</skip>
 				</configuration>
 			</plugin>
-
-			<plugin>
-				<groupId>com.spotify</groupId>
-				<artifactId>docker-maven-plugin</artifactId>
-				<configuration>
-					<!-- Standard build will build an image without the prefix so we don't
-						force conventions on folks. -->
-					<imageName>${project.artifactId}</imageName>
-					<dockerDirectory>${basedir}/src/main/docker</dockerDirectory>
-					<serverId>${docker.registry.id}</serverId>
-					<registryUrl>${docker.registry.url}</registryUrl>
-				</configuration>
-				<executions>
-					<execution>
-						<id>build-container</id>
-						<!-- Generic docker build of API -->
-						<phase>package</phase>
-						<goals>
-							<goal>build</goal>
-						</goals>
-						<configuration>
-							<skipDockerBuild>${skip.docker.build}</skipDockerBuild>
-							<useGitCommitId>true</useGitCommitId>
-							<imageTags>
-								<tag>${project.version}</tag>
-								<tag>latest</tag>
-							</imageTags>
-							<tagInfoFile>target/image_info.json</tagInfoFile>
-							<forceTags>true</forceTags>
-							<resources>
-								<resource>
-									<targetPath>/</targetPath>
-									<directory>${project.build.directory}</directory>
-									<include>${service.war.name}.war</include>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-					<execution>
-						<id>tag-commit-hash</id>
-						<!-- Tag with the git commit hash. This tags a published image with the repo commit tag-->
-						<phase>deploy</phase>
-						<goals>
-							<goal>tag</goal>
-						</goals>
-						<configuration>
-							<skipDockerBuild>false</skipDockerBuild>
-							<image>${project.artifactId}</image>
-							<newName>${docker.registry.username}/${project.artifactId}</newName>
-							<forceTags>true</forceTags>
-							<useGitCommitId>true</useGitCommitId>
-							<pushImage>${force.docker.push}</pushImage>
-							<serverId>${docker.registry.id}</serverId>
-							<registryUrl>${docker.registry.url}</registryUrl>
-						</configuration>
-					</execution>
-					<execution>
-						<id>tag-version</id>
-						<!-- Tag with the api version number. This represents the latest of the api version -->
-						<phase>deploy</phase>
-						<goals>
-							<goal>tag</goal>
-						</goals>
-						<configuration>
-							<image>${project.artifactId}</image>
-							<newName>${docker.registry.username}/${project.artifactId}:${project.version}</newName>
-							<forceTags>true</forceTags>
-							<skipDockerTag>${skip.docker.tag}</skipDockerTag>
-							<pushImage>${force.docker.push}</pushImage>
-							<serverId>${docker.registry.id}</serverId>
-							<registryUrl>${docker.registry.url}</registryUrl>
-						</configuration>
-					</execution>
-					<!-- Tag as the "latest". This represents the latest of the api -->
-					<execution>
-						<id>tag-latest</id>
-						<phase>deploy</phase>
-						<goals>
-							<goal>tag</goal>
-						</goals>
-						<configuration>
-							<skipDockerBuild>false</skipDockerBuild>
-							<image>${project.artifactId}</image>
-							<newName>${docker.registry.username}/${project.artifactId}:latest</newName>
-							<forceTags>true</forceTags>
-							<skipDockerTag>${skip.docker.tag}</skipDockerTag>
-							<useGitCommitId>false</useGitCommitId>
-							<pushImage>false</pushImage>
-							<serverId>${docker.registry.id}</serverId>
-							<registryUrl>${docker.registry.url}</registryUrl>
-						</configuration>
-					</execution>
-					<execution>
-						<id>remove-version-tag</id>
-						<!-- Tag as the "latest". This represents the latest of the api -->
-						<phase>clean</phase>
-						<goals>
-							<goal>removeImage</goal>
-						</goals>
-						<configuration>
-							<skip>${skip.docker.clean}</skip>
-							<imageTags>
-								<tag>latest</tag>
-								<tag>${project.version}</tag>
-								<tag>${buildNumber}</tag>
-								<tag>${buildNumber}.DIRTY</tag>
-							</imageTags>
-							<imageName>${docker.registry.username}/${project.artifactId}</imageName>
-						</configuration>
-					</execution>
-					<execution>
-						<id>remove-image</id>
-						<!-- Tag as the "latest". This represents the latest of the api -->
-						<phase>clean</phase>
-						<goals>
-							<goal>removeImage</goal>
-						</goals>
-						<configuration>
-							<imageTags>
-								<tag>latest</tag>
-								<tag>${project.version}</tag>
-								<tag>${buildNumber}</tag>
-								<tag>${buildNumber}.DIRTY</tag>
-							</imageTags>
-							<skip>${skip.docker.clean}</skip>
-							<imageName>${project.artifactId}</imageName>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-
-			<!-- ********************** jetty plugin properties ************************* -->
-			<!-- <plugin> <groupId>org.mortbay.jetty</groupId> <artifactId>jetty-maven-plugin</artifactId>
-				<version>8.1.9.v20130131</version> <configuration> <skip>${maven.test.skip}</skip>
-				<stopKey>STOP</stopKey> <stopPort>9999</stopPort> <scanIntervalSeconds>5</scanIntervalSeconds>
-				<connectors> <connector implementation="org.eclipse.jetty.server.nio.SelectChannelConnector">
-				<port>8182</port> </connector> </connectors> <webAppConfig> <contextPath>/files</contextPath>
-				</webAppConfig> </configuration> <executions> <execution> <id>start-jetty</id>
-				<phase>pre-integration-test</phase> <goals> <goal>stop</goal> <goal>run-war</goal>
-				</goals> <configuration> <scanIntervalSeconds>0</scanIntervalSeconds> <daemon>true</daemon>
-				</configuration> </execution> <execution> <id>stop-jetty</id> <phase>post-integration-test</phase>
-				<goals> <goal>stop</goal> </goals> </execution> </executions> </plugin> -->
-
 		</plugins>
 	</build>
 
@@ -296,21 +130,43 @@
 			<artifactId>files-core</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>common-api</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-log4j12</artifactId>
 			<version>${slf4j-log4j12.version}</version>
 		</dependency>
+
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
 			<version>${httpclient.version}</version>
 			<scope>compile</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>2.9.6</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-annotations</artifactId>
+			<version>2.9.6</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.9.6</version>
+		</dependency>
+
 	</dependencies>
 </project>

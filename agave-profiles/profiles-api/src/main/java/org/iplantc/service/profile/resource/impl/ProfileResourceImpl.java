@@ -3,20 +3,8 @@
  */
 package org.iplantc.service.profile.resource.impl;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.*;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.*;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.representation.AgaveErrorRepresentation;
@@ -30,8 +18,14 @@ import org.iplantc.service.profile.model.enumeration.SearchFieldType;
 import org.iplantc.service.profile.resource.ProfileResource;
 import org.restlet.Request;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import javax.ws.rs.*;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.*;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.PROFILES02;
 
 /**
  * @author dooley
@@ -159,8 +153,6 @@ public class ProfileResourceImpl extends AbstractAgaveResource implements Profil
 			}	
 			
 			return Response.ok(new AgaveSuccessRepresentation(jsonArray.toString())).build();
-			
-//			return Response.ok(profileList).build();
 		}
 		catch (Exception e)
 		{

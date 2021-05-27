@@ -1,23 +1,23 @@
 package org.iplantc.service.common.auth;
 
-import java.util.Hashtable;
-import java.util.List;
-
 import org.apache.log4j.Logger;
 import org.globus.myproxy.MyProxy;
 import org.ietf.jgss.GSSCredential;
-import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.Settings;
+import org.iplantc.service.common.exceptions.PermissionException;
 import org.restlet.Context;
 import org.restlet.data.ChallengeScheme;
 import org.restlet.data.Method;
 import org.restlet.data.Request;
 
+import java.util.Hashtable;
+import java.util.List;
+
 public class MyProxyGuard extends AbstractGuard 
 {
-	private static Logger log = Logger.getLogger(MyProxyGuard.class);
+	private static final Logger log = Logger.getLogger(MyProxyGuard.class);
 	
-	private static Hashtable<String, GSSCredential> proxyCache = new Hashtable<String, GSSCredential>();
+	private static final Hashtable<String, GSSCredential> proxyCache = new Hashtable<String, GSSCredential>();
 	
 	public MyProxyGuard(Context context, ChallengeScheme scheme, String realm, List<Method> unprotectedMethods)
 			throws IllegalArgumentException {

@@ -1,77 +1,39 @@
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.iplantc</groupId>
-		<artifactId>agave</artifactId>
-		<version>2.1.11</version>
-	</parent>
-	<groupId>org.iplantc.agave</groupId>
-	<artifactId>profiles</artifactId>
-	<name>iPlant Agave API Profile Service Parent POM</name>
-	<description>Parent pom for the Agave Profiles Services.</description>
-	<packaging>pom</packaging>
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.agaveplatform</groupId>
+        <artifactId>science-apis</artifactId>
+        <version>2.2.27</version>
+    </parent>
 
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-profiles.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-profiles.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-profiles</url>
-	</scm>
+    <artifactId>profiles</artifactId>
+    <name>Agave Platform Profile Service Parent POM</name>
+    <description>Parent pom for the Agave Profiles Services.</description>
+    <packaging>pom</packaging>
 
-	<build>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<artifactId>maven-dependency-plugin</artifactId>
-					<executions>
-						<execution>
-							<id>install</id>
-							<phase>install</phase>
-							<goals>
-								<goal>sources</goal>
-							</goals>
-						</execution>
-					</executions>
-				</plugin>
-				<plugin>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<version>${maven-compiler-plugin.METADATA.version}</version>
-					<executions>
-						<execution>
-							<id>default-compile</id>
-							<phase>compile</phase>
-							<goals>
-								<goal>compile</goal>
-							</goals>
-						</execution>
-					</executions>
-					<configuration>
-						<proc>none</proc>
-						<debug>true</debug>
-						<source>1.7</source>
-						<target>1.7</target>
-					</configuration>
-				</plugin>
-				<plugin>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<version>${maven-surefire-plugin.METADATA.version}</version>
-					<configuration>
-						<suiteXmlFiles>
-							<suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
-						</suiteXmlFiles>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
-	</build>
+    <properties>
+        <main.basedir>${project.basedir}/../</main.basedir>
+    </properties>
 
-	<dependencies>
+    <build>
+        <plugins>
+            <!-- Attach testng to the surefire tatest execution -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <!-- Attach testng to the failsafe integration-test execution -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 
-	</dependencies>
-
-	<modules>
-		<module>profiles-core</module>
-		<module>profiles-api</module>
-	</modules>
+    <modules>
+        <module>profiles-core</module>
+        <module>profiles-api</module>
+    </modules>
 </project>

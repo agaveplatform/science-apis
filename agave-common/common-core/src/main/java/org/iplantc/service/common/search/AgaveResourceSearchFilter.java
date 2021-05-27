@@ -1,18 +1,15 @@
 package org.iplantc.service.common.search;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.iplantc.service.common.exceptions.SearchSyntaxException;
 import org.iplantc.service.common.util.StringToTime;
 import org.joda.time.DateTime;
+
+import java.time.DateTimeException;
+import java.time.Instant;
+import java.util.*;
 
 public abstract class AgaveResourceSearchFilter {
 	
@@ -53,7 +50,7 @@ public abstract class AgaveResourceSearchFilter {
     /**
      * Transforms a specific, user-supplied search term into the appropriate
      * {@link SearchTerm} object.
-     * @param name
+     * @param attributeName
      * @return
      */
     public SearchTerm filterAttributeName(String attributeName) 
@@ -107,8 +104,8 @@ public abstract class AgaveResourceSearchFilter {
     /**
      * Converts the search value given in a url query to the proper
      * object type for the hibernate query.
-     * 
-     * @param attributeName
+     *
+     * @param searchTerm
      * @param searchValue
      * @return
      * @throws IllegalArgumentException
@@ -202,10 +199,17 @@ public abstract class AgaveResourceSearchFilter {
             if (Boolean.FALSE.equals(time)) {
                 if (NumberUtils.isDigits(searchValue)) {
                     try {
-                        DateTime dateTime = new DateTime(Long.valueOf(searchValue));
-                        return dateTime.toDate();
+                        Instant instant = Instant.ofEpochSecond(Long.parseLong(searchValue));
+                        return DateTime.parse(instant.toString()).toDate();
+                    } catch (DateTimeException e) {
+                        try {
+                            Instant instant = Instant.ofEpochMilli(Long.parseLong(searchValue));
+                            return new DateTime(instant.toString()).toDate();
+                        } catch (Exception iae) {
+                            throw new IllegalArgumentException("Invalid epoch value for " + searchField);
+                        }
                     } catch (IllegalArgumentException e) {
-                        throw new IllegalArgumentException("Illegal date format for " + searchField);
+                        throw new IllegalArgumentException("Invalid epoch value for " + searchField);
                     }
                 } else {
                     try {

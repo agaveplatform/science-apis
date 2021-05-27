@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "version": "2.1.11",
+    "version": "2.2.23",
     "title": "Agave Platform Science API",
     "description": "Power your digital lab and reduce the time from theory to discovery using the Agave Science-as-a-Service API Platform. Agave provides hosted services that allow researchers to manage data, conduct experiments, and publish and share results from anywhere at any time.",
     "license": {
@@ -9,14 +9,14 @@
       "url": "https://opensource.org/licenses/BSD-2-Clause"
     }
   },
-  "host": "agave.iplantc.org",
+  "host": "sandbox.agaveplatform.org",
   "basePath": "/",
   "securityDefinitions": {
     "auth": {
       "type": "oauth2",
       "flow": "implicit",
-      "authorizationUrl": "https://public.agaveapi.co/authorize",
-      "tokenUrl": "https://public.agaveapi.co/token",
+      "authorizationUrl": "https://sandbox.agaveplatform.org/authorize",
+      "tokenUrl": "https://sandbox.agaveplatform.org/token",
       "scopes": {
       	"PRODUCTION": "Catchall scope for all core services"
       }
@@ -6391,184 +6391,6 @@
         ]
       }
     },
-    "/transforms/v2/{transformId}": {
-      "get": {
-        "description": "Find the transform of the given uuid",
-        "tags": [
-          "transforms"
-        ],
-        "operationId": "getTransform",
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "transformId",
-            "in": "path",
-            "required": true,
-            "x-is-map": false,
-            "type": "string",
-            "description": "The name of the transform requested."
-          },
-          {
-            "name": "naked",
-            "in": "query",
-            "required": true,
-            "x-is-map": false,
-            "default": true,
-            "type": "boolean"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/Transform"
-            }
-          }
-        },
-        "security": [
-          {
-            "auth": ["PRODUCTION"]
-          }
-        ]
-      }
-    },
-    "/transforms/v2/{transformId}/async/{owner}/{path}": {
-      "post": {
-        "description": "Transform a file and stage it to a specified location.",
-        "tags": [
-          "transforms"
-        ],
-        "operationId": "asyncTransform",
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "transformId",
-            "in": "path",
-            "required": true,
-            "x-is-map": false,
-            "type": "string",
-            "description": "The name of the transform to apply to the given file."
-          },
-          {
-            "name": "owner",
-            "in": "path",
-            "required": true,
-            "x-is-map": false,
-            "type": "string",
-            "description": "The name of the api user owning the file at the given path."
-          },
-          {
-            "name": "path",
-            "in": "path",
-            "required": true,
-            "x-is-map": false,
-            "type": "string",
-            "description": "The path to the file to be transformed and staged"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "x-is-map": false,
-            "description": "The transfer request details.",
-            "schema": {
-              "$ref": "#/definitions/TransformRequest"
-            }
-          },
-          {
-            "name": "naked",
-            "in": "query",
-            "required": true,
-            "x-is-map": false,
-            "default": true,
-            "type": "boolean"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/Transform"
-            }
-          }
-        },
-        "security": [
-          {
-            "auth": ["PRODUCTION"]
-          }
-        ]
-      }
-    },
-    "/transforms/v2/{transformId}/sync/{owner}/{path}": {
-      "post": {
-        "description": "Transform a file and download it directly.",
-        "tags": [
-          "transforms"
-        ],
-        "operationId": "syncTransform",
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "transformId",
-            "in": "path",
-            "required": true,
-            "x-is-map": false,
-            "type": "string",
-            "description": "The name of the transform to apply to the given file."
-          },
-          {
-            "name": "owner",
-            "in": "path",
-            "required": true,
-            "x-is-map": false,
-            "type": "string",
-            "description": "The name of the api user owning the file at the given path."
-          },
-          {
-            "name": "path",
-            "in": "path",
-            "required": true,
-            "x-is-map": false,
-            "type": "string",
-            "description": "The path to the file to be transformed and downloaded."
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "x-is-map": false,
-            "description": "The transfer request details.",
-            "schema": {
-              "$ref": "#/definitions/TransformRequest"
-            }
-          },
-          {
-            "name": "naked",
-            "in": "query",
-            "required": true,
-            "x-is-map": false,
-            "default": true,
-            "type": "boolean"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "auth": ["PRODUCTION"]
-          }
-        ]
-      }
-    },
     "/jobs/v2/{jobId}/outputs/media/{path}": {
       "get": {
         "description": "Download an output file from a specific job.",
@@ -7258,88 +7080,6 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/SystemRole"
-            }
-          }
-        },
-        "security": [
-          {
-            "auth": ["PRODUCTION"]
-          }
-        ]
-      }
-    },
-    "/transforms/v2/": {
-      "get": {
-        "description": "List and search for transforms",
-        "tags": [
-          "transforms"
-        ],
-        "operationId": "listTransforms",
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "name",
-            "in": "query",
-            "required": false,
-            "x-is-map": false,
-            "type": "string",
-            "description": "The name of the transform"
-          },
-          {
-            "name": "version",
-            "in": "query",
-            "required": false,
-            "x-is-map": false,
-            "type": "string",
-            "description": "The name of the transform"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "x-is-map": false,
-            "default": 100.0,
-            "type": "integer",
-            "format": "int64",
-            "description": "The maximum number of results returned from this query"
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "x-is-map": false,
-            "default": 0.0,
-            "type": "integer",
-            "format": "int64",
-            "description": "The number of results skipped in the result set returned from this query"
-          },
-          {
-            "name": "naked",
-            "in": "query",
-            "required": true,
-            "x-is-map": false,
-            "default": true,
-            "type": "boolean"
-          },
-          {
-            "name": "tags",
-            "in": "query",
-            "required": false,
-            "x-is-map": false,
-            "type": "string",
-            "description": "One or more tags of the transform"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Transform"
-              }
             }
           }
         },
@@ -8045,7 +7785,7 @@
     },
     "Application": {
       "title": "Application",
-      "description": "Applications are a self-describing representation of an executable software item. See the <a href=\"http://agaveapi.co/documentation/tutorials/app-management-tutorial/\">App Management Tutorial</a> for more information.",
+      "description": "Applications are a self-describing representation of an executable software item. See the <a href=\"https://docs.agaveplatform.org/#apps\">App Management Tutorial</a> for more information.",
       "type": "object",
       "properties": {
         "available": {
@@ -8214,7 +7954,7 @@
     },
     "ApplicationInput": {
       "title": "ApplicationInput",
-      "description": "App inputs describe data inputs supported by your app. Each input can represent one or more files or folders. Inptus can be optional or required and may physically reside anywhere accessible using any of the data protocols supported by Agave.  <a href=\"http://agaveapi.co/documentation/tutorials/app-management-tutorial/#app-inputs\">Read more.</a>",
+      "description": "App inputs describe data inputs supported by your app. Each input can represent one or more files or folders. Inptus can be optional or required and may physically reside anywhere accessible using any of the data protocols supported by Agave.  <a href=\"https://docs.agaveplatform.org/#apps#app-inputs\">Read more.</a>",
       "type": "object",
       "properties": {
         "semantics": {
@@ -9134,8 +8874,7 @@
         },
         "url": {
           "description": "The URI to notify when the import is complete. This can be an email address or URL. If a URL is given, a POST will be made to this address. URL templating is supported. Valid template values are: ${JOB_STATUS}, ${JOB_URL}, ${JOB_ID}, ${JOB_SYSTEM}, ${JOB_NAME}, ${JOB_START_TIME}, ${JOB_END_TIME}, ${JOB_SUBMIT_TIME}, ${JOB_ARCHIVE_PATH}, ${JOB_ARCHIVE_URL}, ${JOB_ERROR}",
-          "type": "integer",
-          "format": "int64"
+          "type": "string"
         }
       },
       "required": [
@@ -10566,126 +10305,6 @@
         "action"
       ]
     },
-    "MultipleTransformResponse": {
-      "title": "MultipleTransformResponse",
-      "type": "object",
-      "properties": {
-        "message": {
-          "description": "success or failure",
-          "type": "string"
-        },
-        "result": {
-          "description": "response body",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Transform"
-          }
-        },
-        "status": {
-          "description": "success or failure",
-          "type": "string"
-        }
-      },
-      "required": [
-        "message",
-        "result",
-        "status"
-      ]
-    },
-    "SingleTransformResponse": {
-      "title": "SingleTransformResponse",
-      "type": "object",
-      "properties": {
-        "message": {
-          "description": "success or failure",
-          "type": "string"
-        },
-        "result": {
-          "$ref": "#/definitions/Transform"
-        },
-        "status": {
-          "description": "success or failure",
-          "type": "string"
-        }
-      },
-      "required": [
-        "message",
-        "result",
-        "status"
-      ]
-    },
-    "Transform": {
-      "title": "Transform",
-      "type": "object",
-      "properties": {
-        "decoders": {
-          "description": "The available decoders for this transform.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/TransformDecoder"
-          }
-        },
-        "description": {
-          "description": "Description of this transform.",
-          "type": "string"
-        },
-        "descriptionurl": {
-          "description": "The URL to find out more information.",
-          "type": "string"
-        },
-        "enabled": {
-          "description": "Whether this transform is enabled or not.",
-          "type": "boolean"
-        },
-        "encoder": {
-          "description": "The encoder to use to convert to this format.",
-          "$ref": "#/definitions/TransformEncoder"
-        },
-        "name": {
-          "description": "The name of this transform.",
-          "type": "string"
-        },
-        "tags": {
-          "description": "The tags describing this transform.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "decoders",
-        "description",
-        "descriptionurl",
-        "enabled",
-        "encoder",
-        "name",
-        "tags"
-      ]
-    },
-    "TransformRequest": {
-      "title": "TransformRequest",
-      "type": "object",
-      "properties": {
-        "nativeFormat": {
-          "description": "The original file type of the file. If not given, the file type is assumed to be raw.",
-          "type": "string"
-        },
-        "url": {
-          "description": "The uri to which the transformed file will be staged.",
-          "type": "string"
-        },
-        "callbackUrl": {
-          "description": "The URI to notify when the transfer is complete. This can be an email address or http URL. If a URL is given, a GET will be made to this address. URL templating is supported. Valid template values are: ${NAME}, ${SOURCE_FORMAT}, ${DEST_FORMAT}, ${STATUS}",
-          "type": "string"
-        }
-      },
-      "required": [
-        "nativeFormat",
-        "url",
-        "callbackUrl"
-      ]
-    },
     "ApplicationArgumentDataSemantics": {
       "title": "ApplicationArgumentDataSemantics",
       "description": "Describes the semantic definition of this inputs and the filetypes it represents. Multiple ontologies and values are supported.",
@@ -10707,7 +10326,7 @@
     },
     "ApplicationArgumentSemantics": {
       "title": "ApplicationArgumentSemantics",
-      "description": "Describes the semantic definition of this input/output and the filetypes it represents. Multiple ontologies and values are supported. <a href=\"http://agaveapi.co/documentation/tutorials/app-management-tutorial/#app-outputs\">Read more.</a>",
+      "description": "Describes the semantic definition of this input/output and the filetypes it represents. Multiple ontologies and values are supported. <a href=\"https://docs.agaveplatform.org/#apps#app-outputs\">Read more.</a>",
       "type": "object",
       "properties": {
         "fileTypes": {
@@ -10743,7 +10362,7 @@
     },
     "ApplicationOutput": {
       "title": "ApplicationOutput",
-      "description": "In addition to describing the inputs and parameters that your wrapper script requires, it is often helpful to provide the expected outputs when running your app. This is the purpose of the outputs attribute. App outputs specify an array of JSON objects describing the data that should be present when your app completes. It is entirely optional and provided, at this point in time, for reference purpose only.  <a href=\"http://agaveapi.co/documentation/tutorials/app-management-tutorial/#app-outputs\">Read more.</a>",
+      "description": "In addition to describing the inputs and parameters that your wrapper script requires, it is often helpful to provide the expected outputs when running your app. This is the purpose of the outputs attribute. App outputs specify an array of JSON objects describing the data that should be present when your app completes. It is entirely optional and provided, at this point in time, for reference purpose only.  <a href=\"https://docs.agaveplatform.org/#apps#app-outputs\">Read more.</a>",
       "type": "object",
       "properties": {
         "semantics": {
@@ -10762,7 +10381,7 @@
     },
     "ApplicationParameter": {
       "title": "ApplicationParameter",
-      "description": "App parameters define the command-line arguments (flags, arguments, etc.) needed by your wrapper script in order to properly run your application code. <a href=\"http://agaveapi.co/documentation/tutorials/app-management-tutorial/#app-parameters\">Read more.</a>",
+      "description": "App parameters define the command-line arguments (flags, arguments, etc.) needed by your wrapper script in order to properly run your application code. <a href=\"https://docs.agaveplatform.org/#apps#app-parameters\">Read more.</a>",
       "type": "object",
       "properties": {
         "value": {
@@ -10922,24 +10541,6 @@
         "uuid"
       ]
     },
-    "TransformEncoder": {
-      "title": "TransformEncoder",
-      "type": "object",
-      "properties": {
-        "description": {
-          "description": "The description of what this encoder is and what it does.",
-          "type": "string"
-        },
-        "name": {
-          "description": "The encoder name.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "description",
-        "name"
-      ]
-    },
     "FilesStatusType": {
       "title": "FilesStatusType",
       "type": "string",
@@ -10948,11 +10549,7 @@
         "STAGING_QUEUED",
         "STAGING",
         "STAGING_COMPLETED",
-        "STAGING_FAILED",
-        "TRANSFORMING_QUEUED",
-        "TRANSFORMING",
-        "TRANSFORMING_FAILED",
-        "TRANSFORMING_COMPLETED"
+        "STAGING_FAILED"
       ]
     },
     "FileMkdirAction": {
@@ -11067,24 +10664,6 @@
         "DEPRECATED",
         "RETIRED",
         "BLOCKED"
-      ]
-    },
-    "TransformDecoder": {
-      "title": "TransformDecoder",
-      "type": "object",
-      "properties": {
-        "description": {
-          "description": "The description of what this decoder is and what it does.",
-          "type": "string"
-        },
-        "name": {
-          "description": "The decoder name.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "description",
-        "name"
       ]
     },
     "AgaveNullResponse": {
@@ -11530,7 +11109,7 @@
       "type": "object",
       "properties": {
         "fileType": {
-          "description": "The file format this file is in. Defaults to raw. This will be used in file transform operations.",
+          "description": "The file format this file is in. Not currenlty used. Defaults to raw.",
           "type": "string"
         },
         "notifications": {

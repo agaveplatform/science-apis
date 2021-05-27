@@ -1,34 +1,19 @@
 package org.iplantc.service.systems.model;
 
-import java.io.IOException;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Inheritance;
-import javax.persistence.InheritanceType;
-import javax.persistence.JoinColumn;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.model.enumerations.ProtocolType;
 
+import javax.persistence.*;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * @author wcs
- *
+ * @see LoginConfig
+ * @see StorageConfig
  */
 @Entity
 @Table(name = "remoteconfigs")
@@ -129,7 +114,7 @@ public abstract class RemoteConfig implements LastUpdatable
 	/**
 	 * Set the AuthConfigs for this RemoteConfig
 	 * 
-	 * @param authConfig the authConfig to set
+	 * @param authConfigs the authConfig to set
 	 */
 	public void setAuthConfigs(Set<AuthConfig> authConfigs)
 	{
@@ -305,20 +290,6 @@ public abstract class RemoteConfig implements LastUpdatable
 	@Override
 	public String toString()
 	{
-		return getProtocol().name() + "  " + host + ":" + port;
+		return getProtocol().name() + "://" + host + ":" + port;
 	}
-	
-	/**
-	 * Checks that the parameters given in the AuthConfig are valid and provide
-	 * sufficient information for the service to connect to the remote system.
-	 * 
-	 * @return true if successful, false otherwise.
-	 * @throws IOException
-	 */
-	public boolean testConnection() throws IOException
-	{
-		// TODO Auto-generated method stub
-		return false;
-	}
-	
 }

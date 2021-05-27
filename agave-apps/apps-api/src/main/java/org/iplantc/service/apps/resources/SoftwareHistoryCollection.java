@@ -3,12 +3,12 @@
  */
 package org.iplantc.service.apps.resources;
 
+import org.iplantc.service.apps.model.SoftwareEvent;
+
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.core.Response;
-
-import org.iplantc.service.apps.model.SoftwareEvent;
 
 /**
  * Returns a collection of history records for a {@link SoftwareEvent}. Search
@@ -20,6 +20,6 @@ import org.iplantc.service.apps.model.SoftwareEvent;
 public interface SoftwareHistoryCollection {
     
     @GET
-    public Response getSofwareEvents(@PathParam("softwareId") String softwareId);
+    Response getSofwareEvents(@PathParam("softwareId") String softwareId);
     
 }

@@ -1,6 +1,5 @@
 package org.iplantc.service.notification.resources.impl;
 
-import org.restlet.data.Status;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys;
 import org.iplantc.service.common.restlet.resource.AbstractAgaveResource;
@@ -8,6 +7,7 @@ import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.managers.NotificationPermissionManager;
 import org.iplantc.service.notification.model.Notification;
+import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
 
 /**
@@ -24,7 +24,7 @@ public class AbstractNotificationResource extends AbstractAgaveResource {
     /**
      * Fetches the {@link Notification} object for the uuid in the URL or throws 
      * an exception that can be re-thrown from the route method.
-     * @param softwareId
+     * @param uuid
      * @return Software object referenced in the path
      * @throws ResourceException
      */

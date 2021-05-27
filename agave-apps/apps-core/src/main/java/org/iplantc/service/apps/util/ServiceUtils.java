@@ -3,29 +3,6 @@
  */
 package org.iplantc.service.apps.util;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.profile.model.Address;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONStringer;
-import org.json.JSONWriter;
-
 import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -35,6 +12,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.stevesoft.pat.Regex;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.profile.model.Address;
+import org.iplantc.service.systems.model.ExecutionSystem;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONStringer;
+import org.json.JSONWriter;
+
+import java.io.*;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author dooley
@@ -42,6 +34,8 @@ import com.stevesoft.pat.Regex;
  */
 public class ServiceUtils {
 
+	private static final Logger log = Logger.getLogger(ServiceUtils.class);
+	
 	@SuppressWarnings("unused")
 	public static String exec(String command) throws IOException
 	{
@@ -104,24 +98,24 @@ public class ServiceUtils {
 		return value != null && value.intValue() >= 0;
 	}
 	
-	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
+	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
 		return node != null && (node instanceof TextNode) && ((TextNode)node).asText() != null;
 	}
 	
-	public static boolean isValidString(JsonNode node) throws JSONException, JsonProcessingException, IOException {
-		return node != null && (node instanceof TextNode) && ((TextNode)node).asText() != null;
+	public static boolean isValidString(JsonNode node) throws JSONException, IOException {
+		return node != null && (node instanceof TextNode) && node.asText() != null;
 	}
 	
-	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
+	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
 		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
 	}
 	
-	public static boolean isNonEmptyString(JsonNode node) throws JSONException, JsonProcessingException, IOException {
-		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
+	public static boolean isNonEmptyString(JsonNode node) throws JSONException, IOException {
+		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(node.asText());
 	}
 
 	/**
@@ -139,31 +133,28 @@ public class ServiceUtils {
 	{
 		if (!isValid(s))
 			return false;
-		boolean valid = true;
-		if (s == null || s.indexOf(":") > -1 || s.indexOf(";") > -1
-				|| s.indexOf(",") > -1 || s.indexOf(" ") > -1 ||
+		boolean valid = s != null && s.indexOf(":") <= -1 && s.indexOf(";") <= -1
+				&& s.indexOf(",") <= -1 && s.indexOf(" ") <= -1 &&
 				// s.indexOf("#") > -1 ||
-				s.indexOf("\\") > -1 /*
-									 * || s.indexOf("/") > -1 || s.indexOf("%")
-									 * > -1 || s.indexOf("$") > -1 ||
-									 * s.indexOf("@") > -1 || s.indexOf("!") >
-									 * -1 || s.indexOf("^") > -1 ||
-									 * s.indexOf("&") > -1 || s.indexOf("*") >
-									 * -1 || s.indexOf("(") > -1 ||
-									 * s.indexOf(")") > -1 || s.indexOf("{") >
-									 * -1 || s.indexOf("}") > -1 ||
-									 * s.indexOf("|") > -1 || s.indexOf("'") >
-									 * -1 || s.indexOf("\"") > -1 ||
-									 * s.indexOf("~") > -1 || s.indexOf("`") >
-									 * -1 || s.indexOf("#") > -1 ||
-									 * s.indexOf(".") > -1 || s.indexOf("?") >
-									 * -1 || s.indexOf("<") > -1 ||
-									 * s.indexOf(">") > -1 || //s.indexOf("=") >
-									 * -1 || s.indexOf("+") > -1
-									 */)
-		{
-			valid = false;
-		}
+				s.indexOf("\\") <= -1;
+		/*
+		 * || s.indexOf("/") > -1 || s.indexOf("%")
+		 * > -1 || s.indexOf("$") > -1 ||
+		 * s.indexOf("@") > -1 || s.indexOf("!") >
+		 * -1 || s.indexOf("^") > -1 ||
+		 * s.indexOf("&") > -1 || s.indexOf("*") >
+		 * -1 || s.indexOf("(") > -1 ||
+		 * s.indexOf(")") > -1 || s.indexOf("{") >
+		 * -1 || s.indexOf("}") > -1 ||
+		 * s.indexOf("|") > -1 || s.indexOf("'") >
+		 * -1 || s.indexOf("\"") > -1 ||
+		 * s.indexOf("~") > -1 || s.indexOf("`") >
+		 * -1 || s.indexOf("#") > -1 ||
+		 * s.indexOf(".") > -1 || s.indexOf("?") >
+		 * -1 || s.indexOf("<") > -1 ||
+		 * s.indexOf(">") > -1 || //s.indexOf("=") >
+		 * -1 || s.indexOf("+") > -1
+		 */
 
 		return valid;
 	}
@@ -263,9 +254,10 @@ public class ServiceUtils {
 	 * attributes "status" and "message." the former is success or failure. The
 	 * latter is the output from a service invocation or the error message.
 	 * 
-	 * @param status
-	 * @param json
-	 * @return
+	 * @param status the stats result of the request. "success" or "error"
+	 * @param message the message ton include in the response
+	 * @param json the json string to wrap in a success message wrapper
+	 * @return the wrapped json result
 	 */
 	private static String wrapOutput(String status, String message, String json)
 	{
@@ -291,10 +283,10 @@ public class ServiceUtils {
 
 	/**
 	 * Used to wrap the payload of a service invocation in a json object
-	 * 
-	 * @param message
-	 * @param json
-	 * @return
+	 *
+	 * @param message the message ton include in the response
+	 * @param json the json string to wrap in a success message wrapper
+	 * @return the wrapped json result
 	 */
 	public static String wrapSuccess(String message, String json)
 	{
@@ -306,9 +298,8 @@ public class ServiceUtils {
 	 * attributes "status" and "message." the former is success or failure. The
 	 * latter is the output from a service invocation or the error message.
 	 * 
-	 * @param status
-	 * @param json
-	 * @return
+	 * @param json the json string to wrap in a success message wrapper
+	 * @return tje wrapped json result
 	 */
 	public static String wrapSuccess(String json)
 	{
@@ -320,9 +311,9 @@ public class ServiceUtils {
 	 * attributes "status" and "message." the former is success or failure. The
 	 * latter is the output from a service invocation or the error message.
 	 * 
-	 * @param status
-	 * @param json
-	 * @return
+	 * @param message the error message ton include in the response
+	 * @param json the json string to wrap in an error message wrapper
+	 * @return the wrapped json result
 	 */
 	public static String wrapError(String message, String json)
 	{
@@ -357,9 +348,10 @@ public class ServiceUtils {
 	{	
 		if (TenancyHelper.isTenantAdmin()) return true;
 		
-		InputStream stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");
+		InputStream stream = null;
 		try
 		{
+			stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");
 			String trustedUserList = IOUtils.toString(stream, "UTF-8");
 			if (isValid(trustedUserList)) {
 				for(String user: trustedUserList.split(",")) {
@@ -374,35 +366,18 @@ public class ServiceUtils {
 		}
 		catch (IOException e)
 		{
-			 //log.error("Failed to locate trusted user file");
+			 log.warn("Failed to load trusted user file", e);
 			return false;
+		}
+		finally 
+		{
+			if (stream != null) try {stream.close();} catch (Exception e){}
 		}
 	}
 	
 	public static boolean isPublisher(String username, ExecutionSystem system)
 	{	
 		return system.getUserRole(username).canPublish();
-//		
-//		InputStream stream = AppsApplication.class.getClassLoader().getResourceAsStream("trusted_publishers.txt");
-//		try
-//		{
-//			String trustedUserList = IOUtils.toString(stream, "UTF-8");
-//			if (isValid(trustedUserList)) {
-//				for(String user: trustedUserList.split(",")) {
-//					if (username.equalsIgnoreCase(user.trim())) {
-//						return true;
-//					}
-//				}
-//				return false;
-//			} else {
-//				return false;
-//			}
-//		}
-//		catch (IOException e)
-//		{
-//			 //log.error("Failed to locate trusted user file");
-//			return false;
-//		}
 	}
 	
 	public static String explode(String glue, Collection<?> list)
@@ -538,23 +513,22 @@ public class ServiceUtils {
 	 * Returns the primary values from a JSON array as a String array. Any non-primary type values
 	 * in the array will not be included in the response.
 	 * 
-	 * @param JsonNode 
+	 * @param jsonArray the array to parse
+	 * @param enquoteValues should the extracted values be wrapped in double quotes
 	 * @return String array of values from the JSON array. Any primary types will get converted here.
-	 * @throws JsonParseException
-	 * @throws IOException
 	 */
-	public static String[] getStringValuesFromJsonArray(final ArrayNode json, final boolean enquoteValues)
+	public static String[] getStringValuesFromJsonArray(final ArrayNode jsonArray, final boolean enquoteValues)
 	{
-		if (json == null || json.size() == 0 || json.isNull())
+		if (jsonArray == null || jsonArray.size() == 0 || jsonArray.isNull())
 		{
 			return new String[]{};
 		}
 		else
 		{
-			String[] arrayValues = new String[json.size()];
-			for(int i=0; i<json.size(); i++) 
+			String[] arrayValues = new String[jsonArray.size()];
+			for(int i=0; i<jsonArray.size(); i++)
 			{
-				JsonNode child = json.path(i);
+				JsonNode child = jsonArray.path(i);
 				if (child.isValueNode()) {
 					if (enquoteValues) {
 						arrayValues[i] = ServiceUtils.enquote(child.asText());
@@ -571,35 +545,28 @@ public class ServiceUtils {
 	 * Returns the values from a JSON array of primary types as a String array by parsing the
 	 * given string into a JsonNode and calling the corresponding method.
 	 * 
-	 * @param sJson 
+	 * @param sJson the string to marshal to a json array and extract the string value
+	 * @param enquoteValues true if the values should be wrapped in double quotes
 	 * @return String array of values from the JSON array. Any primary types will get converted here.
-	 * @throws JsonParseException
-	 * @throws IOException
+	 * @throws JsonProcessingException if the parsed json string is not an array.
+	 * @throws IOException if the string cannot be parsed
 	 */
 	public static String[] getStringValuesFromJsonArray(final String sJson, final boolean enquoteValues)
-	throws JsonParseException, IOException
+	throws JsonProcessingException, IOException
 	{
-		try 
-		{
-			final JsonNode json = new ObjectMapper().readTree(sJson);
-			if (json.isArray()) {
-				return getStringValuesFromJsonArray((ArrayNode)json, enquoteValues);
-			} else {
-	    	  throw new JsonParseException("Value is not a valid JSON array of primary values.", new JsonLocation(sJson, sJson.length(), 1, 1));
-			}
-		} 
-		catch (JsonParseException e) {
-			throw e;
-		}
-		catch (JsonProcessingException e) {
-			throw e;
+		final JsonNode json = new ObjectMapper().readTree(sJson);
+		if (json.isArray()) {
+			return getStringValuesFromJsonArray((ArrayNode)json, enquoteValues);
+		} else {
+		  throw new JsonParseException("Value is not a valid JSON array of primary values.", new JsonLocation(sJson, sJson.length(), 1, 1));
 		}
 	}
 	
 	/**
 	 * Utility function to verify a string value against a given regex.
 	 * 
-	 * @param singleInput string value to test.
+	 * @param value string value to test.
+	 * @param regex the regex to test
 	 * @return true if validator is null or the string matches. false otherwise
 	 */
 	public static boolean doesValueMatchValidatorRegex(String value, String regex)

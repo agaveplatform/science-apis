@@ -3,23 +3,8 @@
  */
 package org.iplantc.service.profile.model;
 
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.UniqueConstraint;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
@@ -37,11 +22,11 @@ import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import javax.persistence.*;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+import java.net.URLEncoder;
+import java.util.Date;
 
 
 /**
@@ -321,7 +306,7 @@ public class InternalUser extends Profile
 	}
 
 	/**
-	 * @param company the institution to set
+	 * @param institution the institution to set
 	 * @throws ProfileArgumentException
 	 */
 	public void setInstitution(String institution) throws ProfileArgumentException {
@@ -881,12 +866,9 @@ public class InternalUser extends Profile
 			return false;
 		if (createdBy == null)
 		{
-			if (other.createdBy != null)
-				return false;
+			return other.createdBy == null;
 		}
-		else if (!createdBy.equals(other.createdBy))
-			return false;
-		return true;
+		else return createdBy.equals(other.createdBy);
 	}
 
 
@@ -911,64 +893,8 @@ public class InternalUser extends Profile
 			clonedInternalUser.setResearchArea(researchArea);
 			clonedInternalUser.setState(state);
 			clonedInternalUser.setUsername(username);
-		} catch (ProfileArgumentException e) {}
+		} catch (ProfileArgumentException ignore) {}
 
 		return clonedInternalUser;
 	}
-
-}
-
-class InternalUserSerializer extends JsonSerializer<InternalUser> {
-    @Override
-    public void serialize(InternalUser internalUser, JsonGenerator jsonGenerator,
-            SerializerProvider serializerProvider) throws IOException {
-
-    	try
-		{
-			jsonGenerator.writeRaw(internalUser.toJSON());
-		}
-		catch (ProfileException e)
-		{
-			throw new IOException(e);
-		}
-//
-//        jsonGenerator.writeStartObject();
-//
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        jsonGenerator.writeStringField("username", user.getUsername());
-//        HALObject hal = new HALObject();
-//        hal.add("self", Settings.IPLANT_PROFILE_SERVICE + internalUser.getCreatedBy() + "/users/" + internalUser.getUsername());
-//        hal.add("profile", Settings.IPLANT_PROFILE_SERVICE + internalUser.getCreatedBy());
-//
-//        jsonGenerator.writeObject(hal);
-//
-//
-//        .put("active", active)
-//		.put("createdBy", createdBy)
-//		.put("uuid", uuid)
-//		.put("_links", new JSONObject()
-//			.put("self", new JSONObject()
-//				.put("href", Settings.IPLANT_PROFILE_SERVICE + this.createdBy + "/users/" + this.username)
-//			)
-//			.put("profile", new JSONObject()
-//				.put("href", Settings.IPLANT_PROFILE_SERVICE + this.createdBy)
-//			)
-//        jsonGenerator.writeEndObject();
-    }
 }

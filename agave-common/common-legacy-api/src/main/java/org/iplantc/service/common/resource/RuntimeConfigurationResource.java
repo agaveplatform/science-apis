@@ -1,13 +1,10 @@
 package org.iplantc.service.common.resource;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -20,10 +17,12 @@ import org.restlet.data.Status;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
-import org.testng.log4testng.Logger;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Simple API to manage runtime configurations of this container.
@@ -38,7 +37,7 @@ public class RuntimeConfigurationResource extends AgaveResource
 {
 	private static final Logger log = Logger.getLogger(RuntimeConfigurationResource.class);
 	
-	private ObjectMapper mapper = new ObjectMapper();
+	private final ObjectMapper mapper = new ObjectMapper();
     
 	public RuntimeConfigurationResource(Context context, Request request,
 			Response response)
@@ -161,11 +160,7 @@ public class RuntimeConfigurationResource extends AgaveResource
             for (Field field: Settings.class.getDeclaredFields()) {
                 int mods = field.getModifiers();
                 
-                if (Modifier.isFinal(mods) || Modifier.isPrivate(mods)) {
-                    continue;
-                } else {
-//                for (Entry<Object,Object> entry: props.entrySet()) {
-//                if (field.isAccessible()) {
+                if (!(Modifier.isFinal(mods) && Modifier.isPrivate(mods))) {
                 	try {
 	                	System.out.println(field.getName());
 	                	System.out.println(field.getName() + "=" + field.get(null).toString());
@@ -203,17 +198,13 @@ public class RuntimeConfigurationResource extends AgaveResource
                 	catch (Throwable t) {
                 		log.error("Failed to read property " + field.getName() + " from runtime environment.", t);
                 	}
-                    
-//                }
                 }
             }
             
             for (String editableFieldName: getEditableRuntimeConfigurationFields()) {
                 Field field = Settings.class.getDeclaredField(editableFieldName);
                 int mods = field.getModifiers();
-                if (Modifier.isFinal(mods) || Modifier.isPrivate(mods)) {
-                    continue;
-                } else {
+                if (!(Modifier.isFinal(mods) && Modifier.isPrivate(mods))) {
                 	config.put(editableFieldName, field.get(Settings.class).toString());
                 }
             }
@@ -223,7 +214,7 @@ public class RuntimeConfigurationResource extends AgaveResource
                 environment.put(entry.getKey(), entry.getValue());
             }
             
-            ObjectNode json = (ObjectNode)mapper.createObjectNode();
+            ObjectNode json = mapper.createObjectNode();
             json.set("container", container);
             json.set("configuration", config);
             json.set("environment", environment);
@@ -243,8 +234,8 @@ public class RuntimeConfigurationResource extends AgaveResource
 	 * Updates the value of a runtime configuration value used by this service
 	 * instance.
 	 * 
-	 * @param key
-	 * @param value
+	 * @param fieldName name of the field to update
+	 * @param value value of the field
 	 */
 	private void setRuntimeConfigurationField(String fieldName, String value) 
 	throws ResourceException
@@ -252,7 +243,7 @@ public class RuntimeConfigurationResource extends AgaveResource
 	    try {
             Field f = Settings.class.getDeclaredField(fieldName);
             f.setAccessible(true);
-            if (f.isAccessible()){
+            if (f.canAccess(fieldName)){
                 if (f.getType().isArray()) {
                     f.set(null, StringUtils.split(value, ","));
                 } else if (f.getType() == Boolean.class) {

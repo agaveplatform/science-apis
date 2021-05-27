@@ -1,11 +1,5 @@
 package org.iplantc.service.profile.dao;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
 import org.iplantc.service.common.clients.HTTPSClient;
 import org.iplantc.service.profile.Settings;
 import org.iplantc.service.profile.exceptions.RemoteDataException;
@@ -15,12 +9,22 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
+/**
+ * Provides a Data Access Object implementation backed by the CyVerse Trellis API. This is not useful outside of the
+ * Cyverse project.
+ */
 public class TrellisProfileDAO extends AbstractProfileDAO {
 
 	public TrellisProfileDAO() {}
 	
 	private static final String URL_ENCODING_FORMAT = "utf-8";
+
 	@Override
 	public Profile getByUsername(String username)
 	throws RemoteDataException 
@@ -77,7 +81,13 @@ public class TrellisProfileDAO extends AbstractProfileDAO {
 		}
 		return fetchResults(Settings.QUERY_URL + "username/" + username);
 	}
-	
+
+	/**
+	 * Makes API call to CyVerse Trellis API for profile info.
+	 * @param trellisUrl the fully qualified url to the Trellis API
+	 * @return a list of Profile objects mappeed from the query response of the Trellis API
+	 * @throws RemoteDataException if Trellis is unavailable.
+	 */
 	private List<Profile> fetchResults(String trellisUrl) throws RemoteDataException 
 	{
 		List<Profile> profiles = new ArrayList<Profile>();

@@ -3,9 +3,9 @@
  */
 package org.iplantc.service.notification.providers.email;
 
-import java.util.Map;
-
 import org.iplantc.service.notification.exceptions.NotificationException;
+
+import java.util.Map;
 
 /**
  * @author dooley
@@ -22,7 +22,7 @@ public interface EmailClient {
      * @param body of the email in plain text format.
      * @throws NotificationException
      */
-    public void send(String recipientName, String recipientAddress, String subject, String body, String htmlBody) throws NotificationException;
+    void send(String recipientName, String recipientAddress, String subject, String body, String htmlBody) throws NotificationException;
     
     
     /**
@@ -31,12 +31,13 @@ public interface EmailClient {
      * 
      * @param headers
      */
-    public void setCustomHeaders(Map<String, String> headers);
+    void setCustomHeaders(Map<String, String> headers);
     
     /**
      * Getter for the custom headers applied to the email
      * 
      * @return an empty map if no headers have been sent
      */
-    public Map<String, String> getCustomHeaders();
+    Map<String, String> getCustomHeaders();
+
 }

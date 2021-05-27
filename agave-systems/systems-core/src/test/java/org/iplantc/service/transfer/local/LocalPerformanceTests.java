@@ -1,8 +1,6 @@
 package org.iplantc.service.transfer.local;
 
-import java.io.File;
-import java.io.IOException;
-
+import com.google.common.io.Files;
 import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.FileUtils;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -16,13 +14,14 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.google.common.io.Files;
+import java.io.File;
+import java.io.IOException;
 
-@Test(groups = { "local", "performance" })
+@Test(groups ={"local", "performance","not-ready"})
 public class LocalPerformanceTests extends BaseTransferTestCase {
     private static final Logger log = Logger.getLogger(LocalPerformanceTests.class);
-    private Local local = null;
-    private String testdirname = "test";
+    private final Local local = null;
+    private final String testdirname = "test";
     private String containerName;
 
     @Override
@@ -33,7 +32,7 @@ public class LocalPerformanceTests extends BaseTransferTestCase {
         JSONObject json = getSystemJson();
         json.remove("id");
         json.put("id", this.getClass().getSimpleName());
-        system = (StorageSystem) StorageSystem.fromJSON(json);
+        system = StorageSystem.fromJSON(json);
         system.setOwner(SYSTEM_USER);
         system.getStorageConfig().setRootDir(Files.createTempDir().getAbsolutePath());
         system.getStorageConfig().setHomeDir("/");

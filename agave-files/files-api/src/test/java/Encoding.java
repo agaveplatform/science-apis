@@ -1,9 +1,9 @@
+import org.apache.log4j.Logger;
+import org.joda.time.DateTime;
+
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.Date;
-
-import org.apache.log4j.Logger;
-import org.joda.time.DateTime;
 
 
 public class Encoding {
@@ -16,9 +16,9 @@ public class Encoding {
 	public static void main(String[] args) throws FileNotFoundException
 	{
 		log.info(new Date().toString());
-		System.out.println("Date: " + new Date().toString());
+		System.out.println("Date: " + new Date());
 		log.info(new DateTime().toString());
-		System.out.println("Date: " + new DateTime().toString());
+		System.out.println("Date: " + new DateTime());
 		
 		System.out.println("System property: " + System.getProperty("file.encoding"));
 		System.out.println("FileReader encoding: " + new FileReader("/etc/hosts").getEncoding());

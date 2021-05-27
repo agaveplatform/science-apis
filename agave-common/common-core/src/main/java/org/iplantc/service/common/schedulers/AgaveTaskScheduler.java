@@ -3,10 +3,10 @@
  */
 package org.iplantc.service.common.schedulers;
 
-import java.util.Set;
-
 import org.iplantc.service.common.discovery.ServiceCapability;
 import org.iplantc.service.common.exceptions.TaskSchedulerException;
+
+import java.util.Set;
 
 /**
  * General interface defining job schedulers.
@@ -16,5 +16,5 @@ import org.iplantc.service.common.exceptions.TaskSchedulerException;
  */
 public interface AgaveTaskScheduler
 {
-	public String getNextTaskId(Set<ServiceCapability> capabilities) throws TaskSchedulerException;
+	String getNextTaskId(Set<ServiceCapability> capabilities) throws TaskSchedulerException;
 }

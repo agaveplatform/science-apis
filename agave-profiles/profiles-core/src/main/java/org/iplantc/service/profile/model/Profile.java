@@ -1,9 +1,9 @@
 package org.iplantc.service.profile.model;
 
-import java.io.IOException;
-
-import javax.xml.bind.annotation.XmlRootElement;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.thoughtworks.xstream.annotations.XStreamAlias;
+import com.thoughtworks.xstream.annotations.XStreamOmitField;
 import org.codehaus.plexus.util.StringUtils;
 import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.exceptions.TenantException;
@@ -16,14 +16,7 @@ import org.iplantc.service.profile.exceptions.ProfileException;
 import org.iplantc.service.profile.model.enumeration.GenderType;
 import org.json.JSONStringer;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.thoughtworks.xstream.annotations.XStreamAlias;
-import com.thoughtworks.xstream.annotations.XStreamOmitField;
+import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement
 @XStreamAlias("profile")
@@ -390,21 +383,4 @@ public class Profile {
 
 		return output;
 	}	
-}
-
-@JsonSerialize(using=ProfileSerializer.class)
-class ProfileSerializer extends JsonSerializer<Profile> {
-    @Override
-    public void serialize(Profile profile, JsonGenerator jsonGenerator, 
-            SerializerProvider serializerProvider) throws IOException {
-    	
-    	try
-		{
-			jsonGenerator.writeRaw(profile.toJSON());
-		}
-		catch (ProfileException e)
-		{
-			throw new IOException(e);
-		}
-    }
 }

@@ -27,7 +27,7 @@ public class HttpTestHelper{
     private String formData="";
     private String command;
     @SuppressWarnings("unused")
-	private String curlSimpleCommand = "curl -X "+verb+" -sku "+user+":"+passwd+" "+hostRoot+endpoint;
+	private final String curlSimpleCommand = "curl -X "+verb+" -sku "+user+":"+passwd+" "+hostRoot+endpoint;
 
 
     public HttpTestHelper(String verb, String hostRoot, String endpoint, String user, String passwd){
@@ -97,7 +97,7 @@ public class HttpTestHelper{
 
     @SuppressWarnings("unused")
 	private void loadSoftwareFileList(){
-        String root = "src/test/resources/software/";
+        String root = "target/test-classes/software/";
         fileList.put("head-lonestar",root + "head-lonestar.tacc.teragrid.org.json");
         fileList.put("head-stampede",root + "head-stampede.tacc.utexas.edu.json");
         fileList.put("head-trestles",root + "head-trestles.sdsc.teragrid.org.json");
@@ -143,16 +143,6 @@ public class HttpTestHelper{
     public CmdLineProcessOutput curlSimple(){
         return curl();
     }
-
-    public static void main(String[] args){
-        HttpTestHelper helper = new HttpTestHelper("POST","http://localhost:8080/","apps-v1/apps/list","sterry1","anna1200");
-        //helper.loadSoftwareFileList();
-        //helper.curlPostFile(helper.fileList.get("wca-iplant-condor"));
-        //helper.curlFileUpload("tmp/file.json");
-        helper.curlFormPost("var1=steve&var2=left is; better");
-
-    }
-
 }
 
 

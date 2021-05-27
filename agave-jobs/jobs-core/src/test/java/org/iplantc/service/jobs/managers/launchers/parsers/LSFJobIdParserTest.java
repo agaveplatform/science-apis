@@ -4,7 +4,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.RemoteJobIDParsingException;
 import org.iplantc.service.jobs.exceptions.SchedulerException;
-import org.iplantc.service.jobs.managers.launchers.parsers.PBSJobIdParser;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,6 +14,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
+@Test(groups={"unit"})
 public class LSFJobIdParserTest {
 
 	@DataProvider

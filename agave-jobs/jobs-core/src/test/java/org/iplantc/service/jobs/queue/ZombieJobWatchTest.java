@@ -1,8 +1,8 @@
 package org.iplantc.service.jobs.queue;
 
-import java.io.File;
-import java.util.Date;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.dao.SoftwareDao;
@@ -24,7 +24,6 @@ import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.transfer.RemoteDataClient;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
@@ -32,18 +31,17 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.util.Date;
 
-@Test(groups={"broken"})
+@Test(groups={"broken", "integration"})
 public class ZombieJobWatchTest extends AbstractJobSubmissionTest {
 
-	protected static String LOCAL_TXT_FILE = "src/test/resources/transfer/test_upload.txt";
+	protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.txt";
 
 	private JSONTestDataUtil jtd;
-	private SystemDao systemDao = new SystemDao();
-	private SystemManager systemManager = new SystemManager();
+	private final SystemDao systemDao = new SystemDao();
+	private final SystemManager systemManager = new SystemManager();
 
 	@BeforeClass
 	public void beforeClass() throws Exception {
@@ -142,6 +140,8 @@ public class ZombieJobWatchTest extends AbstractJobSubmissionTest {
 		job.setArchivePath("/");
 		job.setArchiveSystem(software.getStorageSystem());
 		job.setCreated(new Date());
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(software.getExecutionSystem().getScheduler());
 		job.setMemoryPerNode((double) 512);
 		job.setOwner(software.getExecutionSystem().getOwner());
 		job.setProcessorsPerNode((long) 1);

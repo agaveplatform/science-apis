@@ -1,32 +1,32 @@
 package org.iplantc.service.jobs.model.enumerations;
 
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.PROCESSING_INPUTS;
-
 import java.util.Arrays;
+import java.util.List;
 
 public enum JobStatusType
 {
-	PAUSED("Job execution paused by user"), 
-	
-	PENDING("Job accepted and queued for submission."), 
+	PENDING("Job accepted and queued for submission."),
 	PROCESSING_INPUTS("Identifying input files for staging"), 
 	STAGING_INPUTS("Transferring job input data to execution system"), 
 	STAGED("Job inputs staged to execution system"), 
 	
 	STAGING_JOB("Staging runtime assets to execution system"), 
 	SUBMITTING("Preparing job for execution and staging assets to execution system"), 
-	QUEUED("Job successfully placed into queue"), 
-	RUNNING("Job started running"), 
-	
+
+	QUEUED("Job successfully placed into queue"),
+	RUNNING("Job started running"),
+	PAUSED("Job execution paused by user"),
+
+
 	CLEANING_UP("Job completed execution"), 
-	ARCHIVING("Transferring job output to archive system"), 
+ 	ARCHIVING("Transferring job output to archive system"),
 	ARCHIVING_FINISHED("Job archiving complete"), 
 	ARCHIVING_FAILED("Job archiving failed"),
 	
 	FINISHED("Job complete"), 
 	KILLED("Job execution killed at user request"), 
 	STOPPED("Job execution intentionally stopped"), 
-	FAILED("Job failed"), 
+	FAILED("Job failed"),
 	
 	HEARTBEAT("Job heartbeat received");
 	
@@ -42,7 +42,6 @@ public enum JobStatusType
 	
 	public static boolean isRunning(JobStatusType status)
 	{
-
 		return ( status.equals(PENDING) || status.equals(STAGING_INPUTS)
 				|| status.equals(STAGING_JOB) || status.equals(RUNNING)
 				|| status.equals(PAUSED) || status.equals(QUEUED)
@@ -64,8 +63,7 @@ public enum JobStatusType
 				|| status.equals(STAGING_INPUTS)
 				|| status.equals(STAGING_JOB)  
 				|| status.equals(SUBMITTING)  
-				|| status.equals(STAGED) 
-				|| status.equals(STAGING_JOB));
+				|| status.equals(STAGED));
 	}
 
 	public static boolean isFinished(JobStatusType status)
@@ -107,10 +105,10 @@ public enum JobStatusType
 	
 	/**
 	 * The job state that logically comes directly before the 
-	 * current state. Some states such as {@link PAUSED}, 
-	 * {@link KILLED}, {@link STOPPED}, {@link FINISHED}, and
-	 * {@link FAILED} do not have a well-defined predecessor
-	 * so they fall back to {@link PENDING}.
+	 * current state. Some states such as {@link JobStatusType#PAUSED},
+	 * {@link JobStatusType#KILLED}, {@link JobStatusType#STOPPED}, {@link JobStatusType#FINISHED}, and
+	 * {@link JobStatusType#FAILED} do not have a well-defined predecessor
+	 * so they fall back to {@link JobStatusType#PENDING}.
 	 * 
 	 * Note that this method does not pull from the actual 
 	 * job history, but rather represents the backward
@@ -149,54 +147,54 @@ public enum JobStatusType
 	 * Returns an array of the valid state transitions from the current one.
 	 * @return array of valid states or an empty set if no valid states can be reached from the current one.
 	 */
-	public JobStatusType[] getNextValidStates()
+	public List<JobStatusType> getNextValidStates()
     {
         if (this == PENDING) {
-            return new JobStatusType[] {PENDING, PROCESSING_INPUTS, STOPPED, PAUSED, FAILED};
+            return List.of(PENDING, PROCESSING_INPUTS, STOPPED, PAUSED, FAILED);
         } 
         else if (this == PROCESSING_INPUTS) {
-            return new JobStatusType[] {PROCESSING_INPUTS, STAGING_INPUTS, STOPPED, PAUSED, FAILED};
+            return List.of(PROCESSING_INPUTS, STAGING_INPUTS, STOPPED, PAUSED, FAILED);
         } 
         else if (this == STAGING_INPUTS) {
-            return new JobStatusType[] {STAGING_INPUTS, STAGED, STOPPED, PAUSED, FAILED}; 
+            return List.of(STAGING_INPUTS, STAGED, STOPPED, PAUSED, FAILED);
         } 
         else if (this == STAGED) {
-            return new JobStatusType[] {STAGED, SUBMITTING, STOPPED, PAUSED, FAILED};
+            return List.of(STAGED, SUBMITTING, STOPPED, PAUSED, FAILED);
         } 
         else if (this == STAGING_JOB) {
-            return new JobStatusType[] {STAGING_JOB, SUBMITTING, STOPPED, PAUSED, FAILED};
+            return List.of(STAGING_JOB, SUBMITTING, STOPPED, PAUSED, FAILED);
         } 
         else if (this == SUBMITTING) {
-            return new JobStatusType[] {SUBMITTING, QUEUED, RUNNING, KILLED, STOPPED, PAUSED, FAILED, HEARTBEAT};
+            return List.of(SUBMITTING, QUEUED, RUNNING, KILLED, STOPPED, PAUSED, FAILED, HEARTBEAT);
         } 
         else if (this == QUEUED) {
-            return new JobStatusType[] {QUEUED, RUNNING, CLEANING_UP, KILLED, STOPPED, PAUSED, FAILED, HEARTBEAT};
+            return List.of(QUEUED, RUNNING, CLEANING_UP, KILLED, STOPPED, PAUSED, FAILED, HEARTBEAT);
         } 
         else if (this == RUNNING) {
-            return new JobStatusType[] {RUNNING, CLEANING_UP, KILLED, STOPPED, PAUSED, FAILED, HEARTBEAT};
+            return List.of(RUNNING, QUEUED, CLEANING_UP, KILLED, STOPPED, PAUSED, FAILED, HEARTBEAT);
         } 
         else if (this == CLEANING_UP) {
-            return new JobStatusType[] {CLEANING_UP, ARCHIVING, FINISHED, KILLED, STOPPED, PAUSED, FAILED};
+            return List.of(CLEANING_UP, ARCHIVING, FINISHED, KILLED, STOPPED, PAUSED, FAILED);
         } 
         else if (this == ARCHIVING) {
-            return new JobStatusType[] {ARCHIVING, ARCHIVING_FAILED, ARCHIVING_FINISHED, KILLED, STOPPED, PAUSED, FAILED};
+            return List.of(ARCHIVING, ARCHIVING_FAILED, ARCHIVING_FINISHED, KILLED, STOPPED, PAUSED, FAILED);
         } 
         else if (this == ARCHIVING_FAILED) {
-            return new JobStatusType[] {ARCHIVING_FAILED, FAILED};
+            return List.of(ARCHIVING_FAILED, FAILED);
         } 
         else if (this == ARCHIVING_FINISHED) {
-            return new JobStatusType[] {ARCHIVING_FINISHED, FAILED, FINISHED};
+            return List.of(ARCHIVING_FINISHED, FAILED, FINISHED);
         } 
         else if (this == PAUSED) {
-            return JobStatusType.values();
+            return Arrays.asList(JobStatusType.values());
         } 
         // dummy value that never actually gets saved.
         else if (this == HEARTBEAT) { 
-            return JobStatusType.values();
+            return Arrays.asList(JobStatusType.values());
         } 
         //  KILLED, STOPPED, FINISHED, FAILED
         else {
-            return new JobStatusType[] {};
+            return List.of();
         }
     }
 	

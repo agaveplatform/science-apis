@@ -1,10 +1,5 @@
 package org.iplantc.service.transfer;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -17,15 +12,19 @@ import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
 
-@Test(groups={"broken"})
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
 public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase {
     
     private static final Logger log = Logger.getLogger(AbstractPathSanitizationTest.class);
-    
-    public static String SPECIAL_CHARS = " _-!@#$%^*()+[]{}:."; // excluding "&" due to a bug in irods
     
     protected ThreadLocal<RemoteDataClient> threadClient = new ThreadLocal<RemoteDataClient>();
     
@@ -45,7 +44,7 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
         JSONObject json = getSystemJson();
         json.remove("id");
         json.put("id", this.getClass().getSimpleName());
-        system = (StorageSystem)StorageSystem.fromJSON(json);
+        system = StorageSystem.fromJSON(json);
         system.setOwner(SYSTEM_USER);
         String homeDir = system.getStorageConfig().getHomeDir();
         homeDir = StringUtils.isEmpty(homeDir) ? "" : homeDir;
@@ -58,28 +57,62 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
         Mockito.when(dao.findBySystemId(Mockito.anyString()))
             .thenReturn(system);
         
-        getClient().authenticate();
-        if (getClient().doesExist("")) {
-            getClient().delete("..");
-        }
-        
-        getClient().mkdirs("");
+//        getClient().authenticate();
+//        if (getClient().doesExist("")) {
+//            try {
+//                getClient().delete("..");
+//            } catch (FileNotFoundException ignore) {
+//                // ignore if already gone
+//            }
+//        }
     }
     
     @AfterClass(alwaysRun=true)
     protected void afterClass() throws Exception {
-        try
-        {
+        try {
             getClient().authenticate();
+        } catch (RemoteDataException e) {
+            log.error(e.getMessage());
+        }
+
+        try {
             // remove test directory
             getClient().delete("..");
             Assert.assertFalse(getClient().doesExist(""), "Failed to clean up home directory " + getClient().resolvePath("") + "after test.");
-        } 
-        catch (Exception e) {
+        } catch (FileNotFoundException ignore) {
+            // ignore if already gone
+        } catch (AssertionError e) {
+            throw e;
+        } catch (Exception e) {
             Assert.fail("Failed to clean up test home directory " + getClient().resolvePath("") + " after test method.", e);
+        } finally {
+            try { getClient().disconnect(); } catch (Exception ignored) {}
         }
-        finally {
-            try { getClient().disconnect(); } catch (Exception e) {}
+    }
+
+    @BeforeMethod(alwaysRun=true)
+    protected void beforeMethod(Method m) throws Exception
+    {
+        String resolvedHomeDir = "";
+        try {
+            // auth client and ensure test directory is present
+            getClient().authenticate();
+        } catch (RemoteDataException e) {
+            log.error(e.getMessage());
+        }
+
+        try {
+            resolvedHomeDir = getClient().resolvePath("");
+
+            if (!getClient().mkdirs("")) {
+                if (!getClient().isDirectory("")) {
+                    Assert.fail("System home directory " + resolvedHomeDir + " exists, but is not a directory.");
+                }
+            }
+        } catch (IOException | RemoteDataException | AssertionError e) {
+            throw e;
+        } catch (Exception e) {
+            Assert.fail("Failed to create home directory " + resolvedHomeDir + " before test method.", e);
         }
     }
     
@@ -95,7 +128,11 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
         try {
             if (threadClient.get() == null) {
                 client = system.getRemoteDataClient();
-                client.updateSystemRoots(client.getRootDir(), system.getStorageConfig().getHomeDir() + "/thread-" + Thread.currentThread().getId());
+                String threadHomeDir = String.format("%s/thread-%s-%d",
+                        system.getStorageConfig().getHomeDir(),
+                        UUID.randomUUID(),
+                        Thread.currentThread().getId());
+                client.updateSystemRoots(client.getRootDir(),  threadHomeDir);
                 threadClient.set(client);
             } 
         } catch (RemoteDataException | RemoteCredentialException e) {
@@ -104,41 +141,75 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
         
         return threadClient.get();
     }
-    
-    
-    @DataProvider(parallel=false)
-    protected Object[][] mkDirSanitizesSingleSpecialCharacterProvider() throws Exception {
+
+    /**
+     * Returns the special characters used to test. This may be overridden by subclasses
+     * to prune based on naming restrictions of the underlying storage solution.
+     * @return
+     */
+    protected char[] getSpecialCharArray() {
+        String specialChars = " _-!@#$%^*()+[]{}:."; // excluding "&" due to a bug in irods
+        return specialChars.toCharArray();
+    }
+
+    @DataProvider(parallel=true)
+    protected Object[][] mkDirSanitizesSingleSpecialCharacterNameProvider() throws Exception {
         List<Object[]> tests = new ArrayList<Object[]>();
-        for (char c: SPECIAL_CHARS.toCharArray()) {
-            String sc = String.valueOf(c); 
+        for (char c: getSpecialCharArray()) {
+            String sc = String.valueOf(c);
             if (c == ' ' || c == '.') {
                 continue;
             } else {
                 tests.add(new Object[] { sc, true, "Directory name with single special character '" + sc + "' should be created" });
             }
-            tests.add(new Object[] { sc + "leading", true, "Directory name with leading single special character '" + sc + "' should be created" });
-            tests.add(new Object[] { "trailing" + sc, true, "Directory name with trailing single special character '" + sc + "' should be created" });
-            tests.add(new Object[] { sc + "bookend" + sc, true, "Directory name with leading and trailing single special character '" + sc + "' should be created" });
-            tests.add(new Object[] { "sand" + sc + "wich", true, "Directory name with singleinternal special character '" + sc + "' should be created" });
         }
-        
+
+        return tests.toArray(new Object[][] {});
+    }
+
+    @DataProvider(parallel=true)
+    protected Object[][] mkDirSanitizesSingleSpecialCharacterProvider() throws Exception {
+        List<Object[]> tests = new ArrayList<Object[]>();
+        for (char c: getSpecialCharArray()) {
+            String sc = String.valueOf(c);
+
+            String dirName = sc + UUID.randomUUID();
+            tests.add(new Object[] { dirName, true, "Directory name," + dirName + ", with leading single special character '" + sc + "' should be created" });
+
+            dirName = UUID.randomUUID() + sc;
+            tests.add(new Object[] { dirName, true, "Directory name," + dirName + ",with trailing single special character '" + sc + "' should be created" });
+
+            dirName = sc + UUID.randomUUID() + sc;
+            tests.add(new Object[] { dirName, true, "Directory name," + dirName + ", with leading and trailing single special character '" + sc + "' should be created" });
+
+            dirName = UUID.randomUUID() + sc + "suffix";
+            tests.add(new Object[] { dirName, true, "Directory name," + dirName + ", with singleinternal special character '" + sc + "' should be created" });
+        }
+
         return tests.toArray(new Object[][] {});
     }
     
     @DataProvider(parallel=false)
     protected Object[][] mkDirSanitizesRepeatedSpecialCharacterProvider() throws Exception {
         List<Object[]> tests = new ArrayList<Object[]>();
-        for (char c: SPECIAL_CHARS.toCharArray()) {
-            String chars = String.valueOf(c) + String.valueOf(c);
+        for (char c: getSpecialCharArray()) {
+            String chars = String.valueOf(c) + c;
             if (c == ' ' || c == '.') {
                 continue;
             } else {
-                tests.add(new Object[] { chars, true, "Directory name with only repeated special character '" + chars + "' should be created" });
+                tests.add(new Object[] { chars, true, "Directory name," + chars + ", with only repeated special character '" + chars + "' should be created" });
             }
-            tests.add(new Object[] { chars + "leading", true, "Directory name with repeated repeated special character '" + chars + "' should be created" });
-            tests.add(new Object[] { "trailing" + chars, true, "Directory name with trailing repeated special character '" + chars + "' should be created" });
-            tests.add(new Object[] { chars + "bookend" + chars, true, "Directory name with leading and trailing repeated special character '" + chars + "' should be created" });
-            tests.add(new Object[] { "sand" + chars + "wich", true, "Directory name with repeated internal special character '" + chars + "' should be created" });
+            String dirName = chars + UUID.randomUUID();
+            tests.add(new Object[] { dirName, true, "Directory name," + dirName + ", with repeated repeated special character '" + chars + "' should be created" });
+
+            dirName = UUID.randomUUID() + chars;
+            tests.add(new Object[] { dirName, true, "Directory name," + dirName + ", with trailing repeated special character '" + chars + "' should be created" });
+
+            dirName = chars + UUID.randomUUID() + chars;
+            tests.add(new Object[] { dirName, true, "Directory name," + dirName + ", with leading and trailing repeated special character '" + chars + "' should be created" });
+
+            dirName = UUID.randomUUID() + chars + "suffix";
+            tests.add(new Object[] { dirName, true, "Directory name," + dirName + ", with repeated internal special character '" + chars + "' should be created" });
         }
         
         return tests.toArray(new Object[][] {});
@@ -152,68 +223,12 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
                 { "   ", "Directory name with triple whitespace character will resolve to an empty name and should throw exception" },
         };
     }
-    
-//    @Test(dataProvider="mkDirSanitizesSingleSpecialCharacterProvider", priority=1)
-//    public void mkDirSanitizesSingleSpecialCharacter(String filename, boolean shouldThrowException, String message)  throws FileNotFoundException
-//    {
-//        _mkDirSanitizationTest(filename, shouldThrowException, message);
-//    }
-//    
-//    @Test(dataProvider="mkDirSanitizesSingleSpecialCharacterProvider", priority=2)
-//    public void mkDirSanitizesSingleSpecialCharacterRelativePath(String filename, boolean shouldThrowException, String message)  throws FileNotFoundException
-//    {
-//        String relativePath = "relative_path_test/";
-//        
-//        _mkDirsSanitizationTest(relativePath + filename, shouldThrowException, message);
-//    }
-//    
-//    @Test(dataProvider="mkDirSanitizesSingleSpecialCharacterProvider", priority=3)
-//    public void mkDirSanitizesSingleSpecialCharacterAbsolutePath(String filename, boolean shouldThrowException, String message)  throws FileNotFoundException
-//    {
-//        String absolutePath = system.getStorageConfig().getHomeDir() + "/thread-" + Thread.currentThread().getId() +  "/" + "absolute_path_test/";
-//        
-//        _mkDirsSanitizationTest(absolutePath + filename, shouldThrowException, message);
-//    }
-//    
-    @Test(dataProvider="mkDirSanitizesRepeatedSpecialCharacterProvider", priority=4)
-    public void mkDirSanitizesRepeatedSpecialCharacter(String filename, boolean shouldSucceed, String message)  throws FileNotFoundException
-    {
-        _mkDirSanitizationTest(filename, shouldSucceed, message);
-    }
-//    
-//    @Test(dataProvider="mkDirSanitizesRepeatedSpecialCharacterProvider", priority=5)
-//    public void mkDirSanitizesRepeatedSpecialCharacterRelativePath(String filename, boolean shouldSucceed, String message)  throws FileNotFoundException
-//    {
-//        String relativePath = "relative_path_test/";
-//        
-//        _mkDirsSanitizationTest(relativePath + filename, shouldSucceed, message);
-//    }
-    
-//    @Test(dataProvider="mkDirSanitizesRepeatedSpecialCharacterProvider", priority=6)
-//    public void mkDirSanitizesRepeatedSpecialCharacterAbsolutePath(String filename, boolean shouldSucceed, String message)  throws FileNotFoundException
-//    {
-//        String absolutePath = system.getStorageConfig().getHomeDir() + "/thread-" + Thread.currentThread().getId() +  "/" + "absolute_path_test/";
-//        
-//        _mkDirsSanitizationTest(absolutePath + filename, shouldSucceed, message);
-//    }
-    
-//    @Test(dataProvider="mkDirSanitizesWhitespaceProvider", priority=7)
-//    public void mkDirSanitizesWhitespace(String filename, boolean shouldSucceed, String message)  throws FileNotFoundException
-//    {
-//        _mkDirSanitizationTest(filename, shouldSucceed, message);
-//    }
-//
-//    @Test(dataProvider="mkDirSanitizesWhitespaceProvider", priority=8)
-//    public void mkDirSanitizesWhitespace(String filename, String message)  throws IOException, RemoteDataException
-//    {
-////        getClient().mkdirs("");
-//        _mkDirSanitizationTest(filename, false, message);
-//    }
-    
+
     protected void _mkDirSanitizationTest(String filename, boolean shouldSucceed, String message) throws FileNotFoundException
     {
         try {
-            Assert.assertEquals(getClient().mkdir(filename), shouldSucceed);
+            Assert.assertEquals(getClient().mkdir(filename), shouldSucceed,
+                    "Creating directory " + filename + " should return " + shouldSucceed);
             Assert.assertTrue(getClient().doesExist(filename), message);
         } 
         catch (Exception e) 
@@ -222,31 +237,70 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
                 Assert.fail(message, e);
             }
         }
-        
-        try { 
-            getClient().delete(filename);
-        } catch (Exception e) {
-            Assert.fail("Unable to delete directory " + getClient().resolvePath(filename), e);
+        finally {
+            try {
+                if (!StringUtils.isBlank(filename)) {
+                    getClient().delete(filename);
+                }
+            } catch(FileNotFoundException ignore) {
+            }
+            catch (Exception e) {
+                log.error("Unable to delete directory " + getClient().resolvePath(filename), e);
+            }
         }
     }
     
     protected void _mkDirsSanitizationTest(String filename, boolean shouldSucceed, String message) throws FileNotFoundException
     {
+        String relativePath = UUID.randomUUID() + "/";
+
         try {
-            Assert.assertEquals(getClient().mkdirs(filename), shouldSucceed, message);
-            Assert.assertTrue(getClient().doesExist(filename), message);
+            Assert.assertEquals(getClient().mkdirs(relativePath + filename), shouldSucceed, message);
+            Assert.assertTrue(getClient().doesExist(relativePath + filename), message);
         } 
         catch (Exception e) 
         {
             if (shouldSucceed)
                 Assert.fail(message, e);
         }
-        
-        try { 
-            getClient().delete(filename);
-        } catch (Exception e) {
-            Assert.fail("Unable to delete directory " + getClient().resolvePath(filename), e);
+        finally {
+            try {
+                getClient().delete(relativePath);
+            } catch(FileNotFoundException ignore) {
+            } catch (Exception e) {
+                log.error("Unable to delete directory " + getClient().resolvePath(relativePath), e);
+            }
         }
      
+    }
+
+    protected void _mkDirsAbsolutePathSanitizationTest(String filename, boolean shouldSucceed, String message) throws FileNotFoundException
+    {
+        String homeDir = getClient().getHomeDir();
+        String rootDir = getClient().getRootDir();
+
+        String baseTestPath = homeDir.substring(rootDir.length());
+        baseTestPath = StringUtils.strip(baseTestPath, "/");
+
+        String basePath = String.format("/%s/%s/", baseTestPath, UUID.randomUUID());
+
+        try {
+            Assert.assertEquals(getClient().mkdirs(basePath + filename), shouldSucceed, message);
+            Assert.assertTrue(getClient().doesExist(basePath + filename), message);
+        }
+        catch (Exception e)
+        {
+            if (shouldSucceed)
+                Assert.fail(message, e);
+        }
+        finally {
+            try {
+                getClient().delete(basePath);
+            } catch(FileNotFoundException ignore) {
+            } catch (Exception e) {
+                log.error("Unable to delete directory " + basePath, e);
+            }
+        }
+
     }
 }

@@ -1,13 +1,13 @@
 package org.iplantc.service.jobs.managers.launchers.parsers;
 
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.RemoteJobIDParsingException;
 import org.iplantc.service.jobs.exceptions.SchedulerException;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Parses the output from a bsub command into a local job id 
@@ -34,12 +34,12 @@ public class LSFJobIdParser implements RemoteJobIdParser {
 		// otherwise, check for multiline and terse responses
 		else {
 			pattern = Pattern.compile("([0-9]+).*");
-			String lines[] = output.replaceAll("\r", "\n").split("\n");
-			
-			for (int i=0; i<lines.length; i++) {
-				String line = lines[i].trim();
+			String[] lines = output.replaceAll("\r", "\n").split("\n");
+
+			for (String line1 : lines) {
+				String line = line1.trim();
 				matcher = pattern.matcher(line);
-				if (matcher.matches()) {
+				if (matcher.find()) {
 					jobID = line.split(" ")[0];
 					break;
 				}

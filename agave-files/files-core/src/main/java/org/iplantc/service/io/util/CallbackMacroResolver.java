@@ -30,30 +30,4 @@ public class CallbackMacroResolver {
 
 	}
 
-//	/**
-//	 * Resolves the macros in a url to the relevant decoding attributes
-//	 * @param job
-//	 * @param callback
-//	 * @return
-//	 */
-//	public static String resolve(DecodingTask task, String callback)
-//	{
-//		if (ServiceUtils.isEmailAddress(callback)) return callback;
-//
-//		callback = callback.replaceAll("\\$\\{NAME\\}",
-//				new File(task.getSourcePath()).getName());
-//
-//		callback = callback.replaceAll("\\$\\{SOURCE_FORMAT\\}",
-//				(ServiceUtils.isValid(task.getSrcTransform()) ?
-//						task.getSrcTransform() : "raw"));
-//
-//		callback = callback.replaceAll("\\$\\{DEST_FORMAT\\}",
-//				(ServiceUtils.isValid(task.getDestTransform()) ?
-//						task.getDestTransform() : "raw"));
-//
-//		callback = callback.replaceAll("\\$\\{STATUS\\}", task.getStatusAsString());
-//
-//		return callback;
-//
-//	}
 }

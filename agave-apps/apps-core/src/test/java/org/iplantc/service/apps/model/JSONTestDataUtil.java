@@ -3,7 +3,6 @@ package org.iplantc.service.apps.model;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.POJONode;
-
 import org.apache.commons.io.IOUtils;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.json.JSONArray;
@@ -28,16 +27,16 @@ import java.util.List;
  */
 public class JSONTestDataUtil 
 {
-	public static String TEST_SOFTWARE_FOLDER = "src/test/resources/software/";
+	private static final String TEST_SOFTWARE_FOLDER = "target/test-classes/software/";
 	public static String TEST_SOFTWARE_FILE = TEST_SOFTWARE_FOLDER + "head-lonestar.tacc.teragrid.org.json";
-	public static String TEST_SYSTEM_FOLDER = "src/test/resources/systems/";
+	private static final String TEST_SYSTEM_FOLDER = "target/test-classes/systems/";
 	public static String TEST_SOFTWARE_SYSTEM_FILE = TEST_SOFTWARE_FOLDER + "system-software.json";
 	public static String TEST_EXECUTION_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "execution/execute.example.com.json";
 	public static String TEST_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/storage.example.com.json";
 //	public static String TEST_IRODS_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/data.iplantcollaborative.org.json";
 	public static String TEST_AUTHENTICATION_SYSTEM_FILE = "test/authentication-system.json";
     
-	public static JSONTestDataUtil jsonTestData;
+	private static JSONTestDataUtil jsonTestData;
 	public static String TEST_OWNER = "api_sample_user";
 	public static String TEST_SHARED_OWNER = "ipctestshare";
 	public static String TEST_PUBLIC_OWNER = "guest";
@@ -61,8 +60,8 @@ public class JSONTestDataUtil
      * Get a test data file from disk and deserializes to a JSONObject.
      *
      * @return An ObjectNode which can be traversed using json.org api
-     * @throws IOException 
-     * @throws JsonProcessingException 
+     * @throws IOException when file is missing
+     * @throws JSONException when file has bad json
      */
     public JSONObject getTestDataObject(String file) throws JSONException, IOException
     {
@@ -76,7 +75,7 @@ public class JSONTestDataUtil
 	    	return new JSONObject(json);
     	} 
     	finally {
-    		try { in.close(); } catch (Exception e) {}
+    		try { if (in != null) {in.close();} } catch (Exception e) {}
     	}
     }
 
@@ -123,7 +122,7 @@ public class JSONTestDataUtil
 
     protected String emptyJSONFile, malformedJSONFile_1, malformedJSONFile_2 = "{}";
 
-    protected Object[][] dataTestSoftwareFieldsEmpty = {
+    private final Object[][] dataTestSoftwareFieldsEmpty = {
             {"name","","set name to empty string",true},
             {"parallelism","","set parallelism to empty string",true},
             {"version","","set version to empty string",true},
@@ -150,7 +149,7 @@ public class JSONTestDataUtil
             {"defaultMaxRunTime","","set defaultMaxRunTime to empty string",true}
     };
 
-    protected Object[][] dataTestSoftwareFieldsNull = {
+    private final Object[][] dataTestSoftwareFieldsNull = {
             {"name",null,"set name to null",true},
             {"parallelism",null,"set parallelism to null",true},
             {"version",null,"set version to null",true},
@@ -177,7 +176,7 @@ public class JSONTestDataUtil
             {"defaultMaxRunTime",null,"set defaultMaxRunTime to null",false}
     };
     
-    protected Object[][] dataTestSoftwareFieldsEmptyObject = {
+    private final Object[][] dataTestSoftwareFieldsEmptyObject = {
             {"name",new JSONObject(),"set name to empty object",true},
             {"parallelism",new JSONObject(),"set parallelism to empty object",true},
             {"version",new JSONObject(),"set version to empty object",true},
@@ -204,37 +203,37 @@ public class JSONTestDataUtil
             {"defaultMaxRunTime",new JSONObject(),"set defaultMaxRunTime to empty object",true}
     };
     
-    protected Object[][] dataTestSoftwareFieldsArray = {
-            {"name",Arrays.asList(new JSONObject()),"set name to array with empty object",true},
-            {"parallelism",Arrays.asList(new JSONObject()),"set parallelism to array with empty object",true},
-            {"version",Arrays.asList(new JSONObject()),"set version to array with empty object",true},
-            {"helpURI",Arrays.asList(new JSONObject()),"set helpURI to array with empty object",true},
-            {"label",Arrays.asList(new JSONObject()),"set label to array with empty object",true},
-            {"shortDescription",Arrays.asList(new JSONObject()),"set shortDescription to array with empty object",true},
-            {"longDescription",Arrays.asList(new JSONObject()),"set longDescription to array with empty object",true},
-            {"tags",Arrays.asList(new JSONObject()),"set tags to array with empty object",true},
-            {"ontology",Arrays.asList(new JSONObject()),"set ontology to array with empty object",true},
-            {"executionSystem",Arrays.asList(new JSONObject()),"set executionSystem to array with empty object",true},
-            {"executionType",Arrays.asList(new JSONObject()),"set executionType to array with empty object",true},
-            {"deploymentPath",Arrays.asList(new JSONObject()),"set deploymentPath to array with empty object",true},
-            {"templatePath",Arrays.asList(new JSONObject()),"set templatePath to array with empty object",true},
-            {"testPath",Arrays.asList(new JSONObject()),"set testPath to array with empty object",true},             // requires a string larger than empty
-            {"checkpointable",Arrays.asList(new JSONObject()),"set checkpointable to array with empty object",true},
-            {"modules",Arrays.asList(new JSONObject()),"set modules to array with empty object",true},
-            {"inputs",Arrays.asList(new JSONObject()),"set inputs to array with empty object",true},
-            {"parameters",Arrays.asList(new JSONObject()),"set parameters to array with empty object",true},
-            {"outputs",Arrays.asList(new JSONObject()),"set outputs to array with empty object",true},
-            {"defaultQueue",Arrays.asList(new JSONObject()),"set defaultQueue to array with empty object",true},
-            {"defaultNodeCount",Arrays.asList(new JSONObject()),"set defaultNodes to array with empty object",true},
-            {"defaultMemoryPerNode",Arrays.asList(new JSONObject()),"set defaultMemoryPerNode to array with empty object",true},
-            {"defaultProcessorsPerNode",Arrays.asList(new JSONObject()),"set defaultProcessorsPerNode to array with empty object",true},
-            {"defaultMaxRunTime",Arrays.asList(new JSONObject()),"set defaultMaxRunTime to array with empty object",true}
+    private final Object[][] dataTestSoftwareFieldsArray = {
+            {"name", Collections.singletonList(new JSONObject()),"set name to array with empty object",true},
+            {"parallelism", Collections.singletonList(new JSONObject()),"set parallelism to array with empty object",true},
+            {"version", Collections.singletonList(new JSONObject()),"set version to array with empty object",true},
+            {"helpURI", Collections.singletonList(new JSONObject()),"set helpURI to array with empty object",true},
+            {"label", Collections.singletonList(new JSONObject()),"set label to array with empty object",true},
+            {"shortDescription", Collections.singletonList(new JSONObject()),"set shortDescription to array with empty object",true},
+            {"longDescription", Collections.singletonList(new JSONObject()),"set longDescription to array with empty object",true},
+            {"tags", Collections.singletonList(new JSONObject()),"set tags to array with empty object",true},
+            {"ontology", Collections.singletonList(new JSONObject()),"set ontology to array with empty object",true},
+            {"executionSystem", Collections.singletonList(new JSONObject()),"set executionSystem to array with empty object",true},
+            {"executionType", Collections.singletonList(new JSONObject()),"set executionType to array with empty object",true},
+            {"deploymentPath", Collections.singletonList(new JSONObject()),"set deploymentPath to array with empty object",true},
+            {"templatePath", Collections.singletonList(new JSONObject()),"set templatePath to array with empty object",true},
+            {"testPath", Collections.singletonList(new JSONObject()),"set testPath to array with empty object",true},             // requires a string larger than empty
+            {"checkpointable", Collections.singletonList(new JSONObject()),"set checkpointable to array with empty object",true},
+            {"modules", Collections.singletonList(new JSONObject()),"set modules to array with empty object",true},
+            {"inputs", Collections.singletonList(new JSONObject()),"set inputs to array with empty object",true},
+            {"parameters", Collections.singletonList(new JSONObject()),"set parameters to array with empty object",true},
+            {"outputs", Collections.singletonList(new JSONObject()),"set outputs to array with empty object",true},
+            {"defaultQueue", Collections.singletonList(new JSONObject()),"set defaultQueue to array with empty object",true},
+            {"defaultNodeCount", Collections.singletonList(new JSONObject()),"set defaultNodes to array with empty object",true},
+            {"defaultMemoryPerNode", Collections.singletonList(new JSONObject()),"set defaultMemoryPerNode to array with empty object",true},
+            {"defaultProcessorsPerNode", Collections.singletonList(new JSONObject()),"set defaultProcessorsPerNode to array with empty object",true},
+            {"defaultMaxRunTime", Collections.singletonList(new JSONObject()),"set defaultMaxRunTime to array with empty object",true}
     };
     
-    protected Object[][] dataTestSoftwareFieldsInvalid = {
+    private final Object[][] dataTestSoftwareFieldsInvalid = {
             {"parallelism",Boolean.TRUE,"set parallelism to TRUE",true},
             {"parallelism",Boolean.FALSE,"set parallelism to FALSE",true},
-            {"parallelism",new Integer(4),"set parallelism to 4",true},
+            {"parallelism", 4,"set parallelism to 4",true},
             {"parallelism","concurrent","set parallelism to invalid string",true},
             {"version","1-1-1","set version to invalid dash notation, 1-1-1",true},
             {"version","1","set version to single integer version",true},
@@ -250,38 +249,38 @@ public class JSONTestDataUtil
             //{"ontology",Arrays.asList("abcd","abcd"),"set ontology to array with duplicate entries",true},
             {"executionSystem",Boolean.TRUE,"set executionSystem to TRUE",true},
             {"executionSystem",Boolean.FALSE,"set executionSystem to FALSE",true},
-            {"executionSystem",new Integer(4),"set executionSystem to 4",true},
+            {"executionSystem", 4,"set executionSystem to 4",true},
             {"executionSystem","ranch","set executionSystem to invalid system",true},
             {"executionType",Boolean.TRUE,"set executionType to TRUE",true},
             {"executionType",Boolean.FALSE,"set executionType to FALSE",true},
-            {"executionType",new Integer(4),"set executionType to 4",true},
+            {"executionType", 4,"set executionType to 4",true},
             {"executionType","ranch","set executionType to invalid system",true},
-            {"checkpointable",new Integer(1),"set checkpointable to 1",true},
+            {"checkpointable", 1,"set checkpointable to 1",true},
             {"checkpointable","yes","set checkpointable to yes",true},
             {"checkpointable","no","set checkpointable to no",true},
             {"defaultQueue",Boolean.TRUE,"set executionType to TRUE",true},
             {"defaultQueue",Boolean.FALSE,"set executionType to FALSE",true},
-            {"defaultQueue",new Integer(4),"set executionType to 4",true},
+            {"defaultQueue", 4,"set executionType to 4",true},
             {"defaultQueue","blahblah","set executionType to invalid queue",true},
             {"defaultNodeCount",Boolean.TRUE,"set defaultNodes to TRUE",true},
             {"defaultNodeCount",Boolean.FALSE,"set defaultNodes to FALSE",true},
             {"defaultNodeCount",Long.MAX_VALUE,"set defaultNodes to " + Long.MAX_VALUE,true},
-            {"defaultNodeCount",new Long(-1),"defaultNodes cannot be negative",true},
-            {"defaultNodeCount",new Long(0),"defaultNodes cannot be 0",true},
+            {"defaultNodeCount", (long) -1,"defaultNodes cannot be negative",true},
+            {"defaultNodeCount", 0L,"defaultNodes cannot be 0",true},
             {"defaultNodeCount","blahblah","set defaultNodes to invalid value",true},
             {"defaultMemoryPerNode",Boolean.TRUE,"set defaultMemory to TRUE",true},
             {"defaultMemoryPerNode",Boolean.FALSE,"set defaultMemory to FALSE",true},
             {"defaultMemoryPerNode",Double.MAX_VALUE,"set defaultMemory to " + Double.MAX_VALUE,true},
             {"defaultMemoryPerNode",Double.MIN_VALUE,"set defaultMemory to " + Double.MIN_VALUE,true},
             {"defaultMemoryPerNode","blahblah","set defaultMemory to invalid value",true},
-            {"defaultMemoryPerNode",new Long(-1),"defaultNodes cannot be negative",true},
-            {"defaultMemoryPerNode",new Long(0),"defaultNodes cannot be 0",true},
+            {"defaultMemoryPerNode", (long) -1,"defaultNodes cannot be negative",true},
+            {"defaultMemoryPerNode", 0L,"defaultNodes cannot be 0",true},
             {"defaultProcessorsPerNode",Boolean.TRUE,"set defaultProcessors to TRUE",true},
             {"defaultProcessorsPerNode",Boolean.FALSE,"set defaultProcessors to FALSE",true},
             {"defaultProcessorsPerNode",Long.MAX_VALUE,"set defaultProcessors to " + Long.MAX_VALUE,true},
             {"defaultProcessorsPerNode","blahblah","set defaultProcessors to invalid value",true},
-            {"defaultProcessorsPerNode",new Long(-1),"defaultNodes cannot be negative",true},
-            {"defaultProcessorsPerNode",new Long(0),"defaultNodes cannot be 0",true},
+            {"defaultProcessorsPerNode", (long) -1,"defaultNodes cannot be negative",true},
+            {"defaultProcessorsPerNode", 0L,"defaultNodes cannot be 0",true},
             {"defaultMaxRunTime",Boolean.TRUE,"set defaultMaxRunTime to TRUE",true},
             {"defaultMaxRunTime",Boolean.FALSE,"set defaultMaxRunTime to FALSE",true},
             {"defaultMaxRunTime",Integer.MAX_VALUE,"set defaultMaxRunTime to " + Integer.MAX_VALUE,true},
@@ -290,7 +289,7 @@ public class JSONTestDataUtil
             //{"modules",Arrays.asList("abcd","abcd"),"set modules to array with duplicate modules",true},
     };
     
-    protected Object[][] dataTestSoftwareFieldsValid = {
+    private final Object[][] dataTestSoftwareFieldsValid = {
     		{"name","abcd","set name to valid string",false},
     		{"parallelism","PARALLEL","set parallelism to PARALLEL",false},
     		{"parallelism","parallel","set parallelism to parallel",false},
@@ -322,8 +321,8 @@ public class JSONTestDataUtil
             {"checkpointable",Boolean.TRUE,"set checkpointable to FALSE",false},
             {"modules",Arrays.asList("abcd","efgh","ijkl"),"set modules to valid array of strings",false},
             {"defaultQueue","testqueue","set defaultQueue to valid queue",false},
-            {"defaultNodeCount",new Integer(1),"set defaultNodes to 1",false},
-            {"defaultProcessorsPerNode",new Integer(1),"set defaultProcessorsPerNode to 1",false},
+            {"defaultNodeCount", 1,"set defaultNodes to 1",false},
+            {"defaultProcessorsPerNode", 1,"set defaultProcessorsPerNode to 1",false},
             {"defaultMemoryPerNode","2GB","set defaultMemory to 2GB",false},
             {"defaultMaxRunTime","00:30:00","set defaultMaxRunTime to valid string 00:30:00",false},
     };
@@ -351,7 +350,7 @@ public class JSONTestDataUtil
      */
             // test data with a null value as the change will not work with these Object arrays the corresponding array
             // element just disappears array[1] = null just doesn't exist.
-    public Object[][] dataTestInputs = {
+	Object[][] dataTestInputs = {
             {"id","","set input.id to empty string",true},
             {"id",null,"set input.id to null",true},
             {"value",new JSONObject(),"set input.value to empty object",false},
@@ -371,20 +370,20 @@ public class JSONTestDataUtil
             {"semantics",null,"set input.semantics to null",false},
     };
 
-    public Object[][] dataTestInputsValue = {
+    Object[][] dataTestInputsValue = {
             {"default","","set input.value.default to empty string", false},
             {"default",new JSONObject(),"set input.value.default to empty object",true},
             {"default",Arrays.asList(new JSONObject(),new JSONObject(),new JSONObject()),"set input.value.default to array of empty objects",true},
             {"default", null,"set value.default to null",false},
 			{"default","abracadabra","set value.default to null on hidden input",false},
-			{"default",new Integer(25),"set input.value.default to 25 on hidden input",true},
+			{"default", 25,"set input.value.default to 25 on hidden input",true},
             {"validator","","set input.value.validator to empty string",false},
             {"validator",new JSONObject(),"set input.value.validator to empty object",true},
             {"validator",Arrays.asList(new JSONObject(),new JSONObject(),new JSONObject()),"set input.value.validator to array of empty objects",true},
-            {"validator",new String("/(foo"),"set validator to bad regex string",true},
-            {"validator",Arrays.asList(new String("/(foo"),new String("/(foo2"),new String("/(foou")),"set input.value.validator to array of bad regex strings",true},
+            {"validator", "/(foo","set validator to bad regex string",true},
+            {"validator",Arrays.asList("/(foo", "/(foo2", "/(foou"),"set input.value.validator to array of bad regex strings",true},
             {"validator",".+","set validator to valid regex string",false},
-            {"validator",Arrays.asList(new String("^(\\/)?(\\/[a-z_\\-\\s0-9\\.]+)+"), new String(".pdf"), new String("[A-Z][a-z]{1,}")),"set input.value.validator to array of valid regex strings",true},
+            {"validator",Arrays.asList("^(\\/)?(\\/[a-z_\\-\\s0-9\\.]+)+", ".pdf", "[A-Z][a-z]{1,}"),"set input.value.validator to array of valid regex strings",true},
             {"validator",null,"set input.value.validator to null",false},
             
             {"required","","set input.value.required to empty string",true},
@@ -392,104 +391,104 @@ public class JSONTestDataUtil
             {"required",Boolean.FALSE,"set input.value.required to false",false},
             {"required",null,"set input.value.required to null",false},
             {"required","hello","set input.value.visible to false",true},
-            {"required",new Integer(0),"set input.value.required to 0",false},
-            {"required",new Integer(1),"set input.value.required to 1",false},
-            {"required",new Integer(-1),"set input.value.required to integer > 2",true},
-            {"required",new Integer(-1),"set input.value.required to negative integer",true},
-            {"required",new Float(-1.5),"set input.value.required to float",true},
-            {"required",new Float(.5),"set input.value.required to float between zero and 1", true},
+            {"required", 0,"set input.value.required to 0",false},
+            {"required", 1,"set input.value.required to 1",false},
+            {"required", -1,"set input.value.required to integer > 2",true},
+            {"required", -1,"set input.value.required to negative integer",true},
+            {"required", (float) -1.5,"set input.value.required to float",true},
+            {"required", .5f,"set input.value.required to float between zero and 1", true},
             
             {"visible","","set input.value.visible to empty string",true},
             {"visible",Boolean.TRUE,"set input.value.visible to true",false},
             {"visible",Boolean.FALSE,"set input.value.visible to false",false},
             {"visible","hello","set input.value.visible to false",true},
             {"visible",null,"set input.value.visible to null",false},
-            {"visible",new Integer(0),"set input.value.visible to 0",false},
-            {"visible",new Integer(1),"set input.value.visible to 1",false},
-            {"visible",new Integer(3),"set input.value.visible to integer > 2",true},
-            {"visible",new Integer(-1),"set input.value.visible to negative integer",true},
-            {"visible",new Float(-1.5),"set input.value.visible to negative float",true},
-            {"visible",new Float(.5),"set input.value.visible to float between zero and 1", true},
+            {"visible", 0,"set input.value.visible to 0",false},
+            {"visible", 1,"set input.value.visible to 1",false},
+            {"visible", 3,"set input.value.visible to integer > 2",true},
+            {"visible", -1,"set input.value.visible to negative integer",true},
+            {"visible", (float) -1.5,"set input.value.visible to negative float",true},
+            {"visible", .5f,"set input.value.visible to float between zero and 1", true},
             
             {"enquote","","set input.value.enquote to empty string",true},
             {"enquote",Boolean.TRUE,"set input.value.enquote to true",false},
             {"enquote",Boolean.FALSE,"set input.value.enquote to false",false},
             {"enquote",null,"set input.value.enquote to null",false},
             {"enquote","hello","set input.value.visible to false",true},
-            {"enquote",new Integer(0),"set input.value.enquote to 0",false},
-            {"enquote",new Integer(1),"set input.value.enquote to 1",false},
-            {"enquote",new Integer(3),"set input.value.enquote to integer > 2",true},
-            {"enquote",new Integer(-1),"set input.value.enquote to negative integer",true},
-            {"enquote",new Float(-1.5),"set input.value.enquote to negative float",true},
-            {"enquote",new Float(.5),"set input.value.enquote to float between zero and 1", true},
+            {"enquote", 0,"set input.value.enquote to 0",false},
+            {"enquote", 1,"set input.value.enquote to 1",false},
+            {"enquote", 3,"set input.value.enquote to integer > 2",true},
+            {"enquote", -1,"set input.value.enquote to negative integer",true},
+            {"enquote", (float) -1.5,"set input.value.enquote to negative float",true},
+            {"enquote", .5f,"set input.value.enquote to float between zero and 1", true},
             
             {"order","","set input.semantics.order to empty string should throw exception", true},
             {"order",null,"set input.semantics.order to null should not throw exception", false},
 			{"order","abc","set input.semantics.order to non-numeric should throw exception", true},
 			{"order","1","set input.semantics.order to numeric string should throw exception", true},
-			{"order",new Integer(0),"set input.semantics.order to integer 0 should be allowed", false},
-			{"order",new Integer(1),"set input.semantics.order to integer should be allowed", false},
-			{"order",new Integer(-1),"set input.semantics.order to negative integer should throw exception", true},
-			{"order",new Double(0.0),"set input.semantics.order to float 0.0 should be allowed", false},
-			{"order",new Double(1.0),"set input.semantics.order to float 1.0 should be allowed", false},
-			{"order",new Double(-1.5),"set input.semantics.order to negative decimal should throw exception", true},
-			{"order",new Double(1.5),"set input.semantics.order to positive decimal should throw exception", true},
+			{"order", 0,"set input.semantics.order to integer 0 should be allowed", false},
+			{"order", 1,"set input.semantics.order to integer should be allowed", false},
+			{"order", -1,"set input.semantics.order to negative integer should throw exception", true},
+			{"order", 0.0,"set input.semantics.order to float 0.0 should be allowed", false},
+			{"order", 1.0,"set input.semantics.order to float 1.0 should be allowed", false},
+			{"order", -1.5,"set input.semantics.order to negative decimal should throw exception", true},
+			{"order", 1.5,"set input.semantics.order to positive decimal should throw exception", true},
 			{"order",new JSONObject(),"set input.semantics.order to object should throw exception", true},
-			{"order",Arrays.asList(),"set input.semantics.order to array should throw exception", true},
+			{"order", Collections.emptyList(),"set input.semantics.order to array should throw exception", true},
 	
     };
 
-	public Object[][] dataTestInputsDetails = {
+	Object[][] dataTestInputsDetails = {
             {"label","","set input.details.label to empty string",false},
             {"label",new JSONObject(),"set input.details.label to empty object",true},
-            {"label",Arrays.asList(new JSONObject()),"set input.details.label to list of empty objects",true},
+            {"label", Collections.singletonList(new JSONObject()),"set input.details.label to list of empty objects",true},
             {"label",null,"set input.details.label to null",false},
             {"label","Sample label","set input.details.label to valid string",false},
             
             {"description","","set input.details.description to empty string",false},
             {"description",new JSONObject(),"set input.details.description to empty object",true},
-            {"description",Arrays.asList(new JSONObject()),"set input.details.description to list of empty objects",true},
+            {"description", Collections.singletonList(new JSONObject()),"set input.details.description to list of empty objects",true},
             {"description",null,"set input.details.description to null",false},
             {"description","Sample description","set input.details.description to valid string",false},
             
             {"argument","","input.details.argument can be an empty string",false},
             {"argument",new JSONObject(),"set input.details.argument to empty object",true},
-            {"argument",Arrays.asList(new JSONObject()),"set input.details.argument to list of empty objects should throw exception",true},
+            {"argument", Collections.singletonList(new JSONObject()),"set input.details.argument to list of empty objects should throw exception",true},
             {"argument",Arrays.asList("foo", "bar"),"set input.details.argument to list of strings should throw exception",true},
             {"argument",null,"set input.details.argument to null",false},
             {"argument","Sample argument","set input.details.argument to valid string",false},
-            {"argument",new Long(1),"set parameter.value.argument to integer",true},
-            {"argument",new Float(1.5),"set parameter.value.argument to float",true},
+            {"argument", 1L,"set parameter.value.argument to integer",true},
+            {"argument", 1.5f,"set parameter.value.argument to float",true},
             {"argument",Boolean.TRUE,"set parameter.value.argument to true",true},
             {"argument",Boolean.FALSE,"set parameter.value.argument to false",true},
             
             {"showArgument","","set input.details.showArgument to empty string should throw exception",true},
             {"showArgument",new JSONObject(),"set input.details.showArgument to empty object should throw exception",true},
-            {"showArgument",Arrays.asList(new JSONObject()),"set input.details.showArgument to list of empty objects should throw exception",true},
+            {"showArgument", Collections.singletonList(new JSONObject()),"set input.details.showArgument to list of empty objects should throw exception",true},
             // todo {"showArgument",null,"set input.details.showArgument to null",true},
             {"showArgument","Sample argument","set input.details.showArgument to valid string should throw exception",true},
             {"showArgument",Boolean.TRUE,"set parameter.value.showArgument to true should not throw exception",false},
             {"showArgument",Boolean.FALSE,"set parameter.value.showArgument to false should not throw exception",false},
-            {"showArgument",new Integer(0),"set parameter.value.showArgument to 0 should not throw exception",false},
-            {"showArgument",new Integer(1),"set parameter.value.showArgument to 1 should not throw exception",false},
-            {"showArgument",new Integer(-1),"set parameter.value.showArgument to integer > 2 should throw exception",true},
-            {"showArgument",new Integer(-1),"set parameter.value.showArgument to negative integer should throw exception",true},
-            {"showArgument",new Float(-1.5),"set parameter.value.showArgument to float should throw exception",true},
-            {"showArgument",new Float(.5),"set parameter.value.showArgument to float between zero and 1 should throw exception",true},
+            {"showArgument", 0,"set parameter.value.showArgument to 0 should not throw exception",false},
+            {"showArgument", 1,"set parameter.value.showArgument to 1 should not throw exception",false},
+            {"showArgument", -1,"set parameter.value.showArgument to integer > 2 should throw exception",true},
+            {"showArgument", -1,"set parameter.value.showArgument to negative integer should throw exception",true},
+            {"showArgument", (float) -1.5,"set parameter.value.showArgument to float should throw exception",true},
+            {"showArgument", .5f,"set parameter.value.showArgument to float between zero and 1 should throw exception",true},
             
             {"repeatArgument","","set input.details.repeatArgument to empty string",true},
             {"repeatArgument",new JSONObject(),"set input.details.repeatArgument to empty object",true},
-            {"repeatArgument",Arrays.asList(new JSONObject()),"set input.details.repeatArgument to list of empty objects",true},
+            {"repeatArgument", Collections.singletonList(new JSONObject()),"set input.details.repeatArgument to list of empty objects",true},
             // todo {"repeatArgument",null,"set input.details.repeatArgument to null",true},
             {"repeatArgument","Sample argument","set parameter.details.repeatArgument to valid string",true},
             {"repeatArgument",Boolean.TRUE,"set input.details.repeatArgument to true",false},
             {"repeatArgument",Boolean.FALSE,"set input.details.repeatArgument to false",false},
-            {"repeatArgument",new Integer(0),"set input.details.repeatArgument to 0",false},
-            {"repeatArgument",new Integer(1),"set input.details.repeatArgument to 1",false},
-            {"repeatArgument",new Integer(-1),"set input.details.repeatArgument to integer > 2",true},
-            {"repeatArgument",new Integer(-1),"set input.details.repeatArgument to negative integer",true},
-            {"repeatArgument",new Float(-1.5),"set input.details.repeatArgument to float",true},
-            {"repeatArgument",new Float(.5),"set input.details.repeatArgument to float between zero and 1",true},
+            {"repeatArgument", 0,"set input.details.repeatArgument to 0",false},
+            {"repeatArgument", 1,"set input.details.repeatArgument to 1",false},
+            {"repeatArgument", -1,"set input.details.repeatArgument to integer > 2",true},
+            {"repeatArgument", -1,"set input.details.repeatArgument to negative integer",true},
+            {"repeatArgument", (float) -1.5,"set input.details.repeatArgument to float",true},
+            {"repeatArgument", .5f,"set input.details.repeatArgument to float between zero and 1",true},
             
     };
 	
@@ -497,13 +496,13 @@ public class JSONTestDataUtil
 			{"default","","set input.value.default to empty string on hidden input",true},
 			{"default",null,"set input.value.default to null on hidden input",true},
 			{"default","abracadabra","set input.value.default to random string on hidden input",false},
-			{"default",new Integer(25),"set input.value.default to null on hidden input",true},
+			{"default", 25,"set input.value.default to null on hidden input",true},
 	};
 
-	public Object[][] dataTestInputsSemantics = {
+	Object[][] dataTestInputsSemantics = {
 			{"ontology","","set input.semantics.ontology to empty object",true},
 			{"ontology",new JSONObject(),"set input.semantics.ontology to empty object",true},
-            {"ontology",Arrays.asList(new JSONObject()),"set input.semantics.ontology to empty list of objects",true},
+            {"ontology", Collections.singletonList(new JSONObject()),"set input.semantics.ontology to empty list of objects",true},
             {"ontology","abcdef","set input.semantics.ontology to valid string",true},
             {"ontology",Arrays.asList("abcdef","abcdef","abcdef"),"set input.semantics.ontology to valid list of strings",false},
             {"ontology",null,"set input.semantics.ontology to null",false},
@@ -512,37 +511,37 @@ public class JSONTestDataUtil
             {"minCardinality",null,"set input.semantics.minCardinality to null should not throw exception", false},
 			{"minCardinality","abc","set input.semantics.minCardinality to non-numeric should throw exception", true},
 			{"minCardinality","1","set input.semantics.minCardinality to numeric string should throw exception", true},
-			{"minCardinality",new Integer(0),"set input.semantics.minCardinality to integer 0 should be allowed", false},
-			{"minCardinality",new Integer(1),"set input.semantics.minCardinality to integer should be allowed", false},
-			{"minCardinality",new Integer(-1),"set input.semantics.minCardinality to negative integer should throw exception", true},
-			{"minCardinality",new Double(0.0),"set input.semantics.minCardinality to float 0 should be allowed", false},
-			{"minCardinality",new Double(1.0),"set input.semantics.minCardinality to float 1 should be allowed", false},
-			{"minCardinality",new Double(-1.5),"set input.semantics.minCardinality to negative decimal should throw exception", true},
-			{"minCardinality",new Float(1.5),"set input.semantics.minCardinality to positive decimal should throw exception", true},
+			{"minCardinality", 0,"set input.semantics.minCardinality to integer 0 should be allowed", false},
+			{"minCardinality", 1,"set input.semantics.minCardinality to integer should be allowed", false},
+			{"minCardinality", -1,"set input.semantics.minCardinality to negative integer should throw exception", true},
+			{"minCardinality", 0.0,"set input.semantics.minCardinality to float 0 should be allowed", false},
+			{"minCardinality", 1.0,"set input.semantics.minCardinality to float 1 should be allowed", false},
+			{"minCardinality", -1.5,"set input.semantics.minCardinality to negative decimal should throw exception", true},
+			{"minCardinality", 1.5f,"set input.semantics.minCardinality to positive decimal should throw exception", true},
 			{"minCardinality",new JSONObject(),"set input.semantics.minCardinality to object should throw exception", true},
-			{"minCardinality",Arrays.asList(),"set input.semantics.minCardinality to array should throw exception", true},
+			{"minCardinality", Collections.emptyList(),"set input.semantics.minCardinality to array should throw exception", true},
 			
 			{"maxCardinality","","set input.semantics.maxCardinality to empty string should throw exception", true},
             {"maxCardinality",null,"set input.semantics.maxCardinality to null should not throw exception", false},
 			{"maxCardinality","abc","set input.semantics.maxCardinality to non-numeric should throw exception", true},
 			{"maxCardinality","1","set input.semantics.maxCardinality to numeric string should throw exception", true},
-			{"maxCardinality",new Integer(0),"set input.semantics.maxCardinality cannot be zero", true},
-			{"maxCardinality",new Integer(1),"set input.semantics.maxCardinality to integer should be allowed", false},
-			{"maxCardinality",new Double(0.0),"set input.semantics.maxCardinality to float 0 should throw exception", true},
-			{"maxCardinality",new Double(1.0),"set input.semantics.maxCardinality to float 1 should be allowed", false},
-			{"maxCardinality",new Integer(-1),"set input.semantics.maxCardinality to -1 is allowed", false},
-			{"maxCardinality",new Float(-2),"set input.semantics.maxCardinality to negative integer less than -1 should throw exception", true},
-			{"maxCardinality",new Float(-1.5),"set input.semantics.maxCardinality to negative decimal should throw exception", true},
-			{"maxCardinality",new Float(1.5),"set input.semantics.maxCardinality to positive decimal should throw exception", true},
+			{"maxCardinality", 0,"set input.semantics.maxCardinality cannot be zero", true},
+			{"maxCardinality", 1,"set input.semantics.maxCardinality to integer should be allowed", false},
+			{"maxCardinality", 0.0,"set input.semantics.maxCardinality to float 0 should throw exception", true},
+			{"maxCardinality", 1.0,"set input.semantics.maxCardinality to float 1 should be allowed", false},
+			{"maxCardinality", -1,"set input.semantics.maxCardinality to -1 is allowed", false},
+			{"maxCardinality", (float) -2,"set input.semantics.maxCardinality to negative integer less than -1 should throw exception", true},
+			{"maxCardinality", (float) -1.5,"set input.semantics.maxCardinality to negative decimal should throw exception", true},
+			{"maxCardinality", 1.5f,"set input.semantics.maxCardinality to positive decimal should throw exception", true},
 			{"maxCardinality",new JSONObject(),"set input.semantics.maxCardinality to object should throw exception", true},
-			{"maxCardinality",Arrays.asList(),"set input.semantics.maxCardinality to array should throw exception", true},
+			{"maxCardinality", Collections.emptyList(),"set input.semantics.maxCardinality to array should throw exception", true},
 			
 			{"fileTypes",new JSONObject(),"set input.semantics.fileTypes to empty object",true}, // not supported on inputs
             {"fileTypes",null,"set input.semantics.fileTypes to null",false},
             {"fileTypes","","set input.semantics.fileTypes to empty string",true},
             {"fileTypes","abcdf","set input.semantics.fileTypes to valid string",true},
             {"fileTypes",Arrays.asList("abcdef","abcdef","abcdef"),"set input.semantics.fileTypes to list of strings",false},
-            {"fileTypes",Arrays.asList(new JSONObject()),"set input.semantics.fileTypes to list of objects",true},
+            {"fileTypes", Collections.singletonList(new JSONObject()),"set input.semantics.fileTypes to list of objects",true},
     }; 
 
 	/************************************************************************
@@ -555,14 +554,14 @@ public class JSONTestDataUtil
             {1,"set SoftwareArgument defaultValue to int 1",true},
             {"test","set SoftwareArgument defaultValue to string test",true},
             {new JSONObject(),"set SoftwareArgument defaultValue to empty object",true},
-            {Arrays.asList(new JSONObject()),"set SoftwareArgument defaultValue to empty list of objects",true},
+            {Collections.singletonList(new JSONObject()),"set SoftwareArgument defaultValue to empty list of objects",true},
     };
 
     protected Object[][] softwareArgumentIdData = {
             {"","set default to empty string",true},
             {null,"set default to null",true},
             {"test","set default to string test",false},
-            {Integer.valueOf(25),"set default to 25",false},
+            {25,"set default to 25",false},
     };
 	
 	
@@ -570,13 +569,13 @@ public class JSONTestDataUtil
             {"","set value to empty string",true},
             {null,"set default to null",true},
             {"test","set default to string test",true},
-            {Integer.valueOf(25),"set default to 25",true},
+            {25,"set default to 25",true},
     };
 	
     protected Object[][] softwareArgumentSemanticsData = {
 			{"","set semantics to empty string",true},
 			{new JSONObject(),"set semantics to empty object",false},
-            {Arrays.asList(new JSONObject()),"set semantics.ontology to empty list of objects",true},
+            {Collections.singletonList(new JSONObject()),"set semantics.ontology to empty list of objects",true},
             {"abcdef","set semantics to valid string",true},
             {Arrays.asList("abcdef","abcdef","abcdef"),"set semantics to valid list of strings",true},
             {null,"set semantics to null",false},
@@ -587,11 +586,11 @@ public class JSONTestDataUtil
      * 				Software Parameter Test Data
      ************************************************************************/
 
-    public Object[][] dataTestParameter = {
+	Object[][] dataTestParameter = {
             {"id","","set parameter.id to empty string should throw exception",true},
             {"id",null,"set parameter.id to null should throw exception",true},
-            {"id",new Float(1.0),"set parameter.id to decimal should throw exception",true},
-            {"id",new Integer(1),"set parameter.id to integer should throw exception",true},
+            {"id", 1.0f,"set parameter.id to decimal should throw exception",true},
+            {"id", 1,"set parameter.id to integer should throw exception",true},
             {"id",new ArrayList<String>(),"set parameter.id to array should throw exception",true},
             {"value",new JSONObject(),"set parameter.value to empty object",true},
             {"value",new ArrayList<String>(),"set parameter.value to empty array",true},
@@ -601,7 +600,7 @@ public class JSONTestDataUtil
             {"details",new JSONObject(),"set parameter.details to empty object",false},
 			{"details",new ArrayList<String>(),"set parameter.details to empty array",true},
 			{"details","","set parameter.details to empty string",true},
-			{"detaiinput.detailsarameter.details to random string",true},
+			{"details", "abcd", "set parameter.details to random string",true},
             {"details",null,"set parameter.details to null",false},
 			{"semantics",new JSONObject(),"set parameter.semantics to empty object",false},
 			{"semantics",new JSONArray(),"set parameter.semantics to empty array",true},
@@ -610,7 +609,7 @@ public class JSONTestDataUtil
             {"semantics",null,"set parameter.semantics to null",false},
     };
 
-    public Object[][] dataTestParameterValue = {
+    Object[][] dataTestParameterValue = {
             {"default","","parameter.value.default set to empty string should not throw exception",false},
             {"default",Arrays.asList("foo","bar","bat"),"parameter.value.default set to array of strings should not throw exception",false},
             {"default",new JSONObject(),"parameter.value.default set to object should throw exception",true},
@@ -619,12 +618,12 @@ public class JSONTestDataUtil
             
 			{"validator","","set parameter.value.validator to empty string should not throw exception",false},
             {"validator",new JSONObject(),"set parameter.value.validator to empty object should throw exception",true},
-            {"validator",Arrays.asList(),"set parameter.value.validator to empty array should throw exception",true},
+            {"validator", Collections.emptyList(),"set parameter.value.validator to empty array should throw exception",true},
             {"validator",Arrays.asList(new JSONObject(),new JSONObject(),new JSONObject()),"set parameter.value.validator to array of empty objects should throw exception",true},
-            {"validator",new String("/(foo"),"set validator to bad regex string should throw exception",true},
-            {"validator",Arrays.asList(new String("/(foo"),new String("/(foo2"),new String("/(foou")),"set parameter.value.validator to array of bad regex strings should throw exception",true},
+            {"validator", "/(foo","set validator to bad regex string should throw exception",true},
+            {"validator",Arrays.asList("/(foo", "/(foo2", "/(foou"),"set parameter.value.validator to array of bad regex strings should throw exception",true},
             {"validator",".+","set validator to valid regex string should not throw exception",false},
-            {"validator",Arrays.asList(new String(".+"), new String(".pdf"), new String("[A-Z][a-z]{1,}")),"set parameter.value.validator to array of valid regex strings should throw exception",true},
+            {"validator",Arrays.asList(".+", ".pdf", "[A-Z][a-z]{1,}"),"set parameter.value.validator to array of valid regex strings should throw exception",true},
             {"validator",null,"set parameter.value.validator to null should not throw exception",false},
             
             {"required","","set parameter.value.required to empty string should throw exception",true},
@@ -632,63 +631,63 @@ public class JSONTestDataUtil
             {"required",Boolean.FALSE,"set parameter.value.required to false should not throw exception",false},
             {"required",null,"set parameter.value.required to null should not throw exception",false},
             {"required","hello","set input.value.required to string should throw exception",true},
-            {"required",new Integer(0),"set parameter.value.required to 0 should not throw exception",false},
-            {"required",new Integer(1),"set parameter.value.required to 1 should not throw exception",false},
-            {"required",new Integer(-1),"set parameter.value.required to integer > 2 should throw exception",true},
-            {"required",new Integer(-1),"set parameter.value.required to negative integer should throw exception",true},
-            {"required",new Float(-1.5),"set parameter.value.required to negative float should throw exception",true},
-            {"required",new Float(.5),"set input.value.required to float between zero and 1 should throw exception", true},
+            {"required", 0,"set parameter.value.required to 0 should not throw exception",false},
+            {"required", 1,"set parameter.value.required to 1 should not throw exception",false},
+            {"required", -1,"set parameter.value.required to integer > 2 should throw exception",true},
+            {"required", -1,"set parameter.value.required to negative integer should throw exception",true},
+            {"required", (float) -1.5,"set parameter.value.required to negative float should throw exception",true},
+            {"required", .5f,"set input.value.required to float between zero and 1 should throw exception", true},
             
             {"visible","","set parameter.value.visible to empty string should throw exception",true},
             {"visible",Boolean.TRUE,"set parameter.value.visible to true should not throw exception",false},
             {"visible",Boolean.FALSE,"set parameter.value.visible to false should not throw exception",false},
             {"visible",null,"set parameter.value.visible to null should not throw exception",false},
             {"visible","hello","set input.value.visible to string should throw exception",true},
-            {"visible",new Integer(0),"set parameter.value.visible to 0 should not throw exception",false},
-            {"visible",new Integer(1),"set parameter.value.visible to 1 should not throw exception",false},
-            {"visible",new Integer(3),"set parameter.value.visible to integer > 2 should throw exception",true},
-            {"visible",new Integer(-1),"set parameter.value.visible to negative integer should throw exception",true},
-            {"visible",new Float(-1.5),"set parameter.value.visible to negative float should throw exception",true},
-            {"visible",new Float(.5),"set parameter.value.visible to float between zero and 1 should throw exception", true},
+            {"visible", 0,"set parameter.value.visible to 0 should not throw exception",false},
+            {"visible", 1,"set parameter.value.visible to 1 should not throw exception",false},
+            {"visible", 3,"set parameter.value.visible to integer > 2 should throw exception",true},
+            {"visible", -1,"set parameter.value.visible to negative integer should throw exception",true},
+            {"visible", (float) -1.5,"set parameter.value.visible to negative float should throw exception",true},
+            {"visible", .5f,"set parameter.value.visible to float between zero and 1 should throw exception", true},
             
             {"enquote","","set parameter.value.enquote to empty string",true},
             {"enquote",Boolean.TRUE,"set parameter.value.enquote to true",false},
             {"enquote",Boolean.FALSE,"set parameter.value.enquote to false",false},
             {"enquote",null,"set parameter.value.enquote to null",false},
             {"enquote","hello","set parameter.value.visible to false",true},
-            {"enquote",new Integer(0),"set parameter.value.enquote to 0",false},
-            {"enquote",new Integer(1),"set parameter.value.enquote to 1",false},
-            {"enquote",new Integer(3),"set parameter.value.enquote to integer > 2",true},
-            {"enquote",new Integer(-1),"set parameter.value.enquote to negative integer",true},
-            {"enquote",new Float(-1.5),"set parameter.value.enquote to negative float",true},
-            {"enquote",new Float(.5),"set parameter.value.enquote to float between zero and 1", true},
+            {"enquote", 0,"set parameter.value.enquote to 0",false},
+            {"enquote", 1,"set parameter.value.enquote to 1",false},
+            {"enquote", 3,"set parameter.value.enquote to integer > 2",true},
+            {"enquote", -1,"set parameter.value.enquote to negative integer",true},
+            {"enquote", (float) -1.5,"set parameter.value.enquote to negative float",true},
+            {"enquote", .5f,"set parameter.value.enquote to float between zero and 1", true},
             
             {"order","","set parameter.semantics.order to empty string should throw exception", true},
             {"order",null,"set parameter.semantics.order to null should not throw exception", false},
 			{"order","abc","set parameter.semantics.order to non-numeric should throw exception", true},
 			{"order","1","set parameter.semantics.order to numeric string should throw exception", true},
-			{"order",new Integer(0),"set parameter.semantics.order to integer 0 should be allowed", false},
-			{"order",new Integer(1),"set parameter.semantics.order to integer should be allowed", false},
-			{"order",new Integer(-1),"set parameter.semantics.order to negative integer should throw exception", true},
-			{"order",new Double(0.0),"set parameter.semantics.order to float 0.0 should be allowed", false},
-			{"order",new Double(1.0),"set parameter.semantics.order to float 1.0 should be allowed", false},
-			{"order",new Double(-1.5),"set parameter.semantics.order to negative decimal should throw exception", true},
-			{"order",new Double(1.5),"set parameter.semantics.order to positive decimal should throw exception", true},
+			{"order", 0,"set parameter.semantics.order to integer 0 should be allowed", false},
+			{"order", 1,"set parameter.semantics.order to integer should be allowed", false},
+			{"order", -1,"set parameter.semantics.order to negative integer should throw exception", true},
+			{"order", 0.0,"set parameter.semantics.order to float 0.0 should be allowed", false},
+			{"order", 1.0,"set parameter.semantics.order to float 1.0 should be allowed", false},
+			{"order", -1.5,"set parameter.semantics.order to negative decimal should throw exception", true},
+			{"order", 1.5,"set parameter.semantics.order to positive decimal should throw exception", true},
 			{"order",new JSONObject(),"set parameter.semantics.order to object should throw exception", true},
-			{"order",Arrays.asList(),"set parameter.semantics.order to array should throw exception", true},
+			{"order", Collections.emptyList(),"set parameter.semantics.order to array should throw exception", true},
     };
 
     public Object[][] dataTestHiddenParameterValue = {
 			{"default","","set parameter.value.default to empty string on hidden input",true},
 			{"default",null,"set parameter.value.default to null on hidden input",true},
 			{"default","abracadabra","set parameter.value.default to random string on hidden input",false},
-			{"default",new Integer(25),"set parameter.value.default to null on hidden input",true},
+			{"default", 25,"set parameter.value.default to null on hidden input",true},
 	};
 
-	public Object[][] dataTestParameterSemanticsOntology = {
+	Object[][] dataTestParameterSemanticsOntology = {
 			{"ontology","","set parameter.semantics.ontology to empty object",true},
 			{"ontology",new JSONObject(),"set parameter.semantics.ontology to empty object",true},
-            {"ontology",Arrays.asList(new JSONObject()),"set parameter.semantics.ontology to empty list of objects",true},
+            {"ontology", Collections.singletonList(new JSONObject()),"set parameter.semantics.ontology to empty list of objects",true},
             {"ontology","abcdef","set parameter.semantics.ontology to valid string",true},
             {"ontology",Arrays.asList("abcdef","abcdef","abcdef"),"set parameter.semantics.ontology to valid list of strings",false},
             {"ontology",null,"set parameter.semantics.ontology to null",false},
@@ -699,7 +698,7 @@ public class JSONTestDataUtil
             {"fileTypes","","set parameter.semantics.fileTypes to empty string",true},
             {"fileTypes","abcdf","set parameter.semantics.fileTypes to valid string",true},
             {"fileTypes",Arrays.asList("abcdef","abcdef","abcdef"),"set parameter.semantics.fileTypes to list of strings",true},
-            {"fileTypes",Arrays.asList(new JSONObject()),"set parameter.semantics.fileTypes to list of objects",true},
+            {"fileTypes", Collections.singletonList(new JSONObject()),"set parameter.semantics.fileTypes to list of objects",true},
     };
 
    
@@ -708,71 +707,71 @@ public class JSONTestDataUtil
      * 				Software Output Test Data
      ************************************************************************/
 
-    public Object[][] dataTestOutput = {
+	Object[][] dataTestOutput = {
             {"id","","set output.id to empty string",true},
             {"id","{}","set output.id to empty string resembling an object should throw an exception",false},
-            {"id",new Float(1.0),"set output.id to decimal should throw exception",true},
-            {"id",new Integer(1),"set output.id to integer should throw exception",true},
+            {"id", 1.0f,"set output.id to decimal should throw exception",true},
+            {"id", 1,"set output.id to integer should throw exception",true},
             {"id",new JSONObject(),"set output.id to empty object should throw exception",true},
-            {"id",Arrays.asList(),"set output.id to empty array should throw exception",true},
-            {"id",Arrays.asList(new JSONObject()),"set output.id to array with json object should throw exception",true},
+            {"id", Collections.emptyList(),"set output.id to empty array should throw exception",true},
+            {"id", Collections.singletonList(new JSONObject()),"set output.id to array with json object should throw exception",true},
             {"id",null,"set output.id to null should throw exception",true},
             {"value",new JSONObject(),"set output.value to empty object",false},
             {"value",new JSONArray(),"set output.value to empty array",true},
-            {"value",new Float(1.0),"set output.value to decimal should throw exception",true},
-            {"value",new Integer(1),"set output.value to integer should throw exception",true},
+            {"value", 1.0f,"set output.value to decimal should throw exception",true},
+            {"value", 1,"set output.value to integer should throw exception",true},
             {"value","","set output.value to empty string",true},
 			{"value","abcd","set output.value to random string",true},
             {"value",null,"set output.value to null",false},
             {"details",new JSONObject(),"set output.details to empty object",false},
 			{"details",new JSONArray(),"set output.details to empty array",true},
-			{"details",new Float(1.0),"set output.details to decimal should throw exception",true},
-            {"details",new Integer(1),"set output.details to integer should throw exception",true},
+			{"details", 1.0f,"set output.details to decimal should throw exception",true},
+            {"details", 1,"set output.details to integer should throw exception",true},
             {"details","","set output.details to empty string",true},
 			{"details","abcd","set output.details to random string",true},
             {"details",null,"set output.details to null",false},
 			{"semantics",new JSONObject(),"set output.semantics to empty object",false},
 			{"semantics",new JSONArray(),"set output.semantics to empty array",true},
-			{"semantics",new Float(1.0),"set output.semantics to decimal should throw exception",true},
-            {"semantics",new Integer(1),"set output.semantics to integer should throw exception",true},
+			{"semantics", 1.0f,"set output.semantics to decimal should throw exception",true},
+            {"semantics", 1,"set output.semantics to integer should throw exception",true},
             {"semantics","","set output.semantics to empty string",true},
 			{"semantics","abcd","set output.semantics to random string",true},
             {"semantics",null,"set output.semantics to null",false},
     };
 
-    public  Object[][] dataTestOutputValue = {
+    Object[][] dataTestOutputValue = {
     		{"default","","set output.value.default to empty string", false},
             {"default",new JSONObject(),"set output.value.default to empty object",true},
             {"default",Arrays.asList(new JSONObject(),new JSONObject(),new JSONObject()),"set output.value.default to array of empty objects",true},
             {"default", null,"set value.default to null",false},
 			{"default","abracadabra","set value.default to null on hidden output",false},
-			{"default",new Integer(25),"set output.value.default to 25 on hidden output",true},
+			{"default", 25,"set output.value.default to 25 on hidden output",true},
 			
             {"validator","","set output.value.validator to empty string",false},
             {"validator",new JSONObject(),"set output.value.validator to empty object",true},
             {"validator",Arrays.asList(new JSONObject(),new JSONObject(),new JSONObject()),"set output.value.validator to array of empty objects",true},
-            {"validator",new String("/(foo"),"set validator to bad regex string",true},
-            {"validator",Arrays.asList(new String("/(foo"),new String("/(foo2"),new String("/(foou")),"set output.value.validator to array of bad regex strings",true},
+            {"validator", "/(foo","set validator to bad regex string",true},
+            {"validator",Arrays.asList("/(foo", "/(foo2", "/(foou"),"set output.value.validator to array of bad regex strings",true},
             {"validator",".+","set validator to valid regex string",false},
-            {"validator",Arrays.asList(new String("^(\\/)?(\\/[a-z_\\-\\s0-9\\.]+)+"), new String(".pdf"), new String("[A-Z][a-z]{1,}")),"set output.value.validator to array of valid regex strings",true},
+            {"validator",Arrays.asList("^(\\/)?(\\/[a-z_\\-\\s0-9\\.]+)+", ".pdf", "[A-Z][a-z]{1,}"),"set output.value.validator to array of valid regex strings",true},
             {"validator",null,"set output.value.validator to null",false},
             
             {"order","","set output.semantics.order to empty string should throw exception", true},
             {"order",null,"set output.semantics.order to null should not throw exception", false},
 			{"order","abc","set output.semantics.order to non-numeric should throw exception", true},
 			{"order","1","set output.semantics.order to numeric string should throw exception", true},
-			{"order",new Integer(0),"set output.semantics.order to integer 0 should be allowed", false},
-			{"order",new Integer(1),"set output.semantics.order to integer should be allowed", false},
-			{"order",new Integer(-1),"set output.semantics.order to negative integer should throw exception", true},
-			{"order",new Double(0.0),"set output.semantics.order to float 0.0 should be allowed", false},
-			{"order",new Double(1.0),"set output.semantics.order to float 1.0 should be allowed", false},
-			{"order",new Double(-1.5),"set output.semantics.order to negative decimal should throw exception", true},
-			{"order",new Double(1.5),"set output.semantics.order to positive decimal should throw exception", true},
+			{"order", 0,"set output.semantics.order to integer 0 should be allowed", false},
+			{"order", 1,"set output.semantics.order to integer should be allowed", false},
+			{"order", -1,"set output.semantics.order to negative integer should throw exception", true},
+			{"order", 0.0,"set output.semantics.order to float 0.0 should be allowed", false},
+			{"order", 1.0,"set output.semantics.order to float 1.0 should be allowed", false},
+			{"order", -1.5,"set output.semantics.order to negative decimal should throw exception", true},
+			{"order", 1.5,"set output.semantics.order to positive decimal should throw exception", true},
 			{"order",new JSONObject(),"set output.semantics.order to object should throw exception", true},
-			{"order",Arrays.asList(),"set output.semantics.order to array should throw exception", true},
+			{"order", Collections.emptyList(),"set output.semantics.order to array should throw exception", true},
     };
 
-    public Object[][] dataTestOutputDetails = {
+    Object[][] dataTestOutputDetails = {
             {"label","","set output.details.label to empty string",false},
             {"label",null,"set output.details.label to null",false},
             {"label","Sample label","set output.details.label to null",false},
@@ -784,13 +783,13 @@ public class JSONTestDataUtil
             {"visible",true,"set output.details.visible to true",false},
             {"visible",false,"set output.details.visible to false",false},
             {"visible","alpha","set output.details.visible to 'alpha'",false},
-            {"visible",new Integer(1),"set output.details.visible to 1",false},
+            {"visible", 1,"set output.details.visible to 1",false},
     };
 
-    public Object[][] dataTestOutputSemantics = {
+    Object[][] dataTestOutputSemantics = {
     		{"ontology","","set output.semantics.ontology to empty object",true},
 			{"ontology",new JSONObject(),"set output.semantics.ontology to empty object",true},
-            {"ontology",Arrays.asList(new JSONObject()),"set output.semantics.ontology to empty list of objects",true},
+            {"ontology", Collections.singletonList(new JSONObject()),"set output.semantics.ontology to empty list of objects",true},
             {"ontology","abcdef","set output.semantics.ontology to valid string",true},
             {"ontology",Arrays.asList("abcdef","abcdef","abcdef"),"set output.semantics.ontology to valid list of strings",false},
             {"ontology",null,"set output.semantics.ontology to null",false},
@@ -799,37 +798,37 @@ public class JSONTestDataUtil
             {"minCardinality",null,"set output.semantics.minCardinality to null should not throw exception", false},
 			{"minCardinality","abc","set output.semantics.minCardinality to non-numeric should throw exception", true},
 			{"minCardinality","1","set output.semantics.minCardinality to numeric string should throw exception", true},
-			{"minCardinality",new Integer(0),"set output.semantics.minCardinality to integer 0 should be allowed", false},
-			{"minCardinality",new Integer(1),"set output.semantics.minCardinality to integer should be allowed", false},
-			{"minCardinality",new Integer(-1),"set output.semantics.minCardinality to negative integer should throw exception", true},
-			{"minCardinality",new Double(0.0),"set output.semantics.minCardinality to float 0 should be allowed", false},
-			{"minCardinality",new Double(1.0),"set output.semantics.minCardinality to float 1 should be allowed", false},
-			{"minCardinality",new Double(-1.5),"set output.semantics.minCardinality to negative decimal should throw exception", true},
-			{"minCardinality",new Float(1.5),"set output.semantics.minCardinality to positive decimal should throw exception", true},
+			{"minCardinality", 0,"set output.semantics.minCardinality to integer 0 should be allowed", false},
+			{"minCardinality", 1,"set output.semantics.minCardinality to integer should be allowed", false},
+			{"minCardinality", -1,"set output.semantics.minCardinality to negative integer should throw exception", true},
+			{"minCardinality", 0.0,"set output.semantics.minCardinality to float 0 should be allowed", false},
+			{"minCardinality", 1.0,"set output.semantics.minCardinality to float 1 should be allowed", false},
+			{"minCardinality", -1.5,"set output.semantics.minCardinality to negative decimal should throw exception", true},
+			{"minCardinality", 1.5f,"set output.semantics.minCardinality to positive decimal should throw exception", true},
 			{"minCardinality",new JSONObject(),"set output.semantics.minCardinality to object should throw exception", true},
-			{"minCardinality",Arrays.asList(),"set output.semantics.minCardinality to array should throw exception", true},
+			{"minCardinality", Collections.emptyList(),"set output.semantics.minCardinality to array should throw exception", true},
 			
 			{"maxCardinality","","set output.semantics.maxCardinality to empty string should throw exception", true},
             {"maxCardinality",null,"set output.semantics.maxCardinality to null should not throw exception", false},
 			{"maxCardinality","abc","set output.semantics.maxCardinality to non-numeric should throw exception", true},
 			{"maxCardinality","1","set output.semantics.maxCardinality to numeric string should throw exception", true},
-			{"maxCardinality",new Integer(0),"set output.semantics.maxCardinality cannot be zero", true},
-			{"maxCardinality",new Integer(1),"set output.semantics.maxCardinality to integer should be allowed", false},
-			{"maxCardinality",new Double(0.0),"set output.semantics.maxCardinality to float 0 should throw exception", true},
-			{"maxCardinality",new Double(1.0),"set output.semantics.maxCardinality to float 1 should be allowed", false},
-			{"maxCardinality",new Integer(-1),"set output.semantics.maxCardinality to -1 is allowed", false},
-			{"maxCardinality",new Float(-2),"set output.semantics.maxCardinality to negative integer less than -1 should throw exception", true},
-			{"maxCardinality",new Float(-1.5),"set output.semantics.maxCardinality to negative decimal should throw exception", true},
-			{"maxCardinality",new Float(1.5),"set output.semantics.maxCardinality to positive decimal should throw exception", true},
+			{"maxCardinality", 0,"set output.semantics.maxCardinality cannot be zero", true},
+			{"maxCardinality", 1,"set output.semantics.maxCardinality to integer should be allowed", false},
+			{"maxCardinality", 0.0,"set output.semantics.maxCardinality to float 0 should throw exception", true},
+			{"maxCardinality", 1.0,"set output.semantics.maxCardinality to float 1 should be allowed", false},
+			{"maxCardinality", -1,"set output.semantics.maxCardinality to -1 is allowed", false},
+			{"maxCardinality", (float) -2,"set output.semantics.maxCardinality to negative integer less than -1 should throw exception", true},
+			{"maxCardinality", (float) -1.5,"set output.semantics.maxCardinality to negative decimal should throw exception", true},
+			{"maxCardinality", 1.5f,"set output.semantics.maxCardinality to positive decimal should throw exception", true},
 			{"maxCardinality",new JSONObject(),"set output.semantics.maxCardinality to object should throw exception", true},
-			{"maxCardinality",Arrays.asList(),"set output.semantics.maxCardinality to array should throw exception", true},
+			{"maxCardinality", Collections.emptyList(),"set output.semantics.maxCardinality to array should throw exception", true},
 			
 			{"fileTypes",new JSONObject(),"set output.semantics.fileTypes to empty object",true}, // not supported on outputs
             {"fileTypes",null,"set output.semantics.fileTypes to null",false},
             {"fileTypes","","set output.semantics.fileTypes to empty string",true},
             {"fileTypes","abcdf","set output.semantics.fileTypes to valid string",true},
             {"fileTypes",Arrays.asList("abcdef","abcdef","abcdef"),"set output.semantics.fileTypes to list of strings",false},
-            {"fileTypes",Arrays.asList(new JSONObject()),"set output.semantics.fileTypes to list of objects",true},
+            {"fileTypes", Collections.singletonList(new JSONObject()),"set output.semantics.fileTypes to list of objects",true},
     };
 
 
@@ -869,7 +868,7 @@ public class JSONTestDataUtil
  */
     public Object[][] genJsonTestMessages() {
         // String name, String changeValue, String message, String expected
-        List<Object[]> holder = new ArrayList<Object[]>();
+        List<Object[]> holder = new ArrayList<>();
 
         Collections.addAll(holder, dataTestSoftwareFieldsValid);
         Collections.addAll(holder, dataTestSoftwareFieldsInvalid);
@@ -878,8 +877,7 @@ public class JSONTestDataUtil
         Collections.addAll(holder, dataTestSoftwareFieldsNull);
         Collections.addAll(holder, dataTestSoftwareFieldsArray);
 
-        Object[][] result = holder.toArray(new Object[holder.size()][]);
-        return result;
+        return holder.toArray(new Object[holder.size()][]);
     }
 
 

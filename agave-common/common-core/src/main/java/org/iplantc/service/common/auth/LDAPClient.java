@@ -1,25 +1,20 @@
 package org.iplantc.service.common.auth;
 
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.List;
+import org.apache.log4j.Logger;
+import org.iplantc.service.common.Settings;
 
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
-import javax.naming.directory.Attributes;
-import javax.naming.directory.DirContext;
-import javax.naming.directory.InitialDirContext;
-import javax.naming.directory.SearchControls;
-import javax.naming.directory.SearchResult;
-
-import org.apache.log4j.Logger;
-import org.iplantc.service.common.Settings;
+import javax.naming.directory.*;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
 
 public class LDAPClient {
-	private static Logger log = Logger.getLogger(LDAPClient.class);
-	private String username;
-	private String pass;
+	private static final Logger log = Logger.getLogger(LDAPClient.class);
+	private final String username;
+	private final String pass;
 
 	public LDAPClient(String username, String pass) {
 		this.username = username;
@@ -27,10 +22,10 @@ public class LDAPClient {
 	}
 
 	private DirContext getDirContext() {
-		System.setProperty("javax.net.ssl.keyStore", Settings.KEYSTORE_PATH);
-		System.setProperty("javax.net.ssl.keyStorePassword", "changeit");
-		System.setProperty("javax.net.ssl.trustStore", Settings.TRUSTSTORE_PATH);
-		System.setProperty("javax.net.ssl.trustStorePassword", "changeit");
+//		System.setProperty("javax.net.ssl.keyStore", Settings.KEYSTORE_PATH);
+//		System.setProperty("javax.net.ssl.keyStorePassword", "changeit");
+//		System.setProperty("javax.net.ssl.trustStore", Settings.TRUSTSTORE_PATH);
+//		System.setProperty("javax.net.ssl.trustStorePassword", "changeit");
 
 		Hashtable<String, String> env = new Hashtable<String, String>();
 		env.put(Context.INITIAL_CONTEXT_FACTORY,

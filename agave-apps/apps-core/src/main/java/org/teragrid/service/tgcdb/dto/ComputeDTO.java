@@ -3,10 +3,10 @@
  */
 package org.teragrid.service.tgcdb.dto;
 
+import org.json.JSONStringer;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import org.json.JSONStringer;
 
 /**
  * @author dooley
@@ -347,10 +347,8 @@ public class ComputeDTO extends ResourceDTO implements TgcdbDTO {
 				return false;
 			if (!resourceId.equalsIgnoreCase(s.resourceId))
 				return false;
-			if (!name.equalsIgnoreCase(s.name))
-				return false;
-			return true;
-		}
+            return name.equalsIgnoreCase(s.name);
+        }
 		else
 		{
 			return false;

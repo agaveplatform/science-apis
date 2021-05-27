@@ -1,0 +1,59 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+
+<suite name="Agave systems-core integration" verbose="1" parallel="methods" data-provider-thread-count="5">
+	<listeners>
+		<listener class-name="org.iplantc.service.transfer.s3.S3CheckCredentialAnnotationTransformer"/>
+	</listeners>
+	<test name="systems-core">
+		<groups>
+			<run>
+				<exclude name="broken"/>
+				<exclude name="notReady"/>
+			</run>
+		</groups>
+		<packages>
+			<!--<package name="org.iplantc.service.systems" />-->
+			<!--<package name="org.iplantc.service.systems.crypt" />-->
+			<!--<package name="org.iplantc.service.systems.dao" />-->
+			<!--<package name="org.iplantc.service.systems.model" />-->
+			<!--<package name="org.iplantc.service.systems.events" />-->
+			<!--<package name="org.iplantc.service.systems.manager" />-->
+			<!--<package name="org.iplantc.service.systems.migrations" />-->
+			<!--<package name="org.iplantc.service.systems.model" />-->
+			<!--<package name="org.iplantc.service.systems.search" />-->
+			<!--<package name="org.iplantc.service.systems.util" />-->
+		</packages>
+	</test>
+	<test name="remote-core">
+		<groups>
+			<run>
+				<exclude name="broken"/>
+				<exclude name="notReady"/>
+			</run>
+		</groups>
+<!--		<packages>-->
+<!--			<package name="org.iplantc.service.remote.gsissh" />-->
+<!--			<package name="org.iplantc.service.remote.ssh" />-->
+<!--		</packages>-->
+	</test>
+	<test name="transfer-core">
+		<groups>
+			<run>
+				<include name="integration"/>
+				<exclude name="broken"/>
+				<exclude name="notReady"/>
+			</run>
+		</groups>
+<!--		<packages>-->
+<!--			&lt;!&ndash;<package name="org.iplantc.service.transfer.azure" />&ndash;&gt;-->
+<!--			&lt;!&ndash;<package name="org.iplantc.service.transfer.gridftp" />&ndash;&gt;-->
+<!--&lt;!&ndash;			<package name="org.iplantc.service.transfer.ftp" />&ndash;&gt;-->
+<!--&lt;!&ndash;			<package name="org.iplantc.service.transfer.http" />&ndash;&gt;-->
+<!--&lt;!&ndash;			<package name="org.iplantc.service.transfer.irods" />&ndash;&gt;-->
+<!--&lt;!&ndash;			<package name="org.iplantc.service.transfer.irods4" />&ndash;&gt;-->
+<!--&lt;!&ndash;			<package name="org.iplantc.service.transfer.local" />&ndash;&gt;-->
+<!--&lt;!&ndash;			<package name="org.iplantc.service.transfer.s3" />&ndash;&gt;-->
+<!--&lt;!&ndash;			<package name="org.iplantc.service.transfer.sftp" />&ndash;&gt;-->
+<!--		</packages>-->
+	</test>
+</suite>

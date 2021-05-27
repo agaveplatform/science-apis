@@ -3,29 +3,11 @@
  */
 package org.iplantc.service.io.model;
 
-import java.io.File;
-import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-import javax.xml.bind.annotation.XmlElement;
-
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -43,18 +25,24 @@ import org.iplantc.service.io.exceptions.FileEventProcessingException;
 import org.iplantc.service.io.manager.FileEventProcessor;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.io.model.enumerations.TransformTaskStatus;
+import org.iplantc.service.io.util.ServiceUtils;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.joda.time.DateTime;
 import org.json.JSONException;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import javax.xml.bind.annotation.XmlElement;
+import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.file.InvalidPathException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -81,7 +69,8 @@ public class LogicalFile {
 	private Date lastUpdated;
 	private String sourceUri;
 	private String path;
-	private String status = TransformTaskStatus.TRANSFORMING_COMPLETED.name();
+	private long pathHash;
+	private String status = StagingTaskStatus.STAGING_COMPLETED.name();
 	private RemoteSystem system;
 	private String nativeFormat = RAW;
 	private String tenantId;		// current api tenant
@@ -123,6 +112,7 @@ public class LogicalFile {
 		setName(name);
 		
 	}
+
 	public LogicalFile(String owner, RemoteSystem system, String sourceUri, String absoluteDestinationPath, String name, String status, String nativeFormat)
 	{
 		this(owner, system, sourceUri, absoluteDestinationPath, name);
@@ -135,7 +125,8 @@ public class LogicalFile {
 	 */
 	@Id
 	@GeneratedValue
-	@Column(name = "id", unique = true, nullable = false)@XmlElement
+	@Column(name = "id", unique = true, nullable = false)
+	@XmlElement
 	public Long getId() {
 		return id;
 	}
@@ -197,8 +188,8 @@ public class LogicalFile {
 	 * @param owner
 	 *            the owner to set
 	 */
-	public void setOwner(String username) {
-		this.owner = username;
+	public void setOwner(String owner) {
+		this.owner = owner;
 	}
 
 	/**
@@ -254,7 +245,7 @@ public class LogicalFile {
 	}
 
 	/**
-	 * @param source the source to set
+	 * @param sourceUri the sourceUri to set
 	 */
 	public void setSourceUri(String sourceUri) {
 		this.sourceUri = sourceUri;
@@ -276,60 +267,82 @@ public class LogicalFile {
 		return path;
 	}
 	
+	
+	@Column(name = "path_hash", nullable = false)
+	public long getPathHash() {
+		return pathHash;
+	}
+	
 	/**
 	 * Paths are stored internally as absolute paths. Agave URLs abstract
 	 * these by resolving them relative to the system.storageConfig.homeDir and 
 	 * system.storageConfig.rootDir. This method resolves the absolute path
 	 * back to a path suitable for URL presentation.
-	 * @return
+	 * @return the path relative to the {@link org.iplantc.service.systems.model.StorageSystem} root path.
+	 * @throws InvalidPathException if the {@link LogicalFile#getPath()} is not within the
+	 * 	{@link RemoteSystem} {@link StorageConfig#getRootDir()} rootDir
 	 */
 	@Transient
 	public String getAgaveRelativePathFromAbsolutePath() 
-	{	
-		String path = this.path;
-		String rootDir = FilenameUtils.normalize(system.getStorageConfig().getRootDir());
-		if (!StringUtils.isEmpty(rootDir)) {
-			if (!rootDir.endsWith("/")) {
-				rootDir += "/";
-			}
-		} else {
-			rootDir = "/";
+	{
+		String absoluteSystemRootDir = FilenameUtils.normalize(system.getStorageConfig().getRootDir() + "/");
+		if (absoluteSystemRootDir == null) {
+			absoluteSystemRootDir = "/";
 		}
 
-		String homeDir = FilenameUtils.normalize(system.getStorageConfig().getHomeDir());
-        if (!StringUtils.isEmpty(homeDir)) {
-            homeDir = rootDir +  homeDir;
-            if (!homeDir.endsWith("/")) {
-                homeDir += "/";
-            }
-        } else {
-            homeDir = rootDir;
-        }
+		// homeDir is always relative to rootDir, so we can
+		// effectively treat homeDir as an absolute path. We can prepend the / here because the
+		// normalize method will remove a double slash if present.
+		String relativeSystemHomeDir = FilenameUtils.normalize(system.getStorageConfig().getHomeDir() + "/");
+		if (relativeSystemHomeDir == null) {
+			relativeSystemHomeDir = "/";
+		}
+		String absoluteSystemHomeDir = absoluteSystemRootDir +  relativeSystemHomeDir + "/";
 
-        homeDir = homeDir.replaceAll("/+", "/");
-        rootDir = rootDir.replaceAll("/+", "/");
-        
-		if (StringUtils.isEmpty(path)) {
-			return homeDir;
+		// handle double slashes here to make things easier to compare
+		absoluteSystemHomeDir = absoluteSystemHomeDir.replaceAll("/+", "/");
+        absoluteSystemRootDir = absoluteSystemRootDir.replaceAll("/+", "/");
+
+
+		String absoluteFileItemPath = getPath();
+
+		// any trailing relative paths get slashes appended to ensure they resolve as directories
+		if (absoluteFileItemPath.endsWith("/..") || absoluteFileItemPath.endsWith("/.")) {
+			absoluteFileItemPath += "/";
 		}
-		
-		String adjustedPath = path;
-		if (adjustedPath.endsWith("/..") || adjustedPath.endsWith("/.")) {
-			adjustedPath += File.separator;
-		}
-		
-		if (adjustedPath.startsWith("/")) {
-			path = FileUtils.normalize(adjustedPath);
+
+		// just in case the file item path was not an absolute path, we resolve it cleanly either way.
+		// we will clean it up below when we check for existence relative to the root dir.
+		if (absoluteFileItemPath.startsWith("/")) {
+			absoluteFileItemPath = FileUtils.normalize(absoluteFileItemPath);
 		} else {
-			path = FilenameUtils.normalize(adjustedPath);
+			// this really should never happen as the #getPath() is supposed to always be an absolute path
+			// on the remote system to avoid issues with the user changing the system root and homedir. We
+			// still want to be able to access the original data, so we need the original absolute path.
+			absoluteFileItemPath = FilenameUtils.normalize(absoluteFileItemPath);
 		}
-		
-		path = path.replaceAll("/+", "/");
-		
-		if (StringUtils.startsWith(path, homeDir)) {
-			return StringUtils.substringAfter(path, homeDir);
+
+		// if the file item path is within the system homedir, we can return the path relative to that.
+		// This becomes problematic, however, because the home directory concept changes for public systems,
+		// thus we would have to pull in more domain info here to make that decision. Such a choice could
+		// be expensive to determine, so we instead use the agave absolute path for all resolutions.
+//		if (StringUtils.startsWith(absoluteFileItemPath, absoluteSystemHomeDir)) {
+//			absoluteFileItemPath = StringUtils.substringAfter(absoluteFileItemPath, relativeSystemHomeDir);
+//		}
+
+		if (StringUtils.isEmpty(absoluteFileItemPath)) {
+			absoluteFileItemPath = "/";
+		}
+
+		// We need to ensure the file item path is within the system defined rootDir. Once we determine that, we
+		// can strip the absolute system root dir from the file item path and return the result as an absolute path.
+		if (StringUtils.startsWith(absoluteFileItemPath, absoluteSystemRootDir)) {
+			return  "/" + StringUtils.substringAfter(absoluteFileItemPath, absoluteSystemRootDir);
+		} else if (StringUtils.equals(absoluteFileItemPath + "/", absoluteSystemRootDir)) {
+			return "/";
 		} else {
-			return "/" + StringUtils.substringAfter(path, rootDir);
+			// invalid path. do we map to root, or throw an exception? Throwing an exception changes behavior.
+			throw new InvalidPathException(path, "Path does not reside within the rootDir defined for the system.");
 		}
 	}
 
@@ -347,6 +360,20 @@ public class LogicalFile {
 		}
 		
 		this.path = StringUtils.replace(this.path, "//", "/");
+		
+		try {
+			this.setPathHash(ServiceUtils.getMD5LongHash(this.path));
+		} catch (Exception e) {
+			throw new RuntimeException("MD5 algorithm is not available in the environment while hashing path column", e);
+		}
+	}
+	
+	/**
+	 * @param pathHash the pathHash to set
+	 */
+	public void setPathHash(long pathHash) 
+	{
+		this.pathHash = pathHash;
 	}
 
 	/**
@@ -355,12 +382,7 @@ public class LogicalFile {
 	public void setStatus(String status) {
 		this.status = status;
 	}
-	
-	@Transient
-	public void setStatus(TransformTaskStatus status) {
-		this.status = status.name();
-	}
-	
+		
 	@Transient
 	public void setStatus(StagingTaskStatus status) {
 		this.status = status.name();
@@ -429,7 +451,8 @@ public class LogicalFile {
 	}
 
 	/**
-	 * @param transferTask the transferTask to set
+	 * Override the existing list of {@link FileEvent} for this logical file.
+	 * @param events the transferTask events to set.
 	 */
 	public void setEvents(List<FileEvent> events)
 	{
@@ -440,7 +463,7 @@ public class LogicalFile {
 	 * Adds an event to the history of this job. This will automatically
 	 * be saved with the logicalFile when the logicalFile is persisted.
 	 * 
-	 * @param event
+	 * @param event the content event to add
 	 */
 	public void addContentEvent(FileEvent event) {
 		FileEventProcessor eventProcessor = new FileEventProcessor(); 
@@ -455,7 +478,8 @@ public class LogicalFile {
 	 * Adds an event to the history of this job. This will automatically
 	 * be saved with the logicalFile when the logicalFile is persisted.
 	 * 
-	 * @param event
+	 * @param eventType the type of event created
+	 * @param createdBy the user who created the content event
 	 */
 	public void addContentEvent(FileEventType eventType, String createdBy) {
 		FileEvent event = new FileEvent(
@@ -471,8 +495,8 @@ public class LogicalFile {
 	 * Adds an event to the history of this job. This will automatically
 	 * be saved with the logicalFile when the logicalFile is persisted.
 	 * 
-	 * @param event
-	 * @param permission
+	 * @param event the actual permission file event to add
+	 * @param permission the permission applied to the {@link LogicalFile} that raised this {@code event}
 	 */
 	public void addPermissionEvent(FileEvent event, RemoteFilePermission permission) {
 		FileEventProcessor eventProcessor = new FileEventProcessor();
@@ -573,7 +597,8 @@ public class LogicalFile {
 		resolvedPath = StringUtils.removeEnd(resolvedPath, "/"); 
         if ((resolvedPath != null) && !resolvedPath.startsWith("/"))  // Avoid multiple leading slashes.
         	resolvedPath = "/" + resolvedPath;
-		return TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_IO_SERVICE) + 
+
+        return TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_IO_SERVICE) +
 				"media/system/" + getSystem().getSystemId() + "/" + 
 				UrlPathEscaper.escape(resolvedPath);
 		
@@ -608,8 +633,8 @@ public class LogicalFile {
 
 	/**
 	 * Serializes to json with notifications embedded in hypermedia response.
-	 * @param notifications
-	 * @return
+	 * @param notifications the list of notifications to add to the json representation of this node
+	 * @return {@link LogicalFile} marshalled to a JSON string with notifications included
 	 */
 	public String toJsonWithNotifications(List<Notification> notifications) {
 		ObjectMapper mapper = new ObjectMapper();

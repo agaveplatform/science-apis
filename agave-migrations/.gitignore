@@ -38,3 +38,4 @@ dependency-reduced-pom.xml
 /target/
 test-output
 rebel.xml
+!/src/main/resources/docker-compose.yml

@@ -1,24 +1,16 @@
 package org.iplantc.service.apps;
 
-import java.util.HashSet;
-import java.util.Set;
+import org.iplantc.service.apps.resources.impl.*;
 
 import javax.ws.rs.core.Application;
-
-import org.iplantc.service.apps.resources.impl.QuartzResourceImpl;
-import org.iplantc.service.apps.resources.impl.SoftwareCollectionImpl;
-import org.iplantc.service.apps.resources.impl.SoftwareFormResourceImpl;
-import org.iplantc.service.apps.resources.impl.SoftwareHistoryCollectionImpl;
-import org.iplantc.service.apps.resources.impl.SoftwareHistoryResourceImpl;
-import org.iplantc.service.apps.resources.impl.SoftwarePermissionCollectionImpl;
-import org.iplantc.service.apps.resources.impl.SoftwarePermissionResourceImpl;
-import org.iplantc.service.apps.resources.impl.SoftwareResourceImpl;
+import java.util.HashSet;
+import java.util.Set;
 
 
 public class SoftwareApplication extends Application {
 
 	/**
-	 * @see javax.ws.rs.core.ApplicationConfig#getResourceClasses()
+	 * @see javax.ws.rs.core.Application#getClasses()
 	 */
 	@Override
     public Set<Class<?>> getClasses() {

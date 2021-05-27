@@ -1,18 +1,9 @@
 package org.iplantc.service.common.persistence;
 
-import java.lang.reflect.Field;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.util.Enumeration;
+import org.apache.log4j.Logger;
 
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
-
-import org.apache.log4j.Logger;
-
-import com.mysql.jdbc.AbandonedConnectionCleanupThread;
-
-import java.sql.Driver;
 
 /**
  * Adds a listener to the servlet closing the session factory down after use.

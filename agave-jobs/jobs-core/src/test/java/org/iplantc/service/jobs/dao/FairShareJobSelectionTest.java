@@ -3,21 +3,7 @@
  */
 package org.iplantc.service.jobs.dao;
 
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_OWNER;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_SOFTWARE_SYSTEM_FILE;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.PENDING;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.QUEUED;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.STAGED;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Hashtable;
-import java.util.List;
-
+import com.google.common.collect.Collections2;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Transformer;
 import org.apache.log4j.Logger;
@@ -31,47 +17,45 @@ import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.joda.time.DateTime;
-import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.google.common.collect.Collections2;
+import java.util.*;
+
+import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_OWNER;
+import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
 
 /**
- * Tests checking that the {@link JobDao#getNextQueuedJobUuid(testStatus, )}
- * method
- * honors the service capability configuration options allowing the jobs a
+ * Tests checking that the {@link JobDao#getNextQueuedJobUuid(JobStatusType, String, String[], String[])}
+ * method honors the service capability configuration options allowing the jobs a
  * worker selects
  * be filtered based on the capabilities of the current worker.
  * 
  * @author dooley
  *
  */
-@Test(groups={"broken"})
+@Test(groups={"broken", "integration"})
 public class FairShareJobSelectionTest extends AbstractDaoTest {
 
     public static final Logger log = Logger.getLogger(ProgressiveMonitoringBackoffTest.class);
 
-    private String[] queues = new String[] { "small", "medium", "large" };
-    private String[] systemsIds = new String[] { "execute1.example.com", "execute2.example.com",
+    private final String[] queues = new String[] { "small", "medium", "large" };
+    private final String[] systemsIds = new String[] { "execute1.example.com", "execute2.example.com",
             "execute3.example.com" };
-    private String[] tenantIds = new String[] { "alpha", "beta", "gamma" };
-    private String[] usernames = new String[] { "user-0", "user-1", "user-2" };
+    private final String[] tenantIds = new String[] { "alpha", "beta", "gamma" };
+    private final String[] usernames = new String[] { "user-0", "user-1", "user-2" };
 
-    @BeforeClass
-    public void beforeClass() throws Exception {
-        super.beforeClass();
-        SoftwareDao.persist(software);
-    }
-
-    @AfterClass
-    public void afterClass() throws Exception {
-        super.afterClass();
-    }
+//    @BeforeClass
+//    public void beforeClass() throws Exception {
+//        super.beforeClass();
+//    }
+//
+//    @AfterClass
+//    public void afterClass() throws Exception {
+//        super.afterClass();
+//    }
 
     @BeforeMethod
     public void setUp() throws Exception {
@@ -83,48 +67,47 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
         clearJobs();
     }
 
-    @Override
-    protected void initSystems() throws Exception {
+//    @Override
+    protected void initSysetems() throws Exception {
         clearSystems();
 
-        JSONObject exeSystemJson = jtd.getTestDataObject(TEST_EXECUTION_SYSTEM_FILE);
-        privateExecutionSystem = ExecutionSystem.fromJSON(exeSystemJson);
+        ExecutionSystem privateExecutionSystem = createExecutionSystem();
         privateExecutionSystem.setOwner(TEST_OWNER);
         privateExecutionSystem.setType(RemoteSystemType.EXECUTION);
         privateExecutionSystem.getBatchQueues().clear();
-        privateExecutionSystem.addBatchQueue(unlimitedQueue.clone());
+//        log.debug("Inserting private execution system " + privateExecutionSystem.getSystemId());
+        systemDao.persist(privateExecutionSystem);
+        privateExecutionSystem.addBatchQueue(UNLIMITED_QUEUE.clone());
+
         for (String qname : queues) {
-            BatchQueue q = unlimitedQueue.clone();
+            BatchQueue q = UNLIMITED_QUEUE.clone();
             q.setName(qname);
             privateExecutionSystem.addBatchQueue(q);
         }
         systemDao.persist(privateExecutionSystem);
 
-        privateStorageSystem = StorageSystem.fromJSON(jtd
-                .getTestDataObject(TEST_STORAGE_SYSTEM_FILE));
-        privateStorageSystem.setOwner(TEST_OWNER);
-        privateStorageSystem.setType(RemoteSystemType.STORAGE);
+        StorageSystem privateStorageSystem = createStorageSystem();
         privateStorageSystem.setGlobalDefault(true);
         privateStorageSystem.setPubliclyAvailable(true);
-        log.debug("Inserting public storage system " + privateStorageSystem.getSystemId());
+//        log.debug("Inserting public storage system " + privateStorageSystem.getSystemId());
         systemDao.persist(privateStorageSystem);
 
         for (String tenantId : tenantIds) {
             for (String systemId : systemsIds) {
-                ExecutionSystem exeSystem = ExecutionSystem.fromJSON(exeSystemJson);
+                ExecutionSystem exeSystem = createExecutionSystem();
                 exeSystem.setSystemId(tenantId + "-" + systemId);
                 exeSystem.setOwner(TEST_OWNER);
                 exeSystem.getBatchQueues().clear();
-                exeSystem.addBatchQueue(unlimitedQueue.clone());
+                exeSystem.addBatchQueue(UNLIMITED_QUEUE.clone());
                 for (String qname : queues) {
-                    BatchQueue q = unlimitedQueue.clone();
+                    BatchQueue q = UNLIMITED_QUEUE.clone();
                     q.setName(qname);
                     exeSystem.addBatchQueue(q);
                 }
                 exeSystem.setPubliclyAvailable(true);
                 exeSystem.setType(RemoteSystemType.EXECUTION);
                 exeSystem.setTenantId(tenantId);
-                log.debug("Inserting execution system " + exeSystem.getSystemId());
+//                log.debug("Inserting execution system " + exeSystem.getSystemId());
                 systemDao.persist(exeSystem);
             }
 
@@ -140,17 +123,17 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
     }
 
     protected void initSoftware() throws Exception {
-        clearSoftware();
+        ExecutionSystem executionSystem = createExecutionSystem();
+        StorageSystem storageSystem = createStorageSystem();
+        Software defaultSoftware = createDetachedSoftware(executionSystem, storageSystem);
 
-        JSONObject json = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
-        this.software = Software.fromJSON(json, TEST_OWNER);
-        this.software.setPubliclyAvailable(true);
-        this.software.setOwner(TEST_OWNER);
-        this.software.setDefaultQueue(unlimitedQueue.getName());
-        this.software.setDefaultMaxRunTime(null);
-        this.software.setDefaultMemoryPerNode(null);
-        this.software.setDefaultNodes(null);
-        this.software.setDefaultProcessorsPerNode(null);
+        defaultSoftware.setPubliclyAvailable(true);
+        defaultSoftware.setOwner(TEST_OWNER);
+        defaultSoftware.setDefaultQueue(UNLIMITED_QUEUE.getName());
+        defaultSoftware.setDefaultMaxRunTime(null);
+        defaultSoftware.setDefaultMemoryPerNode(null);
+        defaultSoftware.setDefaultNodes(null);
+        defaultSoftware.setDefaultProcessorsPerNode(null);
 
         for (String tenantId : tenantIds) {
             TenancyHelper.setCurrentTenantId(tenantId);
@@ -164,8 +147,8 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
             List<ExecutionSystem> exeSystems = systemDao.getAllExecutionSystems();
             for (ExecutionSystem exeSystem : exeSystems) {
                 for (BatchQueue q : exeSystem.getBatchQueues()) {
-                    Software software = this.software.clone();
-                    software.setExecutionSystem((ExecutionSystem) exeSystem);
+                    Software software = defaultSoftware.clone();
+                    software.setExecutionSystem(exeSystem);
                     software.setName("test-" + exeSystem.getSystemId() + "-" + q.getName());
                     software.setDefaultQueue(q.getName());
                     software.setDefaultMaxRunTime(q.getMaxRequestedTime());
@@ -174,7 +157,7 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
                     software.setDefaultNodes(q.getMaxNodes() > 0 ? q.getMaxNodes() : null);
                     software.setDefaultProcessorsPerNode(q.getMaxProcessorsPerNode() > 0 ? q
                             .getMaxProcessorsPerNode() : null);
-                    log.debug("Adding software " + software.getUniqueName());
+//                    log.debug("Adding software " + software.getUniqueName());
                     SoftwareDao.persist(software);
                 }
             }
@@ -197,7 +180,9 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
             Date created = new DateTime().minusMinutes(30).toDate();
             Date lastUpdated = new DateTime().minusSeconds(30).toDate();
 
-            Job job = createJob(QUEUED);
+            Software software = createSoftware();
+            Job job = createJob(QUEUED, software);
+
 
             for (String tenantId : tenantIds) {
                 Hashtable<String, Integer> tenantJobHits = new Hashtable<String, Integer>();
@@ -328,7 +313,7 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
         } catch (Exception e) {
             Assert.fail("Unexpected error occurred running test for next queued job", e);
         } finally {
-            try { clearJobs(); } catch (Exception e) {}
+            try { clearJobs(); } catch (Exception ignored) {}
         }
     }
 
@@ -346,8 +331,8 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
             // initialize several jobs from each status
             Date created = new DateTime().minusMinutes(30).toDate();
             Date lastUpdated = new DateTime().minusSeconds(30).toDate();
-
-            Job job = createJob(QUEUED);
+            Software software = createSoftware();
+            Job job = createJob(QUEUED, software);
 
             for (String tenantId : tenantIds) {
                 Hashtable<String, Integer> tenantJobHits = new Hashtable<String, Integer>();
@@ -600,7 +585,7 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
                     "Unexpected error occurred running test for next running job with status QUEUED",
                     e);
         } finally {
-            try { clearJobs(); } catch (Exception e) {}
+            try { clearJobs(); } catch (Exception ignored) {}
         }
     }
 

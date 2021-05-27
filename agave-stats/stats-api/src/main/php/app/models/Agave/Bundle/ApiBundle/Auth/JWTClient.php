@@ -224,8 +224,8 @@ class JWTClient {
   public static function createJwtForTenantUser($username, $tenantId, $resolveUserDetails=false)
   {
 
-    $token = (new Builder ())->setIssuer("http://agaveapi.co/stats/v2") // Configures the issuer (iss claim)
-      ->setAudience("http://agaveapi.co/stats/v2") // Configures the audience (aud claim)
+    $token = (new Builder ())->setIssuer("https://agaveplatform.org/stats/v2") // Configures the issuer (iss claim)
+      ->setAudience("https://agaveplatform.org/stats/v2") // Configures the audience (aud claim)
       ->setId('guestId', true) // Configures the id (jti claim), replicating as a header item
       ->setIssuedAt(strtotime('now'))
       ->setIssuer("wso2.org/products/am")

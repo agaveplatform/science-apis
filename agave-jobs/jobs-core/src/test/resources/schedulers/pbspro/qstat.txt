@@ -1,0 +1,52 @@
+Job Id: ${JOB_ID}.${JOB_NODE}
+    Job_Name = pbspro.submit
+    Job_Owner = ${JOB_USERNAME}@${JOB_NODE}
+    resources_used.cpupercent = 0
+    resources_used.cput = 00:00:00
+    resources_used.mem = 0kb
+    resources_used.ncpus = 1
+    resources_used.vmem = 0kb
+    resources_used.walltime = 00:00:06
+    job_state = ${JOB_STATUS}
+    queue = debug
+    server = ${JOB_NODE}
+    Checkpoint = u
+    ctime = Thu May 14 07:04:20 2020
+    Error_Path = ${JOB_NODE}:/home/${JOB_USERNAME}/pbspro.submit.e0
+    exec_host = ${JOB_NODE}/0
+    exec_vnode = (${JOB_NODE}:ncpus=1)
+    Hold_Types = n
+    Join_Path = n
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Thu May 14 07:04:26 2020
+    Output_Path = ${JOB_NODE}:/home/${JOB_USERNAME}/pbspro.submit.o0
+    Priority = 0
+    qtime = Thu May 14 07:04:20 2020
+    Rerunable = True
+    Resource_List.ncpus = 1
+    Resource_List.nice = 19
+    Resource_List.nodect = 1
+    Resource_List.nodes = 1
+    Resource_List.place = scatter
+    Resource_List.select = 1:ncpus=1
+    Resource_List.walltime = 00:01:00
+    stime = Thu May 14 07:04:20 2020
+    session_id = 1622
+    jobdir = /home/${JOB_USERNAME}
+    substate = 92
+    Variable_List = PBS_O_HOME=/home/${JOB_USERNAME},PBS_O_LOGNAME=${JOB_USERNAME},
+        PBS_O_PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt
+        /pbs/bin:/home/${JOB_USERNAME}/.local/bin:/home/${JOB_USERNAME}/bin,
+        PBS_O_MAIL=/var/spool/mail/${JOB_USERNAME},PBS_O_SHELL=/bin/bash,
+        PBS_O_WORKDIR=/home/${JOB_USERNAME},PBS_O_SYSTEM=Linux,PBS_O_QUEUE=debug,
+        PBS_O_HOST=${JOB_NODE}
+    comment = Job run at Thu May 14 at 07:04 on (${JOB_NODE}:ncpus=1) and fini
+        shed
+    etime = Thu May 14 07:04:20 2020
+    run_count = 1
+    Stageout_status = 1
+    Exit_status = ${JOB_EXIT_CODE}
+    Submit_arguments = pbspro.submit
+    history_timestamp = 1589439866
+    project = _pbs_project_default

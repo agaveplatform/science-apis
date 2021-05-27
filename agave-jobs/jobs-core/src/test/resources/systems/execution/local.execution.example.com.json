@@ -4,12 +4,12 @@
 	"status": "UP",
 	"type": "EXECUTION",
 	"description": "Sample local execution system.",
-	"site": "tacc.xsede.org",
+	"site": "example.com",
 	"executionType": "HPC",
 	"default": false,
 	"queues": [],
 	"login": {
-		"host": "login1.ls4.tacc.utexas.edu",
+		"host": "localhost",
 		"port": 22,
 		"protocol": "LOCAL",
 		"auth": {

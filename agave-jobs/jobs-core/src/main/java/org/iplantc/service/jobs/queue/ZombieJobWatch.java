@@ -1,12 +1,5 @@
 package org.iplantc.service.jobs.queue;
 
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
-
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
@@ -30,6 +23,13 @@ import org.joda.time.DateTime;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
 
 /**
  * This is a reaper task designed to clean up any {@link Job}
@@ -99,7 +99,7 @@ public class ZombieJobWatch implements org.quartz.Job
 							log.info("Job " + job.getUuid() + " in the " + job.getTenantId() +
 								" tenant has not been updated recently, and the last "
 									+ "known transfer associated with the job was last updated at "
-									+ new DateTime(lastUpdatedTransferTime).toString() + ". This indicates an abandonded job. "
+									+ new DateTime(lastUpdatedTransferTime) + ". This indicates an abandonded job. "
 									+ "Rolling back now." );
 
 							// clean things up and roll th job back. quota will be checked as part
@@ -119,7 +119,7 @@ public class ZombieJobWatch implements org.quartz.Job
 					case PROCESSING_INPUTS:
 						log.info("Job " + job.getUuid() + " in the " + job.getTenantId() +
 								" tenant has not been updated since " +
-								new DateTime(job.getLastUpdated()).toString() + " and appears to be trapped in an "
+                                new DateTime(job.getLastUpdated()) + " and appears to be trapped in an "
 								+ "unrecoverable state. Rolling back now." );
 
 						// clean things up and roll th job back. quota will be checked as part
@@ -132,7 +132,7 @@ public class ZombieJobWatch implements org.quartz.Job
 						break;
 					default:
 						log.info("Zombie job " + job.getUuid() + " in the " + job.getTenantId() +
-								" tenant was last updated at " + new DateTime(job.getLastUpdated()).toString() +
+								" tenant was last updated at " + new DateTime(job.getLastUpdated()) +
 								" and needs rolled back.");
 						break;
 				}
@@ -160,7 +160,7 @@ public class ZombieJobWatch implements org.quartz.Job
 	 * @param job the job that will be rolled back
 	 * @param callingUsername the principal requesting the rollback
 	 * @throws JobException if the job cannot be rolled back due to invalid status
-	 * @throws JobDependencyException
+	 * @throws JobDependencyException if job was inactive when attempting to roll back
 	 */
 	public Job rollbackJob(Job job, String callingUsername)
 	throws JobException, JobDependencyException

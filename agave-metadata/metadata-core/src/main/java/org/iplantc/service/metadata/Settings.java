@@ -4,6 +4,7 @@
 package org.iplantc.service.metadata;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import javax.net.ssl.*;
 import java.security.SecureRandom;
@@ -19,6 +20,8 @@ import java.util.Properties;
  */
 public class Settings 
 {
+    private static final Logger log = Logger.getLogger(Settings.class);
+    
 	private static Properties props = new Properties();
 	
 	/* Debug settings */
@@ -69,15 +72,11 @@ public class Settings
     public static String 						MAILPASSWORD;
 	
 	/* General policy settings */
-//	public static long 							INDIVIDUAL_DISK_QUOTA = 0;
-	public static String 						TRANSFORMS_FOLDER_PATH;
-	public static int 							MAX_TRANSFORM_TASKS;
 	public static int 							MAX_STAGING_TASKS;
+	public static int                           STAGING_TIMEOUT_SECS;
 	public static int 							MAX_STAGING_RETRIES;
 	public static int 							MAX_USER_CONCURRENT_TRANSFERS;
 	
-	public static String 						TRANSFORM_DEFINITION_FILE_PATH;
-	public static String 						TRANSFORM_CONVERSION_MAP_FILE_PATH;
 	public static boolean 						SLAVE_MODE;
 
 	public static String 						SERVICE_URL; // base url of this service
@@ -132,9 +131,9 @@ public class Settings
 			}
 		}
 		
-		API_VERSION = (String)props.getProperty("iplant.api.version");
+		API_VERSION = props.getProperty("iplant.api.version");
 		
-		SERVICE_VERSION = (String)props.getProperty("iplant.service.version");
+		SERVICE_VERSION = props.getProperty("iplant.service.version");
 		
 		COMMUNITY_USERNAME = (String)props.get("iplant.community.username");
 		
@@ -160,13 +159,13 @@ public class Settings
 		
 		WORLD_USER_USERNAME = (String)props.get("iplant.world.user");
 		
-		MAIL_SERVER = (String) props.getProperty("mail.smtps.host");
+		MAIL_SERVER = props.getProperty("mail.smtps.host");
 		
-		MAILSMTPSPROTOCOL = (String) props.getProperty("mail.smtps.auth");
+		MAILSMTPSPROTOCOL = props.getProperty("mail.smtps.auth");
 		
-		MAILLOGIN = (String) props.getProperty("mail.smtps.user");
+		MAILLOGIN = props.getProperty("mail.smtps.user");
 		
-		MAILPASSWORD = (String) props.getProperty("mail.smtps.passwd");
+		MAILPASSWORD = props.getProperty("mail.smtps.passwd");
 		
 //		TACC_MYPROXY_SERVER = (String)props.get("iplant.myproxy.server");
 //		
@@ -206,27 +205,33 @@ public class Settings
 		IPLANT_DOCS = (String) props.get("iplant.service.documentation");
 		if (!IPLANT_DOCS.endsWith("/")) IPLANT_DOCS += "/";
 		
-		METADATA_DB_COLLECTION = (String) props.getProperty("iplant.metadata.db.collection", "metadata");
+		METADATA_DB_COLLECTION = props.getProperty("iplant.metadata.db.collection", "metadata");
 
-        METADATA_DB_SCHEMATA_COLLECTION = (String) props.getProperty("iplant.metadata.schemata.db.collection", "schemata");
+        METADATA_DB_SCHEMATA_COLLECTION = props.getProperty("iplant.metadata.schemata.db.collection", "schemata");
 		
-		METADATA_DB_SCHEME = (String) props.getProperty("iplant.metadata.db.scheme", "api");
+		METADATA_DB_SCHEME = props.getProperty("iplant.metadata.db.scheme", "api");
 		
-		METADATA_DB_HOST = (String) props.getProperty("iplant.metadata.db.host", "localhost");
+		METADATA_DB_HOST = props.getProperty("iplant.metadata.db.host", "localhost");
 
         METADATA_DB_PORT = Integer.valueOf((String)props.get("iplant.metadata.db.port"));
 
-        METADATA_DB_USER = (String) props.getProperty("iplant.metadata.db.user");
+        METADATA_DB_USER = props.getProperty("iplant.metadata.db.user");
 
-        METADATA_DB_PWD = (String) props.getProperty("iplant.metadata.db.pwd");
-		
-		TRANSFORMS_FOLDER_PATH = (String)props.get("iplant.transforms.dir.path");
-		
-		MAX_TRANSFORM_TASKS = Integer.valueOf((String)props.get("iplant.max.transform.tasks"));
+        METADATA_DB_PWD = props.getProperty("iplant.metadata.db.pwd");
 		
 		MAX_STAGING_TASKS = Integer.valueOf((String)props.get("iplant.max.staging.tasks"));
 		
-		MAX_STAGING_RETRIES = Integer.valueOf((String)props.get("iplant.max.staging.retries"));
+        try {STAGING_TIMEOUT_SECS = Integer.valueOf(props.getProperty("iplant.staging.same.server.timeout.secs", "240"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.staging.same.server.timeout.secs.", e);
+            STAGING_TIMEOUT_SECS = 240;
+        }
+        
+        try {MAX_STAGING_RETRIES = Integer.valueOf(props.getProperty("iplant.max.staging.retries", "3"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.max.staging.retries.", e);
+            MAX_STAGING_RETRIES = 3;
+        }
 		
 		String maxUserTransfers = (String) props.get("iplant.max.user.concurrent.transfers");
 		try {
@@ -234,10 +239,6 @@ public class Settings
 		} catch (Exception e) {
 			MAX_USER_CONCURRENT_TRANSFERS = Integer.MAX_VALUE;
 		}
-		
-		TRANSFORM_DEFINITION_FILE_PATH = (String)props.get("iplant.transforms.file.path");
-		
-		TRANSFORM_CONVERSION_MAP_FILE_PATH = (String)props.get("iplant.transforms.conversion.map.path");
 		
 		SLAVE_MODE = Boolean.valueOf((String)props.get("iplant.slave.mode"));
 		

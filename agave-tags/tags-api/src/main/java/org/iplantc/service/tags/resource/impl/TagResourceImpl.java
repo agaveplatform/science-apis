@@ -3,14 +3,13 @@
  */
 package org.iplantc.service.tags.resource.impl;
 
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.tags.exceptions.TagException;
+import org.iplantc.service.tags.exceptions.TagPermissionException;
 import org.iplantc.service.tags.exceptions.TagValidationException;
 import org.iplantc.service.tags.managers.TagManager;
 import org.iplantc.service.tags.model.Tag;
@@ -19,9 +18,9 @@ import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
 
 /**
  * @author dooley
@@ -45,9 +44,7 @@ public class TagResourceImpl extends AbstractTagResource implements TagResource 
 		try
         {
         	Tag tag = getResourceFromPathValue(entityId);
-        	
     		return Response.ok(new AgaveSuccessRepresentation(tag.toJSON().toString())).build();
-            
         }
         catch (ResourceException e) {
             throw e;
@@ -58,6 +55,9 @@ public class TagResourceImpl extends AbstractTagResource implements TagResource 
             		"An unexpected error occurred while fetching tag  " + entityId + ". "
                 			+ "If this continues, please contact your tenant administrator.", e);
         }
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 		
 	}
 
@@ -77,20 +77,29 @@ public class TagResourceImpl extends AbstractTagResource implements TagResource 
         	
         	return Response.ok().entity(new AgaveSuccessRepresentation()).build();
         }
-        catch (TagException e) {
-        	log.error(e);
-        	throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                    "Failed to add tag. If this problem persists, please contact your administrator.");
+        catch (TagPermissionException e) {
+        	throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN, e.getMessage(), e);
         }
-        catch (TagValidationException e) {
-        	throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, e.getMessage());
-        }
+		catch (TagException e) {
+			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+					"Failed to delete tag.", e);
+		}
+		catch (ResourceException e) {
+        	if (e.getStatus().equals(Status.CLIENT_ERROR_NOT_FOUND)) {
+				return Response.ok().entity(new AgaveSuccessRepresentation()).build();
+			} else {
+        		throw e;
+			}
+		}
         catch (Exception e) {
         	log.error("Failed to delete tag " + entityId, e);
         	throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
         			"An unexpected error occurred while deleting tag  " + entityId + ". "
                 			+ "If this continues, please contact your tenant administrator.", e);
         }
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 
 	/* (non-Javadoc)
@@ -111,14 +120,24 @@ public class TagResourceImpl extends AbstractTagResource implements TagResource 
         	return Response.ok(new AgaveSuccessRepresentation(updatedTag.toJSON().toString())).build();
             
         }
-        catch (ResourceException e) {
-            throw e;
-        }
-        catch (Throwable e) {
+        catch (TagValidationException e) {
+			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, e.getMessage(), e);
+		}
+		catch (TagException e) {
+			log.error("Failed to save updated tag " + entityId + ". " + e.getMessage());
+			throw new ResourceException(Status.SERVER_ERROR_INTERNAL, "Failed to save updated tag.", e);
+		}
+		catch (ResourceException e) {
+			throw e;
+		}
+		catch (Throwable e) {
         	log.error("Failed to update tag " + entityId, e);
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
             		"An unexpected error occurred while updating tag  " + entityId + ". "
                 			+ "If this continues, please contact your tenant administrator.", e);
         }
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 }

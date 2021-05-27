@@ -1,7 +1,5 @@
 package org.iplantc.service.systems.model;
 
-import java.util.Arrays;
-
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -9,8 +7,10 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
 
-public class StorageSystemsTest extends SystemsModelTestCommon{
+@Test(groups={"unit"})
+public class StorageSystemsTest extends SystemsModelTestCommon {
 
     @BeforeClass
     public void beforeClass() throws Exception {
@@ -169,7 +169,7 @@ public class StorageSystemsTest extends SystemsModelTestCommon{
 		};
 	}
     
-   // @Test (groups={"model","system"}, dataProvider="storageSystemDefault")
+    @Test (groups={"model","system"}, dataProvider="storageSystemDefault")
     public void storageSystemDefaultTest(String name, Boolean changeValue, boolean expectedValue, String message) 
     throws Exception 
     {

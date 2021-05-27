@@ -3,13 +3,17 @@
 	"name": "SSH",
 	"status": "UP",
 	"type": "EXECUTION",
-	"description": "Sample ssh execution system.",
-	"site": "tacc.xsede.org",
-	"executionType": "HPC",
+	"description": "Sample ssh fork execution system.",
+	"site": "example.com",
+	"executionType": "CLI",
 	"default": false,
+	"scratchDir": "/tmp",
+	"workDir": "/tmp",
 	"queues": [
 		{
 			"name": "normal",
+			"mappedName": "normal",
+			"description": "The default system queue for all jobs",
 			"maxJobs": 100,
 			"maxUserJobs": 10,
 			"maxNodes": 256,
@@ -21,30 +25,28 @@
 		}
 	],
 	"login": {
-		"host": "iplant-ssh.tacc.utexas.edu",
-		"port": 22,
+		"host": "${ssh.host}",
+		"port": ${ssh.port},
 		"protocol": "SSH",
-		"scratchDir": "/tmp",
-		"workDir": "/tmp",
 		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
-			"credential": "",
+			"username": "testuser",
+			"password": "testuser",
 			"type": "PASSWORD"
 		}
 	},
 	"storage": {
-		"host": "iplant-ssh.tacc.utexas.edu",
-		"port": 22,
+		"host": "${ssh.host}",
+		"port": ${ssh.port},
 		"protocol": "SFTP",
-		"rootDir": "/tmp",
+		"rootDir": "/",
+		"homeDir": "/home/testuser",
 		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
+			"username": "testuser",
+			"password": "testuser",
 			"type": "PASSWORD"
 		}
 	},
-	"scheduler": "SGE",
+	"scheduler": "FORK",
 	"environment": "",
-	"startupScript": "./bashrc"
+	"startupScript": null
 }

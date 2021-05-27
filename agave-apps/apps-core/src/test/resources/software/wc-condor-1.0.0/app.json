@@ -1,5 +1,5 @@
 {
-    "icon":"https://agaveapi.co/wp-content/uploads/2016/02/Agave-white-retina.png",
+    "icon":"https://agaveplatform.org/wp-content/uploads/2016/02/Agave-white-retina.png",
     "available":true,
     "name":"wc-condor",
     "parallelism":"SERIAL",

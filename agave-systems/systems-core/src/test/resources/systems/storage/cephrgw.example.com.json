@@ -1,0 +1,22 @@
+{
+  "id": "cephrgw.example.com",
+  "name": "Amazon S3 Example",
+  "status": "UP",
+  "type": "STORAGE",
+  "description": "Example storage system accessible via Amazon S3 API.",
+  "site": "ceph",
+  "storage": {
+    "host": "http://cephrgw",
+    "port": 8080,
+    "protocol": "S3",
+    "homeDir": "/",
+    "rootDir": "/",
+    "auth": {
+      "publicKey": "agaveuser",
+      "privateKey": "password",
+      "type": "APIKEYS"
+    },
+    "container": "agaveapitestdata"
+  },
+  "default": false
+}

@@ -3,9 +3,6 @@
  */
 package org.iplantc.service.common.model;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.JsonDeserializer;
@@ -13,6 +10,9 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.deser.std.EnumDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleDeserializers;
 import com.fasterxml.jackson.databind.util.EnumResolver;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Allows case insensitive deserialization of enums.

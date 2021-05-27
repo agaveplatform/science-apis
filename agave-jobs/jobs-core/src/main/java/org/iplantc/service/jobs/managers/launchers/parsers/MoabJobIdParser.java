@@ -1,12 +1,12 @@
 package org.iplantc.service.jobs.managers.launchers.parsers;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.RemoteJobIDParsingException;
 import org.iplantc.service.jobs.exceptions.SchedulerException;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Parses the output from a msub command into a local job id 
@@ -23,7 +23,7 @@ public class MoabJobIdParser implements RemoteJobIdParser {
 		String jobID = null;
 		Pattern pattern = Pattern.compile("([0-9]+).*");
 		
-		String lines[] = output.replaceAll("\r", "\\n").split("\n");
+		String[] lines = output.replaceAll("\r", "\\n").split("\n");
 		for (int idx=0; idx<lines.length; idx++) {
 			String line = lines[idx].trim();
 			Matcher matcher = pattern.matcher(line);

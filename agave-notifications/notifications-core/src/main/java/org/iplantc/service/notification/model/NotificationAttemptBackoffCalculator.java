@@ -5,8 +5,8 @@ import org.iplantc.service.notification.model.enumerations.RetryStrategyType;
 
 public class NotificationAttemptBackoffCalculator {
 
-	private NotificationAttempt attempt;
-	private NotificationPolicy policy;
+	private final NotificationAttempt attempt;
+	private final NotificationPolicy policy;
 	
 	public NotificationAttemptBackoffCalculator(NotificationPolicy policy, NotificationAttempt attempt) {
 		this.policy = policy;
@@ -21,9 +21,9 @@ public class NotificationAttemptBackoffCalculator {
 	 * @throws NotificationPolicyViolationException 
 	 */
 	public int getNextScheduledTime() throws NotificationPolicyViolationException {
-		
+
 		// if we're over the attempts, kill future attempts
-		if (attempt.getAttemptNumber() >= policy.getRetryLimit() - 1 || 
+		if (attempt.getAttemptNumber() >= policy.getRetryLimit() - 1 ||
 				policy.getRetryStrategyType() == RetryStrategyType.NONE) {
 			throw new NotificationPolicyViolationException("Number of attempts has been violated");
 		}

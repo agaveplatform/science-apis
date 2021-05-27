@@ -3,8 +3,8 @@
  */
 package org.iplantc.service.common.discovery;
 
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.discovery.providers.sql.DiscoverableServiceCapability;
-import org.testng.log4testng.Logger;
 
 /**
  * Factorty to create {@link ServiceCapability} objects. This is needed
@@ -15,7 +15,7 @@ import org.testng.log4testng.Logger;
  */
 public class ServiceCapabilityFactory
 {
-	private Logger log = Logger.getLogger(ServiceCapabilityFactory.class);
+	private final Logger log = Logger.getLogger(ServiceCapabilityFactory.class);
 	
 	/**
 	 * Returns an instance of a {@link ServiceCapability} that

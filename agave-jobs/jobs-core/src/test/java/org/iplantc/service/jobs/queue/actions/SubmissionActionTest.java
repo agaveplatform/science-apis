@@ -9,7 +9,6 @@ import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.submission.AbstractJobSubmissionTest;
-import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
@@ -23,13 +22,14 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
+@Test(groups={"integration"})
 public class SubmissionActionTest extends AbstractJobSubmissionTest {
-    
-    
+
     @BeforeClass
     @Override
     public void beforeClass() throws Exception {
-        
+
+//        Settings.ALLOW_RELAY_TRANSFERS = false;
         super.beforeClass();
         
         for (Software software: SoftwareDao.getAll()) {

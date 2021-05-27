@@ -1,0 +1,20 @@
+{	
+	"username": "brobinson",
+	"email": "brobinson@hof.mlb.com",
+	"firstName": "Brooks",
+	"lastName": "Robinson",
+	"position": "Infiekd",
+	"institution": "Baltimore Orioles",
+	"phone": "512-555-5555",
+	"fax": "512-555-5556",
+	"researchArea": "Bunt Coverage",
+	"department": "QA",
+	"city": "Baltimore",
+	"state": "MD",
+	"country": "USA",
+	"fundingAgencies": [
+		"mlb",
+		"orioles"
+	],
+	"gender": "MALE"
+}

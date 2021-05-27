@@ -2,23 +2,18 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc.agave</groupId>
+		<groupId>org.agaveplatform</groupId>
 		<artifactId>common</artifactId>
-		<version>2.1.11</version>
+		<version>2.2.27</version>
 	</parent>
 	<artifactId>common-api</artifactId>
-	<name>iPlant Agave API Common Services</name>
+	<name>Agave Platform Common API</name>
 	<description>Common core library for all Agave rest service endpoints.</description>
 	<packaging>jar</packaging>
 
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-common.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-common.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-common</url>
-	</scm>
-
 	<properties>
 		<force.check.update>false</force.check.update>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
 	<build>
@@ -28,30 +23,6 @@
 				<directory>src/test/resources</directory>
 			</testResource>
 		</testResources>
-
-		<plugins>
-			<!-- Attach testng to the surefire execution -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<configuration>
-					<suiteXmlFiles>
-						<suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
-					</suiteXmlFiles>
-				</configuration>
-			</plugin>
-
-			<!-- Release config -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-release-plugin</artifactId>
-				<configuration>
-					<remoteTagging>false</remoteTagging>
-					<suppressCommitBeforeTag>true</suppressCommitBeforeTag>
-					<updateWorkingCopyVersions>false</updateWorkingCopyVersions>
-				</configuration>
-			</plugin>
-		</plugins>
 	</build>
 
 	<dependencies>
@@ -62,17 +33,17 @@
 		</dependency>
 		<!-- Restlet -->
 		<dependency>
-			<groupId>org.restlet.jse</groupId>
+			<groupId>org.restlet.jee</groupId>
 			<artifactId>org.restlet</artifactId>
 			<version>${restlet.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.restlet.jse</groupId>
+			<groupId>org.restlet.jee</groupId>
 			<artifactId>org.restlet.ext.json</artifactId>
 			<version>${restlet.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.restlet.jse</groupId>
+			<groupId>org.restlet.jee</groupId>
 			<artifactId>org.restlet.ext.xml</artifactId>
 			<version>${restlet.version}</version>
 		</dependency>
@@ -82,34 +53,27 @@
 			<version>${restlet.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.restlet.jse</groupId>
-			<artifactId>org.restlet.ext.jetty</artifactId>
-			<version>${restlet.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.restlet.jse</groupId>
+			<groupId>org.restlet.jee</groupId>
 			<artifactId>org.restlet.ext.fileupload</artifactId>
 			<version>${restlet.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.restlet.jse</groupId>
+			<groupId>org.restlet.jee</groupId>
 			<artifactId>org.restlet.ext.xstream</artifactId>
 			<version>${restlet.version}</version>
 		</dependency>
-		<!-- <dependency> <groupId>org.restlet.jee</groupId> <artifactId>org.restlet.ext.velocity</artifactId> 
-			<version>${restlet.version}</version> </dependency> -->
 		<dependency>
-			<groupId>org.restlet.jse</groupId>
+			<groupId>org.restlet.jee</groupId>
 			<artifactId>org.restlet.ext.jaxrs</artifactId>
 			<version>${restlet.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.restlet.jse</groupId>
+			<groupId>org.restlet.jee</groupId>
 			<artifactId>org.restlet.ext.jsslutils</artifactId>
 			<version>${restlet.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.restlet.jse</groupId>
+			<groupId>org.restlet.jee</groupId>
 			<artifactId>org.restlet.ext.freemarker</artifactId>
 			<version>${restlet.version}</version>
 		</dependency>
@@ -125,31 +89,11 @@
 			<version>${javax.ws.rs-api.version}</version>
 		</dependency>
 
-		<dependency>
-			<groupId>javax.servlet</groupId>
-			<artifactId>servlet-api</artifactId>
-			<version>${servlet-api.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mortbay</groupId>
-			<artifactId>jetty.ajp</artifactId>
-			<version>${jetty.ajp.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mortbay</groupId>
-			<artifactId>jetty.https</artifactId>
-			<version>${jetty.https.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mortbay</groupId>
-			<artifactId>jetty.core</artifactId>
-			<version>${jetty.core.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mortbay</groupId>
-			<artifactId>jetty.util</artifactId>
-			<version>${jetty.util.version}</version>
-		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>javax.servlet</groupId>-->
+<!--			<artifactId>servlet-api</artifactId>-->
+<!--			<version>${servlet-api.version}</version>-->
+<!--		</dependency>-->
 	</dependencies>
 
 </project>

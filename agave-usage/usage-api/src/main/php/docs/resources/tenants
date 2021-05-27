@@ -16,7 +16,7 @@
             "path": "/tenants/"
         }
     ],
-    "basePath": "http://agaveapi.co",
+    "basePath": "https://agaveplatform.org",
     "models": {
         "MultipleTenantResponse": {
             "id": "MultipleTenantResponse",

@@ -1,21 +1,5 @@
 package org.iplantc.service.common.auth;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.FileSystems;
-import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Set;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -31,6 +15,17 @@ import org.codehaus.plexus.logging.console.ConsoleLogger;
 import org.codehaus.plexus.util.FileUtils;
 import org.globus.common.CoGProperties;
 import org.iplantc.service.common.clients.HTTPSClient;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * Manages the location of the trusted CA folder used

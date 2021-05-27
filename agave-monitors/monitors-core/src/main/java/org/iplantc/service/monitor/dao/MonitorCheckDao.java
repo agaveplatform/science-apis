@@ -3,23 +3,19 @@
  */
 package org.iplantc.service.monitor.dao;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-
-import org.hibernate.CacheMode;
-import org.hibernate.HibernateException;
-import org.hibernate.ObjectNotFoundException;
-import org.hibernate.Query;
-import org.hibernate.Session;
+import org.hibernate.*;
 import org.iplantc.service.common.dao.AbstractDao;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.monitor.exceptions.MonitorException;
+import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.model.MonitorCheck;
 import org.iplantc.service.monitor.model.enumeration.MonitorCheckType;
 import org.iplantc.service.monitor.model.enumeration.MonitorStatusType;
 import org.joda.time.DateTime;
+
+import java.util.Date;
+import java.util.List;
 
 /**
  * Data access class for internal users.
@@ -44,8 +40,7 @@ public class MonitorCheckDao extends AbstractDao
 	/**
 	 * Gets all checks for a monitor.
 	 * 
-	 * @param username
-	 * @param uuid
+	 * @param monitorId
 	 * @return
 	 * @throws MonitorException
 	 */
@@ -77,20 +72,19 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
 	 * Gets all checks for a monitor.
 	 * 
-	 * @param username
-	 * @param uuid
+	 * @param monitorId the db id of the monitor
 	 * @return
 	 * @throws MonitorException
 	 */
@@ -127,21 +121,21 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
 	 * Finds check by uuid within a tenant
 	 * 
-	 * @param apiUsername
-	 * @return
-	 * @throws MonitorException
+	 * @param uuid the monitor uuid to find
+	 * @return the monitor with the given uuid or null if not found
+	 * @throws MonitorException when unable to query the db
 	 */
 	public MonitorCheck findByUuid(String uuid) throws MonitorException
 	{
@@ -167,12 +161,12 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -251,7 +245,6 @@ public class MonitorCheckDao extends AbstractDao
             }
 			
 			List<MonitorCheck> checks = (List<MonitorCheck>)query
-//					.setResultTransformer(Transformers.aliasToBean(MonitorCheck.class))
 					.setCacheable(false)
 					.setCacheMode(CacheMode.IGNORE)
 					.setFirstResult(offset)
@@ -270,12 +263,12 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -306,7 +299,7 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException("Failed to save monitor check", ex);
 		}
@@ -318,7 +311,7 @@ public class MonitorCheckDao extends AbstractDao
 	/**
 	 * Deletes a monitor
 	 * 
-	 * @param profile
+	 * @param monitor
 	 * @throws MonitorException
 	 */
 	public void delete(MonitorCheck monitor) throws MonitorException
@@ -344,12 +337,12 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException("Failed to delete monitor check", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -378,12 +371,54 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
-	}	
+	}
+
+	/**
+	 * Deletes all {@link MonitorCheck}s from the db for a given monitor.
+	 *
+	 * @param monitor the monitor whose checks will be deleted
+	 * @throws MonitorException if unable to process the delete
+	 */
+	public void deleteAllForMonitor(Monitor monitor) throws MonitorException {
+
+		if (monitor == null)
+			throw new MonitorException("MonitorCheck cannot be null");
+
+		try {
+			HibernateUtil.beginTransaction();
+			Session session = HibernateUtil.getSession();
+			String hql = "DELETE from MonitorCheck mc " +
+					"where mc.monitor.id = :monitorId";
+
+			session.createQuery(hql)
+					.setLong("monitorId", monitor.getId())
+					.setCacheable(false)
+					.setCacheMode(CacheMode.IGNORE)
+					.executeUpdate();
+
+			session.flush();
+		}
+		catch (HibernateException ex)
+		{
+			try
+			{
+				if (HibernateUtil.getSession().isOpen()) {
+					HibernateUtil.rollbackTransaction();
+				}
+			}
+			catch (Exception ignored) {}
+
+			throw new MonitorException("Failed to delete monitor check", ex);
+		}
+		finally {
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
+		}
+	}
 }

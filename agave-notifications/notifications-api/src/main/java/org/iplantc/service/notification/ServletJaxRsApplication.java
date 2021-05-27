@@ -10,7 +10,7 @@ import org.restlet.security.Verifier;
 
 public class ServletJaxRsApplication extends JaxRsApplication {
 
-    public ServletJaxRsApplication(Context context) 
+	public ServletJaxRsApplication(Context context)
     {
         super(context);
         

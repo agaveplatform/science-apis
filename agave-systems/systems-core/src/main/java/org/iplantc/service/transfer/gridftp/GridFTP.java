@@ -1,47 +1,14 @@
 package org.iplantc.service.transfer.gridftp;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.RandomAccessFile;
-import java.io.StringReader;
-import java.net.Socket;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.FileUtils;
-import org.globus.ftp.ChecksumAlgorithm;
-import org.globus.ftp.DataSink;
-import org.globus.ftp.DataSinkStream;
-import org.globus.ftp.DataSource;
-import org.globus.ftp.FTPClient;
-import org.globus.ftp.FeatureList;
-import org.globus.ftp.FileRandomIO;
-import org.globus.ftp.GridFTPClient;
-import org.globus.ftp.GridFTPSession;
-import org.globus.ftp.HostPort;
-import org.globus.ftp.HostPort6;
-import org.globus.ftp.HostPortList;
-import org.globus.ftp.MlsxEntry;
-import org.globus.ftp.RetrieveOptions;
-import org.globus.ftp.Session;
+import org.globus.ftp.*;
 import org.globus.ftp.dc.SocketBox;
 import org.globus.ftp.dc.SocketOperator;
-import org.globus.ftp.exception.ClientException;
-import org.globus.ftp.exception.FTPException;
-import org.globus.ftp.exception.FTPReplyParseException;
-import org.globus.ftp.exception.ServerException;
-import org.globus.ftp.exception.UnexpectedReplyCodeException;
+import org.globus.ftp.exception.*;
 import org.globus.ftp.extended.GridFTPControlChannel;
 import org.globus.ftp.extended.GridFTPServerFacade;
 import org.globus.ftp.vanilla.Command;
@@ -54,9 +21,18 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientPermissionProvider;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteTransferListener;
+import org.iplantc.service.transfer.exceptions.InvalidTransferException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
+
+import java.io.*;
+import java.net.Socket;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * {@link RemoteDataClient} implementation for the GSI FTP protocol. This 
@@ -68,7 +44,7 @@ import org.iplantc.service.transfer.model.enumerations.PermissionType;
  */
 public class GridFTP extends GridFTPClient implements RemoteDataClient, RemoteDataClientPermissionProvider 
 {	
-	private static Logger log = Logger.getLogger(FTPClient.class);
+	private static final Logger log = Logger.getLogger(FTPClient.class);
 
 	protected static final int MAX_BUFFER_SIZE = 1048576;
 
@@ -82,7 +58,7 @@ public class GridFTP extends GridFTPClient implements RemoteDataClient, RemoteDa
 	protected GSSCredential credential;
 	protected int parallelism = 1;
 	protected String trustedCAPath;
-	private Map<String, RemoteFileInfo> fileInfoCache = new ConcurrentHashMap<String,RemoteFileInfo>();
+	private final Map<String, RemoteFileInfo> fileInfoCache = new ConcurrentHashMap<String,RemoteFileInfo>();
 	
 	class ExtendedFeatureList extends FeatureList {
 	    
@@ -314,7 +290,7 @@ public class GridFTP extends GridFTPClient implements RemoteDataClient, RemoteDa
                         gSession.serverAddressList.add(hp);
 
                         log.debug("started single striped passive server at port " +
-                                     ((HostPort) gSession.serverAddressList.get(0)).getPort());
+                                     gSession.serverAddressList.get(0).getPort());
 
                         return gSession.serverAddressList;
                     }
@@ -899,8 +875,8 @@ public class GridFTP extends GridFTPClient implements RemoteDataClient, RemoteDa
 		{
 			// can't put dir to file
 			if (localFile.isDirectory() && !isDirectory(dest)) {
-				throw new RemoteDataException("cannot overwrite non-directory: " + 
-						remotedir + " with directory " + localFile.getName());
+				String msg = "Cannot overwrite non-directory " + remotedir + " with directory " + localFile.getPath();
+				throw new InvalidTransferException(msg);
 			} 
 //			else if (!localFile.isDirectory())
 //			{
@@ -1084,7 +1060,7 @@ public class GridFTP extends GridFTPClient implements RemoteDataClient, RemoteDa
 			long length, String file) throws IOException, ServerException
 	{
 		String arguments = algorithm.toFtpCmdArgument() + " "
-				+ String.valueOf(offset) + " " + String.valueOf(length) + " "
+				+ offset + " " + length + " "
 				+ file;
 		
 		Command cmd = new Command("CKSM", arguments);
@@ -1152,12 +1128,8 @@ public class GridFTP extends GridFTPClient implements RemoteDataClient, RemoteDa
             if (!doesExist(path)) return false;
 
         	path = resolvePath(path);
-            
-            if (path.startsWith(rootDir)) {
-                return true;
-            } else {
-                return false;
-            }
+
+            return path.startsWith(rootDir);
         } catch (Exception e) {
             return false;
         }
@@ -1171,11 +1143,7 @@ public class GridFTP extends GridFTPClient implements RemoteDataClient, RemoteDa
         {
             path = resolvePath(path);
 
-            if (path.startsWith(rootDir)) {
-                return true;
-            } else {
-                return false;
-            }
+            return path.startsWith(rootDir);
         } catch (Exception e) {
             return false;
         }
@@ -1550,7 +1518,8 @@ public class GridFTP extends GridFTPClient implements RemoteDataClient, RemoteDa
 				} 
 				else if (localDir.isFile()) 
 				{
-					throw new RemoteDataException("cannot overwrite non-directory: " + localDir.getName() + " with directory " + remotedir);
+					String msg = "Cannot overwrite non-directory " + localdir + " with directory " + remotedir;
+					throw new InvalidTransferException(msg);
 				}
 				else {
 					localDir = new File(localDir, remoteFileInfo.getName());

@@ -31,12 +31,11 @@ public enum StartupScriptSystemVariableType
 	 * Resolves a template variable into the actual value for the
 	 * system. Tenancy is honored with respect to the system.
 	 * 
-	 * @param job A valid job object
+	 * @param system the system to resolve
 	 * @return resolved value of the variable.
 	 */
 	public String resolveForSystem(ExecutionSystem system)
 	{
-		
 		if (this == SYSTEM_ID)
 		{
 			return system.getSystemId();

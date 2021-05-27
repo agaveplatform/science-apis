@@ -1,24 +1,6 @@
 package org.iplantc.service.notification;
 
-import static org.iplantc.service.notification.TestDataHelper.NOTIFICATION_CREATOR;
-import static org.iplantc.service.notification.TestDataHelper.TENANT_ADMIN;
-import static org.iplantc.service.notification.TestDataHelper.ALT_TENANT_ADMIN;
-import static org.iplantc.service.notification.TestDataHelper.NOTIFICATION_STRANGER;
-import static org.iplantc.service.notification.TestDataHelper.TEST_EMAIL_NOTIFICATION;
-import static org.iplantc.service.notification.TestDataHelper.TEST_REALTIME_NOTIFICATION;
-import static org.iplantc.service.notification.TestDataHelper.TEST_WEBHOOK_NOTIFICATION;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.AGAVE;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.EMAIL;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.REALTIME;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.SLACK;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.WEBHOOK;
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.io.IOException;
-import java.util.Map;
-
+import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.HibernateException;
@@ -44,23 +26,39 @@ import org.quartz.SimpleTrigger;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 
-import com.surftools.BeanstalkClientImpl.ClientImpl;
+import java.io.IOException;
+import java.util.Map;
+import java.util.Properties;
+
+import static org.iplantc.service.notification.TestDataHelper.*;
+import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.*;
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 public class AbstractNotificationTest {
 
-	protected static final String TEST_USER = "ipcservices";
-	protected static final String TEST_EMAIL = "dooley@tacc.utexas.edu";
+	protected static final String TEST_USER = "testuser";
+	protected static final String TEST_EMAIL = "help@agaveplatform.org";
 	protected static final String TEST_URL_QUERY = "?username=${USERNAME}&status=${STATUS}";
 	protected static final String SPECIFIC_ASSOCIATED_UUID = new AgaveUUID(UUIDType.PROFILE).toString();
 	protected static final String DECOY_ASSOCIATED_UUID = new AgaveUUID(UUIDType.PROFILE).toString();
 	protected static final String WILDCARD_ASSOCIATED_UUID = "*";
-	
+	protected final String TEST_SLACK_WEBHOOK_URL;
 	protected NotificationDao dao = null;
 	protected TestDataHelper dataHelper;
 	protected RequestBin requestBin;
 	protected Scheduler sched;
 	protected SimpleTrigger trigger;
-	
+
+	public AbstractNotificationTest() {
+		dataHelper = TestDataHelper.getInstance();
+		dao = new NotificationDao();
+
+		Properties props = org.iplantc.service.common.Settings.loadRuntimeProperties();
+		TEST_SLACK_WEBHOOK_URL = props.getProperty("test.slack.webhook.url");
+	}
+
 	protected void addNotifications(int instances, NotificationStatusType status, String associatedUuid, boolean stranger, NotificationCallbackProviderType type) 
 	throws Exception
 	{
@@ -105,13 +103,16 @@ public class AbstractNotificationTest {
 		notification.setCallbackUrl("ftp://foo.example.com");
 		notification.setOwner(NOTIFICATION_CREATOR);
 		notification.getPolicy().setRetryStrategyType(RetryStrategyType.NONE);
+		notification.setPersistent(false);
 		return notification;
 	}
 	
-	protected Notification createEmailNotification() throws NotificationException, IOException
+	public Notification createEmailNotification() throws NotificationException, IOException
 	{
 		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_EMAIL_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
+		notification.setPersistent(false);
+		notification.getPolicy().setRetryStrategyType(RetryStrategyType.NONE);
 		
 		return notification;
 	}
@@ -124,6 +125,7 @@ public class AbstractNotificationTest {
 		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_WEBHOOK_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
 		notification.setCallbackUrl(requestBin.toString() + TEST_URL_QUERY);
+		notification.setPersistent(false);
 		notification.getPolicy().setRetryStrategyType(RetryStrategyType.NONE);
 		
 		return notification;
@@ -136,7 +138,8 @@ public class AbstractNotificationTest {
 		}
 		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_WEBHOOK_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
-		notification.setCallbackUrl("https://hooks.slack.com/services/TTTTTTTTT/BBBBBBBBB/1234567890123456789012345");
+		notification.setCallbackUrl(TEST_SLACK_WEBHOOK_URL);
+		notification.setPersistent(false);
 		notification.getPolicy().setRetryStrategyType(RetryStrategyType.NONE);
 		return notification;
 	}
@@ -173,7 +176,7 @@ public class AbstractNotificationTest {
 		return createRealtimeNotification(null);
 	}
 	
-	protected void clearNotifications() throws NotificationException
+	public void clearNotifications() throws NotificationException
 	{
 		try
 		{
@@ -200,7 +203,7 @@ public class AbstractNotificationTest {
 			.withIdentity("test-" + name)
 			.build();
 		
-		trigger = (SimpleTrigger)newTrigger()
+		trigger = newTrigger()
 				.withIdentity("trigger-JobNotificationTest")
 				.startNow()
 				.withSchedule(simpleSchedule()
@@ -213,7 +216,6 @@ public class AbstractNotificationTest {
 	
 	/**
 	 * Flushes the messaging tube of any and all existing jobs.
-	 * @param queueName
 	 */
 	@AfterMethod
 	protected void drainQueue() 

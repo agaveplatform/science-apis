@@ -1,5 +1,7 @@
 package org.iplantc.service.metadata.events;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.exceptions.EntityEventProcessingException;
@@ -8,15 +10,10 @@ import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.MetadataEventType;
 import org.iplantc.service.notification.managers.NotificationManager;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.ser.SerializerFactory;
-import com.mongodb.BasicDBObject;
-
 public class MetadataEventProcessor {
 
 	private static final Logger log = Logger.getLogger(MetadataEventProcessor.class);
-	private ObjectMapper mapper = new ObjectMapper();
+	private static final ObjectMapper mapper = new ObjectMapper();
 		
 	public MetadataEventProcessor() {}
 
@@ -25,10 +22,10 @@ public class MetadataEventProcessor {
 	 * {@link MetadataItem}. This could be a CRUD operation or a change
 	 * to the credentials.
 	 * 
-	 * @param monitor the monitor on which the even is triggered
+	 * @param uuid the uuid of the metadata item
 	 * @param eventType the event being triggered
 	 * @param createdBy the user who caused this event
-	 * @return the {@link MontiorEvent} updated with the association to the {@link MetadataItem}
+	 * @param serializedMetadataItem the serialized metadata object to include in the message body.
 	 */
 	public void processContentEvent(String uuid, MetadataEventType eventType, String createdBy, String serializedMetadataItem) {
 		
@@ -72,10 +69,10 @@ public class MetadataEventProcessor {
 	 * {@link MetadataItem}. This could be a CRUD operation or a change
 	 * to the credentials.
 	 * 
-	 * @param monitor the monitor on which the even is triggered
+	 * @param metadata the metadata item on which the even is triggered
 	 * @param eventType the event being triggered
 	 * @param createdBy the user who caused this event
-	 * @return the {@link MontiorEvent} updated with the association to the {@link MetadataItem}
+	 * @return the {@link MetadataItem} updated with the association to the {@link MetadataItem}
 	 */
 	public MetadataItem processContentEvent(MetadataItem metadata, MetadataEventType eventType, String createdBy) {
 		
@@ -94,8 +91,8 @@ public class MetadataEventProcessor {
 			
 			String sJson = null;
 			try {
-				ObjectNode json = mapper.createObjectNode();
-			    json.set("metadata", mapper.readTree(mapper.writeValueAsString(metadata)));
+				ObjectNode json = getMapper().createObjectNode();
+			    json.set("metadata", getMapper().readTree(getMapper().writeValueAsString(metadata)));
 			    sJson = json.toString();
 			} catch (Throwable e) {
 			    log.error(String.format("Failed to serialize metadata "
@@ -123,11 +120,12 @@ public class MetadataEventProcessor {
 	 * notification event being thrown onto the the deleted item and with only the uuid
 	 * in the body. Generally this is only called from a bulk operation where speed of
 	 * operation trumps verboseness of messages.
-	 * 
-	 * @param uuid
-	 * @param eventType
-	 * @param createdBy
-	 * @return
+	 *
+	 * @param uuid the uuid of the impacted uuid
+	 * @param eventType the metadata event type
+	 * @param createdBy the user responsible for this event
+	 * @return the uuid of the target metadata item
+	 * @deprecated batch events not yet supported
 	 */
 	public String processBulkContentEvent(String uuid, MetadataEventType eventType, String createdBy) {
 		try {
@@ -145,8 +143,10 @@ public class MetadataEventProcessor {
 			
 			String sJson = null;
 			try {
-				ObjectNode json = mapper.createObjectNode();
-			    json.set("metadata", mapper.createObjectNode().put("uuid",  uuid));
+				ObjectNode json = getMapper().createObjectNode();
+				json.putArray("metadata")
+						.addObject()
+							.put("uuid",  uuid);
 			    sJson = json.toString();
 			} catch (Throwable e) {
 			    log.error(String.format("Failed to serialize metadata "
@@ -158,7 +158,7 @@ public class MetadataEventProcessor {
 			processNotification(uuid, eventType.name(), createdBy, sJson);
 		}
 		catch (EntityEventProcessingException e) {
-			log.error(e.getMessage());
+			log.error("Failed to process batch metadata event: " + e.getMessage());
 		}
 		
 		return uuid;
@@ -166,15 +166,13 @@ public class MetadataEventProcessor {
 	}
 	
 	/**
-	 * Generates notification events for permission-related changes to a 
-	 * {@link MetadataItem}. This could be a CRUD operation or a change
-	 * to the credentials.
+	 * Generates notification events for permission-related changes to a {@link MetadataItem}. This could be a CRUD
+	 * operation or a change to the permissions.
 	 * 
-	 * @param metadata the {@link MetadataItem} on which the even is triggered
+	 * @param uuid the uuid of the {@link MetadataItem} on which the permission event is triggered
 	 * @param permission the {@link MetadataPermission} triggering this event
 	 * @param eventType the {@link MetadataEventType} being triggered
 	 * @param createdBy the user who caused this event
-	 * @return the {@link MontiorEvent} updated with the association to the {@link MetadataItem}
 	 */
 	public void processPermissionEvent(String uuid, MetadataPermission permission, MetadataEventType eventType, String createdBy, String serializedMetadataItem) {
 		
@@ -201,7 +199,7 @@ public class MetadataEventProcessor {
 			
 			String sJson = null;
 			try {
-				sJson = "{\"metadata\":" + serializedMetadataItem + ", \"permission\":" + permission.toJSON() + "}";
+				sJson = "{\"metadata\":" + serializedMetadataItem + ", \"permission\":" + permission.toJSON(uuid) + "}";
 			} catch (Throwable e) {
 			    log.error(String.format("Failed to serialize metadata "
 			            + "%s to json for %s event notification", 
@@ -223,11 +221,12 @@ public class MetadataEventProcessor {
 	}
 	
 	/**
-	 * Publishes a {@link MonitorEvent} event to the  
-	 * {@link RemoteSystem} on which the {@link MetadataItem} resides.
+	 * Publishes an event message for the {@code associatedUuid}.
 	 * 
-	 * @param associatedUuid
-	 * @param json
+	 * @param associatedUuid the uuid of the related resource
+	 * @param event the name of the event
+	 * @param createdBy the user responsible for this event
+	 * @param sJson the messageBody
 	 * @return the number of messages published
 	 */
 	private int processNotification(String associatedUuid, String event, String createdBy, String sJson) {
@@ -242,6 +241,8 @@ public class MetadataEventProcessor {
         }
 	}
 
-	
 
+	protected ObjectMapper getMapper() {
+		return mapper;
+	}
 }

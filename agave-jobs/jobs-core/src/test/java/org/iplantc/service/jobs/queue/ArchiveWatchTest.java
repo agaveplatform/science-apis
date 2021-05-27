@@ -1,15 +1,5 @@
 package org.iplantc.service.jobs.queue;
 
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.CLEANING_UP;
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.io.File;
-import java.io.OutputStream;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
@@ -21,12 +11,7 @@ import org.iplantc.service.jobs.submission.AbstractJobSubmissionTest;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.JobListener;
-import org.quartz.Scheduler;
-import org.quartz.Trigger;
+import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.KeyMatcher;
 import org.testng.Assert;
@@ -35,11 +20,21 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.io.OutputStream;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.iplantc.service.jobs.model.enumerations.JobStatusType.CLEANING_UP;
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
+
 /**
  * Tests end to end integration of a job submission by manually pushing
  * through each stage of each queue.
  */
-@Test(groups={"broken"})
+@Test(groups={"broken", "integration"})
 public class ArchiveWatchTest extends AbstractJobSubmissionTest
 {
     private static final Logger log = Logger.getLogger(ArchiveWatchTest.class);

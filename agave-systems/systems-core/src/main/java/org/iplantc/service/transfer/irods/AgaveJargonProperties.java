@@ -1,8 +1,10 @@
 package org.iplantc.service.transfer.irods;
 
+import org.irods.jargon.core.connection.ClientServerNegotiationPolicy.SslNegotiationPolicy;
 import org.irods.jargon.core.connection.JargonProperties;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.protovalues.ChecksumEncodingEnum;
+import org.irods.jargon.core.protovalues.EncryptionAlgorithmEnum;
 
 public class AgaveJargonProperties implements JargonProperties {
 	
@@ -58,6 +60,12 @@ public class AgaveJargonProperties implements JargonProperties {
 	private int parallelCopyBufferSize = 4194304;
 	private int intraFileStatusCallbacksNumberCallsInterval = 5;
 	private long intraFileStatusCallbacksTotalBytesInterval = 4194304;
+	
+	private SslNegotiationPolicy negotiationPolicy = SslNegotiationPolicy.CS_NEG_REFUSE;
+    private EncryptionAlgorithmEnum encryptionAlgorithmEnum = EncryptionAlgorithmEnum.AES_256_CBC;
+    private int encryptionKeySize = 32;
+    private int encryptionSaltSize = 8;
+    private int encryptionNumberHashRounds = 16;
 	
 	public AgaveJargonProperties() throws JargonException {}
 	
@@ -1073,4 +1081,51 @@ public class AgaveJargonProperties implements JargonProperties {
 			final boolean bypassSslCertChecks) {
 		this.bypassSslCertChecks = bypassSslCertChecks;
 	}
+
+    @Override
+    public EncryptionAlgorithmEnum getEncryptionAlgorithmEnum() {
+        return encryptionAlgorithmEnum;
+    }
+
+    public void setEncryptionAlgorithmEnum(EncryptionAlgorithmEnum encryptionAlgorithmEnum) {
+        this.encryptionAlgorithmEnum = encryptionAlgorithmEnum;
+    }
+
+    @Override
+    public int getEncryptionKeySize() {
+        return encryptionKeySize;
+    }
+
+    public void setEncryptionKeySize(int encryptionKeySize) {
+        this.encryptionKeySize = encryptionKeySize;
+    }
+
+    @Override
+    public int getEncryptionNumberHashRounds() {
+        return encryptionNumberHashRounds;
+    }
+
+    public void setEncryptionNumberHashRounds(int encryptionNumberHashRounds) {
+        this.encryptionNumberHashRounds = encryptionNumberHashRounds;
+    }
+
+    @Override
+    public int getEncryptionSaltSize() {
+        return encryptionSaltSize;
+    }
+
+    public void setEncryptionSaltSize(int encryptionSaltSize) {
+        this.encryptionSaltSize = encryptionSaltSize;
+    }
+
+    @Override
+    public SslNegotiationPolicy getNegotiationPolicy() {
+        return negotiationPolicy;
+    }
+    
+    public void setNegotiationPolicy(SslNegotiationPolicy negotiationPolicy) {
+        this.negotiationPolicy = negotiationPolicy;
+    }
+
+
 }

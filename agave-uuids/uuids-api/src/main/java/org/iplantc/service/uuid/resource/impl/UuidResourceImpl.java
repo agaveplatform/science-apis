@@ -3,13 +3,9 @@
  */
 package org.iplantc.service.uuid.resource.impl;
 
-import java.util.Map;
-
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.StringUtils;
@@ -24,10 +20,11 @@ import org.restlet.data.Status;
 import org.restlet.resource.Get;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Response;
+import java.util.Map;
 
 /**
  * Concrete implementation class resolving a given serialized
@@ -55,10 +52,9 @@ public class UuidResourceImpl extends AbstractUuidResource implements
 			@QueryParam("filter") String filter)
 	throws Exception 
 	{
-		
 		logUsage(AgaveLogServiceClient.ActivityKeys.UuidLookup);
 		
-		Boolean expandResources = BooleanUtils.toBoolean(expand);
+		boolean expandResources = BooleanUtils.toBoolean(expand);
 		
 		try
 		{
@@ -90,7 +86,7 @@ public class UuidResourceImpl extends AbstractUuidResource implements
 					json.put("type", agaveUuid.getResourceType().name().toLowerCase());
 	
 				ObjectNode linksObject = mapper.createObjectNode();
-	      		linksObject.set("self", (ObjectNode)mapper.createObjectNode()
+	      		linksObject.set("self", mapper.createObjectNode()
 	      							.put("href", TenancyHelper.resolveURLToCurrentTenant(agaveUuid.getObjectReference())));
 	
 	      		json.set("_links", linksObject);

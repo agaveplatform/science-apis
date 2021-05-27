@@ -4,7 +4,11 @@
 package org.iplantc.service.jobs.model.scripts;
 
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.apps.model.enumerations.ParallelismType;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.model.Job;
+import org.iplantc.service.systems.model.ExecutionSystem;
 
 /**
  * Concreate class for SGE batch submit scripts.
@@ -15,13 +19,18 @@ import org.iplantc.service.jobs.model.Job;
 public class TorqueSubmitScript extends AbstractSubmitScript {
 
 	public static final String DIRECTIVE_PREFIX = "#PBS ";
-	
+
 	/**
-	 * 
+	 * Default constructor used by all {@link SubmitScript}. Note that node count will be forced to 1
+	 * whenever the {@link Software#getParallelism()} is {@link ParallelismType#SERIAL} or null.
+	 *
+	 * @param job the job for which the submit script is being created
+	 * @param software the app being run by the job
+	 * @param executionSystem the system on which the app will be run
 	 */
-	public TorqueSubmitScript(Job job)
+	public TorqueSubmitScript(Job job, Software software, ExecutionSystem executionSystem)
 	{
-		super(job);
+		super(job, software, executionSystem);
 	}
 
 	/**
@@ -31,7 +40,7 @@ public class TorqueSubmitScript extends AbstractSubmitScript {
 	 * For parallel applications, half the processor value of nodes is requested
 	 * with two cores per node.
 	 */
-	public String getScriptText()
+	public String getScriptText() throws JobMacroResolutionException
 	{
 		// #!/bin/bash
 		// #PBS -q batch

@@ -1,18 +1,8 @@
 package org.iplantc.service.jobs.queue;
 
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.io.File;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -30,7 +20,6 @@ import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.submission.AbstractJobSubmissionTest;
 import org.iplantc.service.jobs.util.Slug;
-import org.iplantc.service.notification.model.NotificationAttempt;
 import org.iplantc.service.profile.dao.InternalUserDao;
 import org.iplantc.service.profile.exceptions.ProfileException;
 import org.iplantc.service.profile.model.InternalUser;
@@ -46,26 +35,28 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.joda.time.DateTime;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.JobListener;
-import org.quartz.Scheduler;
-import org.quartz.Trigger;
+import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
-import org.quartz.impl.matchers.KeyMatcher;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
-@Test(groups={"broken"})
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
+
+@Test(groups={"broken", "integration"})
 public class StagingWatchTest extends AbstractJobSubmissionTest 
 {
     private static final Logger log = Logger.getLogger(StagingWatch.class);
@@ -73,8 +64,8 @@ public class StagingWatchTest extends AbstractJobSubmissionTest
 	protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.bin";
 	
 	private JSONTestDataUtil jtd;
-	private SystemDao systemDao = new SystemDao();
-	private SystemManager systemManager = new SystemManager();
+	private final SystemDao systemDao = new SystemDao();
+	private final SystemManager systemManager = new SystemManager();
 	
 	@BeforeClass
 	public void beforeClass() throws Exception
@@ -222,6 +213,8 @@ public class StagingWatchTest extends AbstractJobSubmissionTest
 		job.setName( software.getExecutionSystem().getName() + " test");
 		job.setOwner(software.getOwner());
 		job.setArchiveOutput(false);
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(software.getExecutionSystem().getScheduler());
 		
 		job.setArchivePath(software.getOwner() + "/archive/jobs/job-" + job.getUuid());
         job.setArchiveSystem(systemDao.getGlobalDefaultSystemForTenant(RemoteSystemType.STORAGE, TenancyHelper.getCurrentTenantId()));
@@ -483,6 +476,7 @@ public class StagingWatchTest extends AbstractJobSubmissionTest
     public void concurrentQueueTerminationTest(Software software, String[] inputs, String message) 
     throws Exception 
     {
+	    // NOTE: The properties file referenced here were deleted on 7/12/2017.
 	    clearJobs();
 	    StdSchedulerFactory factory = new StdSchedulerFactory();
         factory.initialize(this.getClass().getClassLoader().getResourceAsStream("quartz-producer.properties"));
@@ -542,8 +536,8 @@ public class StagingWatchTest extends AbstractJobSubmissionTest
                     @Override
                     public void jobWasExecuted(JobExecutionContext context, JobExecutionException e) {
                         if (e == null) {
-                            log.error(jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);;
-                        } else {
+                            log.error(jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);
+						} else {
 //                            log.error("Transfer failed",e);
                         }
                     }
@@ -658,8 +652,8 @@ public class StagingWatchTest extends AbstractJobSubmissionTest
                     @Override
                     public void jobWasExecuted(JobExecutionContext context, JobExecutionException e) {
                         if (e == null) {
-                            log.error(jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);;
-                        } else {
+                            log.error(jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);
+						} else {
 //                            log.error("Transfer failed",e);
                         }
                     }

@@ -1,26 +1,25 @@
 package org.iplantc.service.metadata.model.validation;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
-
-import org.iplantc.service.metadata.model.validation.constraints.ValidJsonSchema;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonschema.main.JsonSchemaFactory;
 import com.github.fge.jsonschema.processors.syntax.SyntaxValidator;
+import org.iplantc.service.metadata.model.validation.constraints.ValidJsonSchema;
+
+import javax.validation.ConstraintValidator;
+import javax.validation.ConstraintValidatorContext;
 
 public class ValidJsonSchemaValidator implements ConstraintValidator<ValidJsonSchema, Object> {
-    
+
+    private static final ObjectMapper mapper = new ObjectMapper();
+
     @Override
     public void initialize(final ValidJsonSchema constraintAnnotation) {
     }
 
     @Override
     public boolean isValid(Object target, final ConstraintValidatorContext constraintContext) {
-        
-        ObjectMapper mapper = new ObjectMapper();
-        
+
         boolean isValid = false;
         
         if (target == null) {

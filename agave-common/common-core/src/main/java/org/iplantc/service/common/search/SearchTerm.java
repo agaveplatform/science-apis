@@ -1,12 +1,12 @@
 package org.iplantc.service.common.search;
 
+import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.exceptions.SearchSyntaxException;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.exceptions.SearchSyntaxException;
 
 /**
  * Tuple to hold mapping of job attribute and
@@ -37,8 +37,10 @@ public class SearchTerm implements Comparable<SearchTerm>
 		GT("%s > :%s"),
 		AFTER("%s > :%s"),
 		GTE("%s >= :%s"),
+
 		IN("%s in :%s"),
 		NIN("%s not in :%s"),
+
 		LIKE("%s like :%s"),
 		RLIKE("%s REGEXP :%s"),
 		NLIKE(":%s not like :%s"),
@@ -46,7 +48,7 @@ public class SearchTerm implements Comparable<SearchTerm>
 		
 		private String template;
 		
-		private Operator(String template) {
+		Operator(String template) {
 			this.setTemplate(template);
 		}
 
@@ -66,11 +68,51 @@ public class SearchTerm implements Comparable<SearchTerm>
 		public boolean isSetOperator() {
 			return (this == IN || this == NIN || this == BETWEEN);
 		}
-		
+
+		/**
+		 * Returns a list of operators to apply against temporal fields
+		 * @return list of temporal operators
+		 */
+		public static List<SearchTerm.Operator> temporalValues() {
+			return List.of(ON,EQ,BEFORE,AFTER,BETWEEN);
+		}
+
+		/**
+		 * Returns a list of operators to apply against sets of fields
+		 * @return list of set operators
+		 */
+		public static List<SearchTerm.Operator> setValues() {
+			return List.of(IN,NIN,BETWEEN);
+		}
+
+		/**
+		 * Returns a list of operators to apply against numeric fields
+		 * @return list of jnumeric operators
+		 */
+		public static List<SearchTerm.Operator> numericValues() {
+			return List.of(EQ,NEQ,GT,GTE,LT,LTE);
+		}
+
+		/**
+		 * Returns a list of operators to apply against numeric fields
+		 * @return list of string operators
+		 */
+		public static List<SearchTerm.Operator> stringValues() {
+			return List.of(EQ,NEQ,LIKE,NLIKE,RLIKE,IN,NIN);
+		}
+
+		/**
+		 * Returns a list of operators to apply against numeric fields
+		 * @return list of boolean operators
+		 */
+		public static List<SearchTerm.Operator> booleanValues() {
+			return List.of(EQ,NEQ);
+		}
+
 		/**
 		 * Returns true if this operator can be only be  
 		 * applied to a single value. This method delegates to 
-		 * {@link #isSetOperation}
+		 * {@link #isSetOperator()}
 		 * @return true if unary operator, false otherwise
 		 */
 		public boolean isUnaryOperator() {
@@ -89,10 +131,11 @@ public class SearchTerm implements Comparable<SearchTerm>
 		 * 
 		 * {@link Date} values are formatted to nanosecond precision with   
 		 * either 0's or 1's so we guarantee we are accurate to the second
-		 * regardless of the column precision in MySQL.
+		 * regardless of the column precision in MySQL. All formatted dates
+		 * are assumed to be in UTC. No adjustment is made at this level.
 		 *   
-		 * @param searchValue
-		 * @return
+		 * @param searchValue the search value
+		 * @return the escaped, filtered search value with wildcards replaced.
 		 */
 		public Object applyWildcards(Object searchValue) {
 			if (searchValue == null) {
@@ -104,11 +147,11 @@ public class SearchTerm implements Comparable<SearchTerm>
 			        boolean first = true;
 			        for(Date d: (List<Date>)searchValue) {
 			        	if (first) {
-			        		dates.add(new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.000000").format(d));
+			        		dates.add(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.000000").format(d));
 			        		first = false;
 			        	}
 			        	else {
-			        		dates.add(new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.999999").format(d));
+			        		dates.add(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.999999").format(d));
 			        	}
 			        }
 			        
@@ -118,19 +161,19 @@ public class SearchTerm implements Comparable<SearchTerm>
 			    }
 			} else if (searchValue instanceof Date) {
 				if (this == ON) {
-					List<String> dates = new ArrayList<String>();
-			        dates.add(new SimpleDateFormat("YYYY-MM-dd 00:00:00").format((Date)searchValue));
-			        dates.add(new SimpleDateFormat("YYYY-MM-dd 23:59:59").format((Date)searchValue));
+					List<String> dates = new ArrayList<>();
+			        dates.add(new SimpleDateFormat("yyyy-MM-dd 00:00:00").format((Date)searchValue));
+			        dates.add(new SimpleDateFormat("yyyy-MM-dd 23:59:59").format((Date)searchValue));
 			        return dates;
 			    } 
 			    else if (this == GT || this == LTE || this == AFTER) {
-			    	return new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.999999").format((Date)searchValue);
+			    	return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.999999").format((Date)searchValue);
 			    }
 			    else if (this == LT || this == GTE || this == BEFORE) {
-			    	return new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.000000").format((Date)searchValue);
+			    	return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.000000").format((Date)searchValue);
 			    }
 			    else {
-			        return new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.000000").format((Date)searchValue);
+			        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.000000").format((Date)searchValue);
 			    }
 			}
 			
@@ -145,11 +188,29 @@ public class SearchTerm implements Comparable<SearchTerm>
          * Returns true of the operator checks for equality or
          * inequality only
          * 
-         * @return
+         * @return true if the current operator is an equality check
          */
         public boolean isEqualityOperator() {
             return this == EQ || this == NEQ;
         }
+
+		/**
+		 * Returns true of the operator is contained in {@link #temporalValues()}
+		 *
+		 * @return true if the current operator is an temporal check
+		 */
+		public boolean isTemporalOperator() {
+			return temporalValues().contains(this);
+		}
+
+		/**
+		 * Returns true of the operator is contained in {@link #numericValues()}
+		 *
+		 * @return true if the current operator is an numeric check
+		 */
+		public boolean isNumericOperator() {
+			return numericValues().contains(this);
+		}
 	}
 	
 	/**
@@ -221,10 +282,8 @@ public class SearchTerm implements Comparable<SearchTerm>
 	 * @param searchFieldWithOperator {@link SearchTerm#searchField} with the 
 	 * operation appended to the end. Ex. <code>name.eq</code>.
 	 * @param mappedField the field to be used in the resulting query
-	 * @param operator the conditional operation to perform on the mapped 
-	 * field in the resulting query 
-	 * @param prefix the string to prepend to the searchField when generating 
-	 * the final expression 
+	 * @param operator the conditional operation to perform on the mapped field in the resulting query
+	 * @param prefix the string to prepend to the searchField when generating the final expression
 	 * @throws SearchSyntaxException
 	 */
 	public SearchTerm(String searchFieldWithOperator, String mappedField, Operator operator, String prefix)
@@ -340,13 +399,15 @@ public class SearchTerm implements Comparable<SearchTerm>
 	}
 
 	/**
-	 * @return
+	 * Returns prefix for the current search term.
+	 * @return gets the prefix of this operator.
 	 */
 	public String getPrefix() {
 		return prefix == null ? "" : prefix;
 	}
 
 	/**
+	 * Sets the db prefix for the queries on the concrete implementation for a resource type
 	 * @param prefix
 	 */
 	public void setPrefix(String prefix) {
@@ -414,8 +475,8 @@ public class SearchTerm implements Comparable<SearchTerm>
 	 * Compares the search field in this object to another string.
 	 * This is used for quick existence checking for search terms
 	 * that have already been defined.
-	 * @param anotherString
-	 * @return
+	 * @param anotherString the string to compare
+	 * @return result of comparison
 	 */
 	public int compareTo(String anotherString)
 	{

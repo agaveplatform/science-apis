@@ -3,24 +3,16 @@
  */
 package org.iplantc.service.common.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.common.Settings;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.util.Date;
 
 /**
  * POJO for an API tenant. This is used to resolve the tenant id that comes in 
@@ -241,9 +233,9 @@ public class Tenant {
 				.put("created", new DateTime(getCreated()).toString());
 		
 		ObjectNode linksObject = mapper.createObjectNode();
-		linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+		linksObject.put("self", mapper.createObjectNode()
     		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TENANTS_SERVICE) + getUuid()));
-		linksObject.put("contacts", (ObjectNode)mapper.createObjectNode()
+		linksObject.put("contacts", mapper.createObjectNode()
 	    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TENANTS_SERVICE) + getUuid() + "/contacts"));
 		
 		json.put("_links", linksObject);

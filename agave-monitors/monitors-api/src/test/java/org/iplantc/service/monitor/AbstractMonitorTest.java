@@ -1,11 +1,7 @@
 package org.iplantc.service.monitor;
 
-import static org.iplantc.service.monitor.TestDataHelper.*;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -29,15 +25,20 @@ import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.surftools.BeanstalkClientImpl.ClientImpl;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
+import static org.iplantc.service.monitor.TestDataHelper.*;
+
+@Test(groups={"integration"})
 public class AbstractMonitorTest {
 
 	protected static final String TEST_USER = "systest";
-	protected static final String TEST_EMAIL = "dooley@tacc.utexas.edu";
-	protected static final String TEST_URL = "http://requestb.in/11pbi6m1?username=${USERNAME}&status=${STATUS}";
+	protected static final String TEST_EMAIL = "help@agaveplatform.org";
+	protected static final String TEST_URL = "http://requestbin:5101/11pbi6m1?username=${USERNAME}&status=${STATUS}";
 	
 	protected ObjectMapper mapper = new ObjectMapper();
 	protected SystemDao systemDao = new SystemDao();
@@ -248,7 +249,6 @@ public class AbstractMonitorTest {
 	
 	/**
 	 * Flushes the messaging tube of any and all existing jobs.
-	 * @param queueName
 	 */
 	@AfterMethod
 	protected void clearQueues() 

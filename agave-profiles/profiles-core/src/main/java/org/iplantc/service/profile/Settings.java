@@ -1,11 +1,12 @@
 package org.iplantc.service.profile;
 
+import org.apache.commons.lang3.math.NumberUtils;
+import org.iplantc.service.profile.model.enumeration.ProfileType;
+import org.iplantc.service.profile.util.ServiceUtils;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-
-import org.iplantc.service.profile.model.enumeration.ProfileType;
-import org.iplantc.service.profile.util.ServiceUtils;
 
 public class Settings 
 {
@@ -59,6 +60,7 @@ public class Settings
 	public static String 		DB_NAME;
 	public static boolean		USE_SSH_TUNNEL;
 	public static Integer 		DEFAULT_PAGE_SIZE;
+	public static Integer 		MAX_PAGE_SIZE;
 	public static String 		IPLANT_DOCS;
 	
 	static
@@ -71,9 +73,9 @@ public class Settings
 		
 		AUTH_SOURCE = (String) props.get("iplant.auth.source");
 		
-		API_VERSION = (String)props.getProperty("iplant.api.version");
+		API_VERSION = props.getProperty("iplant.api.version");
 		
-		SERVICE_VERSION = (String)props.getProperty("iplant.service.version");
+		SERVICE_VERSION = props.getProperty("iplant.service.version");
 		
 		IPLANT_LDAP_URL = props.getProperty("iplant.ldap.url");
 
@@ -127,28 +129,36 @@ public class Settings
 		IPLANT_DOCS = (String) props.get("iplant.service.documentation");
 		if (!IPLANT_DOCS.endsWith("/")) IPLANT_DOCS += "/";
 		
-		QUERY_URL = (String)props.getProperty("iplant.internal.account.service");
+		QUERY_URL = props.getProperty("iplant.internal.account.service");
 		
-		QUERY_URL_USERNAME = (String)props.getProperty("iplant.internal.account.service.key");
+		QUERY_URL_USERNAME = props.getProperty("iplant.internal.account.service.key");
 		
-		QUERY_URL_PASSWORD = (String)props.getProperty("iplant.internal.account.service.secret");
+		QUERY_URL_PASSWORD = props.getProperty("iplant.internal.account.service.secret");
 		
 		USE_SSH_TUNNEL = Boolean.valueOf((String) props.get("db.use.tunnel"));
 		
-		SSH_TUNNEL_USERNAME = (String)props.getProperty("db.ssh.tunnel.username");
+		SSH_TUNNEL_USERNAME = props.getProperty("db.ssh.tunnel.username");
 		
-		SSH_TUNNEL_PASSWORD = (String)props.getProperty("db.ssh.tunnel.password");
+		SSH_TUNNEL_PASSWORD = props.getProperty("db.ssh.tunnel.password");
 		
-		SSH_TUNNEL_HOST = (String)props.getProperty("db.ssh.tunnel.host");
+		SSH_TUNNEL_HOST = props.getProperty("db.ssh.tunnel.host");
 		
 		SSH_TUNNEL_PORT = Integer.valueOf((String)props.get("db.ssh.tunnel.port"));
 		
-		DB_USERNAME = (String)props.getProperty("db.username");
+		DB_USERNAME = props.getProperty("db.username");
 		
-		DB_PASSWORD = (String)props.getProperty("db.password");
+		DB_PASSWORD = props.getProperty("db.password");
 		
-		DB_NAME = (String)props.getProperty("db.name");
-		
-		DEFAULT_PAGE_SIZE = Integer.parseInt((String) props.getProperty("iplant.default.page.size", "25"));
+		DB_NAME = props.getProperty("db.name");
+
+		try {DEFAULT_PAGE_SIZE = NumberUtils.toInt(props.getProperty("iplant.default.page.size", "100"), 100);}
+		catch (Exception e) {
+			DEFAULT_PAGE_SIZE = 100;
+		}
+
+		try {MAX_PAGE_SIZE = NumberUtils.toInt(props.getProperty("iplant.max.page.size", "100"), 100);}
+		catch (Exception e) {
+			DEFAULT_PAGE_SIZE = 100;
+		}
 	}
 }

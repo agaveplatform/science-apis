@@ -3,23 +3,20 @@
  */
 package org.iplantc.service.common.messaging;
 
+import com.surftools.BeanstalkClient.Job;
+import com.surftools.BeanstalkClientImpl.ClientImpl;
 import io.iron.ironmq.Cloud;
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.log4j.Logger;
+import org.iplantc.service.common.Settings;
+import org.iplantc.service.common.exceptions.MessageProcessingException;
+import org.iplantc.service.common.exceptions.MessagingException;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.math.NumberUtils;
-import org.apache.log4j.Logger;
-import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.exceptions.MessageProcessingException;
-import org.iplantc.service.common.exceptions.MessagingException;
-
-import com.surftools.BeanstalkClient.Job;
-import com.surftools.BeanstalkClientImpl.ClientImpl;
 
 /**
  * @author dooley
@@ -29,7 +26,7 @@ public class IronBeanstalkClient implements MessageQueueClient
 {
 	private static final Logger log = Logger.getLogger(IronBeanstalkClient.class);
 	
-	private ClientImpl nativeClient;
+	private final ClientImpl nativeClient;
 	private boolean stop = false; 
 	
 	public IronBeanstalkClient() {

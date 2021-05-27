@@ -3,18 +3,17 @@
  */
 package org.iplantc.service.notification.providers.email.clients;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.log4j.Logger;
+import org.codehaus.plexus.util.StringUtils;
+import org.iplantc.service.notification.Settings;
+import org.iplantc.service.notification.exceptions.NotificationException;
+import org.iplantc.service.notification.providers.email.EmailClient;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import org.apache.log4j.Logger;
-import org.codehaus.plexus.util.StringUtils;
-import org.iplantc.service.notification.exceptions.NotificationException;
-import org.iplantc.service.notification.Settings;
-import org.iplantc.service.notification.providers.email.EmailClient;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Email client used for testing to write emails to log output rather than
@@ -28,15 +27,7 @@ public class LoggingEmailClient implements EmailClient {
     public static Logger log = Logger.getLogger(LoggingEmailClient.class);
     
     protected Map<String, String> customHeaders = new HashMap<String, String>();
-    
-    public static void main(String[] args) throws Exception{
-        new SMTPEmailClient().send("Rion", 
-                "agaveapi@gmail.com", 
-                "Test email via smtp", 
-                "This is a simple smtp email fom the java client.",
-                "<p>This is a simple SMTP email fom the <a href=\"http://java.com\">Java</a> client.</p>");
-    }
-    
+
     /* (non-Javadoc)
      * @see org.iplantc.service.notification.email.EmailClient#send(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
      */

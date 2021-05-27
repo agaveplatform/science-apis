@@ -1,8 +1,5 @@
 package org.iplantc.service.apps.search;
 
-import java.util.Date;
-import java.util.Map;
-
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -12,6 +9,11 @@ import org.iplantc.service.common.search.AgaveResourceSearchFilter;
 import org.iplantc.service.common.util.StringToTime;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.joda.time.DateTime;
+
+import java.time.DateTimeException;
+import java.time.Instant;
+import java.util.Date;
+import java.util.Map;
 
 /**
  * This class is the basis for search support across the API.
@@ -50,6 +52,7 @@ public class SoftwareSearchFilter extends AgaveResourceSearchFilter
             searchTermMappings.put("defaultprocessorspernode", "%sdefaultProcessorsPerNode");
             searchTermMappings.put("defaultqueue", "%sdefaultQueue");
             searchTermMappings.put("deploymentpath", "%sdeploymentPath");
+            searchTermMappings.put("deploymentsystem", "%sstorageSystem.systemId");
             searchTermMappings.put("templatepath", "%sexecutablePath");
             searchTermMappings.put("executionsystem", "%sexecutionSystem.systemId");
             searchTermMappings.put("executiontype", "%sexecutionType");
@@ -75,7 +78,6 @@ public class SoftwareSearchFilter extends AgaveResourceSearchFilter
             searchTermMappings.put("privateonly", "%spubliclyAvailable");
             searchTermMappings.put("revision", "%srevisionCount");
             searchTermMappings.put("shortdescription", "%sshortDescription");
-            searchTermMappings.put("storagesystem", "%sstorageSystem.systemId");
             searchTermMappings.put("tags", "%stags");
             searchTermMappings.put("testpath", "%stestPath");
             searchTermMappings.put("uuid", "%suuid");
@@ -101,6 +103,7 @@ public class SoftwareSearchFilter extends AgaveResourceSearchFilter
             searchTypeMappings.put("defaultprocessorspernode", Long.class);
             searchTypeMappings.put("defaultqueue", String.class);
             searchTypeMappings.put("deploymentpath", String.class);
+            searchTypeMappings.put("deploymentsystem", String.class);
             searchTypeMappings.put("templatepath", String.class);
             searchTypeMappings.put("executionsystem", String.class);
             searchTypeMappings.put("executiontype", ExecutionType.class);
@@ -124,7 +127,6 @@ public class SoftwareSearchFilter extends AgaveResourceSearchFilter
             searchTypeMappings.put("privateonly", Boolean.class);
             searchTypeMappings.put("revision", Integer.class);
             searchTypeMappings.put("shortdescription", String.class);
-            searchTypeMappings.put("storagesystem", String.class);
             searchTypeMappings.put("tags", String.class);
             searchTypeMappings.put("tenantid", String.class);
             searchTypeMappings.put("testpath", String.class);
@@ -153,10 +155,17 @@ public class SoftwareSearchFilter extends AgaveResourceSearchFilter
             if (Boolean.FALSE.equals(time)) {
                 if (NumberUtils.isDigits(searchValue)) {
                     try {
-                        DateTime dateTime = new DateTime(Long.valueOf(searchValue));
-                        return dateTime.toDate();
+                        Instant instant = Instant.ofEpochSecond(Long.parseLong(searchValue));
+                        return DateTime.parse(instant.toString()).toDate();
+                    } catch (DateTimeException e) {
+                        try {
+                            Instant instant = Instant.ofEpochMilli(Long.parseLong(searchValue));
+                            return new DateTime(instant.toString()).toDate();
+                        } catch (Exception iae) {
+                            throw new IllegalArgumentException("Invalid epoch value for " + searchField);
+                        }
                     } catch (IllegalArgumentException e) {
-                        throw new IllegalArgumentException("Illegal date format for " + searchField);
+                        throw new IllegalArgumentException("Invalid epoch value for " + searchField);
                     }
                 } else {
                     try {

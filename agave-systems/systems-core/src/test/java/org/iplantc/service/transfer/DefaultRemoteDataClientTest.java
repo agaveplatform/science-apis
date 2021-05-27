@@ -1,21 +1,5 @@
 package org.iplantc.service.transfer;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
@@ -29,17 +13,13 @@ import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.TransferTask;
-import org.iplantc.service.transfer.s3.S3Jcloud;
-import org.jclouds.blobstore.BlobStore;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.io.*;
+import java.util.*;
 
 @Test(singleThreaded=true, groups= {"transfer", "irods.filesystem.init"})
 public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase 
@@ -85,7 +65,7 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     	JSONObject json = getSystemJson();
     	json.remove("id");
     	json.put("id", this.getClass().getSimpleName());
-		system = (StorageSystem)StorageSystem.fromJSON(json);
+		system = StorageSystem.fromJSON(json);
     	system.setOwner(SYSTEM_USER);
     	String homeDir = system.getStorageConfig().getHomeDir();
     	homeDir = StringUtils.isEmpty(homeDir) ? "" : homeDir;
@@ -147,13 +127,9 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     			Assert.fail("System home directory " + client.resolvePath("") + " exists, but is not a directory.");
     		}
     	} 
-    	catch (IOException e) {
+    	catch (IOException | RemoteDataException e) {
     		throw e;
-    	}
-    	catch (RemoteDataException e) {
-    		throw e;
-    	}
-    	catch (Exception e) {
+    	} catch (Exception e) {
     		Assert.fail("Failed to create home directory " + (client == null ? "" : client.resolvePath("")) + " before test method.", e);
     	}
     }
@@ -302,7 +278,7 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     	try 
     	{
     		JSONObject json = getSystemJson();
-        	RemoteSystem system = (StorageSystem)StorageSystem.fromJSON(json);
+        	RemoteSystem system = StorageSystem.fromJSON(json);
         	system.setOwner(SYSTEM_USER);
         	system.setSystemId("qwerty12345");
         	

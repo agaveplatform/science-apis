@@ -1,11 +1,12 @@
 package org.iplantc.service.io.util;
 
-import java.io.IOException;
-
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
+
+@Test(groups={"unit"})
 public class PathResolverTest {
 
 	@DataProvider(name="resovleProvider")
@@ -39,9 +40,9 @@ public class PathResolverTest {
 			testCases[i++] = new Object[] { basePath + resourceType + "/system/sftp.storage.example.com/username/", "username/" };
 			testCases[i++] = new Object[] { basePath + resourceType + "/system/sftp.storage.example.com/username/relative/path", "username/relative/path" };
 			testCases[i++] = new Object[] { basePath + resourceType + "/system/sftp.storage.example.com/username/relative/path/", "username/relative/path/" };
-		};
-		
-		return testCases;
+		}
+
+        return testCases;
 	}
 	
 	@Test(dataProvider="resovleProvider")

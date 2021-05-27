@@ -1,13 +1,4 @@
 package org.teragrid.service.util;
-import java.io.IOException;
-import java.security.cert.X509Certificate;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLException;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import org.apache.http.client.HttpClient;
 import org.apache.http.conn.ClientConnectionManager;
@@ -16,6 +7,10 @@ import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.conn.ssl.X509HostnameVerifier;
 import org.apache.http.impl.client.DefaultHttpClient;
+
+import javax.net.ssl.*;
+import java.io.IOException;
+import java.security.cert.X509Certificate;
 
 /*
  This code is public domain: you are free to use, link and/or modify it in any way you want, for all purposes including commercial applications.

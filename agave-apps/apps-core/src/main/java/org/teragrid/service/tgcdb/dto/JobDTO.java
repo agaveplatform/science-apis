@@ -3,10 +3,10 @@
  */
 package org.teragrid.service.tgcdb.dto;
 
-import java.util.Date;
-
 import org.json.JSONStringer;
 import org.teragrid.service.util.TGUtil;
+
+import java.util.Date;
 
 /**
  * @author dooley

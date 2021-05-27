@@ -3,19 +3,10 @@
  */
 package org.iplantc.service.apps.model;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.UniqueConstraint;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang.StringUtils;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import javax.persistence.*;
 
 /**
  * Class to hold individual enumerated values for {@link #softwareParameter}
@@ -179,10 +170,7 @@ public class SoftwareParameterEnumeratedValue implements Comparable<SoftwarePara
 		} else if (!softwareParameter.equals(other.softwareParameter))
 			return false;
 		if (value == null) {
-			if (other.value != null)
-				return false;
-		} else if (!value.equals(other.value))
-			return false;
-		return true;
+			return other.value == null;
+		} else return value.equals(other.value);
 	}
 }

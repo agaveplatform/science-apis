@@ -1,20 +1,14 @@
 package org.iplantc.service.tags.managers;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.iplantc.service.tags.AbstractTagTest;
 import org.iplantc.service.tags.TestDataHelper;
 import org.iplantc.service.tags.exceptions.TagException;
-import org.iplantc.service.tags.managers.TagManager;
 import org.iplantc.service.tags.model.Tag;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
+@Test(groups={"integration"})
 public class TagPermissionManagerTest extends AbstractTagTest {
 
 	@BeforeClass

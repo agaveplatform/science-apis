@@ -15,15 +15,15 @@
  */
 package org.globus.io.streams;
 
-import java.io.IOException;
-import java.io.InputStream;
-
 import org.globus.common.ChainedIOException;
 import org.globus.ftp.FTPClient;
 import org.globus.ftp.InputStreamDataSink;
 import org.globus.ftp.Session;
 import org.globus.ftp.exception.FTPException;
 import org.globus.ftp.vanilla.TransferState;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 public class FTPInputStream extends GlobusInputStream {
     

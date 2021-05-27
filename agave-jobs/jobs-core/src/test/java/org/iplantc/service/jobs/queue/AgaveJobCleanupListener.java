@@ -15,7 +15,7 @@ import org.quartz.SchedulerException;
  */
 public class AgaveJobCleanupListener implements JobListener {
 
-	private static Logger log = Logger.getLogger(AgaveJobCleanupListener.class);
+	private static final Logger log = Logger.getLogger(AgaveJobCleanupListener.class);
 	
 	/* (non-Javadoc)
 	 * @see org.quartz.JobListener#getName()
@@ -31,7 +31,7 @@ public class AgaveJobCleanupListener implements JobListener {
 	@Override
 	public void jobToBeExecuted(JobExecutionContext context) {
 		// ignore this bit. we only care about cleaning up the job.
-		log.debug("About to execution " + context.getJobDetail().getKey().toString());
+		log.debug("About to execute job " + context.getJobDetail().getKey().toString());
 	}
 
 	/* (non-Javadoc)

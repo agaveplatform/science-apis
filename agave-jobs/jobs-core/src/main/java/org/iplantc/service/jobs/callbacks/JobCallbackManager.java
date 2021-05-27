@@ -1,16 +1,6 @@
 package org.iplantc.service.jobs.callbacks;
 
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.ARCHIVING;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.ARCHIVING_FAILED;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.ARCHIVING_FINISHED;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.CLEANING_UP;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.HEARTBEAT;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.RUNNING;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.STOPPED;
-
-import java.io.FileNotFoundException;
-
-import org.apache.commons.lang3.ArrayUtils;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.ObjectNotFoundException;
@@ -29,7 +19,9 @@ import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.enumerations.SystemEventType;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.io.FileNotFoundException;
+
+import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
 
 public class JobCallbackManager {
     
@@ -86,7 +78,7 @@ public class JobCallbackManager {
                 throw new JobCallbackException("Job " + job.getUuid()
                         + " is not configured for archive.");
             } 
-            else if (!ArrayUtils.contains(job.getStatus().getNextValidStates(), status)) 
+            else if (!job.getStatus().getNextValidStates().contains(status))
             {
                 throw new JobCallbackException("Job " + job.getUuid()
                         + " cannot update status from " + job.getStatus().name() 

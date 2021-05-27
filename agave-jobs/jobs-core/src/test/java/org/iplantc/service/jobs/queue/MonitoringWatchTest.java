@@ -1,20 +1,8 @@
 package org.iplantc.service.jobs.queue;
 
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-import static org.mockito.Mockito.*;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -28,21 +16,15 @@ import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.SchedulerException;
 import org.iplantc.service.jobs.managers.JobManager;
-import org.iplantc.service.jobs.managers.monitors.ProcessMonitor;
 import org.iplantc.service.jobs.model.JSONTestDataUtil;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.jobs.queue.actions.MonitoringAction;
-import org.iplantc.service.jobs.queue.actions.WorkerAction;
 import org.iplantc.service.jobs.submission.AbstractJobSubmissionTest;
 import org.iplantc.service.jobs.util.Slug;
 import org.iplantc.service.profile.dao.InternalUserDao;
 import org.iplantc.service.profile.exceptions.ProfileException;
 import org.iplantc.service.profile.model.InternalUser;
-import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.RemoteCredentialException;
-import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
@@ -51,23 +33,10 @@ import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteDataClientFactory;
-import org.iplantc.service.transfer.exceptions.AuthenticationException;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.joda.time.DateTime;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.mockito.Mock;
-import org.mockito.MockSettings;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-import org.powermock.api.mockito.PowerMockito;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.JobListener;
-import org.quartz.Scheduler;
-import org.quartz.Trigger;
+import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.KeyMatcher;
 import org.testng.Assert;
@@ -76,11 +45,16 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.net.URI;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
-@Test(groups={"broken"})
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
+
+@Test(groups={"broken", "integration"})
 public class MonitoringWatchTest extends AbstractJobSubmissionTest 
 {
     private static final Logger log = Logger.getLogger(StagingWatch.class);
@@ -88,8 +62,8 @@ public class MonitoringWatchTest extends AbstractJobSubmissionTest
 	protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.bin";
 	
 	private JSONTestDataUtil jtd;
-	private SystemDao systemDao = new SystemDao();
-	private SystemManager systemManager = new SystemManager();
+	private final SystemDao systemDao = new SystemDao();
+	private final SystemManager systemManager = new SystemManager();
 	
 	@BeforeClass
 	public void beforeClass() throws Exception
@@ -239,6 +213,8 @@ public class MonitoringWatchTest extends AbstractJobSubmissionTest
 		job.setOwner(software.getOwner());
 		job.setArchiveOutput(false);
 		job.setLocalJobId("23231");
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(software.getExecutionSystem().getScheduler());
 		
 		
 		job.setArchivePath(software.getOwner() + "/archive/jobs/job-" + job.getUuid());
@@ -566,8 +542,8 @@ public class MonitoringWatchTest extends AbstractJobSubmissionTest
                     @Override
                     public void jobWasExecuted(JobExecutionContext context, JobExecutionException e) {
                         if (e == null) {
-                            log.error(jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);;
-                        } else {
+                            log.error(jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);
+						} else {
 //                            log.error("Transfer failed",e);
                         }
                     }
@@ -751,8 +727,8 @@ public class MonitoringWatchTest extends AbstractJobSubmissionTest
                     @Override
                     public void jobWasExecuted(JobExecutionContext context, JobExecutionException e) {
                         if (e == null) {
-                            log.error(jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);;
-                        } else {
+                            log.error(jobsComplete.addAndGet(1) + "/100 Completed jobs ",e);
+						} else {
                             log.error("Transfer failed",e);
                         }
                     }

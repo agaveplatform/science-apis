@@ -1,18 +1,8 @@
 package org.iplantc.service.notification.events;
 
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.AGAVE;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.EMAIL;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.NONE;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.REALTIME;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.SLACK;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.SMS;
-import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.WEBHOOK;
-
-import java.io.IOException;
-import java.net.URI;
-import java.net.URL;
-import java.sql.Timestamp;
-
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -26,9 +16,12 @@ import org.iplantc.service.notification.model.NotificationAttempt;
 import org.iplantc.service.notification.model.NotificationPolicy;
 import org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType;
 
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
+import java.time.Instant;
+
+import static org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType.*;
 
 /**
  * Static utility class to convert the original event notification messages thrown from
@@ -75,20 +68,24 @@ public class NotificationMessageProcessor
 			}
 			
 			AgaveUUID uuid = new AgaveUUID(targetUuid);
-			
-			EventFilter event = 
+
+			// Each UUIDType has an EventFilter defined which handles the serialization of the event body into
+			// the various destination formats. Here we use a factory to get the instance for type of the associatedUuid
+			// registered with the notification.
+			EventFilter eventFilter =
 					EventFilterFactory.getInstance(uuid, notification, eventName, owner);
+
+			eventFilter.setCustomNotificationMessageContextData(customNotificationMessageContextData);
 			
-			event.setCustomNotificationMessageContextData(customNotificationMessageContextData);
 			
-			
-			NotificationAttempt attempt = createNotificationAttemptFromEvent(event);
+			NotificationAttempt attempt = createNotificationAttemptFromEvent(eventFilter);
 			log.debug(String.format("Attempt [%s]: Beginning to process notification %s for %s event on %s entity with associatedUuid %s", 
 					attempt.getAttemptNumber(),
 					attempt.getNotificationId(),
 					attempt.getEventName(),
 					uuid.getResourceType().name(),
 					attempt.getAssociatedUuid()));
+
 			NotificationAttemptProcessor processor = new NotificationAttemptProcessor(attempt);
 			
 			processor.fire();
@@ -101,7 +98,7 @@ public class NotificationMessageProcessor
 					processor.getAttempt().getAssociatedUuid()));
 			
 			return processor.getAttempt();
-		} 
+		}
 		catch (UUIDException e) {
 			throw new NotificationException("Could not identify associated resource from notification uuid. Trigger cannot be processed.");
 		}
@@ -117,11 +114,12 @@ public class NotificationMessageProcessor
 		NotificationAttempt attempt = new NotificationAttempt(event.getNotification().getUuid(), 
 				event.resolveMacros(event.getNotification().getCallbackUrl(), true), 
 				event.getOwner(), event.getAssociatedUuid().toString(), 
-				event.getEvent(), "", new Timestamp(System.currentTimeMillis()));
+				event.getEvent(), "", Instant.now());
 		
 		
 		try {
-			NotificationCallbackProviderType provider = NotificationCallbackProviderType.getInstanceForUri(event.getNotification().getCallbackUrl());
+			NotificationCallbackProviderType provider = NotificationCallbackProviderType.getInstanceForUri(
+					event.getNotification().getCallbackUrl(), event.getNotification().getTenantId());
 			
 			ObjectMapper mapper = new ObjectMapper();
 			if (provider == EMAIL) {

@@ -3,37 +3,27 @@
  */
 package org.iplantc.service.monitor.util;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import com.fasterxml.jackson.core.TreeNode;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.TextNode;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.TextNode;
+import java.io.*;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author dooley
@@ -41,6 +31,8 @@ import com.fasterxml.jackson.databind.node.TextNode;
  */
 public class ServiceUtils {
 
+	private static final Logger log = Logger.getLogger(ServiceUtils.class);
+					
 	@SuppressWarnings("unused")
 	public static String exec(String command) throws IOException
 	{
@@ -105,24 +97,24 @@ public class ServiceUtils {
 		return value != null && value.intValue() >= 0;
 	}
 	
-	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
+	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
 		return node != null && (node instanceof TextNode) && ((TextNode)node).asText() != null;
 	}
 	
-	public static boolean isValidString(JsonNode node) throws JSONException, JsonProcessingException, IOException {
-		return node != null && (node instanceof TextNode) && ((TextNode)node).asText() != null;
+	public static boolean isValidString(JsonNode node) throws JSONException, IOException {
+		return node != null && (node instanceof TextNode) && node.asText() != null;
 	}
 	
-	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
+	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
 		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
 	}
 	
-	public static boolean isNonEmptyString(JsonNode node) throws JSONException, JsonProcessingException, IOException {
-		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
+	public static boolean isNonEmptyString(JsonNode node) throws JSONException, IOException {
+		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(node.asText());
 	}
 
 	/**
@@ -140,33 +132,30 @@ public class ServiceUtils {
 	{
 		if (!isValid(s))
 			return false;
-		boolean valid = true;
-		if (s == null || s.indexOf(":") > -1 || s.indexOf(";") > -1
-				|| s.indexOf(",") > -1 || s.indexOf(" ") > -1 ||
-				// s.indexOf("#") > -1 ||
-				s.indexOf("\\") > -1 /*
-									 * || s.indexOf("/") > -1 || s.indexOf("%")
-									 * > -1 || s.indexOf("$") > -1 ||
-									 * s.indexOf("@") > -1 || s.indexOf("!") >
-									 * -1 || s.indexOf("^") > -1 ||
-									 * s.indexOf("&") > -1 || s.indexOf("*") >
-									 * -1 || s.indexOf("(") > -1 ||
-									 * s.indexOf(")") > -1 || s.indexOf("{") >
-									 * -1 || s.indexOf("}") > -1 ||
-									 * s.indexOf("|") > -1 || s.indexOf("'") >
-									 * -1 || s.indexOf("\"") > -1 ||
-									 * s.indexOf("~") > -1 || s.indexOf("`") >
-									 * -1 || s.indexOf("#") > -1 ||
-									 * s.indexOf(".") > -1 || s.indexOf("?") >
-									 * -1 || s.indexOf("<") > -1 ||
-									 * s.indexOf(">") > -1 || //s.indexOf("=") >
-									 * -1 || s.indexOf("+") > -1
-									 */)
-		{
-			valid = false;
-		}
+		boolean valid = s != null && s.indexOf(":") <= -1 && s.indexOf(";") <= -1
+                && s.indexOf(",") <= -1 && s.indexOf(" ") <= -1 &&
+                // s.indexOf("#") > -1 ||
+                s.indexOf("\\") <= -1;
+        /*
+         * || s.indexOf("/") > -1 || s.indexOf("%")
+         * > -1 || s.indexOf("$") > -1 ||
+         * s.indexOf("@") > -1 || s.indexOf("!") >
+         * -1 || s.indexOf("^") > -1 ||
+         * s.indexOf("&") > -1 || s.indexOf("*") >
+         * -1 || s.indexOf("(") > -1 ||
+         * s.indexOf(")") > -1 || s.indexOf("{") >
+         * -1 || s.indexOf("}") > -1 ||
+         * s.indexOf("|") > -1 || s.indexOf("'") >
+         * -1 || s.indexOf("\"") > -1 ||
+         * s.indexOf("~") > -1 || s.indexOf("`") >
+         * -1 || s.indexOf("#") > -1 ||
+         * s.indexOf(".") > -1 || s.indexOf("?") >
+         * -1 || s.indexOf("<") > -1 ||
+         * s.indexOf(">") > -1 || //s.indexOf("=") >
+         * -1 || s.indexOf("+") > -1
+         */
 
-		return valid;
+        return valid;
 	}
 
 	public static boolean isValidEmailAddress(String value)
@@ -333,9 +322,10 @@ public class ServiceUtils {
 	{	
 		if (TenancyHelper.isTenantAdmin()) return true;
 		
-		InputStream stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");
+		InputStream stream = null;
 		try
 		{
+			stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");
 			String trustedUserList = IOUtils.toString(stream, "UTF-8");
 			if (isValid(trustedUserList)) {
 				for(String user: trustedUserList.split(",")) {
@@ -350,9 +340,12 @@ public class ServiceUtils {
 		}
 		catch (IOException e)
 		{
-			 //log.error("Failed to locate trusted user file");
+			log.warn("Failed to load trusted user file", e);
 			return false;
 		}
+        finally {
+        	if (stream != null) try {stream.close();} catch (Exception e){}
+        }
 	}
 	
 	public static String explode(String glue, List<?> list)

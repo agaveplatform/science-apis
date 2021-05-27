@@ -3,11 +3,6 @@
  */
 package org.iplantc.service.apps.resources.impl;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareEventDao;
 import org.iplantc.service.apps.exceptions.SoftwareException;
@@ -16,9 +11,15 @@ import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareEvent;
 import org.iplantc.service.apps.resources.SoftwareHistoryResource;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
+
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
 
 /**
  * Returns a collection of history records for a {@link SoftwareEvent}. Search
@@ -71,6 +72,9 @@ public class SoftwareHistoryResourceImpl extends AbstractSoftwareCollection impl
         {
             log.error(e);
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL, "Failed to retrieve app history", e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
 }

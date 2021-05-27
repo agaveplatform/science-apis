@@ -1,5 +1,9 @@
 package org.iplantc.service.common.util;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.iplantc.service.common.exceptions.StringToTimeException;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -8,10 +12,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.iplantc.service.common.exceptions.StringToTimeException;
 
 /**
  * A Java implementation of the PHP function strtotime(String, int): accepts various expressions of time
@@ -67,7 +67,7 @@ import org.iplantc.service.common.exceptions.StringToTimeException;
  * 
  * @author Aaron Collegeman acollegeman@clutch-inc.com
  * @since JRE 1.5.0
- * @see http://us3.php.net/manual/en/function.strtotime.php
+ * @see "http://us3.php.net/manual/en/function.strtotime.php"
  */
 public class StringToTime extends Date {
 
@@ -204,7 +204,7 @@ public class StringToTime extends Date {
 	private String simpleDateFormat;
 	
 	/** The {@link java.util.Date} interpreted from {@link #dateTimeString}, or {@link java.lang.Boolean} <code>false</code> */
-	private Object date;
+	private final Object date;
 	
 	
 	public StringToTime() {
@@ -234,7 +234,7 @@ public class StringToTime extends Date {
 	}
 	
 	public StringToTime(Object dateTimeString, Integer now) {
-		this(dateTimeString, new Date(new Long(now)), defaultSimpleDateFormat);
+		this(dateTimeString, new Date(Long.valueOf(now)), defaultSimpleDateFormat);
 	}
 	
 	public StringToTime(Object dateTimeString, Date now, String simpleDateFormat) {
@@ -291,11 +291,11 @@ public class StringToTime extends Date {
 	
 	
 	/**
-	 * A single parameter version of {@link #time(String, Date)}, passing a new instance of {@link java.util.Date} as the
+	 * A single parameter version of {@link #time(Object, Date)}, passing a new instance of {@link java.util.Date} as the
 	 * second parameter.
 	 * @param dateTimeString
 	 * @return A {@link java.lang.Long} timestamp representative of <code>dateTimeString</code>, or {@link java.lang.Boolean} <code>false</code>.
-	 * @see #time(String, Date)
+	 * @see #time(Object, Date)
 	 */
 	public static Object time(Object dateTimeString) {
 		return time(dateTimeString, new Date());
@@ -321,21 +321,21 @@ public class StringToTime extends Date {
 					Matcher m = paf.matches(trimmed);
 					if (m.matches()) {
 						Long time = paf.parse(trimmed, now, m);
-						if (log.isDebugEnabled())
-							log.debug(String.format("[%s] triggered format [%s]: %s", dateTimeString, paf.f, new Date(time)));
+//						if (log.isDebugEnabled())
+//							log.debug(String.format("[%s] triggered format [%s]: %s", dateTimeString, paf.f, new Date(time)));
 						return time;
 					}
 				}
 				
 				// no match
-				if (log.isDebugEnabled())
-					log.debug(String.format("Unrecognized date/time string [%s]", dateTimeString));
+//				if (log.isDebugEnabled())
+//					log.debug(String.format("Unrecognized date/time string [%s]", dateTimeString));
 				return Boolean.FALSE;
 			}
 		} catch (Exception e) { // thrown by various features of the parser
 			if (!Boolean.parseBoolean(System.getProperty(StringToTime.class+".EXCEPTION_ON_PARSE_FAILURE", "false"))) {
-				if (log.isDebugEnabled())
-					log.debug(String.format("Failed to parse [%s] into a java.util.Date instance", dateTimeString));
+//				if (log.isDebugEnabled())
+//					log.debug(String.format("Failed to parse [%s] into a java.util.Date instance", dateTimeString));
 				return Boolean.FALSE;
 			}
 			else
@@ -347,7 +347,7 @@ public class StringToTime extends Date {
 		for(PatternAndFormat paf : known) {
 			Matcher m = paf.matches(trimmedDateTimeString);
 			if (m.matches()) {
-				log.debug(String.format("Date/time string [%s] triggered format [%s]", trimmedDateTimeString, paf.f));
+//				log.debug(String.format("Date/time string [%s] triggered format [%s]", trimmedDateTimeString, paf.f));
 				return new ParserResult(paf.parse(trimmedDateTimeString, now, m), paf.f.type);
 			}
 		}
@@ -383,7 +383,7 @@ public class StringToTime extends Date {
 		public Pattern p;
 		public Format f;
 		
-		public PatternAndFormat(Pattern p, Format f) {
+		PatternAndFormat(Pattern p, Format f) {
 			this.p = p;
 			this.f = f;
 		}
@@ -401,7 +401,7 @@ public class StringToTime extends Date {
 		public FormatType type;
 		public Long timestamp;
 		
-		public ParserResult(Long timestamp, FormatType type) {
+		ParserResult(Long timestamp, FormatType type) {
 			this.timestamp = timestamp;
 			this.type = type;
 		}
@@ -409,11 +409,11 @@ public class StringToTime extends Date {
 	
 	private static class Format {
 		
-		private static Pattern unit = Pattern.compile("(\\d{1,}) +(s(ec(ond)?)?|mo(n(th)?)?|(hour|hr?)|d(ay)?|(w(eek)?|wk)|m(in(ute)?)?|(y(ear)?|yr))s?");
+		private static final Pattern unit = Pattern.compile("(\\d{1,}) +(s(ec(ond)?)?|mo(n(th)?)?|(hour|hr?)|d(ay)?|(w(eek)?|wk)|m(in(ute)?)?|(y(ear)?|yr))s?");
 		
-		private static Pattern removeExtraSpaces = Pattern.compile(" +");
+		private static final Pattern removeExtraSpaces = Pattern.compile(" +");
 		
-		private static Map<String, Integer> translateDayOfWeek = new HashMap<String, Integer>();
+		private static final Map<String, Integer> translateDayOfWeek = new HashMap<String, Integer>();
 		
 		static {
 			translateDayOfWeek.put("sunday", 1);
@@ -463,8 +463,7 @@ public class StringToTime extends Date {
 					
 					// word expressions, e.g., "now" and "today" and "tonight"
 					if (type == FormatType.WORD) {
-						if ("now".equals(dateTimeString))
-							return (now != null ? now : new Date());
+						if ("now".equals(dateTimeString)) return now;
 						
 						else if ("today".equals(dateTimeString)) {
 							cal.set(Calendar.HOUR_OF_DAY, 0);
@@ -591,16 +590,16 @@ public class StringToTime extends Date {
 						
 						if (hour != null) {
 							if (amOrPm != null)
-								cal.set(Calendar.HOUR, new Integer(hour));
+								cal.set(Calendar.HOUR, Integer.valueOf(hour));
 							else
-								cal.set(Calendar.HOUR_OF_DAY, new Integer(hour));
+								cal.set(Calendar.HOUR_OF_DAY, Integer.valueOf(hour));
 						}
 						else
 							cal.set(Calendar.HOUR, 0);
 						
-						cal.set(Calendar.MINUTE, (min != null ? new Integer(min) : 0));
-						cal.set(Calendar.SECOND, (sec != null ? new Integer(sec) : 0));
-						cal.set(Calendar.MILLISECOND, (ms != null ? new Integer(ms) : 0));
+						cal.set(Calendar.MINUTE, (min != null ? Integer.valueOf(min) : 0));
+						cal.set(Calendar.SECOND, (sec != null ? Integer.valueOf(sec) : 0));
+						cal.set(Calendar.MILLISECOND, (ms != null ? Integer.valueOf(ms) : 0));
 						
 						if (amOrPm != null)
 							cal.set(Calendar.AM_PM, (amOrPm.equals("a") || amOrPm.equals("am") ? Calendar.AM : Calendar.PM));
@@ -613,7 +612,7 @@ public class StringToTime extends Date {
 					else if (type == FormatType.INCREMENT || type == FormatType.DECREMENT) {
 						Matcher units = unit.matcher(dateTimeString);
 						while (units.find()) {
-							Integer val = new Integer(units.group(1)) * (type == FormatType.DECREMENT ? -1 : 1);
+							Integer val = Integer.valueOf(units.group(1)) * (type == FormatType.DECREMENT ? -1 : 1);
 							String u = units.group(2);
 							
 							// second
@@ -750,18 +749,14 @@ public class StringToTime extends Date {
 					
 					// year
 					else if (type == FormatType.YEAR) {
-						cal.set(Calendar.YEAR, new Integer(m.group(0)));
+						cal.set(Calendar.YEAR, Integer.valueOf(m.group(0)));
 						return new Date(cal.getTimeInMillis());
 					}
 					
 					// unimplemented format type
 					else
 						throw new IllegalStateException(String.format("Unimplemented FormatType: %s", type));
-				} catch (ParseException e) {
-					throw e;
-				} catch (IllegalStateException e) {
-					throw e;
-				} catch (IllegalArgumentException e) {
+				} catch (ParseException | IllegalStateException | IllegalArgumentException e) {
 					throw e;
 				} catch (Exception e) {
 					throw new RuntimeException(String.format("Unknown failure in string-to-time conversion: %s", e.getMessage()), e);

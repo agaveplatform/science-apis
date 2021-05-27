@@ -3,19 +3,12 @@
  */
 package org.iplantc.service.notification.resources.impl;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifTrigger;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.NOTIFICATIONS02;
-
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
 import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.auth.AuthorizationHelper;
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.UUIDException;
@@ -36,12 +29,12 @@ import org.restlet.Request;
 import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
-import org.testng.log4testng.Logger;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeType;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.NotifTrigger;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.NOTIFICATIONS02;
 
 /**
  * @author dooley

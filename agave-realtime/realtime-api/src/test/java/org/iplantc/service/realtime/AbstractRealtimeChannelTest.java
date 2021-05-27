@@ -1,42 +1,18 @@
 package org.iplantc.service.realtime;
 
-import static org.iplantc.service.realtime.TestDataHelper.*;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang3.math.NumberUtils;
-import org.hibernate.HibernateException;
-import org.hibernate.Session;
-import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.persistence.HibernateUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.iplantc.service.monitor.dao.MonitorCheckDao;
 import org.iplantc.service.monitor.dao.MonitorDao;
-import org.iplantc.service.monitor.exceptions.MonitorException;
-import org.iplantc.service.monitor.model.Monitor;
-import org.iplantc.service.monitor.model.MonitorCheck;
-import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemRole;
-import org.iplantc.service.systems.model.enumerations.RoleType;
-import org.joda.time.DateTime;
-import org.json.JSONException;
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.surftools.BeanstalkClientImpl.ClientImpl;
-
+@Test(groups={"integration"})
 public class AbstractRealtimeChannelTest {
 
 	protected static final String TEST_USER = "systest";
-	protected static final String TEST_EMAIL = "dooley@tacc.utexas.edu";
+	protected static final String TEST_EMAIL = "help@agaveplatform.org";
 	protected static final String TEST_URL = "http://requestb.in/11pbi6m1?username=${USERNAME}&status=${STATUS}";
 	
 	protected ObjectMapper mapper = new ObjectMapper();

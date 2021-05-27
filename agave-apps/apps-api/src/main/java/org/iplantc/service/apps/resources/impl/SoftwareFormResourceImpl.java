@@ -3,15 +3,10 @@
  */
 package org.iplantc.service.apps.resources.impl;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.WordUtils;
@@ -25,6 +20,7 @@ import org.iplantc.service.apps.model.enumerations.ParallelismType;
 import org.iplantc.service.apps.model.enumerations.SoftwareParameterType;
 import org.iplantc.service.apps.resources.SoftwareFormResource;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -34,10 +30,13 @@ import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * @author dooley
@@ -210,6 +209,9 @@ public class SoftwareFormResourceImpl extends AbstractSoftwareResource implement
         {
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
                     "There was an error generating the job submission form for " + softwareId, e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
 }

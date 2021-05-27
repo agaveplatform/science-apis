@@ -3,22 +3,12 @@
  */
 package org.iplantc.service.jobs.dao;
 
-import java.math.BigInteger;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.CacheMode;
 import org.hibernate.HibernateException;
-import org.hibernate.Query;
 import org.hibernate.SQLQuery;
 import org.hibernate.Session;
-import org.hibernate.type.DateType;
-import org.hibernate.type.Type;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -29,8 +19,14 @@ import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.search.JobEventSearchFilter;
-import org.iplantc.service.jobs.search.JobSearchFilter;
 import org.joda.time.DateTime;
+
+import java.math.BigInteger;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Model class for interacting with job events. JobEvents are
@@ -141,7 +137,7 @@ public class JobEventDao {
 			
 			String hql = "FROM JobEvent e \n"
 					+ "WHERE e.job.id = :jobid \n"
-					+ "ORDER BY " + sortField + " " +  order.toString() + " \n";
+					+ "ORDER BY " + sortField + " " + order + " \n";
 			List<JobEvent> events = session.createQuery(hql)
 					.setLong("jobid", jobId)
 					.setFirstResult(offset)
@@ -204,8 +200,8 @@ public class JobEventDao {
 	}
 
 	/**
-	 * Saves a new job permission. Upates existing ones.
-	 * @param pem
+	 * Saves a new job event. Updates existing ones.
+	 * @param event The object to persist
 	 * @throws JobException
 	 */
 	public static void persist(JobEvent event) throws JobException
@@ -350,11 +346,11 @@ public class JobEventDao {
 				hql += "\n       AND " + searchTerm.getExpression();
 			}
 			
-			hql +=	"\n ORDER BY " + String.format(orderBy.getMappedField(), orderBy.getPrefix()) + " " +  order.toString() + " \n";
+			hql +=	"\n ORDER BY " + String.format(orderBy.getMappedField(), orderBy.getPrefix()) + " " + order + " \n";
 			
 			String q = hql;
 			//log.debug(q);
-			SQLQuery query = (SQLQuery)session.createSQLQuery(hql);
+			SQLQuery query = session.createSQLQuery(hql);
 			query.setLong("jobid", jobId)
 				 .setString("tenantid", TenancyHelper.getCurrentTenantId());
 			
@@ -379,7 +375,7 @@ public class JobEventDao {
 				{
 					query.setParameter(searchTerm.getSearchField(), 
 							searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)));
-					q = StringUtils.replace(q, ":" + searchTerm.getSearchField(), "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+					q = StringUtils.replace(q, ":" + searchTerm.getSearchField(), "'" + searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)) + "'");
 				}
 			    
 			}

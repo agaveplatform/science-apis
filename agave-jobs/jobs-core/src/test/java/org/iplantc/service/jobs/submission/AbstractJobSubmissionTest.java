@@ -1,13 +1,8 @@
 package org.iplantc.service.jobs.submission;
 
-import java.io.File;
-import java.net.URI;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.io.FileUtils;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.RandomUtils;
@@ -52,9 +47,11 @@ import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.net.URI;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class AbstractJobSubmissionTest {
 
@@ -117,10 +114,10 @@ public class AbstractJobSubmissionTest {
 	 * a larger permutation matrix of test cases. 
 	 * 
 	 * Templates used for these systems are taken from the 
-	 * {@code src/test/resources/systems/execution/execute.example.com.json} and 
-	 * {@code src/test/resources/systems/storage/storage.example.com.json} files.
+	 * {@code target/test-classes/systems/execution/execute.example.com.json} and
+	 * {@code target/test-classes/systems/storage/storage.example.com.json} files.
 	 * 
-     * @throws Exception
+     * @throws Exception if things go sideways
      */
 	protected void initSystems() throws Exception {
 	    storageSystem = (StorageSystem) getNewInstanceOfRemoteSystem(RemoteSystemType.STORAGE, "storage");
@@ -146,8 +143,9 @@ public class AbstractJobSubmissionTest {
 	/**
      * Creates and persists an {@link StorageSystem} for every template
      * with file name matching {@link StorageProtocolType}.example.com.json 
-     * in the {@code src/test/resources/systems/storage} folder.
-     * @throws Exception
+     * in the {@code target/test-classes/systems/storage} folder.
+     * @throws Exception if things go sideways
+     * @deprecated
      */
 	protected void initAllStorageSystems() throws Exception {
         for (StorageProtocolType protocol: StorageProtocolType.values())
@@ -165,8 +163,9 @@ public class AbstractJobSubmissionTest {
 	/**
 	 * Creates and persists an {@link ExecutionSystem} for every template
 	 * with file name matching {@link LoginProtocolType}.example.com.json 
-	 * in the {@code src/test/resources/systems/execution} folder.
-	 * @throws Exception
+	 * in the {@code target/test-classes/systems/execution} folder.
+	 * @throws Exception if things go sideways
+     * @deprecated
 	 */
 	protected void initAllExecutionSystems() throws Exception
 	{
@@ -191,10 +190,10 @@ public class AbstractJobSubmissionTest {
      * from one of the test templates. The returned {@link RemoteSystem} is unsaved and
      * unaltered from the original template.
      *  
-     * @param type 
+     * @param type the type of system to initialize
      * @param protocol valid {@link StorageProtocolType} or {@link LoginProtocolType} value
      * @return unaltered test template {@link RemoteSystem}
-     * @throws Exception
+     * @throws Exception if things go sideways
      */
     protected RemoteSystem getNewInstanceOfRemoteSystem(RemoteSystemType type, String protocol)
     throws Exception
@@ -207,17 +206,17 @@ public class AbstractJobSubmissionTest {
      * from one of the test templates. The returned {@link RemoteSystem} is unsaved and
      * unaltered from the original template.
      *
-     * @param type 
+     * @param type the type of system to initialize
      * @param protocol valid {@link StorageProtocolType} or {@link LoginProtocolType} value
      * @param systemId custom systemid to assign to the new system
      * @return unaltered test template {@link RemoteSystem}
-     * @throws Exception
+     * @throws Exception if things go sideways
      */
     protected RemoteSystem getNewInstanceOfRemoteSystem(RemoteSystemType type, String protocol, String systemId)
     throws Exception
     {
         SystemManager systemManager = new SystemManager();
-        JSONObject json = null;
+        JSONObject json;
         if (type == RemoteSystemType.STORAGE) {
             json = jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + 
                     File.separator + protocol.toLowerCase() + ".example.com.json");
@@ -236,8 +235,8 @@ public class AbstractJobSubmissionTest {
     
     /**
      * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link StorageSystem}.
-     * @return
-     * @throws Exception
+     * @return a new test storage system
+     * @throws Exception if things go sideways
      */
     protected StorageSystem getNewInstanceOfStorageSystem()
     throws Exception
@@ -248,8 +247,8 @@ public class AbstractJobSubmissionTest {
     /**
      * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link StorageSystem}.
      * @param systemId the custom systemId to assign to the new system 
-     * @return
-     * @throws Exception
+     * @return the storage system by id
+     * @throws Exception if things go sideways
      */
     protected StorageSystem getNewInstanceOfStorageSystem(String systemId)
     throws Exception
@@ -258,9 +257,10 @@ public class AbstractJobSubmissionTest {
     }
     
     /**
-     * Returns a new, unsaved {@link StorageProtocolType#SSH} {@link ExecutionSystem}.
-     * @return
-     * @throws Exception
+     * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link ExecutionSystem}.
+     * @return a new execution system
+     * @throws Exception if things go sideways
+     * @deprecated
      */
     protected ExecutionSystem getNewInstanceOfExecutionSystem()
     throws Exception
@@ -271,8 +271,8 @@ public class AbstractJobSubmissionTest {
     /**
      * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link ExecutionSystem}.
      * @param systemId the custom systemId to assign to the new system
-     * @return
-     * @throws Exception
+     * @return the execution system on which the software runs
+     * @throws Exception if things go sideways
      */
     protected ExecutionSystem getNewInstanceOfExecutionSystem(String systemId)
     throws Exception
@@ -285,7 +285,7 @@ public class AbstractJobSubmissionTest {
      * Creates and persists a {@link Software} object for every {@link ExecutionSystem} and 
      * {@link BatchQueue}.
      * 
-     * @throws Exception
+     * @throws Exception if things go sideways
      */
     protected void initSoftware() throws Exception 
     {
@@ -316,10 +316,10 @@ public class AbstractJobSubmissionTest {
     * Creates the {@link Software#getDeploymentPath()} folder on the
     * {@link Software#getExecutionSystem()} and copies the {@link Software#getExecutablePath()}
     * file to that folder.
-    * 
-    * @throws Exception
+    *
+    * @param software the software for which to stage assets
     */
-   protected void stageSofwareAssets(Software software) throws Exception {
+   protected void stageSofwareAssets(Software software) {
        RemoteDataClient storageClient = null;
        try {
            storageClient = software.getStorageSystem().getRemoteDataClient();
@@ -333,7 +333,7 @@ public class AbstractJobSubmissionTest {
            Assert.fail("Failed to copy sofware assets to  " + software.getStorageSystem().getSystemId() 
                    + "/" + software.getDeploymentPath() + "/" + software.getExecutablePath(), e);
        } finally {
-           storageClient.disconnect();
+           if (storageClient != null) storageClient.disconnect();
        }
    }
    
@@ -341,42 +341,42 @@ public class AbstractJobSubmissionTest {
     * Copies local test data to the location specified as default values
     * for the {@link SoftwareInput} associated with the given {@code software}
     * value.
-    * @param software
-    * @throws Exception
+    * @param software the software for which input data will be staged.
+    * @throws Exception if things go sideways
     */
    protected void stageSoftwareInputDefaultData(Software software) throws Exception {
        RemoteDataClient remoteDataClient = null;
        URI uri = null;
        try {
            for(SoftwareInput input: software.getInputs()) {
-               for (Iterator<JsonNode> iter = input.getDefaultValueAsJsonArray().iterator(); iter.hasNext();) {
-                   String inputVal = iter.next().asText();
+               for (JsonNode jsonNode : input.getDefaultValueAsJsonArray()) {
+                   String inputVal = jsonNode.asText();
                    uri = URI.create(inputVal);
                    remoteDataClient = new RemoteDataClientFactory().getInstance(SYSTEM_OWNER, null, uri);
                    remoteDataClient.authenticate();
                    remoteDataClient.mkdirs(FilenameUtils.getPathNoEndSeparator(uri.getPath()));
                    remoteDataClient.put(TEST_INPUT_FILE, uri.getPath());
-                   Assert.assertTrue(remoteDataClient.doesExist(uri.getPath()), 
-                           "Failed to copy software default input file " + TEST_INPUT_FILE 
-                           + "to " + uri);
+                   Assert.assertTrue(remoteDataClient.doesExist(uri.getPath()),
+                           "Failed to copy software default input file " + TEST_INPUT_FILE
+                                   + "to " + uri);
                }
            }
        } catch (Exception e) {
            Assert.fail("Failed to copy software default input file " + TEST_INPUT_FILE 
                    + "to " + uri, e);
        } finally {
-           remoteDataClient.disconnect();
+           if (remoteDataClient != null) {
+               remoteDataClient.disconnect();
+           }
        }
    }
    
    /**
-    * Copies local test data to the location specified as default values
-    * for the {@link SoftwareInput} associated with the given {@code software}
+    * Stages test job inputs {@code job}'s {@link Software} to the remote {@link Software#getDeploymentPath()}.
     * value.
-    * @param software
-    * @throws Exception
+    * @param job the job whose software needs data staging.
     */
-   protected void stageJobInputs(Job job) throws Exception {
+   protected void stageJobInputs(Job job)  {
        try {
            StagingAction staging = new StagingAction(job);
            staging.run();
@@ -388,7 +388,7 @@ public class AbstractJobSubmissionTest {
 	/**
 	 * Removes all software assests on remote systems for all
 	 * persisted {@link Software} objects. Removes all wor
-	 * @throws Exception
+	 * @throws Exception if anything goes wrong
 	 */
 	public void clearData() throws Exception {
 	    deleteAllSoftwareAssets();
@@ -399,7 +399,7 @@ public class AbstractJobSubmissionTest {
 	/**
      * Removes all software assests on remote systems for all
      * persisted {@link Software} objects. 
-     * @throws Exception
+     * @throws Exception if anything goes wrong
      */
 	public void deleteAllSoftwareAssets() throws Exception {
 	    
@@ -431,13 +431,15 @@ public class AbstractJobSubmissionTest {
                     + software.getStorageSystem().getSystemId() 
                     + "/" + software.getDeploymentPath() + " after test", e);
         } finally {
-            remoteDataClient.disconnect();
+            if (remoteDataClient != null) {
+                remoteDataClient.disconnect();
+            }
         }
 	}
 	
 	/**
-     * Removes all the {@link Job#workPath} on the job's remote {@link ExecutionSystem}
-     * @throws Exception
+     * Removes all the {@link Job#getWorkPath()} on the job's remote {@link ExecutionSystem}
+     * @throws Exception if anything goes wrong
      */
     public void deleteAllJobWorkDirectories() throws Exception {
         
@@ -449,12 +451,11 @@ public class AbstractJobSubmissionTest {
     }
     
     /**
-     * Removes a single {@link Job#workPath} on the job {@link ExecutionSystem}
+     * Removes a single {@link Job#getWorkPath()} on the job {@link ExecutionSystem}
      * 
-     * @param job
-     * @throws Exception
+     * @param job the job for which to delete the working directory
      */
-    public void deleteJobWorkDirectory(Job job) throws Exception {
+    public void deleteJobWorkDirectory(Job job) {
         RemoteDataClient remoteDataClient = null;
         RemoteSystem executionSystem = systemDao.findBySystemId(job.getSystem());
         
@@ -477,13 +478,17 @@ public class AbstractJobSubmissionTest {
                     + executionSystem.getSystemId() 
                     + "/" + job.getWorkPath() + " after test", e);
         } finally {
-            try {remoteDataClient.disconnect();} catch (Exception e) {}
+            try {
+                if (remoteDataClient != null) {
+                    remoteDataClient.disconnect();
+                }
+            } catch (Exception ignored) {}
         }
     }
     
     /**
-     * Removes all {@link Job#workPath} on the {@link Job#archiveSystem}
-     * @throws Exception
+     * Removes all {@link Job#getWorkPath()} on the {@link Job#getArchiveSystem()}
+     * @throws Exception if anything goes wrong
      */
     public void deleteAllJobArchiveDirectories() throws Exception {
     
@@ -497,12 +502,11 @@ public class AbstractJobSubmissionTest {
     }
     
     /**
-     * Removes a single {@link Job#archivePath} on the {@link Job#archiveSystem}
+     * Removes a single {@link Job#getArchivePath()} on the {@link Job#getArchiveSystem()}
      * 
-     * @param job
-     * @throws Exception
+     * @param job the job for which the archive will be deleted
      */
-    public void deleteJobArchiveDirectory(Job job) throws Exception {
+    public void deleteJobArchiveDirectory(Job job) {
         RemoteDataClient remoteDataClient = null;
         RemoteSystem archiveSystem = job.getArchiveSystem();
         
@@ -522,7 +526,9 @@ public class AbstractJobSubmissionTest {
                     + archiveSystem.getSystemId() 
                     + "/" + job.getArchivePath() + " after test", e);
         } finally {
-            remoteDataClient.disconnect();
+            if (remoteDataClient != null) {
+                remoteDataClient.disconnect();
+            }
         }
     }
 
@@ -534,9 +540,9 @@ public class AbstractJobSubmissionTest {
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected void clearSoftware() throws Exception
+	protected void clearSoftware()
 	{
-		Session session = null;
+		Session session;
 		try
 		{
 			HibernateUtil.beginTransaction();
@@ -550,14 +556,14 @@ public class AbstractJobSubmissionTest {
 			throw new SoftwareException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected void clearJobs() throws Exception
+	protected void clearJobs() throws JobException
 	{
-		Session session = null;
+		Session session;
 		try
 		{
 			HibernateUtil.beginTransaction();
@@ -572,7 +578,7 @@ public class AbstractJobSubmissionTest {
 			throw new JobException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 
@@ -580,15 +586,15 @@ public class AbstractJobSubmissionTest {
      * Creates a {@link Job} object with the given {@code status} using a random 
      * {@link Software} object pulled from the apps available to {@code username}. This method 
      * calls the {@link #createJob(JobStatusType, Software, ExecutionSystem, BatchQueue, String, StorageSystem)}
-     * method using the {@link ExecutionSytems} and {@link ExecutionSystem#getDefaultQueue()} 
+     * method using the {@link ExecutionSystem} and {@link ExecutionSystem#getDefaultQueue()} 
      * from the {@link Software} object.
      * 
      * The returned job has <em>NOT</em> been persisted.
      * 
-	 * @param status
+	 * @param status the status of the new job
 	 * @param username if null, {@link #SYSTEM_OWNER} will be used
 	 * @return unsaved {@link Job} object
-	 * @throws Exception
+	 * @throws Exception if anything goes wrong
 	 */
 	public Job createJob(JobStatusType status, String username)
 	throws Exception 
@@ -609,16 +615,16 @@ public class AbstractJobSubmissionTest {
      * Creates a {@link Job} object with the given {@code status} using the provided
      * {@code software} object pulled from the user's available apps. This method 
      * calls the {@link #createJob(JobStatusType, Software, ExecutionSystem, BatchQueue, String, StorageSystem)}
-     * method using the {@link ExecutionSytems} and {@link ExecutionSystem#getDefaultQueue()} 
+     * method using the {@link ExecutionSystem} and {@link ExecutionSystem#getDefaultQueue()} 
      * from the {@link Software} object.
      * 
      * The returned job has <em>NOT</em> been persisted.
      * 
-     * @param status
-     * @param software
+     * @param status the status of the created job
+     * @param software the software for the job to run
      * @param username if null, {@link #SYSTEM_OWNER} will be used
      * @return unsaved {@link Job} object
-     * @throws Exception
+     * @throws Exception if anything goes wrong
      */
     public Job createJob(JobStatusType status, Software software, String username)
     throws Exception 
@@ -641,14 +647,14 @@ public class AbstractJobSubmissionTest {
 	 * 
 	 * The returned job has <em>NOT</em> been persisted.
 	 * 
-	 * @param status
-	 * @param software
-	 * @param executionSystem
-	 * @param queue
-	 * @param username
-	 * @param archiveSystem
+	 * @param status the status of the new job
+	 * @param software the software the job will run
+	 * @param executionSystem the execution system on which the job will run
+	 * @param queue the {@link BatchQueue} to which the job will be submitted
+	 * @param username the owner of the job
+	 * @param archiveSystem the system to which the job data will be archived.
 	 * @return unsaved {@link Job} object
-	 * @throws Exception
+	 * @throws Exception if anything goes wrong
 	 */
 	public Job createJob(JobStatusType status, Software software, ExecutionSystem executionSystem, BatchQueue queue, String username, StorageSystem archiveSystem)
     throws Exception {
@@ -662,6 +668,8 @@ public class AbstractJobSubmissionTest {
         job.setArchiveOutput(true);
         job.setArchiveSystem(archiveSystem);
         job.setArchivePath(username + "/archive/test-job-999");
+        job.setExecutionType(software.getExecutionType());
+        job.setSchedulerType(software.getExecutionSystem().getScheduler());
         
         job.setSoftwareName(software.getUniqueName());
         job.setSystem(executionSystem.getSystemId());
@@ -677,13 +685,13 @@ public class AbstractJobSubmissionTest {
             
         ObjectNode inputs = mapper.createObjectNode();
         for(SoftwareInput swInput: software.getInputs()) {
-            inputs.put(swInput.getKey(), swInput.getDefaultValueAsJsonArray());
+            inputs.set(swInput.getKey(), swInput.getDefaultValueAsJsonArray());
         }
         job.setInputsAsJsonObject(inputs);
         
         ObjectNode parameters = mapper.createObjectNode();
         for(SoftwareParameter swParameter: software.getParameters()) {
-            parameters.put(swParameter.getKey(), swParameter.getDefaultValueAsJsonArray());
+            parameters.set(swParameter.getKey(), swParameter.getDefaultValueAsJsonArray());
         }
         job.setParametersAsJsonObject(parameters);
         int minutesAgoJobWasCreated = RandomUtils.nextInt(360)+1;
@@ -723,29 +731,28 @@ public class AbstractJobSubmissionTest {
             
             for(SoftwareInput input: software.getInputs()) 
             {
-                for (Iterator<JsonNode> iter = input.getDefaultValueAsJsonArray().iterator(); iter.hasNext();)
-                {
-                    String val = iter.next().asText();
-                    
+                for (JsonNode jsonNode : input.getDefaultValueAsJsonArray()) {
+                    String val = jsonNode.asText();
+
                     TransferTask stagingTransferTask = new TransferTask(
-                            val, 
-                            "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()), 
-                            job.getOwner(), 
-                            null, 
+                            val,
+                            "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()),
+                            job.getOwner(),
+                            null,
                             null);
                     stagingTransferTask.setStatus(TransferStatusType.TRANSFERRING);
                     stagingTransferTask.setCreated(stagingTime.toDate());
                     stagingTransferTask.setLastUpdated(stagingTime.toDate());
-                    
+
                     TransferTaskDao.persist(stagingTransferTask);
-                    
+
                     JobEvent event = new JobEvent(
-                            JobStatusType.STAGING_INPUTS, 
-                            "Copy in progress", 
-                            stagingTransferTask, 
+                            JobStatusType.STAGING_INPUTS,
+                            "Copy in progress",
+                            stagingTransferTask,
                             job.getOwner());
                     event.setCreated(stagingTime.toDate());
-                    
+
                     job.setStatus(JobStatusType.STAGING_INPUTS, event);
                 }
             }
@@ -761,32 +768,31 @@ public class AbstractJobSubmissionTest {
             
             for(SoftwareInput input: software.getInputs()) 
             {
-                for (Iterator<JsonNode> iter = input.getDefaultValueAsJsonArray().iterator(); iter.hasNext();)
-                {
-                    String val = iter.next().asText();
-                    
+                for (JsonNode jsonNode : input.getDefaultValueAsJsonArray()) {
+                    String val = jsonNode.asText();
+
                     TransferTask stagingTransferTask = new TransferTask(
-                            val, 
-                            "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()), 
-                            job.getOwner(), 
-                            null, 
+                            val,
+                            "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()),
+                            job.getOwner(),
+                            null,
                             null);
-                    
+
                     stagingTransferTask.setStatus(TransferStatusType.COMPLETED);
                     stagingTransferTask.setCreated(stagingTime.toDate());
                     stagingTransferTask.setStartTime(stagingTime.toDate());
                     stagingTransferTask.setEndTime(stagingEnded.toDate());
                     stagingTransferTask.setLastUpdated(stagingEnded.toDate());
-                    
+
                     TransferTaskDao.persist(stagingTransferTask);
-                    
+
                     JobEvent event = new JobEvent(
-                            JobStatusType.STAGING_INPUTS, 
-                            "Staging completed", 
-                            stagingTransferTask, 
+                            JobStatusType.STAGING_INPUTS,
+                            "Staging completed",
+                            stagingTransferTask,
                             job.getOwner());
                     event.setCreated(stagingTime.toDate());
-                    
+
                     job.setStatus(JobStatusType.STAGING_INPUTS, event);
                 }
             }
@@ -832,10 +838,10 @@ public class AbstractJobSubmissionTest {
 	 * Generic test case for job submission tests. Tries to submit the form, asserts that an 
 	 * exception was thrown if shouldThrowExceptino was true.
 	 *
-     * @param attribute
-	 * @param value
-	 * @param message
-	 * @param shouldThrowException
+     * @param attribute the attribute to update
+	 * @param value the value of the updated attribute
+	 * @param message message if the assertion fails
+	 * @param shouldThrowException true if it should fail, false otherwise
 	 */
 	protected void genericJobSubmissionTestCase(String attribute, String value, String message, boolean shouldThrowException) 
 	{
@@ -855,18 +861,19 @@ public class AbstractJobSubmissionTest {
             if (actuallyThrewException != shouldThrowException) se.printStackTrace();
         }
 		
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+        Assert.assertEquals(shouldThrowException, actuallyThrewException, exceptionMsg);
 		
 	}
 	
 	/**
      * Generic submission test used by all the methods testing job launching in some form or fashion.
      * 
-     * @param job
-     * @param queuedOrRunning
-     * @param message
-     * @param shouldThrowException
+     * @param job the job to submit
+     * @param queuedOrRunning true if the job should be queued or running after submission
+     * @param message message if the assertion fails
+     * @param shouldThrowException true if it should fail, false otherwise
+     * @return the submitted job
      */
 	protected Job genericRemoteSubmissionTestCase(Job job, boolean queuedOrRunning, String message, boolean shouldThrowException) 
 	{
@@ -877,10 +884,6 @@ public class AbstractJobSubmissionTest {
 		
 		try
         {
-//		    job.setArchivePath(job.getOwner() + "/archive/jobs/job-" + job.getUuid() + "-" + Slug.toSlug(job.getName()));
-//		    
-//			JobDao.persist(job);
-//			
 			submissionAction.run();
             
             job = submissionAction.getJob();
@@ -891,8 +894,7 @@ public class AbstractJobSubmissionTest {
             if (queuedOrRunning) {
             	Assert.assertNotNull(submissionAction.getJob().getLocalJobId(),
                         "Local job id was not obtained during submission");
-                Assert.assertTrue(job.getRetries() == 0,
-                        "Job should only submit once when it does not fail during submission");
+                Assert.assertEquals((int) job.getRetries(), 0, "Job should only submit once when it does not fail during submission");
                 Assert.assertNotNull(job.getSubmitTime(),
                     "Job submit time was not updated during job submission");
             } else {
@@ -912,8 +914,8 @@ public class AbstractJobSubmissionTest {
 		    job = submissionAction.getJob();
 		}
 		
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+        Assert.assertEquals(shouldThrowException, actuallyThrewException, exceptionMsg);
 		
 		return job;
 		
@@ -923,9 +925,10 @@ public class AbstractJobSubmissionTest {
      * Generic submission test used by all the methods testing job submission is some
      * form or fashion.
      * 
-     * @param job
-     * @param message
-     * @param shouldThrowException
+     * @param job the job to submit
+     * @param message message if the assertion fails
+     * @param shouldThrowException true if it should fail, false otherwise
+     * @return the submitted job
      */
 	protected Job genericRemoteSubmissionTestCase(Job job, JobStatusType expectedStatus, String message, boolean shouldThrowException) 
 	{
@@ -950,8 +953,7 @@ public class AbstractJobSubmissionTest {
                     expectedStatus == JobStatusType.QUEUED ) {
                 Assert.assertNotNull(submissionAction.getJob().getLocalJobId(),
                         "Local job id was not obtained during submission");
-                Assert.assertTrue(job.getRetries() == 0,
-                        "Job should only submit once when it does not fail during submission");
+                Assert.assertEquals((int) job.getRetries(), 0, "Job should only submit once when it does not fail during submission");
                 Assert.assertNotNull(job.getSubmitTime(),
                     "Job submit time was not updated during job submission");
             } else {
@@ -971,8 +973,8 @@ public class AbstractJobSubmissionTest {
 		    job = submissionAction.getJob();
 		}
 		
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+        Assert.assertEquals(shouldThrowException, actuallyThrewException, exceptionMsg);
 		
 		return job;
 		
@@ -981,17 +983,16 @@ public class AbstractJobSubmissionTest {
 	/**
 	 * Updates the given name value pair in the form and returns a copy of the updated form.
 	 * 
-	 * @param form
-	 * @param name
-	 * @param value
-	 * @return
+	 * @param jobRequestMap the job request marshalled to a Map
+	 * @param fieldName the field to update in the map
+	 * @param fieldValue the value of the udpated field
+	 * @return the updated form map
 	 */
-	protected Map<String, Object> updateJobSubmissionForm(Map<String, Object> jobRequestMap, String name, String value)
+	protected Map<String, Object> updateJobSubmissionForm(Map<String, Object> jobRequestMap, String fieldName, String fieldValue)
 	{
-	    Map<String, Object> newJobRequestMap = new HashMap<String, Object>();
-	    newJobRequestMap.putAll(jobRequestMap);
+        Map<String, Object> newJobRequestMap = new HashMap<>(jobRequestMap);
 		
-	    newJobRequestMap.put(name, value);
+	    newJobRequestMap.put(fieldName, fieldValue);
 		
 		return newJobRequestMap;
 	}
@@ -1000,17 +1001,20 @@ public class AbstractJobSubmissionTest {
 	 * Verfies the variables were resolved in the template and the callback urls resolved to the 
 	 * proper tenant paths.
 	 * 
-	 * @param job
-	 * @param message
-	 * @param shouldThrowException
+	 * @param job the job for which the template will be resolved
+	 * @param message the assertion message upon failure
+	 * @param shouldThrowException true if an exception should be thrown, false otherwise
 	 */
 	protected void genericProcessApplicationTemplate(Job job, String expectedString, String message, boolean shouldThrowException)
 	throws Exception 
 	{
-		JobLauncher launcher = JobLauncherFactory.getInstance(job);
-		File ipcexeFile = launcher.processApplicationTemplate();
-		String contents = FileUtils.readFileToString(ipcexeFile);
-		
-		Assert.assertTrue(contents.contains(expectedString), message);
+		JobLauncher launcher = new JobLauncherFactory().getInstance(job);
+		String applicationWrapperContent = launcher.processApplicationWrapperTemplate();
+
+        Assert.assertTrue(applicationWrapperContent.contains(expectedString), message);
+//        ArgumentCaptor<String> wrapperTemplateContentCaptor = ArgumentCaptor.forClass(String.class);
+//        verify(launcher).writeWrapperTemplateToRemoteJobDir(eq(anyString()), wrapperTemplateContentCaptor.capture());
+//
+//        Assert.assertTrue(wrapperTemplateContentCaptor.getValue().contains(expectedString), message);
 	}
 }

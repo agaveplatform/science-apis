@@ -20,7 +20,7 @@ import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.HashMap;
 
-
+@Test(groups={"unit"})
 public class AuthConfigTest extends SystemsModelTestCommon {
 
     @BeforeClass
@@ -469,8 +469,7 @@ public class AuthConfigTest extends SystemsModelTestCommon {
 				se.printStackTrace();
 		}
 
-		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
-
+//		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 		Assert.assertTrue(exceptionFlag == exceptionThrown, exceptionMsg);
     }
     
@@ -554,7 +553,7 @@ public class AuthConfigTest extends SystemsModelTestCommon {
 				se.printStackTrace();
 		}
 
-		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
+//		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 
 		if (expectedType == null) {
 			Assert.assertNull(o, message);

@@ -1,6 +1,9 @@
 package org.iplantc.service.io.manager;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.iplantc.service.io.dao.LogicalFileDao;
@@ -45,16 +48,15 @@ public class FilesTransferListener extends AbstractVerticle {
 
             // Parse data
             JsonObject body = msg.body();
-            String srcUrl = body.getString("src");
-            String createdBy = body.getString("owner");
             String transferUuid = body.getString("uuid");
 
-            // Retrieve current logical file
-            LogicalFile file = LogicalFileDao.findBySourceUrl(srcUrl);
-            if (file.getTransferUuid() == transferUuid) {
-                // Update logical file
-                LogicalFileDao.updateTransferStatus(file, StagingTaskStatus.STAGING_FAILED, createdBy);
-            }
+            processTransferNotification(StagingTaskStatus.STAGING_FAILED, msg.body(), result -> {
+                if (result.succeeded()){
+                    //logical file updated
+                } else {
+                    logger.debug("Unable to update status for Logical file {}", transferUuid);
+                }
+            });
 
         });
 
@@ -63,16 +65,39 @@ public class FilesTransferListener extends AbstractVerticle {
 
             // Parse data
             JsonObject body = msg.body();
-            String srcUrl = body.getString("src");
-            String createdBy = body.getString("owner");
             String transferUuid = body.getString("uuid");
 
-            // Retrieve current logical file
-            LogicalFile file = LogicalFileDao.findBySourceUrl(srcUrl);
-            if (file.getTransferUuid() == transferUuid) {
-                // Update logical file
-                LogicalFileDao.updateTransferStatus(file, StagingTaskStatus.STAGING_COMPLETED, createdBy);
-            }
+            processTransferNotification(StagingTaskStatus.STAGING_COMPLETED, msg.body(), result -> {
+                if (result.succeeded()){
+                    //logical file updated
+                } else {
+                    logger.debug("Unable to update status for Logical file {}", transferUuid);
+                }
+            });
         });
+
+    }
+
+    public void processTransferNotification(StagingTaskStatus status, JsonObject body, Handler<AsyncResult<Boolean>> handler){
+        // Parse data
+        String srcUrl = body.getString("source");
+        String createdBy = body.getString("owner");
+        String transferUuid = body.getString("uuid");
+
+        // Retrieve current logical file
+        LogicalFile file = LogicalFileDao.findByTransferUuid(transferUuid);
+        if (file != null){
+            try {
+                // Update logical file
+                LogicalFileDao.updateTransferStatus(file, status, createdBy);
+                handler.handle(Future.succeededFuture(true));
+            } catch (Exception e){
+                logger.debug("Unable to update transfer status");
+                handler.handle(Future.failedFuture(e));
+            }
+        } else {
+            //
+            handler.handle(Future.failedFuture("No existing file found matching transfer " + transferUuid));
+        }
     }
 }

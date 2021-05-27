@@ -7,7 +7,7 @@ node ('master') {
 
 	env.DOCKER_REGISTRY_URL = ''
 	env.DOCKER_REGISTRY_ORG = 'agaveplatform'
-	env.GIT_BRANCH = '2.2.27'
+//	env.BRANCH_NAME = 'develop'
 
 
 	// Send a message indicating the start of the build. We record the thread and add it to the environment
@@ -19,11 +19,14 @@ node ('master') {
     build()
     unitTest()
     integrationTest()
-    buildAndPublishDockerImages()
-    helmDeploy()
-    helmTest()
-
-    slackSend channel: slackResponse.threadId, color: "green", message: "CI/CD pipeline completed successfully."
+	if (env.BRANCH_NAME == "develop" || env.BRANCH_NAME == "master") {
+		buildAndPublishDockerImages()
+		helmDeploy()
+		helmTest()
+		slackSend channel: slackResponse.threadId, color: "green", message: "CI/CD pipeline completed successfully."
+	} else {
+		slackSend channel: slackResponse.threadId, color: "green", message: "CI pipeline. Deployment skipped for release channel branches."
+	}
 }
 
 def isPRMergeBuild() {
@@ -46,28 +49,19 @@ def commitHash() {
 	return sh(returnStdout: true, script: "git rev-parse HEAD").trim()
 }
 
-
 def checkoutSource () {
     stage('Checkout code') {
 		try {
 			context="continuous-integration/jenkins/"
 			context += isPRMergeBuild()?"pr-merge/checkout":"branch/checkout"
-			checkout([$class: 'GitSCM',
-					branches: [[name: "*/${env.GIT_BRANCH}"]],
-					doGenerateSubmoduleConfigurations: false,
-					extensions: [],
-					submoduleCfg: [],
-					userRemoteConfigs: [
-						[credentialsId: 'deardooley-github-access-token',
-						url: 'https://deardooley@github.com/agaveplatform/science-apis.git']]])
+			checkout
 			//    setBuildStatus ("${context}", 'Checking out completed', 'SUCCESS')
-
 
 			// set the commit hash and short hash for use in this build
 			env.GIT_COMMIT=commitHash()
 			env.GIT_SHORT_HASH=shortCommitHash()
 
-			slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Checked out commit ${env.GIT_SHORT_HASH} from branch ${env.GIT_BRANCH}."
+			slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Checked out commit ${env.GIT_SHORT_HASH} from branch ${env.BRANCH_NAME}."
 		} catch (err) {
 			slackSend channel: env.SLACK_THREAD_ID, color: "danger", message: "Source checkout failed."
 			throw err
@@ -357,14 +351,11 @@ def clearImages() {
     stage ("Clean Docker Images") {
     	try {
     	    // remove local branch images
-			sh "./dockerbuild.sh -c -t localdev -v ${env.GIT_BRANCH}"
+			sh "./dockerbuild.sh -c -t localdev -v ${env.BRANCH_NAME}"
 			// remove existing revision images
 			sh "./dockerbuild.sh -c -t ${env.DOCKER_REGISTRY_ORG} -v ${env.GIT_SHORT_HASH}"
-			// remove existing branch images
-			sh "./dockerbuild.sh -c -t ${env.DOCKER_REGISTRY_ORG} -v ${env.GIT_BRANCH}"
-            // remove existing dev branch images
-			sh "./dockerbuild.sh -c -t ${env.DOCKER_REGISTRY_ORG} -v ${env.GIT_BRANCH}-dev"
-
+//			// remove existing branch images
+//			sh "./dockerbuild.sh -c -t ${env.DOCKER_REGISTRY_ORG} -v ${env.BRANCH_NAME}"
 			slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Docker image cleanup completed successfully."
 		} catch (err) {
 			slackSend channel: env.SLACK_THREAD_ID, color: "danger", message: "Docker image cleanup failed."
@@ -383,13 +374,13 @@ def buildImages() {
 				sh "docker login -u ${DOCKER_REGISTRY_USER} -p ${DOCKER_REGISTRY_PASS} ${env.DOCKER_REGISTRY_URL}"
 
 				// build images from current revision
-				sh "./dockerbuild.sh -b -t localdev -v ${env.GIT_BRANCH}"
+				sh "./dockerbuild.sh -b -t localdev -v ${env.BRANCH_NAME}"
 
 				// tag local branch build with dev branch repo and name
-                // sh "./dockerbuild.sh -r -s localdev -w ${env.GIT_BRANCH} -t ${env.DOCKER_REGISTRY_ORG} -v ${env.GIT_BRANCH}-dev"
+                // sh "./dockerbuild.sh -r -s localdev -w ${env.BRANCH_NAME} -t ${env.DOCKER_REGISTRY_ORG} -v ${env.BRANCH_NAME}-dev"
 
 				// tag local branch build with revision images
-				sh "./dockerbuild.sh -r -s localdev -w ${env.GIT_BRANCH} -t ${env.DOCKER_REGISTRY_ORG} -v ${env.GIT_SHORT_HASH}"
+				sh "./dockerbuild.sh -r -s localdev -w ${env.BRANCH_NAME} -t ${env.DOCKER_REGISTRY_ORG} -v ${env.GIT_SHORT_HASH}"
 
 				slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Docker build completed successfully. Log available <${env.BUILD_URL}|here>."
 			} catch (err) {
@@ -410,7 +401,7 @@ def pushImages() {
 				// push revision images to repo
 				sh "./dockerbuild.sh -p -t ${env.DOCKER_REGISTRY_ORG} -v ${env.GIT_SHORT_HASH}"
 				// push branch images to repo
-				// sh "./dockerbuild.sh -p -t ${env.DOCKER_REGISTRY_ORG} -v ${env.GIT_BRANCH}-dev"
+				// sh "./dockerbuild.sh -p -t ${env.DOCKER_REGISTRY_ORG} -v ${env.BRANCH_NAME}-dev"
 
 				slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Docker image push to ${env.DOCKER_REGISTRY_URL} completed successfully."
 			} catch (err) {
@@ -426,7 +417,7 @@ def helmDeploy() {
 		withCredentials([file(credentialsId: 'agave-kubectl-config', variable: 'KUBECONFIG_FILE'),
 		usernamePassword(credentialsId: 'sendgrid-login-k8s.agaveplatform.org', passwordVariable: 'SMTP_PASSWORD', usernameVariable: 'SMTP_USERNAME')]) {
 			try {
-				def branchSubdomain = env.GIT_BRANCH.replaceAll('\\.','-')
+				def branchSubdomain = env.BRANCH_NAME.replaceAll('\\.','-')
 
 				sh("helm repo add agave https://helm.agaveplatform.org")
 
@@ -459,11 +450,11 @@ def helmDeploy() {
 def helmTest() {
 	stage('Helm Chart Tests') {
 		withCredentials([file(credentialsId: 'agave-kubectl-config', variable: 'KUBECONFIG_FILE')]) {
-			def branchSubdomain = env.GIT_BRANCH.replaceAll('\\.','-')
+			def branchSubdomain = env.BRANCH_NAME.replaceAll('\\.','-')
 
 			timeout(10) {
                 waitUntil {
-					def pendingPods = sh(returnStdout: true, script: "/bin/bash -c 'kubectl --kubeconfig=${KUBECONFIG_FILE} -n ${branchSubdomain} get pods -o json | jq -r .items[].status.phase | grep -v Running | grep -v Succeeded | grep -v Completed | sort | uniq '").trim();
+					def pendingPods = sh(returnStdout: true, script: "/bin/bash -c 'kubectl --kubeconfig=${KUBECONFIG_FILE} -n ${branchSubdomain} get pods -o json | jq -r .items[].status.phase | grep -v Running | grep -v Succeeded | grep -v Completed | sort | uniq '").trim()
 					echo pendingPods
 					return (pendingPods == null || pendingPods == '')
                 }

@@ -2,41 +2,32 @@
 
 Please provide a short summary of the issue or feature request. Extended descriptions and justification should be placed in the expected behavior section.
 
-## What platform services are impacted?
+## What services are impacted?
 
+* [ ] Admin
 * [ ] Apps
-* [ ] Events
+* [ ] Clients
 * [ ] Files
-* [ ] Groups
 * [ ] Jobs
-* [ ] Logging
 * [ ] Metadata
 * [ ] Monitors
 * [ ] Notifications
-* [ ] Templates
 * [ ] Postits
 * [ ] Profiles
-* [ ] Preferences
-* [ ] Reactors
-* [ ] Realtime
-* [ ] Repositories
-* [ ] Stats
 * [ ] Systems
 * [ ] Tags
 * [ ] Tenants
 * [ ] Transfers
-* [ ] Transforms
-* [ ] Usage
 * [ ] Uuids
 
 ## To which tenant does this issue apply?
 
 You can get this information from calling the `/tenants/v2` or invoking the `tenants-list` command in the CLI.
-Community - https://api.agaveplatform.org
+Community - https://sandbox.agaveplatform.org/tenants/v2
 
 ## What version of the platform are you using?
 
-You can get this information from the version field in every API response. The version in the response below is 2.2.6-r4f1bf09.
+You can get this information from the version field in every API response. The version in the response below is 2.2.17-b19gz0a.
 
 ```
 systems-list -V -l 0
@@ -44,7 +35,7 @@ Calling curl -sk -H "Authorization: Bearer $TOKEN" 'https://public.agaveapi.co/s
 {
   "status" : "success",
   "message" : null,
-  "version" : "2.2.6-r4f1bf09",
+  "version" : "2.2.17-b19gz0a",
   "result" : [ ]
 }
 ```

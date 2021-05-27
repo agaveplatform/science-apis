@@ -11,6 +11,11 @@ volumes: {}
 #      driver: default
 #      config:
 #        - subnet: 172.41.0.0/16
+
+networks:
+  services:
+    external: true
+
 services:
 
   traefik:
@@ -173,6 +178,16 @@ services:
       - "traefik.http.routers.httpd-secure.service=httpd"
       - "traefik.http.routers.httpd-secure.tls=true"
       - "traefik.http.services.httpd.loadbalancer.server.port=80"
+
+
+  transfers:
+    image: agaveplatform/transfers-api:2.2.27
+    ports:
+      - 8085:8085
+    environment:
+      TRANSFERTASK_DB_SQL_QUERIES_RESOURCE_FILE: /verticles/db-queries.yml
+    networks:
+      - services
 
 #  ftp:
 #    image: agaveapi/pure-ftpd:latest

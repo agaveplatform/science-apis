@@ -13,8 +13,8 @@ cloud.google.com/go/storage v1.0.0/go.mod h1:IhtSnM/ZTZV8YYJWCY8RULGVqBDmpoyjwiy
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 entrogo.com/entroq v0.3.19 h1:CC6TLJqQXFHBNyiUxJ8utKUuKsU8s6FjhwrNHx0Cypc=
 entrogo.com/entroq v0.3.19/go.mod h1:hFQDSR576YMu/1O+edUltWvkBu8D+KsJZZN9aZvQKSc=
-entrogo.com/sshpool v0.0.0-20200914135632-c564b9394a0b h1:Znd+rcXMLcJFMNW+A7M719m+nQMNILlgL8+sn2lv1oc=
-entrogo.com/sshpool v0.0.0-20200914135632-c564b9394a0b/go.mod h1:pr6PMRFDCdLeT96s56COVhFITBHDJB6Jcuqerq0lRv4=
+entrogo.com/sshpool v0.0.0-20210429055154-e3d817e23a13 h1:doO63erAbJ6ORi85VKpQxGTBaIRnYMD94LzaSPiebAc=
+entrogo.com/sshpool v0.0.0-20210429055154-e3d817e23a13/go.mod h1:DkOOUzPyv0Wjpa5IvtcmGfQ6XOPXc/Rzcqs3/02IpxM=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=

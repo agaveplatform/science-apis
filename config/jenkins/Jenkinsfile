@@ -7,8 +7,6 @@ node ('master') {
 
 	env.DOCKER_REGISTRY_URL = ''
 	env.DOCKER_REGISTRY_ORG = 'agaveplatform'
-//	env.BRANCH_NAME = 'develop'
-
 
 	// Send a message indicating the start of the build. We record the thread and add it to the environment
 	// so we thread all future messages
@@ -34,11 +32,15 @@ node ('master') {
 }
 
 // Checks whether this is a PR build
+//
+// @returns true if the branch is a PR build, false otherwise
 def isPRMergeBuild() {
     return (env.BRANCH_NAME ==~ /^PR-\d+$/)
 }
 
 // Checks for a release branch
+//
+// @returns true if the branch has a release tag or is a release branch, false otherwise
 def isReleaseBuild() {
 	return (env.BRANCH_NAME ==~ /^v2.\d+$/)
 }

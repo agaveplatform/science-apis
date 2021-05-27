@@ -15,11 +15,15 @@ node ('master') {
     def slackResponse = slackSend(color: "good", message: "Started Agave Science API build <${env.JOB_DISPLAY_URL}|${env.BUILD_DISPLAY_NAME}>")
     env.SLACK_THREAD_ID=slackResponse.threadId
 
+	// We build and tests every branch on every commit.
     checkoutSource()
     build()
     unitTest()
     integrationTest()
-	if (env.BRANCH_NAME == "develop" || env.BRANCH_NAME == "master") {
+
+	// We only want to deploy our develop and master branches since those represent our latest development and latest
+	// release respectively.
+	if (env.BRANCH_NAME == "develop" || env.BRANCH_NAME == "master" || isReleaseBuild()) {
 		buildAndPublishDockerImages()
 		helmDeploy()
 		helmTest()
@@ -29,8 +33,14 @@ node ('master') {
 	}
 }
 
+// Checks whether this is a PR build
 def isPRMergeBuild() {
     return (env.BRANCH_NAME ==~ /^PR-\d+$/)
+}
+
+// Checks for a release branch
+def isReleaseBuild() {
+	return (env.BRANCH_NAME ==~ /^v2.\d+$/)
 }
 
 // Returs the short commit hash for the current checkout. We use this approach to avoid compatibility issues with the
@@ -49,6 +59,7 @@ def commitHash() {
 	return sh(returnStdout: true, script: "git rev-parse HEAD").trim()
 }
 
+// Checks out the code from Github and puts the commit hash and short hash into the environmment.
 def checkoutSource () {
     stage('Checkout code') {
 		try {
@@ -69,6 +80,7 @@ def checkoutSource () {
 	}
 }
 
+// Performs initial compilation of the code.
 def build () {
     stage('Build Source') {
 		//def MAVEN_CMD = "/usr/bin/docker run -i --rm -w $(pwd) -v ${env.WORKSPACE}:${env.WORKSPACE} -v ${env.HOME}/.m2:/root/.m2  -v /var/run/docker.sock:/var/run/docker.sock --net host agaveplatform/maven:3.6.3-proto mvn -Dstyle.color=never "
@@ -84,6 +96,7 @@ def build () {
 	}
 }
 
+// Runs full suite of unit tests
 def unitTest() {
 	stage ('Unit Tests') {
 		//def MAVEN_CMD = "/usr/bin/docker run -i --rm -w ${env.WORKSPACE} -v ${env.WORKSPACE}:${env.WORKSPACE} -v ${env.HOME}/.m2:/root/.m2  -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn -Dstyle.color=never "
@@ -104,6 +117,10 @@ def unitTest() {
 	}
 }
 
+// Runs full suite of integration tests. Because we have seen servers experience excessive latency when spinning up and
+// tearing down test stacks between tests, thereby resulting in false test failures, we run the integration tests
+// one module at a time, each module designated as its own stage, cleaning up aggressively between stages. This does
+// take longer, but results in more reliable builds.
 def integrationTest() {
 	stage ('Integration Tests') {
         withCredentials([usernamePassword(credentialsId: 'docker-hub-login', passwordVariable: 'DOCKER_REGISTRY_PASS', usernameVariable: 'DOCKER_REGISTRY_USER')]) {
@@ -302,7 +319,7 @@ def integrationTest() {
 	}
 }
 
-// Remove existing containers to avoid conflicts from failed builds
+// Removes existing containers to avoid conflicts from failed builds
 def clearCurrentContainers() {
 
     echo "Stopping existing docker containers"
@@ -339,14 +356,14 @@ def coverage() {
 	}
 }
 
-// handles clean build and push of docker images for the current branch and revision
+// Handles clean build and push of docker images for the current branch and revision
 def buildAndPublishDockerImages() {
     clearImages()
     buildImages()
     pushImages()
 }
 
-// clears out existing revision and branch images
+// Clears out existing revision and branch images
 def clearImages() {
     stage ("Clean Docker Images") {
     	try {
@@ -364,7 +381,7 @@ def clearImages() {
 	}
 }
 
-// builds new images tagged with the short revision commit hash and the branch name
+// Builds new images tagged with the short revision commit hash and the branch name
 def buildImages() {
     stage ("Build Docker Images") {
 		// load docker credentials so we don't get bitten by the docker registry rate limiting policy
@@ -374,13 +391,7 @@ def buildImages() {
 				sh "docker login -u ${DOCKER_REGISTRY_USER} -p ${DOCKER_REGISTRY_PASS} ${env.DOCKER_REGISTRY_URL}"
 
 				// build images from current revision
-				sh "./dockerbuild.sh -b -t localdev -v ${env.BRANCH_NAME}"
-
-				// tag local branch build with dev branch repo and name
-                // sh "./dockerbuild.sh -r -s localdev -w ${env.BRANCH_NAME} -t ${env.DOCKER_REGISTRY_ORG} -v ${env.BRANCH_NAME}-dev"
-
-				// tag local branch build with revision images
-				sh "./dockerbuild.sh -r -s localdev -w ${env.BRANCH_NAME} -t ${env.DOCKER_REGISTRY_ORG} -v ${env.GIT_SHORT_HASH}"
+				sh "./dockerbuild.sh -b -t localdev -v ${env.GIT_SHORT_HASH}"
 
 				slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Docker build completed successfully. Log available <${env.BUILD_URL}|here>."
 			} catch (err) {
@@ -391,7 +402,7 @@ def buildImages() {
 	}
 }
 
-// push images to the configured docker registry
+// Pushes new images to the configured container registry
 def pushImages() {
 	stage('Push Docker Images') {
 		withCredentials([usernamePassword(credentialsId: 'docker-hub-login', passwordVariable: 'DOCKER_REGISTRY_PASS', usernameVariable: 'DOCKER_REGISTRY_USER')]) {
@@ -400,8 +411,14 @@ def pushImages() {
 				sh "docker login -u ${DOCKER_REGISTRY_USER} -p ${DOCKER_REGISTRY_PASS} ${env.DOCKER_REGISTRY_URL}"
 				// push revision images to repo
 				sh "./dockerbuild.sh -p -t ${env.DOCKER_REGISTRY_ORG} -v ${env.GIT_SHORT_HASH}"
-				// push branch images to repo
-				// sh "./dockerbuild.sh -p -t ${env.DOCKER_REGISTRY_ORG} -v ${env.BRANCH_NAME}-dev"
+
+				// If this is a release or dev branch, we will also tag the image with the branch name and push to
+				// the docker repo for release.
+				if (isReleaseBuild() || ${env.BRANCH_NAME} == "develop") {
+					// tag local branch build with revision images
+					sh "./dockerbuild.sh -r -s localdev -w ${env.BRANCH_NAME} -t ${env.DOCKER_REGISTRY_ORG} -v ${env.BRANCH_NAME}"
+					sh "./dockerbuild.sh -p -t ${env.DOCKER_REGISTRY_ORG} -v ${env.BRANCH_NAME}"
+				}
 
 				slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Docker image push to ${env.DOCKER_REGISTRY_URL} completed successfully."
 			} catch (err) {
@@ -412,6 +429,8 @@ def pushImages() {
 	}
 }
 
+// Deploys the core services to a dedicated namespace in Kuberntes via Helm. Images tags are selected using the commit
+// hash from this build, thereby ensuring we always run the current version of the branch code in the target namespace.
 def helmDeploy() {
 	stage('Deploy Helm Chart') {
 		withCredentials([file(credentialsId: 'agave-kubectl-config', variable: 'KUBECONFIG_FILE'),
@@ -440,13 +459,12 @@ def helmDeploy() {
 				slackSend channel: env.SLACK_THREAD_ID, color: "danger", message: "Helm deployment failed."
 				throw err
 			}
-// 			finally {
-// 			  sh ("rm -rf ./helm")
-// 			}
       	}
   	}
 }
 
+// Runs the Postman test suite against the deployed services running in Kubernetes. Deployments occur asynchronously,
+// so we first check that the deployment is complete before launching the tests.
 def helmTest() {
 	stage('Helm Chart Tests') {
 		withCredentials([file(credentialsId: 'agave-kubectl-config', variable: 'KUBECONFIG_FILE')]) {

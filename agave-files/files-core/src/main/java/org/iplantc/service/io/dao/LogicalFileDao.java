@@ -1,11 +1,5 @@
 package org.iplantc.service.io.dao;
 
-import java.math.BigInteger;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -20,6 +14,12 @@ import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.io.util.ServiceUtils;
 import org.iplantc.service.systems.model.RemoteSystem;
+
+import java.math.BigInteger;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 public class LogicalFileDao {
 	private static final Logger log = Logger.getLogger(LogicalFileDao.class);
@@ -180,6 +180,42 @@ public class LogicalFileDao {
 		{
 			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
 		} 
+	}
+
+	public static LogicalFile findByTransferUuid(String transferUuid)
+	{
+		try
+		{
+			Session session = getSession();
+
+			LogicalFile file = (LogicalFile) session
+					.createSQLQuery("select * from logical_files where BINARY transfer_uuid = :transferUuid")
+					.addEntity(LogicalFile.class)
+					.setString("transferUuid", transferUuid)
+					.setMaxResults(1)
+					.uniqueResult();
+
+			session.flush();
+
+			return file;
+		}
+		catch (HibernateException ex)
+		{
+			log.error("Failed to find logical file by transfer uuid", ex);
+
+			try
+			{
+				if (HibernateUtil.getSession().isOpen()) {
+					HibernateUtil.rollbackTransaction();
+				}
+			}
+			catch (Exception e) {}
+			throw ex;
+		}
+		finally
+		{
+			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+		}
 	}
 
 	public static void persist(LogicalFile file) throws HibernateException 

@@ -536,7 +536,7 @@ public class LogicalFile {
 	/**
 	 * @return the uuid linked to transfer service
 	 */
-	@Column(name = "transferUuid", nullable = false, length = 64, unique=true)
+	@Column(name = "transfer_uuid", length = 64, unique=true)
 	public String getTransferUuid() {
 		return transferUuid;
 	}
@@ -549,7 +549,7 @@ public class LogicalFile {
 		this.transferUuid = transferUuid;
 	}
 
-	
+
 	
 	@JsonValue
 	public String toJSON() throws JSONException 

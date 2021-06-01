@@ -158,6 +158,32 @@ public class NatsJetstreamMessageClient {
      * Subscriptions are left open until explicitly unsubscribed. Calling {@link #stop()} will unsubscribe all
      * {@link Subscription} for this instance before closing the {@link #conn}.
      *
+     * @param subject the subject
+     * @return a subscription to the stream filtered by subject
+     * @throws IOException IOException if a networking issue occurs
+     * @throws JetStreamApiException the request had an error related to the data
+     */
+    protected JetStreamSubscription getOrCreatePullGroupSubscription(String group, String subject) throws IOException, JetStreamApiException {
+        String durable = Slug.toSlug("pull-" + subject);
+        String subscriptionKey = getStreamName() + "-" + durable;
+        if (!subscriptionMap.containsKey(subscriptionKey)) {
+            PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
+                    .stream(getStreamName())
+                    .durable(durable)
+                    .build();
+
+            JetStreamSubscription subscription = getJetStream().subscribe(subject, group, pushSubscribeOptions);
+            subscriptionMap.put(subscriptionKey, subscription);
+        }
+
+        return subscriptionMap.get(subscriptionKey);
+    }
+
+    /**
+     * Creates a JetStream subscription to {@code streamName} for subject {@code subject} and saves for future use.
+     * Subscriptions are left open until explicitly unsubscribed. Calling {@link #stop()} will unsubscribe all
+     * {@link Subscription} for this instance before closing the {@link #conn}.
+     *
      * @param group the name of the consumer group to join. The client name and  effective creates
      * @param subject the subject
      * @return a subscription to the stream filtered by subject
@@ -169,7 +195,7 @@ public class NatsJetstreamMessageClient {
         if (!subscriptionMap.containsKey(subscriptionKey)) {
             PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
                     .stream(getStreamName())
-                    .durable(subject)
+                    .durable(Slug.toSlug(subject))
                     .build();
 
             JetStreamSubscription subscription = getJetStream().subscribe(subject, group, pushSubscribeOptions);
@@ -355,6 +381,7 @@ public class NatsJetstreamMessageClient {
      * @return true if the refresh succeeded, false otherwise
      * @throws MessagingException if communication with the NATS server fails
      */
+
     public boolean touch(Object messageId, String stream) throws MessagingException {
         log.info("Touching is not supported by NATS JetStream. Ignoring request to touch message " + messageId);
         return true;
@@ -368,7 +395,7 @@ public class NatsJetstreamMessageClient {
      * @param handler the listener with which to listen
      * @throws MessagingException if communication with the queue fails
      */
-    public void listen(String subject, MessageHandler handler) throws MessagingException, MessageProcessingException {
+    public void listen(String subject, MessageHandler handler) throws MessagingException, MessageProcessingException, JetStreamApiException, IOException {
         listen(subject, null, handler);
     }
 
@@ -383,8 +410,10 @@ public class NatsJetstreamMessageClient {
      * @throws MessagingException if communication with the NATS server fails
      */
     public void listen(String subject, String queueName, io.nats.client.MessageHandler handler)
-            throws MessagingException, MessageProcessingException
-    {
+            throws MessagingException, MessageProcessingException, JetStreamApiException, IOException {
+        if (!subscriptionMap.containsKey(subject)) {
+            JetStreamSubscription subscription = getOrCreatePushGroupSubscription(queueName, subject);
+        }
         if (!subscriptionMap.containsKey(subject)) {
             try {
                 PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
@@ -392,11 +421,11 @@ public class NatsJetstreamMessageClient {
                         .durable(getConsumerName())
                         .build();
                 if (queueName != null) {
+                    //JetStreamSubscription jsm = getOrCreatePushGroupSubscription(queueName, subject);
                     subscriptionMap.put(subject, getJetStream().subscribe(subject, queueName, getDispatcher(), handler, true, pushSubscribeOptions));
                 } else {
                     subscriptionMap.put(subject, getJetStream().subscribe(subject, getDispatcher(), handler, true, pushSubscribeOptions));
                 }
-
             } catch (IOException e) {
                 throw new MessagingException("Unexpected error while subscribing to NATS server.", e);
             } catch (JetStreamApiException e) {

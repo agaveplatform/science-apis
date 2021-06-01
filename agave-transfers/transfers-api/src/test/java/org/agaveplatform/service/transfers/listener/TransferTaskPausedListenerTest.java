@@ -536,7 +536,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				// verify that the completed event was created. this should always be throws
 				// if the updateStatus result succeeds.
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PAUSED), eq(parentTask.toJson()));
-				verify(nats, never()).push(any(),any(),eq(parentTask.toJson()).toString());
+				verify(nats, never()).push(any(),any());
 
 				// make sure the parent was processed at least one time
 				// TODO: why is this at least once? Do we know how many times it should be called?

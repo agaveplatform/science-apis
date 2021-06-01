@@ -81,7 +81,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
 		//Connection connection = listener._connect();
 		//when(listener.getConnection()).thenReturn(connection);
-		doNothing().when(listener).setConnection();
+		//doNothing().when(listener).setConnection();
 
 		return listener;
 	}

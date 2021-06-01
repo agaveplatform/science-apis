@@ -36,10 +36,6 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED;
     private TransferTaskDatabaseService dbService;
-//    private NatsJetstreamMessageClient natsClient; // = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("transfers", "tenantId","owner", "host", EVENT_CHANNEL));;
-//    private static String streamName = "DEV";
-//    private static String NATS_URL = "nats://nats:4222";
-
 
     public TransferTaskCreatedListener() throws IOException, InterruptedException {
         super(null, null);
@@ -66,13 +62,40 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         try {
-            String subject = createPushMessageSubject("transfers", "tenantId", "owner", "host",  EVENT_CHANNEL);
+            subscribeToSubjectGroup(EVENT_CHANNEL, message -> {
+                JsonObject body = new JsonObject(message.getMessage());
+                String uuid = body.getString("uuid");
+                String source = body.getString("source");
+                String dest = body.getString("dest");
+                log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
-            getMessageClient().push(subject, "Hello");
-
-            Message message = getMessageClient().pop(subject);
-
-            log.info(message.toString());
+                try {
+                    processEvent(body, resp -> {
+                        if (resp.succeeded()) {
+                            log.debug("Succeeded with the processTransferTask in the assigning of the event {}", uuid);
+                            // TODO: codify our notification behavior here. Do we rewrap? How do we ensure ordering? Do we just
+                            //   throw it over the fence to Camel and forget about it? Boy, that would make things easier,
+                            //   thought not likely faster.
+                            // TODO: This seems like the correct pattern. Handler sent to the processing function, then
+                            //   only send the notification on success. We can add a failure and error notification to the
+                            //   respective listeners in the same way.
+                            body.put("event", this.getClass().getName());
+                            body.put("type", getEventChannel());
+                            try {
+                                _doPublishNatsJSEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+                            } catch (Exception e) {
+                                log.debug(e.getMessage());
+                            }
+                        } else {
+                            //error handled in processTransferTask
+                        }
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
 
         } catch (Exception e) {
             log.debug("TRANSFERTASK_CREATED - Exception {}", e.getMessage());
@@ -260,6 +283,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 //        return handler;
 //    }
 //
+
 //    public void tt_Created(Message m, Handler<AsyncResult<Boolean>> handler){
 //        if (m.isJetStream()) {
 //            log.info(Arrays.toString(m.getData()));

@@ -161,7 +161,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                             //getVertx().eventBus().publish(TRANSFERTASK_CANCELED_SYNC, updateReply.result());
                             try {
                                 _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, updateReply.result());
-                            } catch (IOException | InterruptedException | TimeoutException e) {
+                            } catch (Exception e) {
                                 logger.debug(e.getMessage());
                             }
                             resultHandler.handle(Future.succeededFuture(true));
@@ -186,7 +186,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                     //getVertx().eventBus().publish(TRANSFERTASK_CANCELED_SYNC, getByIdReply.result());
                     try {
                         _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, getByIdReply.result());
-                    } catch (IOException | InterruptedException | TimeoutException e) {
+                    } catch (Exception e) {
                         logger.debug(e.getMessage());
                     }
                     resultHandler.handle(Future.succeededFuture(false));

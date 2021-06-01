@@ -1,6 +1,7 @@
 package agaveplatform.nats;
 
 
+import com.github.slugify.Slugify;
 import io.nats.client.*;
 import io.nats.client.api.*;
 import org.apache.commons.lang.StringUtils;
@@ -83,22 +84,23 @@ public class NatsSetup {
             e.printStackTrace();
         }
         Map<String, String> bashEnv = System.getenv();
-        String streamEnvironment = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","DEV");
-        String subjectPrefix = streamEnvironment + "." + bashEnv.getOrDefault("AGAVE_MESSAGE_PREFIX","transfers.");
+        String streamName = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","AGAVE_DEV");
+        String subjectPrefix =  bashEnv.getOrDefault("AGAVE_MESSAGE_PREFIX","transfers.");
         subjectPrefix = subjectPrefix.replaceAll("\\.{2,}",".");
         subjectPrefix = StringUtils.stripEnd(subjectPrefix, ".");
         // slugify each component
 //        Slugify slg = new Slugify();
 //        subjectPrefix = Arrays.stream(subjectPrefix.split(".")).map(t -> slg.slugify(t)).collect(Collectors.joining("."));
+        Slugify slg = new Slugify();
+        String namePrefix = slg.slugify(subjectPrefix);
 
-
-        _createStream(jsm, streamEnvironment,  subjectPrefix + ".>");
+        _createStream(jsm, streamName,  subjectPrefix + ".>");
 
         log.info("done creating streams");
         //$branch.$type.$owner.$systemid.transfer.protocol.sftp
         //branch_abc.notificatin.*
         log.info("Now creating consumers");
-//        _createConsumer(jsm, "AGAVE_DEV", subjectPrefix +"_TRANSFERTASK_CREATED_ConsumerD", subjectPrefix + ".transfers.*.*.transfer.protocol.*");
+//        _createConsumer(jsm, "AGAVE_DEV", namePrefix +"_TRANSFERTASK_CREATED_Consumer", subjectPrefix + ".*.*.*.transfer_protocol");
         //_createConsumer(jsm, "DEV", "DEV_transfers_tenantId_owner_host_transfertask_created","DEV.transfers.a.b.c.transfertask_created");
 
         //ConsumerInfo cI = jsm.getConsumerInfo("DEV", "DEV_transfers_tenantId_owner_host_transfertask_created");
@@ -138,7 +140,7 @@ public class NatsSetup {
         try {
             ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
                 .ackPolicy(AckPolicy.Explicit)
-                .ackWait(Duration.ofDays(-1))
+                .ackWait(Duration.ofDays(10))
                 .durable(consumerName)
                 .filterSubject(subject)
                 .deliverPolicy(DeliverPolicy.All)

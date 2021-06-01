@@ -305,7 +305,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 												//getVertx().eventBus().publish(MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result());
 												try {
 													_doPublishNatsJSEvent( MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result());
-												} catch (IOException | InterruptedException | TimeoutException e) {
+												} catch ( Exception e) {
 													logger.debug(e.getMessage());
 												}
 												handler.handle(Future.succeededFuture(true));

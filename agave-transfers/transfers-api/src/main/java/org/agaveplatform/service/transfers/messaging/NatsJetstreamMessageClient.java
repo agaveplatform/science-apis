@@ -395,7 +395,7 @@ public class NatsJetstreamMessageClient {
      * @param handler the listener with which to listen
      * @throws MessagingException if communication with the queue fails
      */
-    public void listen(String subject, MessageHandler handler) throws MessagingException, MessageProcessingException, JetStreamApiException, IOException {
+    public void listen(String subject, MessageHandler handler) throws MessagingException, MessageProcessingException, JetStreamApiException, IOException, InterruptedException {
         listen(subject, null, handler);
     }
 
@@ -410,10 +410,7 @@ public class NatsJetstreamMessageClient {
      * @throws MessagingException if communication with the NATS server fails
      */
     public void listen(String subject, String queueName, io.nats.client.MessageHandler handler)
-            throws MessagingException, MessageProcessingException, JetStreamApiException, IOException {
-        if (!subscriptionMap.containsKey(subject)) {
-            JetStreamSubscription subscription = getOrCreatePushGroupSubscription(queueName, subject);
-        }
+            throws MessagingException, MessageProcessingException, JetStreamApiException, IOException, InterruptedException {
         if (!subscriptionMap.containsKey(subject)) {
             try {
                 PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
@@ -430,6 +427,12 @@ public class NatsJetstreamMessageClient {
                 throw new MessagingException("Unexpected error while subscribing to NATS server.", e);
             } catch (JetStreamApiException e) {
                 throw new MessagingException("Invalid request made to NATS Jetstream to subscribe for push messages", e);
+            }
+        } else {
+            boolean waitingForFlowControl = true;
+            while (waitingForFlowControl) {
+                JetStreamSubscription sub = subscriptionMap.get(subject);
+                sub.nextMessage(Duration.ofSeconds(1));
             }
         }
     }

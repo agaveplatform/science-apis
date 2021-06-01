@@ -24,7 +24,7 @@ public class TransferApplication {
 
         Vertx vertx = Vertx.vertx();
 
-        int poolSize = 10;
+        int poolSize = 5;
         int instanceSize = 2;
         int dbInstanceSize = 2;
 
@@ -49,7 +49,7 @@ public class TransferApplication {
                 DeploymentOptions dbDeploymentOptions = new DeploymentOptions()
                         .setConfig(config)
                         .setMaxWorkerExecuteTimeUnit(TimeUnit.MILLISECONDS)
-                        .setMaxWorkerExecuteTime(500)
+                        .setMaxWorkerExecuteTime(5000)
                         .setInstances(dbInstanceSize);
 
                 Promise<String> dbVerticleDeployment = Promise.promise();
@@ -70,16 +70,6 @@ public class TransferApplication {
                                     .setMaxWorkerExecuteTimeUnit(TimeUnit.SECONDS)
                                     .setMaxWorkerExecuteTime(30);
 
-                            //Deploy the TransferTaskAssignedListener vertical
-                            vertx.deployVerticle(TransferTaskAssignedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener",
-                                    localOptions, res0 -> {
-                                        if (res0.succeeded()) {
-                                            log.info("TransferTaskAssignedListener Deployment id is " + res.result());
-                                        } else {
-                                            log.error("TransferTaskAssignedListener Deployment failed !");
-                                        }
-                                    });
-
                             // Deployment TransferTaskCreatedListener verticle
                             vertx.deployVerticle(TransferTaskCreatedListener.class.getName(),
                                     localOptions, res30 -> {
@@ -93,7 +83,16 @@ public class TransferApplication {
                                         }
                                     });
 
-
+//
+//                            //Deploy the TransferTaskAssignedListener vertical
+//                            vertx.deployVerticle(TransferTaskAssignedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener",
+//                                    localOptions, res0 -> {
+//                                        if (res0.succeeded()) {
+//                                            log.info("TransferTaskAssignedListener Deployment id is " + res.result());
+//                                        } else {
+//                                            log.error("TransferTaskAssignedListener Deployment failed !");
+//                                        }
+//                                    });
 
                             // Deploy the TransferRetryListener vertical
                             vertx.deployVerticle(TransferTaskRetryListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferRetryListener",

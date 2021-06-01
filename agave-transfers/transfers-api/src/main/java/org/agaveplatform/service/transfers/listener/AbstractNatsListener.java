@@ -1,6 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
+import io.nats.client.JetStreamApiException;
 import io.nats.client.Nats;
 import io.nats.client.Options;
 import io.vertx.core.AsyncResult;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_FAILED;
@@ -83,6 +85,11 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      */
     protected NatsJetstreamMessageClient getMessageClient() throws IOException, InterruptedException {
         if (this.messageClient == null) {
+            if (getStreamName().isEmpty()) {
+                Map<String, String> bashEnv = System.getenv();
+                String streamName = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","AGAVE_DEV");
+                setStreamName(streamName);
+            }
             this.messageClient = new NatsJetstreamMessageClient(
                     config().getString(TransferTaskConfigProperties.NATS_URL),
                     getStreamName(),
@@ -117,9 +124,9 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     }
 
     /**
-     * Convenience method to creates a subscription subject using the context of the event being sent. The 
-     * resource type will be {@link UUIDType#TRANSFER}, tenant, owner, and system will all be wildcards, "*". 
-     * 
+     * Convenience method to creates a subscription subject using the context of the event being sent. The
+     * resource type will be {@link UUIDType#TRANSFER}, tenant, owner, and system will all be wildcards, "*".
+     *
      * @param eventName the event being thrown.
      * @return the derived subject with built in routing for downstream consumers.
      * @see #createSubscriptionSubject(String, String, String, String, String)
@@ -140,8 +147,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @return the derived subject with built in routing for downstream consumers.
      */
     public String createSubscriptionSubject(String agaveResourceType, String tenantId, String owner, String sourceSystemId, String eventName) {
-        String consumerName = String.format("%s.%s.%s.%s.%s.%s",
-                                        getStreamName(),
+        String consumerName = String.format("%s.%s.%s.%s.%s",
                                         agaveResourceType,
                                         StringUtils.isBlank(tenantId) ? "*" : tenantId,
                                         StringUtils.isBlank(owner) ? "*" : owner,
@@ -150,7 +156,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
         consumerName = consumerName.replaceAll("\\.{2,}", ".");
         consumerName = StringUtils.strip(consumerName, ". ");
-
+        //consumerName = Slug.toSlug(consumerName);
         return consumerName;
     }
 
@@ -164,21 +170,23 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @throws MessageProcessingException
      */
     protected void subscribeToSubjectGroup(String messageType, Handler<Message> callback)
-            throws IOException, InterruptedException, MessagingException, MessageProcessingException {
-        String subject = createSubscriptionSubject(messageType);
-        String groupName = Slug.toSlug(this.getClass().getSimpleName() + "-" + messageType);
+            throws IOException, InterruptedException, MessagingException, MessageProcessingException, JetStreamApiException {
+        String subject = createSubscriptionSubject(messageType);  // returns "transfers.*.*.*.'EVENT_CHANEL'"
+        String groupName = Slug.toSlug(this.getClass().getSimpleName() + "-" + messageType); // returns "transfertaskcreatedlistener-transfertask_created"
 
         getMessageClient().listen(subject, groupName, msg -> {
 
             // Q: should we handle the ack after processing the message so we can retry?
             // Current thinking is no since any failure should result in an error message being written instead
             // of automatically retrying the message.
+            // A: I say yes.  We already have an error mechanism in vertx.  This would push the error and retry to the
+            // Nats server.  Do we really want error handling in two places?  The Nats server has accomplished it task by
+            // delivering the message regardless of how it is processed, or not processed.  ~Eric
             msg.ack();
 
             String body = new String(msg.getData(), StandardCharsets.UTF_8);
             callback.handle(new Message(msg.getSID(), body));
         });
-
     }
 
     /**
@@ -191,7 +199,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @throws MessageProcessingException
      */
     protected void subscribeToBroadcastSubject(String messageType, Handler<Message> callback)
-            throws IOException, InterruptedException, MessagingException, MessageProcessingException {
+            throws IOException, InterruptedException, MessagingException, MessageProcessingException, JetStreamApiException {
         String subject = createSubscriptionSubject(messageType);
 
         getMessageClient().listen(subject, msg -> {
@@ -271,7 +279,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      *    @return void
      */
     public void _doPublishNatsJSEvent(String messageAddress, JsonObject body) {
-        log.info(super.getClass().getName() + ": _doPublishNatsEvent({}, {})", messageAddress, body);
+        log.info(this.getClass().getName() + ": _doPublishNatsEvent({}, {})", messageAddress, body);
         try {
             getMessageClient().push(messageAddress, body.toString());
 

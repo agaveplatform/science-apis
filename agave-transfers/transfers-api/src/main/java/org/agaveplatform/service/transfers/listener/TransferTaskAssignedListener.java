@@ -1,5 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.nats.client.JetStreamApiException;
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -146,7 +147,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                         addPausedTask(uuid);
                     }
             });
-        } catch (MessagingException | MessageProcessingException e) {
+        } catch (MessagingException | MessageProcessingException | JetStreamApiException e) {
             log.error("Unable to subscribe to the message subject for push delivery.", e);
         }
     }

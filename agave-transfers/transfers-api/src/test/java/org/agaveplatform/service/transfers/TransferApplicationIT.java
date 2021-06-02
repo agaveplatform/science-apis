@@ -37,13 +37,6 @@ public class TransferApplicationIT extends BaseTestCase {
     private TransferTaskDatabaseService dbService;
     private static RequestSpecification requestSpecification;
 
-
-//    @BeforeAll
-//    public void setUpService(Vertx vertx, VertxTestContext ctx) throws IOException {}
-//
-//    @AfterAll
-//    public void tearDown(Vertx vertx, VertxTestContext ctx) {}
-
     @Test
     @DisplayName("Create new transfer task")
     void create(Vertx vertx, VertxTestContext ctx) {

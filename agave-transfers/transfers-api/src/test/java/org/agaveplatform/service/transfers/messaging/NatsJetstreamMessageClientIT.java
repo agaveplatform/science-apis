@@ -11,8 +11,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -123,7 +127,7 @@ public class NatsJetstreamMessageClientIT {
         io.nats.client.Message msg = null;
 
         try {
-            messageClient = new NatsJetstreamMessageClient(NATS_URL,"DEV", "push-test-consumer");
+            messageClient = new NatsJetstreamMessageClient(NATS_URL,TEST_STREAM, "push-test-consumer");
 
             // test pushing of message for each message type
             for (String messageType : MessageType.values()) {
@@ -162,7 +166,7 @@ public class NatsJetstreamMessageClientIT {
         NatsJetstreamMessageClient agaveMessageClient;
 
         try {
-            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", "fetch-test-consumer");
+            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
 
             // test pushing of message for each message type
             for (String messageType : MessageType.values()) {
@@ -201,12 +205,62 @@ public class NatsJetstreamMessageClientIT {
     }
 
     @Test
+    @DisplayName("Fetch multiple messages from queue...")
+    public void fetchMany() {
+        NatsJetstreamMessageClient agaveMessageClient;
+        int testMessageCount = 5;
+
+        try {
+            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
+
+            // test pushing of message for each message type
+            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_CREATED;
+            List bodies = new ArrayList<String>();
+            // push a message with a unique body to ensure we can get it back.
+            for (int i=0; i<testMessageCount; i++) {
+                String testBody = UUID.randomUUID().toString();
+                bodies.add(testBody);
+                agaveMessageClient.push(subject, testBody);
+            }
+
+            nc.flush(Duration.ofSeconds(1));
+
+            List<org.iplantc.service.common.messaging.Message> messages =
+                    agaveMessageClient.fetch(subject, testMessageCount, 5);
+
+            assertFalse(messages.isEmpty(), "Test message pushed to stream should be fetched ");
+
+            assertEquals(testMessageCount, messages.size(),
+                    "Exactly " + testMessageCount + " messages should be returned from test stream with when one is requested");
+
+
+            for (int i=0; i<testMessageCount; i++) {
+                assertEquals(bodies.get(i), messages.get(i).getMessage(),
+                        "Body of fetched message should match body of message sent. " +
+                                "Messages should come off the stream in the order they were written.");
+            }
+
+            messages.forEach(msg -> {
+                try {
+                    if (!jsm.deleteMessage(TEST_STREAM, (long)msg.getId())) {
+                        log.debug("Failed to delete test message " + msg.getId() + " after test");
+                    }
+                } catch (Exception e1) {
+                    log.debug("Failed to delete test message " + msg.getId() + " after test", e1);
+                }
+            });
+        } catch (Exception e) {
+            fail("Failed to push a message to the message queue", e);
+        }
+    }
+
+    @Test
     @DisplayName("Pop single message from queue...")
     public void pop() {
         NatsJetstreamMessageClient agaveMessageClient;
 
         try {
-            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", "fetch-test-consumer");
+            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
 
             // test pushing of message for each message type
             for (String messageType : MessageType.values()) {
@@ -237,6 +291,74 @@ public class NatsJetstreamMessageClientIT {
             fail("Failed to push a message to the message queue", e);
         }
     }
+
+    @Test
+    @DisplayName("Listen for messages pushed from a stream...")
+    public void listen() {
+        NatsJetstreamMessageClient agaveMessageClient;
+        int testMessageCount = 5;
+
+        try {
+            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
+
+            CountDownLatch msgLatch = new CountDownLatch(testMessageCount);
+            AtomicInteger received = new AtomicInteger();
+            AtomicInteger ignored = new AtomicInteger();
+            List<io.nats.client.Message> messages = new ArrayList<>();
+            // create our message handler.
+            MessageHandler handler = msg -> {
+                if (msgLatch.getCount() == 0) {
+                    ignored.incrementAndGet();
+                    if (msg.isJetStream()) {
+                        msg.nak();
+                    }
+                }
+                else {
+                    received.incrementAndGet();
+                    msg.ack();
+                    messages.add(msg);
+                    msgLatch.countDown();
+                }
+            };
+
+            // test pushing of message for each message type
+            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_CREATED;
+            List bodies = new ArrayList<String>();
+            // push a message with a unique body to ensure we can get it back.
+            for (int i=0; i<testMessageCount; i++) {
+                String testBody = UUID.randomUUID().toString();
+                bodies.add(testBody);
+                agaveMessageClient.push(subject, testBody);
+            }
+
+            nc.flush(Duration.ofSeconds(1));
+
+            agaveMessageClient.listen(subject, handler);
+
+            // Wait for messages to arrive using the countdown latch. But don't wait forever.
+            boolean countReachedZero = msgLatch.await(5, TimeUnit.SECONDS);
+
+            assertTrue(countReachedZero, "All messages should be consumed in the allotted time.");
+
+            assertEquals(testMessageCount, received.get(), "All test messages should be fetched.");
+
+            assertEquals(0, ignored.get(),
+                    "No message should be ingored in the test");
+
+            messages.forEach(msg -> {
+                try {
+                    if (!jsm.deleteMessage(TEST_STREAM, Long.parseLong(msg.getSID()))) {
+                        log.debug("Failed to delete test message " + msg.getSID() + " after test");
+                    }
+                } catch (Exception e1) {
+                    log.debug("Failed to delete test message " + msg.getSID() + " after test", e1);
+                }
+            });
+        } catch (Exception e) {
+            fail("Failed to push a message to the message queue", e);
+        }
+    }
+
 //
 //	@Test(dependsOnMethods={"pop"})
 //	public void popMultiple()

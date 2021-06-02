@@ -560,12 +560,8 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 user.isAdminRoleExists()) {
                             dbService.delete(tenantId, uuid, deleteReply -> {
                                 if (deleteReply.succeeded()) {
-                                    JsonObject jo = null;
-                                    if (deleteReply.result() == null){
-                                        jo = new JsonObject();
-                                    }else{
-                                        jo = new JsonObject(String.valueOf(deleteReply.result()));
-                                    }
+                                    JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
+
                                     try {
                                         //String messageName = _createMessageName("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost().toString(),MessageType.TRANSFERTASK_CANCELED);
                                         //_doPublishNatsJSEvent(messageName, jo);
@@ -645,12 +641,8 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 if (deleteReply.succeeded()) {
                                    // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
                                     //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                    JsonObject jo = null;
-                                    if (deleteReply.result() == null){
-                                        jo = new JsonObject();
-                                    }else{
-                                        jo = new JsonObject(String.valueOf(deleteReply.result()));
-                                    }
+                                    JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
+
                                     try {
                                         String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_DELETED);
                                         //_doPublishNatsJSEvent(messageName, jo);
@@ -983,8 +975,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
                 .setIssuer("transfers-api-integration-tests")
                 .setSubject(username);
         log.debug("JWT string: {}, {}, {}, {}",jwtOptions.getAlgorithm(), jwtOptions.getExpiresInSeconds(), jwtOptions.getIssuer(), jwtOptions.getSubject());
-        String jwtString = jwtAuth.generateToken(claims, jwtOptions);
-        return jwtString;
+        return jwtAuth.generateToken(claims, jwtOptions);
     }
 
     /**
@@ -997,7 +988,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
      * @see #makeTestJwt(String, String)
      */
     protected String makeTestJwt(String username) {
-        System.out.println("username = "+username);
+        System.out.println("username = " + username);
         return makeTestJwt(username, "");
     }
 

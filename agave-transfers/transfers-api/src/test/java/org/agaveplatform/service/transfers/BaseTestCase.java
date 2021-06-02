@@ -48,6 +48,7 @@ public abstract class BaseTestCase {
     public final String TRANSFER_SRC = "http://httpbin:8000/stream-bytes/32768";
     public final String TRANSFER_DEST = "agave://sftp/";
     public final String TEST_USER = "testuser";
+    public final String TEST_JWT_HEADER = "X-JWT-ASSERTION-AGAVE_DEV";
 
     //=====================================================================================================
     // added section to support the TransferApplicationTest

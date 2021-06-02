@@ -1,6 +1,9 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.nats.client.*;
+import io.nats.client.Connection;
+import io.nats.client.JetStreamApiException;
+import io.nats.client.Nats;
+import io.nats.client.Options;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -92,7 +95,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
             }
             this.messageClient = new NatsJetstreamMessageClient(
-                    config().getString(TransferTaskConfigProperties.NATS_URL),
+                    config().getString(TransferTaskConfigProperties.NATS_URL, CONNECTION),
                     getStreamName(),
                     this.getClass().getSimpleName());
         }
@@ -298,7 +301,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      */
     public Connection _connect(String url) throws IOException, InterruptedException {
         Options.Builder builder = new Options.Builder()
-                .server("nats://nats:4222")
+                .server(url)
                 .connectionTimeout(Duration.ofSeconds(5))
                 .pingInterval(Duration.ofSeconds(10))
                 .reconnectWait(Duration.ofSeconds(1))

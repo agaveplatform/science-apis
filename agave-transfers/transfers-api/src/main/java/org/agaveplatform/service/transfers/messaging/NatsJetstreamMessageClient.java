@@ -17,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * This is a convenience class for interacting with NATS messaging service. NATS supports push, pull, and (https://docs.nats.io/) request-reply semantics over streaming and ephemeral queues. Agave primarily leverages the <a href="https://docs.nats.io/jetstream/jetstream" target="_top">JetStream</a> functionality of NATS to enable durable queues and message replay as needed.
@@ -142,7 +141,6 @@ public class NatsJetstreamMessageClient {
         String subscriptionKey = getStreamName() + "-" + durable;
         if (!subscriptionMap.containsKey(subscriptionKey)) {
             PullSubscribeOptions pullSubscribeOptions = PullSubscribeOptions.builder()
-                    .stream(getStreamName())
                     .durable(durable)
                     .build();
 
@@ -354,14 +352,18 @@ public class NatsJetstreamMessageClient {
      */
     public List<Message> fetch(String subject, int numberOfMessages, int timeoutSeconds) throws MessagingException {
         try {
+            List<Message> agaveMessages = new ArrayList<>();
             JetStreamSubscription subscription = getOrCreatePullSubscription(subject);
-            return subscription.fetch(numberOfMessages, Duration.ofSeconds(timeoutSeconds)).stream()
-                    .map(message -> {
-                        // have to explicitly ack when fetching from a stream
-                        message.ack();
-                        return new Message(message.getSID(), new String(message.getData()));
-                    })
-                    .collect(Collectors.toList());
+            int read = 0;
+            while (read < numberOfMessages) {
+                List<io.nats.client.Message> message = subscription.fetch(10, Duration.ofSeconds(timeoutSeconds));
+                for (io.nats.client.Message m : message) {
+                    read++;
+                    m.ack();
+                    agaveMessages.add(new Message(m.getSID(), new String(m.getData())));
+                }
+            }
+            return agaveMessages;
         } catch (IOException e) {
             throw new MessagingException("Unexpected error connecting to NATS server.", e);
         } catch (JetStreamApiException e) {

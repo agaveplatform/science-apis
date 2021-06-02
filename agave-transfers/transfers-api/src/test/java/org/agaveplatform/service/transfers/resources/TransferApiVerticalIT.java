@@ -131,7 +131,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
                     String response = given()
                             .spec(requestSpecification)
                             //                        .auth().oauth2(token)
-                            //                        .header("X-JWT-ASSERTION-AGAVE_DEV", token)
+                            //                        .header(TEST_JWT_HEADER, token)
                             .get("/")
                             .then()
                             .assertThat()
@@ -183,7 +183,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
                     ctx.verify(() -> {
                         String response = given()
                                 .spec(requestSpecification)
-                                .header("X-JWT-ASSERTION-AGAVE_DEV", token)
+                                .header(TEST_JWT_HEADER, token)
                                 .contentType(ContentType.JSON)
                                 .queryParam("naked", true)
                                 .body(tt.toJSON())
@@ -249,7 +249,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
                         ctx.verify(() -> {
                             String response = given()
                                     .spec(requestSpecification)
-                                    .header("X-JWT-ASSERTION-AGAVE_DEV", adminToken)
+                                    .header(TEST_JWT_HEADER, adminToken)
                                     .contentType(ContentType.JSON)
                                     .queryParam("naked", true)
                                     .when()
@@ -320,7 +320,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
                             ctx.verify(() -> {
                                 String response = given()
                                         .spec(requestSpecification)
-                                        .header("X-JWT-ASSERTION-AGAVE_DEV", otherUserToken)
+                                        .header(TEST_JWT_HEADER, otherUserToken)
                                         .contentType(ContentType.JSON)
                                         .queryParam("naked", true)
                                         .when()
@@ -336,7 +336,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
                                 response = given()
                                         .spec(requestSpecification)
-                                        .header("X-JWT-ASSERTION-AGAVE_DEV", ownerToken)
+                                        .header(TEST_JWT_HEADER, ownerToken)
                                         .contentType(ContentType.JSON)
                                         .queryParam("naked", true)
                                         .when()
@@ -406,7 +406,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
                             ctx.verify(() -> {
                                 String response = given()
                                         .spec(requestSpecification)
-                                        .header("X-JWT-ASSERTION-AGAVE_DEV", adminUserToken)
+                                        .header(TEST_JWT_HEADER, adminUserToken)
                                         .contentType(ContentType.JSON)
                                         .when()
                                         .delete("api/transfers/" + adminTestUuid)
@@ -419,7 +419,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
                                 response = given()
                                         .spec(requestSpecification)
-                                        .header("X-JWT-ASSERTION-AGAVE_DEV", adminUserToken)
+                                        .header(TEST_JWT_HEADER, adminUserToken)
                                         .contentType(ContentType.JSON)
                                         .when()
                                         .get("api/transfers/" + adminTestUuid)
@@ -434,7 +434,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
                                 String ownerToken = this.makeTestJwt(TEST_USERNAME);
                                 response = given()
                                         .spec(requestSpecification)
-                                        .header("X-JWT-ASSERTION-AGAVE_DEV", ownerToken)
+                                        .header(TEST_JWT_HEADER, ownerToken)
                                         .contentType(ContentType.JSON)
                                         .when()
                                         .delete("api/transfers/" + ownerTestUuid)
@@ -447,7 +447,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
                                 response = given()
                                         .spec(requestSpecification)
-                                        .header("X-JWT-ASSERTION-AGAVE_DEV", ownerToken)
+                                        .header(TEST_JWT_HEADER, ownerToken)
                                         .contentType(ContentType.JSON)
                                         .when()
                                         .delete("api/transfers/" + ownerTestUuid)
@@ -462,7 +462,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
                                 String otherUserToken = this.makeTestJwt(TEST_OTHER_USERNAME);
                                 response = given()
                                         .spec(requestSpecification)
-                                        .header("X-JWT-ASSERTION-AGAVE_DEV", otherUserToken)
+                                        .header(TEST_JWT_HEADER, otherUserToken)
                                         .contentType(ContentType.JSON)
                                         .when()
                                         .delete("api/transfers/" + otherTestUuid)
@@ -475,7 +475,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
                                 response = given()
                                         .spec(requestSpecification)
-                                        .header("X-JWT-ASSERTION-AGAVE_DEV", otherUserToken)
+                                        .header(TEST_JWT_HEADER, otherUserToken)
                                         .contentType(ContentType.JSON)
                                         .when()
                                         .get("api/transfers/" + otherTestUuid)
@@ -544,7 +544,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
                             ctx.verify(() -> {
                                 String response = given()
                                         .spec(requestSpecification)
-                                        .header("X-JWT-ASSERTION-AGAVE_DEV", adminUserToken)
+                                        .header(TEST_JWT_HEADER, adminUserToken)
                                         .contentType(ContentType.JSON)
                                         .when()
                                         .post("api/transfers/" + adminTestUuid + "/cancel")
@@ -556,7 +556,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
                                 String afterCancelResponse = given()
                                         .spec(requestSpecification)
-                                        .header("X-JWT-ASSERTION-AGAVE_DEV", adminUserToken)
+                                        .header(TEST_JWT_HEADER, adminUserToken)
                                         .contentType(ContentType.JSON)
                                         .when()
                                         .get("api/transfers/" + adminTestUuid)

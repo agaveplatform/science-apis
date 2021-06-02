@@ -1,7 +1,7 @@
 package org.agaveplatform.service.transfers.messaging;
 
 import io.nats.client.*;
-import io.nats.client.api.PublishAck;
+import io.nats.client.api.*;
 import io.nats.client.impl.NatsMessage;
 import org.agaveplatform.service.transfers.exception.DuplicateMessageException;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
@@ -413,8 +413,20 @@ public class NatsJetstreamMessageClient {
             throws MessagingException, MessageProcessingException, JetStreamApiException, IOException, InterruptedException {
         if (!subscriptionMap.containsKey(subject)) {
             try {
+                ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
+                        .ackPolicy(AckPolicy.Explicit)
+                        .ackWait(Duration.ofSeconds(60))
+                        .durable(consumerName)
+                        .filterSubject(subject)
+                        .deliverPolicy(DeliverPolicy.All)
+                        .maxDeliver(10)
+                        .rateLimit(10)
+                        .replayPolicy(ReplayPolicy.Instant)
+                        .build();
+
                 PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
                         .stream(getStreamName())
+                        .configuration(consumerConfiguration)
                         .durable(getConsumerName())
                         .build();
                 if (queueName != null) {

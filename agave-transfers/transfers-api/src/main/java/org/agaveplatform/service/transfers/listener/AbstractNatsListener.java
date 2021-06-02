@@ -1,9 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.nats.client.Connection;
-import io.nats.client.JetStreamApiException;
-import io.nats.client.Nats;
-import io.nats.client.Options;
+import io.nats.client.*;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -76,6 +73,9 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @return the name of the stream to which this verticle will subscribe
      */
     protected String getStreamName() {
+        if (streamName.isEmpty()){
+
+        }
         return streamName;
     }
 
@@ -89,6 +89,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
                 Map<String, String> bashEnv = System.getenv();
                 String streamName = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","AGAVE_DEV");
                 setStreamName(streamName);
+
             }
             this.messageClient = new NatsJetstreamMessageClient(
                     config().getString(TransferTaskConfigProperties.NATS_URL),

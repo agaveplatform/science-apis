@@ -1,6 +1,5 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.nats.client.Connection;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -32,8 +31,10 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_UPDATED;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -64,7 +65,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
         doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
         doNothing().when(listener)._doPublishEvent(any(), any());
-        //doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
+        //doNothing().when(listener)._doPublishEvent( any(), any());
         doCallRealMethod().when(listener).processEvent(any(JsonObject.class), any());
         RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
         doNothing().when(mockRetryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
@@ -145,9 +146,9 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
                 // if the path should represent a directory, generate the items in the listing response
                 listing = List.of(
                         generateRemoteFileInfo(remotePath + "/.", true),
-                        generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), true),
-                        generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), false),
-                        generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), false)
+                        generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), true),
+                        generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), false),
+                        generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), false)
                 );
             } else {
                 // if the path should represent a file, a listing will only return the file item itself
@@ -236,7 +237,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
                         any(Handler.class));
 
                 // no error event should have been raised
-                //verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+                //verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
                 verify(nats, never()).push(any(), any(), any());
                 ctx.completeNow();
 

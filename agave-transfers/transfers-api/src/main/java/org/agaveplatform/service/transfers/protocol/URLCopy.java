@@ -16,6 +16,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.globus.ftp.GridFTPSession;
+import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.transfer.*;
 import org.iplantc.service.transfer.exceptions.RangeValidationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -53,7 +54,7 @@ public class URLCopy extends AbstractNatsListener {
     private RemoteDataClient destClient;
 
     private final Vertx vertx;
-    private AtomicBoolean killed = new AtomicBoolean(false);
+    private final AtomicBoolean killed = new AtomicBoolean(false);
     private TransferTaskDatabaseService dbService;
 
     public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient, Vertx vertx, RetryRequestManager retryRequestManager) throws IOException, InterruptedException {
@@ -893,7 +894,7 @@ public class URLCopy extends AbstractNatsListener {
                     getProtocolForClass(destClient.getClass())));
 
             listener.getTransferTask().setStatusString(STREAM_COPY_STARTED.name());
-            _doPublishNatsJSEvent(MessageType.TRANSFER_STREAMING, ((TransferTask)listener.getTransferTask()).toJson());
+            _doPublishEvent(MessageType.TRANSFER_STREAMING, ((TransferTask)listener.getTransferTask()).toJson());
 
             if (sourceClient.isDirectory(srcPath)) {
                 throw new RemoteDataException("Cannot perform range query on directories");
@@ -1069,10 +1070,10 @@ public class URLCopy extends AbstractNatsListener {
             TransferTask streamingTransferTask = (TransferTask)listener.getTransferTask();
 
             streamingTransferTask.setStatus(WRITE_COMPLETED);
-            _doPublishNatsJSEvent(MessageType.TRANSFER_COMPLETED, streamingTransferTask.toJson());
+            _doPublishEvent(MessageType.TRANSFER_COMPLETED, streamingTransferTask.toJson());
 
             streamingTransferTask.setStatus(TransferStatusType.COMPLETED);
-            _doPublishNatsJSEvent(MessageType.TRANSFERTASK_FINISHED, streamingTransferTask.toJson());
+            _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, streamingTransferTask.toJson());
 
             // and we're spent
             log.debug(String.format(
@@ -1268,15 +1269,15 @@ public class URLCopy extends AbstractNatsListener {
 //	            TransferTaskDao.persist(task);
 //	        }
 
-            if (((GridFTP) sourceClient).getHost().equals(((GridFTP) destClient).getHost())) {
+            if (sourceClient.getHost().equals(destClient.getHost())) {
                 ((GridFTP) sourceClient).extendedTransfer(srcPath,
                         (GridFTP) destClient,
-                        ((GridFTP) destClient).resolvePath(destPath),
+                        destClient.resolvePath(destPath),
                         listener);
             } else {
                 ((GridFTP) sourceClient).extendedTransfer(srcPath,
                         (GridFTP) destClient,
-                        ((GridFTP) destClient).resolvePath(destPath),
+                        destClient.resolvePath(destPath),
                         listener);
             }
 
@@ -1370,9 +1371,13 @@ public class URLCopy extends AbstractNatsListener {
      * @param eventName the name of the event. This doubles as the address in the request invocation.
      * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
-    public void _doPublishEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
-        log.debug("_doPublishEvent({}, {})", eventName, body);
-        getRetryRequestManager().request(eventName, body, 2);
+    public void _doPublishEvent(String eventName, JsonObject body) {
+        log.info(this.getClass().getName() + ": _doPublishEvent({}, {})", eventName, body);
+        try {
+            getMessageClient().push(eventName, body.toString());
+        } catch (IOException | MessagingException | InterruptedException e) {
+            log.debug("Error with _doPublishEvent:  {}", e.getMessage());
+        }
     }
 
 

@@ -51,7 +51,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).processEvent(any(), any());
         when(listener.getRetryRequestManager()).thenCallRealMethod();
         doNothing().when(listener)._doPublishEvent(any(), any());
-        //doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
+        //doNothing().when(listener)._doPublishEvent( any(), any());
         doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
         doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
         return listener;
@@ -126,15 +126,15 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            //verify(transferTaskCompleteTaskListener)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
+            //verify(transferTaskCompleteTaskListener)._doPublishEvent(eq(TRANSFERTASK_FINISHED), eq(json));
             verify(nats,times(1)).push(any(), any(), any());
             // make sure the parent was not processed when none existed for the transfer task
             verify(transferTaskCompleteTaskListener, never()).processParentEvent(any(), any(), any());
 
             // make sure no error event is ever thrown
-            //verify(transferTaskCompleteTaskListener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+            //verify(transferTaskCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
             verify(nats,times(1)).push(any(), any(), any());
-            //verify(transferTaskCompleteTaskListener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
+            //verify(transferTaskCompleteTaskListener, never())._doPublishEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
             verify(nats,times(1)).push(any(), any(), any());
 
             Assertions.assertFalse(result.result(),
@@ -213,14 +213,14 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            //verify(ttc)._doPublishNatsJSEvent(TRANSFERTASK_FINISHED, json);
+            //verify(ttc)._doPublishEvent(TRANSFERTASK_FINISHED, json);
             verify(nats,times(1)).push(any(), any(), any());
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
             // make sure no error event is ever thrown
-            //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-            //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+            //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+            //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
             verify(nats,never()).push(any(), eq(TRANSFERTASK_ERROR), any());
             verify(nats,never()).push(any(), eq(TRANSFERTASK_PARENT_ERROR), any());
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
@@ -291,14 +291,14 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            //verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
+            //verify(ttc)._doPublishEvent(eq(TRANSFERTASK_FINISHED), eq(json));
             verify(nats,times(1)).push(any(),any(), any());
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
             // make sure no error event is ever thrown
-            //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-            //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+            //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+            //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             Assertions.assertTrue(result.result(),
                     "TransferTask response should be true indicating the task completed successfully.");
@@ -369,15 +369,15 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            //verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
+            //verify(ttc)._doPublishEvent(eq(TRANSFERTASK_FINISHED), eq(json));
             verify(nats,times(1)).push(any(), any(), any());
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
-            //verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+            //verify(ttc)._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             // make sure no error event is ever thrown
-            //verify(ttc, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
+            //verify(ttc, never())._doPublishEvent( eq(TRANSFERTASK_ERROR), any());
 
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
@@ -463,13 +463,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+                //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
                 verify(nats,never()).push(any(), eq(TRANSFERTASK_PARENT_ERROR), any());
                 // make sure no error event is ever thrown
-                //verify(ttc, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
+                //verify(ttc, never())._doPublishEvent( eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
+                //verify(ttc, never())._doPublishEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has completed");
 
@@ -553,13 +553,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+                //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
                 verify(nats,never()).push(any(), eq(TRANSFERTASK_PARENT_ERROR), any());
                 // make sure no error event is ever thrown
-                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+                //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
+                //verify(ttc, never())._doPublishEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has been cancelled");
 
@@ -643,13 +643,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+                //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
                 verify(nats,never()).push(any(), eq(TRANSFERTASK_PARENT_ERROR), any());
                 // make sure no error event is ever thrown
-                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+                //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
+                //verify(ttc, never())._doPublishEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has failed");
 
@@ -734,13 +734,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+                //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
                 verify(nats,never()).push(any(), eq(TRANSFERTASK_PARENT_ERROR), any());
                 // make sure no error event is ever thrown
-                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+                //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-               // verify(ttc)._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
+               // verify(ttc)._doPublishEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded");
 

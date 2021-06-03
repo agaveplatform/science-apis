@@ -112,14 +112,14 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 						body.put("event", this.getClass().getName());
 						body.put("type", getEventChannel());
 						try {
-							_doPublishNatsJSEvent( TRANSFERTASK_NOTIFICATION, body);
+							_doPublishEvent( TRANSFERTASK_NOTIFICATION, body);
 						} catch (Exception e) {
 							log.debug(e.getMessage());
 						}
 					} else {
 						log.debug("Unable to process {} event for transfer task (TTRL) message: {}", getEventChannel(), body.encode(), resp.cause());
 						try {
-							_doPublishNatsJSEvent( MessageType.TRANSFERTASK_ERROR, body);
+							_doPublishEvent( MessageType.TRANSFERTASK_ERROR, body);
 						} catch (Exception e) {
 							log.debug(e.getMessage());
 						}
@@ -128,7 +128,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			} catch (Exception ex) {
 				log.debug("Error with the TRANSFER_RETRY message.  The error is {}", ex.getMessage());
 				try {
-					_doPublishNatsJSEvent(MessageType.TRANSFERTASK_ERROR, body);
+					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
 				} catch (Exception e) {
 					log.debug(e.getMessage());
 				}
@@ -249,7 +249,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 											.put("message", updateBody.cause().getMessage())
 											.mergeIn(body);
 									try {
-										_doPublishNatsJSEvent( MessageType.TRANSFERTASK_ERROR, json);
+										_doPublishEvent( MessageType.TRANSFERTASK_ERROR, json);
 										handler.handle(Future.succeededFuture(false));
 									} catch (Exception e) {
 										log.debug(e.getMessage());
@@ -264,7 +264,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 									.put("message", msg)
 									.mergeIn(body);
 							try {
-								_doPublishNatsJSEvent(TRANSFER_FAILED, json);
+								_doPublishEvent(TRANSFER_FAILED, json);
 								handler.handle(Future.succeededFuture(false));
 							} catch (Exception e) {
 								log.debug(e.getMessage());
@@ -282,7 +282,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 							.put("message", msg)
 							.mergeIn(body);
 					try {
-						_doPublishNatsJSEvent(TRANSFERTASK_ERROR, json);
+						_doPublishEvent(TRANSFERTASK_ERROR, json);
 						handler.handle(Future.succeededFuture(false));
 					} catch (Exception e) {
 						log.debug(e.getMessage());
@@ -299,7 +299,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 					.put("message", t.getMessage())
 					.mergeIn(body);
 			try {
-				_doPublishNatsJSEvent(TRANSFERTASK_ERROR, json);
+				_doPublishEvent(TRANSFERTASK_ERROR, json);
 				handler.handle(Future.failedFuture(t));
 			} catch (Exception e) {
 				log.debug(e.getMessage());
@@ -365,7 +365,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 						if (fileInfo.isFile()) {
 							// write to the protocol event channel. the uri is all they should need for this....
 							// might need tenant id. not sure yet.
-							_doPublishNatsJSEvent( TRANSFER_ALL, retryTransferTask.toJson());
+							_doPublishEvent( TRANSFER_ALL, retryTransferTask.toJson());
 						} else {
 							// path is a directory, so walk the first level of the directory
 							List<RemoteFileInfo> remoteFileInfoList = srcClient.ls(srcUri.getPath());
@@ -373,7 +373,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 							// if the directory is empty, the listing will only contain the target path as the "." folder.
 							// mark as complete and wrap it up.
 							if (remoteFileInfoList.size() <= 1) {
-								_doPublishNatsJSEvent(TRANSFER_COMPLETED, retryTransferTask.toJson());
+								_doPublishEvent(TRANSFER_COMPLETED, retryTransferTask.toJson());
 							}
 							// if there are contents, walk the first level, creating directories on the remote side
 							// as we go to ensure that out of order processing by worker tasks can still succeed.
@@ -402,7 +402,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 											if (StringUtils.isNotEmpty(retryTransferTask.getRootTaskId())) {
 												transferTask.setRootTaskId(retryTransferTask.getRootTaskId());
 											}
-											_doPublishNatsJSEvent( MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
+											_doPublishEvent( MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
 										}
 										// if a directory, then create a new transfer task to repeat this process,
 										// keep the association between this transfer task, the original, and the children
@@ -419,7 +419,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 											if (StringUtils.isNotEmpty(retryTransferTask.getRootTaskId())) {
 												transferTask.setRootTaskId(retryTransferTask.getRootTaskId());
 											}
-											_doPublishNatsJSEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
+											_doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
 										}
 									} else {
 										// interrupt happened wild processing children. skip the rest.
@@ -428,13 +428,13 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 											if (updateReply.succeeded()) {
 												handler.handle(Future.succeededFuture(false));
 												try {
-													_doPublishNatsJSEvent( MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+													_doPublishEvent( MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
 												} catch (Exception e) {
 													log.debug(e.getMessage());
 												}
 											} else {
 												try {
-													_doPublishNatsJSEvent( MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+													_doPublishEvent( MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
 													handler.handle(Future.failedFuture(updateReply.cause()));
 												} catch (Exception e) {
 													log.debug(e.getMessage());
@@ -453,7 +453,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 				} else {
 					// task was interrupted, so don't attempt a retry
 					log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", retryTransferTask.getUuid());
-					_doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+					_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
 					handler.handle(Future.succeededFuture(false));
 				}
 			} else {

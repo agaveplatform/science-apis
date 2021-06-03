@@ -1,21 +1,20 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.nats.client.JetStreamApiException;
 import io.nats.client.Nats;
 import io.nats.client.Options;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
-import org.agaveplatform.service.transfers.handler.RetryRequestManager;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.messaging.NatsConnectionListener;
 import org.agaveplatform.service.transfers.messaging.NatsErrorListener;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.util.Slug;
@@ -76,15 +75,14 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @return the name of the stream to which this verticle will subscribe
      */
     protected String getStreamName() {
-        if (streamName.isEmpty()){
-
-        }
         return streamName;
     }
 
     /**
      * Gets an instance of the message client to use for messaging by this verticle
      * @return an instance of this message client, namespaced by the class name as consumer base name
+     * @throws IOException if a networking issue occurs
+     * @throws InterruptedException if the current thread is interrupted
      */
     protected NatsJetstreamMessageClient getMessageClient() throws IOException, InterruptedException {
         if (this.messageClient == null) {
@@ -166,15 +164,13 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
     /**
      * Listen to the stream for push messages, knowing ony one member of the group will get the message.
-     * @param messageType
-     * @param callback
-     * @throws IOException
-     * @throws InterruptedException
-     * @throws MessagingException
-     * @throws MessageProcessingException
+     * @param messageType the type of message to send. This corresponds to a static MessageType value
+     * @param callback the async handler to be resolved with an {@link Message} after receiving from the NATS stream.
+     * @throws MessagingException if communication with the NATS server fails
+     * @throws InterruptedException if the current thread is interrupted
+     * @throws IOException if unable to connect to the NATS server
      */
-    protected void subscribeToSubjectGroup(String messageType, Handler<Message> callback)
-            throws IOException, InterruptedException, MessagingException, MessageProcessingException, JetStreamApiException {
+    protected void subscribeToSubjectGroup(String messageType, Handler<Message> callback) throws IOException, InterruptedException, MessagingException {
         String subject = createSubscriptionSubject(messageType);  // returns "transfers.*.*.*.'EVENT_CHANEL'"
         String groupName = Slug.toSlug(this.getClass().getSimpleName() + "-" + messageType); // returns "transfertaskcreatedlistener-transfertask_created"
 
@@ -195,15 +191,13 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
     /**
      * Listen to the stream for push messages, knowing it won't be the only one to get them.
-     * @param messageType
-     * @param callback
-     * @throws IOException
-     * @throws InterruptedException
-     * @throws MessagingException
-     * @throws MessageProcessingException
+     * @param messageType the type of message to send. This corresponds to a static MessageType value
+     * @param callback the async handler to be resolved with an {@link Message} after receiving from the NATS stream.
+     * @throws MessagingException if communication with the NATS server fails
+     * @throws InterruptedException if the current thread is interrupted
+     * @throws IOException if unable to connect to the NATS server
      */
-    protected void subscribeToBroadcastSubject(String messageType, Handler<Message> callback)
-            throws IOException, InterruptedException, MessagingException, MessageProcessingException, JetStreamApiException {
+    protected void subscribeToSubject(String messageType, Handler<Message> callback) throws IOException, InterruptedException, MessagingException {
         String subject = createSubscriptionSubject(messageType);
 
         getMessageClient().listen(subject, msg -> {
@@ -217,19 +211,6 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
             callback.handle(new Message(msg.getSID(), body));
         });
 
-    }
-
-
-    /**
-     * Handles event creation and delivery across the existing event bus. Retry is handled by the
-     * {@link RetryRequestManager} up to 3 times. The call will be made asynchronously, so this method
-     * will return immediately.
-     *
-     * @param eventName the name of the event. This doubles as the address in the request invocation.
-     * @param body the message of the body. Currently only {@link JsonObject} are supported.
-     */
-    public void _doPublishEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
-        _doPublishNatsJSEvent(eventName, body);
     }
 
     /**
@@ -246,7 +227,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
                 .put("message", failureMessage)
                 .mergeIn(originalMessageBody);
 
-        _doPublishNatsJSEvent(TRANSFER_FAILED, json);
+        _doPublishEvent(TRANSFER_FAILED, json);
 
         // propagate the exception back to the calling method
         if (handler != null) {
@@ -268,7 +249,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
                 .put("message", failureMessage)
                 .mergeIn(originalMessageBody);
 
-        _doPublishNatsJSEvent(TRANSFERTASK_ERROR, json);
+        _doPublishEvent(TRANSFERTASK_ERROR, json);
 
         // propagate the exception back to the calling method
         if (handler != null) {
@@ -277,27 +258,29 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     }
 
     /**
-     *    This will publish a message @body on the messageAddress
-     *    @param messageAddress - Address of the Nats message
-     *    @param body - body of the message
-     *    @return void
+     * Handles event creation and delivery onto the NATS stream. Retry will be attempted within the messaging client.
+     * The call is made asynchronously, so this method will returns almost immediately save for communication latency.
+     *
+     * @param eventName the name of the event. This doubles as the address in the request invocation.
+     * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
-    public void _doPublishNatsJSEvent(String messageAddress, JsonObject body) {
-        log.info(this.getClass().getName() + ": _doPublishNatsEvent({}, {})", messageAddress, body);
+    public void _doPublishEvent(String eventName, JsonObject body) {
+        log.info(this.getClass().getName() + ": _doPublishEvent({}, {})", eventName, body);
         try {
-            getMessageClient().push(messageAddress, body.toString());
-
+            getMessageClient().push(eventName, body.toString());
         } catch (IOException | MessagingException | InterruptedException e) {
-            log.debug("Error with _doPublishNatsJSEvent:  {}", e.getMessage());
+            log.debug("Error with _doPublishEvent:  {}", e.getMessage());
         }
     }
 
     /**
-     * @param url
+     * Creates a connection to the remote NATS server.
+     * @param url the NATS server url
      * @return
      * @throws IOException
      * @throws InterruptedException
      * @deprecated
+     * @see NatsJetstreamMessageClient
      */
     public Connection _connect(String url) throws IOException, InterruptedException {
         Options.Builder builder = new Options.Builder()
@@ -324,5 +307,97 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         getMessageClient().stop();
 
         super.stop();
+    }
+
+    /**
+     * Handles {@link MessageType#TRANSFERTASK_CANCELED_SYNC} messages by adding the task id to the list of tasks
+     * being cancelled in this verticle.
+     *
+     * @param message the message to cancel
+     */
+    protected void handleCanceledSyncMessage(Message message) {
+        try {
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+
+            log.info("Transfer task {} cancellation detected", uuid);
+            if (uuid != null) {
+                addCancelledTask(uuid);
+            }
+        } catch (DecodeException e) {
+            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            log.error("Unknown exception processing {} message {} body {}. {}",
+                    MessageType.TRANSFERTASK_CANCELED_SYNC, message.getId(), message.getMessage(), t.getMessage());
+        }
+    }
+
+    /**
+     * Handles {@link MessageType#TRANSFERTASK_PAUSED_SYNC} messages by adding the task id to the list of tasks
+     * being paused in this verticle.
+     *
+     * @param message the message to cancel
+     */
+    protected void handlePausedSyncMessage(Message message) {
+        try {
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+
+            log.info("Transfer task {} paused detected", uuid);
+            if (uuid != null) {
+                addPausedTask(uuid);
+            }
+        } catch (DecodeException e) {
+            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            log.error("Unknown exception processing {} message {} body {}. {}",
+                    MessageType.TRANSFERTASK_PAUSED_SYNC, message.getId(), message.getMessage(), t.getMessage());
+        }
+    }
+
+    /**
+     * Handles {@link MessageType#TRANSFERTASK_PAUSED_COMPLETED} messages by removing the task id from the list of tasks
+     * being paused in this verticle.
+     *
+     * @param message the message to cancel
+     */
+    protected void handlePausedCompletedMessage(Message message) {
+        try {
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+
+            log.info("Transfer task {} paused completed", uuid);
+            if (uuid != null) {
+                removePausedTask(uuid);
+            }
+        } catch (DecodeException e) {
+            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            log.error("Unknown exception processing {} message {} body {}. {}",
+                    MessageType.TRANSFERTASK_PAUSED_COMPLETED, message.getId(), message.getMessage(), t.getMessage());
+        }
+    }
+
+    /**
+     * Handles {@link MessageType#TRANSFERTASK_CANCELED_COMPLETED} messages by removing the task id from the list of tasks
+     * being canceled in this verticle.
+     *
+     * @param message the message to cancel
+     */
+    protected void handleCanceledCompletedMessage(Message message) {
+        try {
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+
+            log.info("Transfer task {} canceled completed", uuid);
+            if (uuid != null) {
+                removeCancelledTask(uuid);
+            }
+        } catch (DecodeException e) {
+            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            log.error("Unknown exception processing {} message {} body {}. {}",
+                    MessageType.TRANSFERTASK_CANCELED_COMPLETED, message.getId(), message.getMessage(), t.getMessage());
+        }
     }
 }

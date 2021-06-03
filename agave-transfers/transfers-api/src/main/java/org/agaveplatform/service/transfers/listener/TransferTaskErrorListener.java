@@ -107,7 +107,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 								} else {
 									log.error("Unable to process {} event for transfer task (TTEL) message: {}", getEventChannel(), body.encode(), resp.cause());
 									try {
-										_doPublishNatsJSEvent(TRANSFER_FAILED, body);
+										_doPublishEvent(TRANSFER_FAILED, body);
 									} catch (Exception e) {
 										log.debug(e.getMessage());
 									}
@@ -172,7 +172,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 												if (updateStatusResult.succeeded()) {
 													try {
 														log.error("Transfer task {} experienced a non-terminal error and will be retried. The error was {}", tt.getUuid(), message);
-														_doPublishNatsJSEvent(TRANSFER_RETRY, updateStatusResult.result());
+														_doPublishEvent(TRANSFER_RETRY, updateStatusResult.result());
 														handler.handle(Future.succeededFuture(true));
 													} catch (Exception e) {
 														log.debug(e.getMessage());
@@ -245,7 +245,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 									if (updateStatusResult.succeeded()) {
 										try {
 											log.error("Updated status of transfer task {} to CANCELLED after interrupt received. No retires will be attempted.", uuid);
-											_doPublishNatsJSEvent(TRANSFERTASK_CANCELED_ACK, updateStatusResult.result());
+											_doPublishEvent(TRANSFERTASK_CANCELED_ACK, updateStatusResult.result());
 											handler.handle(Future.succeededFuture(true));
 										} catch (Exception e) {
 											log.debug(e.getMessage());

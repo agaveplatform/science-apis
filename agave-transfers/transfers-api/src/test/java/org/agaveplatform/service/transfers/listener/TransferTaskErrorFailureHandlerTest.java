@@ -50,7 +50,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).processFailure(any(JsonObject.class), any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		doCallRealMethod().when(listener).processBody(any(), any());
@@ -126,7 +126,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 		body.put("message", "Error Message");
 
 		TransferTaskErrorFailureHandler failureHandler = getMockTransferFailureHandlerInstance(vertx);
-		//doNothing().when(failureHandler)._doPublishNatsJSEvent( any(), any());
+		//doNothing().when(failureHandler)._doPublishEvent( any(), any());
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);

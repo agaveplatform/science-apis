@@ -1,6 +1,9 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
@@ -18,7 +21,6 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
-
 
 import java.io.IOException;
 import java.net.URI;
@@ -48,7 +50,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any());
 		doCallRealMethod().when(listener).processPauseRequest(any(), any());
 		doCallRealMethod().when(listener).processParentEvent(any(),any(),any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
@@ -66,7 +68,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any());
 		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
 		try {
 			doCallRealMethod().when(listener).start();
@@ -135,9 +137,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				// if the path should represent a directory, generate the items in the listing response
 				listing = List.of(
 						generateRemoteFileInfo(remotePath + "/.", true),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), true),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), false),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), false)
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), true),
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), false),
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), false)
 				);
 			} else {
 				// if the path should represent a file, a listing will only return the file item itself
@@ -252,14 +254,14 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 				// verify that the completed event was created. this should always be throws
 				// if the updateStatus result succeeds.
-				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PAUSED), eq(transferTask.toJson()));
+				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_PAUSED), eq(transferTask.toJson()));
 
 				// make sure the parent was not processed when none existed for the transfer task
 				verify(listener, never()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener)._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener)._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 				assertTrue(result.result(),
 						"TransferTask response should be true indicating the task completed successfully.");
@@ -352,8 +354,8 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 				Assertions.assertTrue(result.result(),
 									"TransferTask response should be true indicating the task completed successfully.");
@@ -439,7 +441,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 				// verify that the completed event was created. this should always be throws
 				// if the updateStatus result succeeds.
-				//verify(listener)._doPublishNatsJSEvent(eq(TRANSFERTASK_PAUSED_SYNC), any());
+				//verify(listener)._doPublishEvent(eq(TRANSFERTASK_PAUSED_SYNC), any());
 				verify(nats, times(1)).push(any(),eq(TRANSFERTASK_PAUSED_SYNC),any());
 
 				// make sure the parent was processed at least one time
@@ -447,9 +449,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				Assertions.assertTrue(result.result(),
 						"TransferTask response should be true indicating the task completed successfully.");
@@ -535,7 +537,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 				// verify that the completed event was created. this should always be throws
 				// if the updateStatus result succeeds.
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PAUSED), eq(parentTask.toJson()));
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PAUSED), eq(parentTask.toJson()));
 				verify(nats, never()).push(any(),any());
 
 				// make sure the parent was processed at least one time
@@ -622,9 +624,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 				verify(nats, never()).push(any(),any(),any());
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -757,12 +759,12 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 				verify(nats, never()).push(any(),any(),any());
 
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
-				//verify(listener, atLeastOnce())._doPublishNatsJSEvent(eq(TRANSFERTASK_PAUSED), any());
+				//verify(listener, atLeastOnce())._doPublishEvent(eq(TRANSFERTASK_PAUSED), any());
 
 				ctx.completeNow();
 			});
@@ -833,12 +835,12 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 				verify(nats, never()).push(any(),any(),any());
 
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
-				//verify(listener, atLeastOnce())._doPublishNatsJSEvent(eq(TRANSFERTASK_PAUSED), any());
+				//verify(listener, atLeastOnce())._doPublishEvent(eq(TRANSFERTASK_PAUSED), any());
 
 				//verify(ta);
 				ctx.completeNow();

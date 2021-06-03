@@ -11,7 +11,6 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
 import org.agaveplatform.service.transfers.exception.TransferException;
-import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -42,7 +41,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CANCELED);
 		when(listener.getVertx()).thenReturn(vertx);
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
+		//doNothing().when(listener)._doPublishEvent( any(), any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
@@ -54,7 +53,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CANCELED_ACK);
 		when(listener.getVertx()).thenReturn(vertx);
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 //	NatsJetstreamMessageClient getMockNats() throws MessagingException {
@@ -110,14 +109,14 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				//verify(dbService).updateStatus(any(), any(), any(), any());
 
 				// error event should be thrown
-				//verify(listener, never())._doPublishNatsJSEvent(  eq(TRANSFERTASK_ERROR), any() );
+				//verify(listener, never())._doPublishEvent(  eq(TRANSFERTASK_ERROR), any() );
 //				verify(nats, never()).push(any(),any(),any());
 
 				// sync should not happen
-				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_SYNC), eq(transferTask.toJson()));
+				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_CANCELED_SYNC), eq(transferTask.toJson()));
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -192,13 +191,13 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(dbService, never()).updateStatus(any(), any(), any(), any());
 
 				// error event should be thrown for non-transfer task request
-				//verify(listener)._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), eq(errorEventBody));
+				//verify(listener)._doPublishEvent( eq(TRANSFERTASK_ERROR), eq(errorEventBody));
 //				verify(nats, never()).push(any(),any(),any());
 				// no sync event should be sent
-				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_SYNC), any());
+				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_CANCELED_SYNC), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -270,8 +269,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				//verify(listener)._doPublishEvent(eq(TRANSFERTASK_CANCELED_SYNC), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 //				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
@@ -348,8 +347,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(listener, never()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 //				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
@@ -449,8 +448,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				assertTrue(results.succeeded(), "The call should succeed.");
 				assertTrue(results.result(), "The async should return true indicating the task was updated");
 
-				//verify(ttc)._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_COMPLETED), eq(transferTask.toJson()) );
-				//verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_CANCELED_ACK), any());
+				//verify(ttc)._doPublishEvent( eq(TRANSFERTASK_CANCELED_COMPLETED), eq(transferTask.toJson()) );
+				//verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_CANCELED_ACK), any());
 				//assertEquals(transferTask.getUuid(), results, "Transfer task was not acknowledged in response uuid");
 				//assertEquals(transferTask.getUuid(), results, "result should have been uuid: " + transferTask.getUuid());
 //				verify(nats, never()).push(any(),any(),any());
@@ -558,8 +557,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processCancelAck(any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 //				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
@@ -651,8 +650,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processCancelAck(any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 //				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
@@ -729,8 +728,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processCancelAck(any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 //				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
@@ -832,8 +831,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processCancelAck(any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 //				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
@@ -931,8 +930,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 //				verify(listener, atLeastOnce()).processCancelAck(any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 //				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
@@ -1010,8 +1009,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				//verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 //				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
@@ -1073,7 +1072,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 		doCallRealMethod().when(listener).processParentAck( any(), any() ,any());
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any());
 //		doNothing().when(getMockNats()).push(any(), any(), any());
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
@@ -1103,11 +1102,11 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				assertFalse(results.result(), "The async should return true");
 
 				//TransferTask Canceled Ack for parent should not be sent when children are active
-				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
+				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
 //				verify(nats, never()).push(any(),any(),any());
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -1135,7 +1134,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 		doCallRealMethod().when(listener).processParentAck( any(), any() ,any());
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any());
 //		doNothing().when(getMockNats()).push(any(), any(), any());
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
@@ -1165,11 +1164,11 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				assertTrue(results.result(), "The async should return true");
 
 				//TransferTask Canceled Ack for parent should be sent when all children are cancelled/completed
-				//verify(listener, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
+				//verify(listener, times(1))._doPublishEvent(eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
 //				verify(nats, times(1)).push(any(),any(),any());
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
+				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});

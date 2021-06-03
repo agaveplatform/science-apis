@@ -1,6 +1,5 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.nats.client.Connection;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -10,7 +9,6 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
-import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -29,7 +27,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CREATED;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -50,7 +48,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any());
 		doCallRealMethod().when(listener).processEvent(any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
@@ -102,8 +100,8 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		ttc.processEvent(json, ctx.succeeding(isAssigned -> ctx.verify(() -> {
 			assertTrue(isAssigned);
-			//verify(ttc, times(1))._doPublishNatsJSEvent( TRANSFERTASK_ASSIGNED, json.put("status",TransferStatusType.ASSIGNED.name()));
-			//verify(ttc, never())._doPublishNatsJSEvent(TRANSFERTASK_ERROR, new JsonObject());
+			//verify(ttc, times(1))._doPublishEvent( TRANSFERTASK_ASSIGNED, json.put("status",TransferStatusType.ASSIGNED.name()));
+			//verify(ttc, never())._doPublishEvent(TRANSFERTASK_ERROR, new JsonObject());
 //			verify(nats, never()).push(any(), any(), any());
 //			verify(nats, times(1)).push(any(), any(), json.put("status",TransferStatusType.ASSIGNED.name()).toString());
 
@@ -139,7 +137,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		ttc.processEvent(json, ctx.failing(cause -> ctx.verify(() -> {
 			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
-			//verify(ttc, never())._doPublishNatsJSEvent( TRANSFERTASK_ASSIGNED, json);
+			//verify(ttc, never())._doPublishEvent( TRANSFERTASK_ASSIGNED, json);
 //			verify(nats, never()).push(any(), any(), json.toString());
 			verify(ttc, never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
 
@@ -147,7 +145,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 					.put("cause", cause.getClass().getName())
 					.put("message", cause.getMessage())
 					.mergeIn(json);
-			//verify(ttc, times(1))._doPublishNatsJSEvent( TRANSFERTASK_ERROR, errorBody);
+			//verify(ttc, times(1))._doPublishEvent( TRANSFERTASK_ERROR, errorBody);
 //			verify(nats, times(1)).push(any(), any(), errorBody.toString());
 
 			ctx.completeNow();
@@ -178,7 +176,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		ttc.processEvent(json, ctx.failing(cause -> ctx.verify(() -> {
 			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
-			//verify(ttc, never())._doPublishNatsJSEvent(TRANSFERTASK_ASSIGNED, json);
+			//verify(ttc, never())._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
 //			verify(nats, never()).push(any(), any(), json.toString());
 			verify(ttc, never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
 
@@ -186,7 +184,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 					.put("cause", cause.getClass().getName())
 					.put("message", cause.getMessage())
 					.mergeIn(json);
-			//verify(ttc, times(1))._doPublishNatsJSEvent(TRANSFERTASK_ERROR, errorBody);
+			//verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ERROR, errorBody);
 //			verify(nats, times(1)).push(any(), any(), errorBody.toString());
 			ctx.completeNow();
 		})));

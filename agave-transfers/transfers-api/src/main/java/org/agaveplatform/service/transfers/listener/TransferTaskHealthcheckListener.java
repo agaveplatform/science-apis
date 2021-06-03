@@ -115,7 +115,7 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 							logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);
 							//parentList.remove(uuid);
 							try {
-								_doPublishNatsJSEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
+								_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
 								promise.handle(Future.succeededFuture(Boolean.TRUE));
 							} catch (Exception e) {
 								logger.debug(e.getMessage());
@@ -128,7 +128,7 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 									.put("message", updateStatus.cause().getMessage())
 									.mergeIn(body);
 							try {
-								_doPublishNatsJSEvent(MessageType.TRANSFERTASK_ERROR, json);
+								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
 								promise.handle(Future.failedFuture(updateStatus.cause()));
 							} catch (Exception e) {
 								logger.debug(e.getMessage());
@@ -152,7 +152,7 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 									.put("message", updateStatus.cause().getMessage())
 									.mergeIn(body);
 							try {
-								_doPublishNatsJSEvent(MessageType.TRANSFERTASK_ERROR, json);
+								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
 								//promise.handle(Future.failedFuture(updateStatus.cause()));
 							} catch (Exception e) {
 								logger.debug(e.getMessage());
@@ -170,7 +170,7 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 						.put("message", reply.cause().getMessage())
 						.mergeIn(body);
 				try {
-					_doPublishNatsJSEvent(MessageType.TRANSFERTASK_ERROR, json);
+					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
 					promise.handle(Future.failedFuture(reply.cause()));
 				} catch (Exception e) {
 					logger.debug(e.getMessage());

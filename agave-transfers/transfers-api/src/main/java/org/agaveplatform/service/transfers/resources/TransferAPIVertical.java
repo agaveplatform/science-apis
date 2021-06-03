@@ -311,7 +311,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
                         //transfers.$tenantid.$uid.$systemid.transfer.$protocol
                         srcUri.set(URI.create(source));
                         String messageName = createPushMessageSubject("transfers", tt.getTenantId(), tt.getOwner(), sourceClient.getHost(), MessageType.TRANSFERTASK_CREATED);
-                        //_doPublishNatsJSEvent(messageName, tt.toJson());
+                        //_doPublishEvent(messageName, tt.toJson());
                         natsCleint.push(messageName, tt.toJson().toString());
                         routingContext.response()
                             .putHeader("content-type", "application/json")
@@ -380,7 +380,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
 
                                         String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_CANCELED);
                                         natsCleint = new NatsJetstreamMessageClient(config().getString(NATS_URL), streamName, messageName);
-                                        //_doPublishNatsJSEvent( messageName, deleteReply.result());
+                                        //_doPublishEvent( messageName, deleteReply.result());
                                         natsCleint.push( messageName, deleteReply.result().toString());
 
                                         routingContext.response()
@@ -465,7 +465,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                     //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
                                     try {
                                         String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(), MessageType.TRANSFERTASK_CANCELED);
-                                        //_doPublishNatsJSEvent(messageName, jo);
+                                        //_doPublishEvent(messageName, jo);
                                         natsCleint.push( messageName, jo.toString());
                                     } catch (MessagingException e) {
                                         log.debug(e.getMessage());
@@ -496,9 +496,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
                     TransferTask tt = new TransferTask(reply.result());
                     try {
                         String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_CANCELED);
-                       //_doPublishNatsJSEvent(messageName, jo);
+                       //_doPublishEvent(messageName, jo);
                         natsCleint.push( messageName, tt.toString());
-                        //_doPublishNatsJSEvent(messageName, tt.toJson());
+                        //_doPublishEvent(messageName, tt.toJson());
                         routingContext.response()
                                 .putHeader("content-type", "application/json")
                                 .setStatusCode(201)
@@ -564,7 +564,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
 
                                     try {
                                         //String messageName = _createMessageName("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost().toString(),MessageType.TRANSFERTASK_CANCELED);
-                                        //_doPublishNatsJSEvent(messageName, jo);
+                                        //_doPublishEvent(messageName, jo);
 
                                         String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_DELETED);
                                         natsCleint.push( messageName, jo.toString());
@@ -645,7 +645,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
 
                                     try {
                                         String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_DELETED);
-                                        //_doPublishNatsJSEvent(messageName, jo);
+                                        //_doPublishEvent(messageName, jo);
                                         natsCleint.push( messageName, jo.toString());
                                     } catch (MessagingException e) {
                                         log.debug(e.getMessage());
@@ -790,10 +790,10 @@ public class TransferAPIVertical extends AbstractNatsListener {
                         dbService.update(tenantId, uuid, tt, updateReply -> {
                             if (updateReply.succeeded()) {
                                 try {
-                                    //_doPublishNatsJSEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
+                                    //_doPublishEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
 
                                     String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_UPDATED);
-                                    //_doPublishNatsJSEvent(messageName, jo);
+                                    //_doPublishEvent(messageName, jo);
                                     natsCleint.push( messageName, updateReply.result().toString());
 
                                     routingContext.response().end(

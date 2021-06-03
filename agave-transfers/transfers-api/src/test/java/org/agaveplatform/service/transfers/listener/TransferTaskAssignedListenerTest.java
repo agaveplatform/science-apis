@@ -1,6 +1,5 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.nats.client.Connection;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -12,7 +11,6 @@ import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
-import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -23,7 +21,6 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
@@ -37,7 +34,8 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
@@ -71,7 +69,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 //		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishNatsJSEvent(any(),any());
+		//doNothing().when(listener)._doPublishEvent(any(),any());
 		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
 
 		RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
@@ -156,9 +154,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				// if the path should represent a directory, generate the items in the listing response
 				listing = List.of(
 						generateRemoteFileInfo(remotePath + "/.", true),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), true),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), false),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), false)
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), true),
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), false),
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), false)
 				);
 			} else {
 				// if the path should represent a file, a listing will only return the file item itself
@@ -265,10 +263,10 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				verify(srcRemoteDataClient, never()).ls(any());
 
 				// TRANSFER_ALL event should have been raised
-				//verify(ta, times(1))._doPublishNatsJSEvent( eq(TRANSFER_ALL), eq(updatedTransferTaskJson));
+				//verify(ta, times(1))._doPublishEvent( eq(TRANSFER_ALL), eq(updatedTransferTaskJson));
 
 				// no error event should have been raised
-				//verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 //				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 
 				ctx.completeNow();
@@ -362,9 +360,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 //				verify(dbService, times(1)).createOrUpdateChildTransferTask(eq(rootTransferTask.getTenantId()), eq(rootTransferTask), any());
 
 				// TRANSFER_ALL event should have been raised
-				//verify(ta, times(1))._doPublishNatsJSEvent( eq(TRANSFER_COMPLETED), eq(updatedTransferTaskJson));
+				//verify(ta, times(1))._doPublishEvent( eq(TRANSFER_COMPLETED), eq(updatedTransferTaskJson));
 				// no error event should have been raised
-				//verify(ta, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
+				//verify(ta, never())._doPublishEvent( eq(TRANSFERTASK_ERROR), any());
 //				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 				ctx.completeNow();
 			});
@@ -466,12 +464,12 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				List<TransferTask> childTransferTasks = childTransferTaskArgument.getAllValues();
 
 				// directory children should raise TRANSFERTASK_CREATED events
-				//verify(ta, times((int)remoteFileInfoList.stream().filter(RemoteFileInfo::isDirectory).count()-1))._doPublishNatsJSEvent( eq(TRANSFERTASK_CREATED), any(JsonObject.class));
+				//verify(ta, times((int)remoteFileInfoList.stream().filter(RemoteFileInfo::isDirectory).count()-1))._doPublishEvent( eq(TRANSFERTASK_CREATED), any(JsonObject.class));
 				// file item children should raise TRANSFER_ALL events
-				//verify(ta, times((int)remoteFileInfoList.stream().filter(RemoteFileInfo::isFile).count()))._doPublishNatsJSEvent( eq(TRANSFER_ALL), any(JsonObject.class));
+				//verify(ta, times((int)remoteFileInfoList.stream().filter(RemoteFileInfo::isFile).count()))._doPublishEvent( eq(TRANSFER_ALL), any(JsonObject.class));
 
 				// the method is called mlutiple times, so we capture the expected events using an or check.
-//				verify(ta, times(remoteFileInfoList.size()))._doPublishNatsJSEvent(or(eq("TRANSFERTASK_CREATED"), eq(TRANSFERTASK_CREATED)), childJsonObjectArgument.capture());
+//				verify(ta, times(remoteFileInfoList.size()))._doPublishEvent(or(eq("TRANSFERTASK_CREATED"), eq(TRANSFERTASK_CREATED)), childJsonObjectArgument.capture());
 
 //				// we can then extract the values after verifying that it was called the expected number of times.
 //				List<JsonObject> childJsonObjects = childJsonObjectArgument.getAllValues();
@@ -494,7 +492,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 					assertTrue(ttPath.startsWith(parentPath),
 							String.format("Actual task source does not begin with parent source: %s !startsWith %s\n",
-									ttPath.toString(), rootTransferTask.getSource()));
+									ttPath, rootTransferTask.getSource()));
 
 					assertEquals(rootTransferTask.getSource() + "/" + ttPath.getFileName().toString(),
 							tt.getSource(), "Actual task source does not match expected value based on parent source");
@@ -504,7 +502,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				}
 
 				// no error event should have been raised
-				//verify(ta, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
+				//verify(ta, never())._doPublishEvent( eq(TRANSFERTASK_ERROR), any());
 //				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 				ctx.completeNow();
 			});
@@ -608,13 +606,13 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				verify(dbService, never()).createOrUpdateChildTransferTask(any(), any(), any());
 
 				// directory children should raise TRANSFERTASK_CREATED events
-				//verify(ta, times(1))._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_ACK), eq(rootTransferTaskJson));
+				//verify(ta, times(1))._doPublishEvent( eq(TRANSFERTASK_CANCELED_ACK), eq(rootTransferTaskJson));
 				// file item children should never be reached
-				//verify(ta, never())._doPublishNatsJSEvent( eq(TRANSFER_ALL), any(JsonObject.class));
-				//verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_CREATED), any(JsonObject.class));
+				//verify(ta, never())._doPublishEvent( eq(TRANSFER_ALL), any(JsonObject.class));
+				//verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_CREATED), any(JsonObject.class));
 
 				// no error event should have been raised
-				//verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				//verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 //				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 				ctx.completeNow();
 			});

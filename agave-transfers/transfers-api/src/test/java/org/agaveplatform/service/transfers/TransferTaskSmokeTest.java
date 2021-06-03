@@ -17,11 +17,8 @@ import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.listener.*;
 import org.agaveplatform.service.transfers.model.TransferTask;
-//import org.agaveplatform.service.transfers.resources.FileTransferCreateServiceImpl;
 import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
 import org.agaveplatform.service.transfers.resources.TransferAPIVertical;
-//import org.agaveplatform.service.transfers.resources.TransferTaskUnaryImpl;
-//import org.agaveplatform.service.transfers.streaming.StreamingFileTaskImpl;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
@@ -37,7 +34,6 @@ import java.util.concurrent.TimeoutException;
 import static io.restassured.RestAssured.given;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
@@ -62,7 +58,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-		doCallRealMethod().when(listener)._doPublishNatsJSEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 
@@ -72,7 +68,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-		doCallRealMethod().when(listener)._doPublishNatsJSEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 
@@ -80,7 +76,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		InteruptEventListener listener = spy(new InteruptEventListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishNatsJSEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 	TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) throws IOException, InterruptedException {
@@ -94,7 +90,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		TransferTaskCompleteTaskListener listener = spy(new TransferTaskCompleteTaskListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishNatsJSEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 	TransferTaskAssignedListener getMockTTAListenerInstance(Vertx vertx) throws IOException, InterruptedException {
@@ -107,21 +103,21 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		TransferTaskCancelListener listener = spy(new TransferTaskCancelListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishNatsJSEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 	TransferTaskCreatedListener getMockTTCListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskCreatedListener listener = spy(new TransferTaskCreatedListener(vertx));
 		doReturn(config).when(listener).config();
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishNatsJSEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 	TransferTaskPausedListener getMockTTPausedListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskPausedListener listener = spy(new TransferTaskPausedListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishNatsJSEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 
@@ -129,7 +125,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		TransferAllProtocolVertical listener = spy(new TransferAllProtocolVertical(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishNatsJSEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 
@@ -137,7 +133,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		TransferAPIVertical listener = spy(new TransferAPIVertical(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishNatsJSEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 

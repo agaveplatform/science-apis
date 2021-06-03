@@ -11,7 +11,6 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
-import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.junit.jupiter.api.*;
@@ -23,10 +22,8 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -101,8 +98,8 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 		Future<Boolean> result = thc.processAllChildrenCanceledEvent(json);
 
 		// empty list response from db mock should result in no healthcheck events being raised
-		//verify(thc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), any());
-		//verify(thc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+		//verify(thc, never())._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), any());
+		//verify(thc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 //		verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 		Assertions.assertTrue(result.result(),
 				"Empty list returned from db mock should result in a true response to the callback.");

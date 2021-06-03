@@ -113,14 +113,7 @@ public class RetryRequestManager extends AbstractNatsListener {
                     getDbService().createOrUpdateChildTransferTask(tenantId, transferTask, result -> {
 
                         if (result.succeeded()) {
-                            try {
-                                _doPublishEvent(address, result.result());
-                            } catch (IOException e) {
-                                log.debug(e.getMessage());
-                            } catch (InterruptedException e) {
-                                log.debug(e.getMessage());
-                            }
-                            //promise.complete();
+                            _doPublishEvent(address, result.result());
                         } else {
                             // update failed
                             String uuid = body.getString("uuid");
@@ -129,9 +122,7 @@ public class RetryRequestManager extends AbstractNatsListener {
                             log.error("Error updating status of transfer task.");
                             try {
                                 doHandleFailure(result.cause(), msg, body, null);
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            } catch (InterruptedException e) {
+                            } catch (IOException | InterruptedException e) {
                                 e.printStackTrace();
                             }
 

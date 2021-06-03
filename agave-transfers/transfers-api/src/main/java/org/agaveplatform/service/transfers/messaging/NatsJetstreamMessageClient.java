@@ -4,10 +4,8 @@ import io.nats.client.*;
 import io.nats.client.api.*;
 import io.nats.client.impl.NatsMessage;
 import org.agaveplatform.service.transfers.exception.DuplicateMessageException;
-import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
-import org.iplantc.service.common.messaging.MessageQueueListener;
 import org.iplantc.service.common.util.Slug;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,16 +30,32 @@ import java.util.regex.Pattern;
  *    - write a single message to a single subject
  *    - allow message duplication for the time being?
  *
- * Each instance of this class maintains a {@link #subscriptionMap} of all subscription that have been crated over the life of the instance. Subscriptions are lightweight and can be reused and replicated across threads. Thus, one JVM can have a single connection with many subscriptions created in each thread. Each instance also has a {@link #stop()} method, which will unsubscribe every active subscription from the server and remove them from the cache. The connection will, however be left in tact.  The {@link #disconnect()} is a nuclear option that kills the current connection without unsubscribing or deleting any clients. This should be called in the shutdown handler of the parent thread of any application, whereas {@link #stop} should be called in the shutdown handler of each thread invoking the class.
- * Consumer groups are defined as unique combinations of a consumer name (referred to as the "durable" value in nats consumer parlance), and a consumer group name (referred to as the "queue" value in nats consumer parlance). Every subscription created with these same two values, subscribed to the same subject, across instances, threads, and JVM, will be viewed as a member of the same consumer group in NATS and thus participate in an "exactly once" delivery strategy by NATS. That means that for any given message written to the subject listened to by a subject group, only one subscriber will receive the message. (Usual ACK and timeout behavior apply, but to the entire group).
- * The connection parameters for NATS are specified by the vertx config file and overridden by environment variables. We do this for flexibility and to maintain DRY principles. Streams are set up extetrnally as part of our devops pipeline. Subjects are established by domain logic of individual services. Auth is not currently enabled, though both tls and auth will be put in place for our release.
+ * Each instance of this class maintains a {@link #subscriptionMap} of all subscription that have been crated over the
+ * life of the instance. Subscriptions are lightweight and can be reused and replicated across threads. Thus, one JVM
+ * can have a single connection with many subscriptions created in each thread. Each instance also has a {@link #stop()}
+ * method, which will unsubscribe every active subscription from the server and remove them from the cache. The
+ * connection will, however be left in tact.  The {@link #disconnect()} is a nuclear option that kills the current
+ * connection without unsubscribing or deleting any clients. This should be called in the shutdown handler of the
+ * parent thread of any application, whereas {@link #stop} should be called in the shutdown handler of each thread
+ * invoking the class.
+ *
+ * Consumer groups are defined as unique combinations of a consumer name (referred to as the "durable" value in nats
+ * consumer parlance), and a consumer group name (referred to as the "queue" value in nats consumer parlance). Every
+ * subscription created with these same two values, subscribed to the same subject, across instances, threads, and JVM,
+ * will be viewed as a member of the same consumer group in NATS and thus participate in an "exactly once" delivery
+ * strategy by NATS. That means that for any given message written to the subject listened to by a subject group, only
+ * one subscriber will receive the message. (Usual ACK and timeout behavior apply, but to the entire group).
+ * The connection parameters for NATS are specified by the vertx config file and overridden by environment variables.
+ * We do this for flexibility and to maintain DRY principles. Streams are set up extetrnally as part of our devops
+ * pipeline. Subjects are established by domain logic of individual services. Auth is not currently enabled, though
+ * both tls and auth will be put in place for our release.
  *
  */
 public class NatsJetstreamMessageClient {
     private static final Logger log = LoggerFactory.getLogger(NatsJetstreamMessageClient.class);
 
     protected static int DEFAULT_TIMEOUT_SECONDS;
-
+    protected static final int MAX_ATTEMPTS = 3;
     private static final Object lock = new Object();
 
     public NatsJetstreamMessageClient (){}
@@ -248,24 +262,35 @@ public class NatsJetstreamMessageClient {
 
         // Publish a message and print the results of the publish acknowledgement.
         // An exception will be thrown if there is a failure.
-        try {
-            PublishAck pa = getJetStream().publish(natsMessage, pubishOptions);
+        int attempts = 0;
 
-            if (pa.isDuplicate()) {
-                throw new DuplicateMessageException("Message already exists in NATS stream");
-            } else {
-                if (log.isDebugEnabled()) {
-                    log.debug("NatsJetstreamMessage{" +
-                            "stream='" + getStreamName() + "'" +
-                            ", subject=" + subject +
-                            ", seq=" + pa.getSeqno() +
-                            "}");
+        while (attempts < MAX_ATTEMPTS) {
+            try {
+                PublishAck pa = getJetStream().publish(natsMessage, pubishOptions);
+                if (pa.isDuplicate()) {
+                    throw new DuplicateMessageException("Message already exists in NATS stream");
+                } else if (pa.hasError()) {
+                    attempts++;
+                    log.error("[{}] Failed to publish {} message to NATS: {}", attempts, subject, pa.getError());
+
+                    if (attempts == MAX_ATTEMPTS) {
+                        throw new MessagingException("Unable to publish message to NATS server after " + MAX_ATTEMPTS + " attempts.");
+                    }
+                } else {
+                    if (log.isDebugEnabled()) {
+                        log.debug("NatsJetstreamMessage{" +
+                                "stream='" + getStreamName() + "'" +
+                                ", subject=" + subject +
+                                ", seq=" + pa.getSeqno() +
+                                "}");
+                    }
+                    return;
                 }
+            } catch (JetStreamApiException e) {
+                throw new MessagingException("Invalid message body response returned from NATS.", e);
+            } catch (IOException e) {
+                throw new MessagingException("Unexpected error while pushing message to NATS server.", e);
             }
-        } catch (JetStreamApiException e) {
-            throw new MessagingException("Invalid message body response returned from NATS.", e);
-        } catch (IOException e) {
-            throw new MessagingException("Unexpected error while pushing message to NATS server.", e);
         }
     }
 
@@ -390,64 +415,73 @@ public class NatsJetstreamMessageClient {
     }
 
     /**
-     * Starts a watch loop that will listen to the event queue and process anything that comes
-     * until {@link MessageQueueListener#stop()} is called.
+     * Starts an async listener to process messages matching the given {@code subject}, in order, resolving
+     * the {@link MessageHandler} with each message. NATS will deliver messages to every consumer subscribed to a
+     * subject matching the message subject. This means that multiple consumers will all receive the message. If
+     * exactly once delivery is desired, use the {@link #listen(String, String, MessageHandler)} method.
+     *
+     * If this method is subsequently called, the subscription will be terminated and recreated with the new
+     * {@code handler}. This allows for handlers to be updated over time as needed. Calling the {@link #stop()} method
+     * will unsubscribe this and all other subscriptions.
      *
      * @param subject name of the subject
-     * @param handler the listener with which to listen
-     * @throws MessagingException if communication with the queue fails
+     * @param handler the message dispatch handler
+     * @throws MessagingException if communication with the NATS server fails
+     * @throws InterruptedException if the current thread is interrupted
+     *
      */
-    public void listen(String subject, MessageHandler handler) throws MessagingException, MessageProcessingException, JetStreamApiException, IOException, InterruptedException {
+    public void listen(String subject, MessageHandler handler) throws MessagingException, InterruptedException {
         listen(subject, null, handler);
     }
 
     /**
-     * Starts an async listener to process messages with the given subject on the named stream. The subscription will
-     * join all other consumers subscribing to the same subject and group name. NATS will ensure exactly once delivery
-     * of a message to a group. The listener will continue to run until {@link MessageQueueListener#stop()} is called.
+     * Starts an async listener to process messages matching the given {@code subject}, in order, resolving
+     * the {@link MessageHandler} with each message. The subscription will join all other consumers subscribing to the
+     * same subject and group name. NATS will ensure exactly once delivery of a message to a group. The listener will
+     * continue to run until unsubscribed via a {@link #stop()} call. When {@code queueName} is null, this falls back
+     * on a broadcast subscription and exactly once delivery is not guaranteed.
      *
      * @param subject name of the subject
      * @param queueName    name of queue group to join
      * @param handler the message dispatch handler
      * @throws MessagingException if communication with the NATS server fails
+     * @throws InterruptedException if the current thread is interrupted
      */
-    public void listen(String subject, String queueName, io.nats.client.MessageHandler handler)
-            throws MessagingException, MessageProcessingException, JetStreamApiException, IOException, InterruptedException {
-        if (!subscriptionMap.containsKey(subject)) {
-            try {
-                ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
-                        .ackPolicy(AckPolicy.Explicit)
-                        .ackWait(Duration.ofSeconds(60))
-                        .durable(consumerName)
-                        .filterSubject(subject)
-                        .deliverPolicy(DeliverPolicy.All)
-                        .maxDeliver(10)
-                        .rateLimit(10)
-                        .replayPolicy(ReplayPolicy.Instant)
-                        .build();
+    public void listen(String subject, String queueName, MessageHandler handler) throws MessagingException, InterruptedException {
 
-                PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
-                        .stream(getStreamName())
-                        .configuration(consumerConfiguration)
-                        .durable(getConsumerName())
-                        .build();
-                if (queueName != null) {
-                    //JetStreamSubscription jsm = getOrCreatePushGroupSubscription(queueName, subject);
-                    subscriptionMap.put(subject, getJetStream().subscribe(subject, queueName, getDispatcher(), handler, true, pushSubscribeOptions));
-                } else {
-                    subscriptionMap.put(subject, getJetStream().subscribe(subject, getDispatcher(), handler, true, pushSubscribeOptions));
-                }
-            } catch (IOException e) {
-                throw new MessagingException("Unexpected error while subscribing to NATS server.", e);
-            } catch (JetStreamApiException e) {
-                throw new MessagingException("Invalid request made to NATS Jetstream to subscribe for push messages", e);
+        JetStreamSubscription subscription = subscriptionMap.get(subject);
+        if (subscription!= null) {
+            subscription.unsubscribe();
+            subscriptionMap.remove(subject);
+        }
+
+        try {
+            ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
+                    .ackPolicy(AckPolicy.Explicit)
+                    .ackWait(Duration.ofSeconds(60))
+                    .durable(consumerName)
+                    .filterSubject(subject)
+                    .deliverPolicy(DeliverPolicy.All)
+                    .maxDeliver(10)
+                    .rateLimit(10)
+                    .replayPolicy(ReplayPolicy.Instant)
+                    .build();
+
+            PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
+                    .stream(getStreamName())
+                    .configuration(consumerConfiguration)
+                    .durable(getConsumerName())
+                    .build();
+            if (queueName != null) {
+                //JetStreamSubscription jsm = getOrCreatePushGroupSubscription(queueName, subject);
+                subscriptionMap.put(subject, getJetStream().subscribe(subject, queueName, getDispatcher(), handler, true, pushSubscribeOptions));
+            } else {
+                subscriptionMap.put(subject, getJetStream().subscribe(subject, getDispatcher(), handler, true, pushSubscribeOptions));
             }
-        } else {
-            boolean waitingForFlowControl = true;
-            while (waitingForFlowControl) {
-                JetStreamSubscription sub = subscriptionMap.get(subject);
-                sub.nextMessage(Duration.ofSeconds(1));
-            }
+        } catch (IOException e) {
+            throw new MessagingException("Unexpected error while subscribing to NATS server.", e);
+        } catch (JetStreamApiException e) {
+            throw new MessagingException("Invalid request made to NATS Jetstream to subscribe for push messages", e);
         }
     }
 

@@ -102,13 +102,13 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 			JSONObject json = getSystemJson(protocolType);
 			json.remove("id");
 			json.put("id", this.getClass().getSimpleName());
-			RemoteSystem system = (StorageSystem) StorageSystem.fromJSON(json);
+			RemoteSystem system = StorageSystem.fromJSON(json);
 			system.setOwner(SYSTEM_USER);
 			Optional<String> hd = Optional.ofNullable(system.getStorageConfig().getHomeDir());
 			String homeDir = String.format("%s/%s/%s",
 					hd.orElse(""),
 					getClass().getSimpleName(),
-					UUID.randomUUID().toString());
+					UUID.randomUUID());
 			system.getStorageConfig().setHomeDir(homeDir);
 			return system;
 		} catch (Exception e) {
@@ -259,7 +259,7 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
             // this shouldn't be called because we're passing in the dest rdc
             verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, destUri);
 
-            verify(txfrAllVert, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_CANCELED_ACK), eq(tt.toJson()));
+            verify(txfrAllVert, times(1))._doPublishEvent(eq(TRANSFERTASK_CANCELED_ACK), eq(tt.toJson()));
 
             ctx.completeNow();
         });

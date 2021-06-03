@@ -123,7 +123,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
             notificationEventProcess(notificationMessageBody);
             logger.info("Transfer task canceled for uuid {} is completed.", body.getString("uuid"));
             try {
-			    _doPublishNatsJSEvent(MessageType.NOTIFICATION_CANCELED, body);
+			    _doPublishEvent(MessageType.NOTIFICATION_CANCELED, body);
             } catch (Exception e) {
                 logger.debug(e.getMessage());
             }
@@ -146,7 +146,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
             notificationEventProcess(notificationMessageBody);
             logger.info("Transfer task finished for uuid {} is completed.", body.getString("uuid"));
             try {
-                _doPublishNatsJSEvent(MessageType.NOTIFICATION_COMPLETED, body);
+                _doPublishEvent(MessageType.NOTIFICATION_COMPLETED, body);
             } catch (Exception e) {
                 logger.debug(e.getMessage());
             }

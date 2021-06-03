@@ -10,7 +10,6 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
-import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -20,7 +19,6 @@ import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
@@ -28,8 +26,9 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_RETRY;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -49,7 +48,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
         when(listener.getRetryRequestManager()).thenCallRealMethod();
         when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
         doNothing().when(listener)._doPublishEvent(any(), any());
-        //doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
+        //doNothing().when(listener)._doPublishEvent(any(), any());
         doCallRealMethod().when(listener).processRetryTransferTask(any(), any());
         doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
         doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
@@ -135,7 +134,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
             assertEquals(resp.cause().getClass(), SystemUnknownException.class, "processRetry should propagate SystemUnknownException back to handler when thrown.");
             verify(ta, times(1)).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource())));
             verify(ta, times(1)).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getDest())));
-            //verify(ta, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any(JsonObject.class));
+            //verify(ta, times(1))._doPublishEvent(eq(TRANSFERTASK_ERROR), any(JsonObject.class));
 //            verify(nats, times(1)).push(any(), any(), any(JsonObject.class).toString());
             ctx.completeNow();
         }));
@@ -268,7 +267,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
             assertEquals(processRetryResult.cause().getClass(), SystemUnknownException.class, "processRetry should propagate SystemUnknownException back to handler when thrown.");
             verify(ta, times(1)).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource())));
             verify(ta, times(1)).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getDest())));
-            //verify(ta, times(1))._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any(JsonObject.class) );
+            //verify(ta, times(1))._doPublishEvent( eq(TRANSFERTASK_ERROR), any(JsonObject.class) );
 //            verify(nats, times(1)).push(any(), any(), any(JsonObject.class).toString());
 //            verify(nats, times(1)).push(any(), any(), any(JsonObject.class).toString());
             ctx.completeNow();
@@ -305,7 +304,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
             //assertEquals(processRetryResult.cause().getClass(), SystemUnknownException.class, "processRetry should propagate SystemUnknownException back to handler when thrown.");
             verify(ta, times(1)).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource())));
             verify(ta, never()).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getDest())));
-            //verify(ta, times(1))._doPublishNatsJSEvent(  eq(TRANSFERTASK_ERROR), any(JsonObject.class));
+            //verify(ta, times(1))._doPublishEvent(  eq(TRANSFERTASK_ERROR), any(JsonObject.class));
 //            verify(nats, times(1)).push(any(), any(), any(JsonObject.class).toString());
             ctx.completeNow();
         }));
@@ -423,14 +422,14 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
         TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(tt.toJson());
 
         when(ta.getDbService()).thenReturn(dbService);
-        //doNothing().when(ta)._doPublishNatsJSEvent(any(), any());
+        //doNothing().when(ta)._doPublishEvent(any(), any());
 
         JsonObject jsonTransferTask = tt.toJson();
 
         ta.processRetryTransferTask(jsonTransferTask, isRetried -> {
             if (isRetried.succeeded()) {
                 ctx.verify(() -> {
-                    //verify(ta, times(1))._doPublishNatsJSEvent(eq(TRANSFER_FAILED), any());
+                    //verify(ta, times(1))._doPublishEvent(eq(TRANSFER_FAILED), any());
 //                    verify(nats, times(1)).push(any(), any(), any(JsonObject.class).toString());
                     assertFalse(isRetried.result(), "TRANSFER_FAILED event should be sent when max attempts is reached.");
                     ctx.completeNow();

@@ -1,7 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.nats.client.Options;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -17,8 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
 
 
 public class TransferTaskWatchListener extends AbstractNatsListener {
@@ -88,7 +85,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 						try {
 							log.debug("Scheduling health check on transfer task {}",
 									((JsonObject)jsonResult).getString("uuid"));
-							//_doPublishNatsJSEvent(TRANSFERTASK_HEALTHCHECK_PARENT, ((JsonObject)jsonResult));
+							//_doPublishEvent(TRANSFERTASK_HEALTHCHECK_PARENT, ((JsonObject)jsonResult));
 						} catch (Throwable t) {
 							log.error("Failed to schedule health check for transfer task {}", jsonResult);
 						}
@@ -126,7 +123,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 						try {
 							log.debug("Scheduling health check on transfer task {}",
 									((JsonObject)jsonResult).getString("uuid"));
-							//_doPublishNatsJSEvent(TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonResult));
+							//_doPublishEvent(TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonResult));
 						} catch (Throwable t) {
 								log.error("Failed to schedule health check for transfer task {}", jsonResult);
 							}

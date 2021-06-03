@@ -134,7 +134,7 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 					logger.debug("Tenant ID is {}", tenantId);
 					logger.debug(TransferTaskCompleteTaskListener.class.getName() + ":Transfer task {} status updated to COMPLETED", uuid);
 					try {
-						_doPublishNatsJSEvent(MessageType.TRANSFERTASK_FINISHED, reply.result());
+						_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, reply.result());
 					} catch (Exception e) {
 						logger.debug(e.getMessage());
 					}
@@ -152,7 +152,7 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 										.mergeIn(body);
 								logger.debug("update failed. {}.  The message is {}", tt.cause().getClass().getName(), tt.cause().getMessage());
 								try {
-									_doPublishNatsJSEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
+									_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
 								} catch (Exception e) {
 									logger.debug(e.getMessage());
 								}
@@ -220,7 +220,7 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 									if (getBytesTransferred.succeeded()){
 										parentTask.setBytesTransferred(getBytesTransferred.result().getLong("bytes_transferred"));
 										try {
-											_doPublishNatsJSEvent(MessageType.TRANSFER_COMPLETED, TransferRateHelper.updateTransferRate(parentTask).toJson());
+											_doPublishEvent(MessageType.TRANSFER_COMPLETED, TransferRateHelper.updateTransferRate(parentTask).toJson());
 										} catch (Exception e) {
 											logger.debug(e.getMessage());
 										}

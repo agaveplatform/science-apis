@@ -38,7 +38,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		when(listener.config()).thenReturn(config);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-//		doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
+//		doNothing().when(listener)._doPublishEvent( any(), any());
 		when(listener.createPushMessageSubject(any(), any(), any(), any(), any())).thenCallRealMethod ();
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
@@ -80,7 +80,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 					"Empty list returned from db mock should result in a true response to the callback.");
 			//String messageName = _createConsumerName("DEV", "transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost().toString(), MessageType.TRANSFERTASK_CANCELED);
 			//natsCleint = new NatsJetstreamMessageClient(config().getString("NATS_URI"), streamName, messageName);
-			//_doPublishNatsJSEvent( messageName, deleteReply.result());
+			//_doPublishEvent( messageName, deleteReply.result());
 			//natsCleint.push("DEV", messageName, deleteReply.result().toString());
 			// empty list response from db mock should result in no healthcheck events being raised
 			//verify(nats, never()).push(any(),any(),any());
@@ -125,7 +125,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 			// verify a call was made for each active task
 			for (int i=0; i<activeTasks.size(); i++) {
-				//verify(twc, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
+				//verify(twc, times(1))._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
 //				verify(nats,times(1)).push(any(), any(), any());
 			}
 
@@ -173,7 +173,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 			// verify a call was made for each active task
 			for (int i=0; i<activeTasks.size(); i++) {
-				//verify(twc, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
+				//verify(twc, times(1))._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
 //				verify(nats, times(1)).push(any(), any(), any());
 			}
 

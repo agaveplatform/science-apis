@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 public class TransferApplication {
 
     private static final Logger log = LoggerFactory.getLogger(TransferApplication.class);
+    private static final String DEFAULT_CONFIG_PATH = "config.json";
 
     public static void main(String[] args) {
         System.setProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.SLF4JLogDelegateFactory");
@@ -28,10 +29,15 @@ public class TransferApplication {
         int instanceSize = 2;
         int dbInstanceSize = 2;
 
+        String configPath = System.getenv("AGAVE_CONFIG_PATH");
+        if (configPath == null) {
+            configPath = DEFAULT_CONFIG_PATH;
+        }
+
         ConfigStoreOptions fileStore = new ConfigStoreOptions()
                 .setType("file")
                 .setOptional(true)
-                .setConfig(new JsonObject().put("path", "config.json"));
+                .setConfig(new JsonObject().put("path", configPath));
 
         ConfigStoreOptions envPropsStore = new ConfigStoreOptions().setType("env");
 

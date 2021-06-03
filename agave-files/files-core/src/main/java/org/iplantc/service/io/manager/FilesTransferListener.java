@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 /**
  * Class to listen and handle events sent from agave-transfers
  * and update the corresponding LogicalFile accordingly
- *
  */
 public class FilesTransferListener extends AbstractVerticle {
     private static final Logger logger = LoggerFactory.getLogger(FilesTransferListener.class);
@@ -33,14 +32,15 @@ public class FilesTransferListener extends AbstractVerticle {
 //    }
 
     public String getFailedEventChannel() {
-        return COMPLETED_EVENT_CHANNEL;
-    }
-    public String getCompletedEventChannel() {
         return FAILED_EVENT_CHANNEL;
     }
 
+    public String getCompletedEventChannel() {
+        return COMPLETED_EVENT_CHANNEL;
+    }
 
-    public void start(){
+
+    public void start() {
         EventBus bus = vertx.eventBus();
 
         bus.<JsonObject>consumer(getFailedEventChannel(), msg -> {
@@ -51,11 +51,10 @@ public class FilesTransferListener extends AbstractVerticle {
             String transferUuid = body.getString("uuid");
 
             processTransferNotification(StagingTaskStatus.STAGING_FAILED, msg.body(), result -> {
-                if (result.succeeded()){
-                    //logical file updated
-                } else {
+                if (result.failed()) {
                     logger.debug("Unable to update status for Logical file {}", transferUuid);
                 }
+                msg.reply(result.result());
             });
 
         });
@@ -68,17 +67,16 @@ public class FilesTransferListener extends AbstractVerticle {
             String transferUuid = body.getString("uuid");
 
             processTransferNotification(StagingTaskStatus.STAGING_COMPLETED, msg.body(), result -> {
-                if (result.succeeded()){
-                    //logical file updated
-                } else {
+                if (result.failed()) {
                     logger.debug("Unable to update status for Logical file {}", transferUuid);
                 }
+                msg.reply(result.result());
             });
         });
 
     }
 
-    public void processTransferNotification(StagingTaskStatus status, JsonObject body, Handler<AsyncResult<Boolean>> handler){
+    public void processTransferNotification(StagingTaskStatus status, JsonObject body, Handler<AsyncResult<Boolean>> handler) {
         // Parse data
         String srcUrl = body.getString("source");
         String createdBy = body.getString("owner");
@@ -86,12 +84,12 @@ public class FilesTransferListener extends AbstractVerticle {
 
         // Retrieve current logical file
         LogicalFile file = LogicalFileDao.findByTransferUuid(transferUuid);
-        if (file != null){
+        if (file != null) {
             try {
                 // Update logical file
                 LogicalFileDao.updateTransferStatus(file, status, createdBy);
                 handler.handle(Future.succeededFuture(true));
-            } catch (Exception e){
+            } catch (Exception e) {
                 logger.debug("Unable to update transfer status");
                 handler.handle(Future.failedFuture(e));
             }

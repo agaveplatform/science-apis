@@ -39,9 +39,6 @@ public class FilesTransferListener extends AbstractVerticle {
 //    }
 
     public String getFailedEventChannel() {
-        return COMPLETED_EVENT_CHANNEL;
-    }
-    public String getCompletedEventChannel() {
         return FAILED_EVENT_CHANNEL;
     }
     public MessageQueueClient getMessageClient() throws MessagingException {
@@ -53,6 +50,10 @@ public class FilesTransferListener extends AbstractVerticle {
 
     public void setMessageClient(org.iplantc.service.common.messaging.MessageQueueClient messageClient) {
         this.messageClient = messageClient;
+    }
+
+    public String getCompletedEventChannel() {
+        return COMPLETED_EVENT_CHANNEL;
     }
 
 
@@ -144,7 +145,7 @@ public class FilesTransferListener extends AbstractVerticle {
 
     }
 
-    public void processTransferNotification(StagingTaskStatus status, JsonObject body, Handler<AsyncResult<Boolean>> handler){
+    public void processTransferNotification(StagingTaskStatus status, JsonObject body, Handler<AsyncResult<Boolean>> handler) {
         // Parse data
         String srcUrl = body.getString("source");
         String createdBy = body.getString("owner");
@@ -152,12 +153,12 @@ public class FilesTransferListener extends AbstractVerticle {
 
         // Retrieve current logical file
         LogicalFile file = LogicalFileDao.findByTransferUuid(transferUuid);
-        if (file != null){
+        if (file != null) {
             try {
                 // Update logical file
                 LogicalFileDao.updateTransferStatus(file, status, createdBy);
                 handler.handle(Future.succeededFuture(true));
-            } catch (Exception e){
+            } catch (Exception e) {
                 logger.debug("Unable to update transfer status");
                 handler.handle(Future.failedFuture(e));
             }

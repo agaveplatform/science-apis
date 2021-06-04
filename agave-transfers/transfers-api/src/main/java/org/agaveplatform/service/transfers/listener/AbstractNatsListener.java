@@ -115,11 +115,10 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     public String createPushMessageSubject(String agaveResourceType, String tenantId, String owner, String sourceSystemId, String eventName){
         String consumerName = "";
         try {
-            consumerName = getStreamName() + "_" + agaveResourceType + "_" + tenantId + "_" + owner + "_" + sourceSystemId + "_" + eventName;
+            consumerName = getStreamName() + "." + agaveResourceType + "." + tenantId + "." + owner + "." + sourceSystemId + "." + eventName;
             consumerName = consumerName.replaceAll("\\.{2,}", ".");
             consumerName = StringUtils.stripEnd(consumerName, ".");
-
-        }catch (Exception e){
+        } catch (Exception e) {
             return "";
         }
         return consumerName;
@@ -265,7 +264,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
     public void _doPublishEvent(String eventName, JsonObject body) {
-        log.info(this.getClass().getName() + ": _doPublishEvent({}, {})", eventName, body);
+        log.trace(this.getClass().getName() + ": _doPublishEvent({}, {})", eventName, body);
         try {
             getMessageClient().push(eventName, body.toString());
         } catch (IOException | MessagingException | InterruptedException e) {

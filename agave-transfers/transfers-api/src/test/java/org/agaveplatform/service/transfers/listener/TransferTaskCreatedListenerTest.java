@@ -37,8 +37,6 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TransferTaskCreatedListenerTest extends BaseTestCase {
 
-//	private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListenerTest.class);
-
 	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskCreatedListener listener = Mockito.mock(TransferTaskCreatedListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
@@ -59,11 +57,6 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).addPausedTask(anyString());
 		return listener;
 	}
-//	NatsJetstreamMessageClient getMockNats() throws MessagingException {
-//		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
-//		doNothing().when(natsClient).push(any(), any(), any());
-//		return getMockNats();
-//	}
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment succeeds for valid transfer task")
@@ -115,7 +108,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid source")
-	//@Disabled
+//	@Disabled
 	public void assignTransferTaskFailSrcTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 
 		// get the JsonObject to pass back and forth between verticles
@@ -154,7 +147,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid dest")
-	//@Disabled
+//	@Disabled
 	public void assignTransferTaskFailDestTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 
 		// get the JsonObject to pass back and forth between verticles
@@ -164,7 +157,6 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
-//		NatsJetstreamMessageClient nats = getMockNats();
 
 		when(ttc.uriSchemeIsNotSupported(any())).thenReturn(true, false);
 		try {
@@ -176,8 +168,6 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		ttc.processEvent(json, ctx.failing(cause -> ctx.verify(() -> {
 			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
-			//verify(ttc, never())._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
-//			verify(nats, never()).push(any(), any(), json.toString());
 			verify(ttc, never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
 
 			JsonObject errorBody = new JsonObject()
@@ -192,7 +182,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCreatedListener - taskIsNotInterrupted")
-	//@Disabled
+//	@Disabled
 	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());

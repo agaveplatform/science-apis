@@ -101,24 +101,21 @@ public class URLCopy extends AbstractNatsListener {
         if ((sourceClient instanceof GridFTP) && (destClient instanceof GridFTP)) {
             try {
                 ((GridFTP) sourceClient).abort();
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
+
             try {
                 ((GridFTP) destClient).abort();
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
         }
     }
 
     /**
-     * Threadsafe check for killed copy command either through the
-     * thread being explicitly killed or the transfertask status
-     * being set to cancelled.
-     * @param listener
-     * @throws ClosedByInterruptException
+     * Threadsafe check for killed copy command either through the thread being explicitly killed or the transfertask
+     * status being set to cancelled.
+     * @param listener the {@link RemoteTransferListener} observing the transfer
+     * @throws ClosedByInterruptException if the transfer has been transferred
      */
-    protected void checkCancelled(RemoteTransferListener listener)
-            throws ClosedByInterruptException {
+    protected void checkCancelled(RemoteTransferListener listener) throws ClosedByInterruptException {
         if (isKilled() || listener.isCancelled()) {
             throw new ClosedByInterruptException();
         }
@@ -131,8 +128,6 @@ public class URLCopy extends AbstractNatsListener {
      * protocol, file size, and locality of the data. Progress is written to the transfer task
      * via a {@link RemoteTransferListenerImpl}
      *
-     * @param
-     * @param
      * @param transferTask
      * @throws RemoteDataException
      * @throws IOException

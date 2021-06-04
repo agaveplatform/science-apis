@@ -12,6 +12,11 @@
   <logger name="com.mchange" level="warn"/>
   <logger name="org.agaveplatform.service.transfers" level="debug"/>
   <logger name="com.zaxxer.hikari.HikariConfig" level="trace"/>
+  <logger name="io.vertx.junit5" level="error"/>
+  <logger name="io.vertx.codegen" level="error"/>
+  <logger name="org.junit.platform.launcher.core.LauncherConfigurationParameters" level="error"/>
+  <logger name="org.junit.jupiter.engine.config" level="error"/>
+
   <root level="warn">
     <appender-ref ref="STDOUT"/>
   </root>

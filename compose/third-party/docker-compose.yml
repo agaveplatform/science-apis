@@ -38,13 +38,6 @@ services:
           memory: 512M
         reservations:
           memory: 256M
-
-  redis:
-    image: redis:latest
-    restart: on-failure
-    ports:
-      - 6379:6379
-
 #  migrate:
 #    image: agaveplatform/agave-migrations:2.2.6
 #    depends_on:
@@ -138,25 +131,6 @@ services:
           memory: 128M
 
 
-  beanstalkd-console:
-      image: kusmierz/beanstalk-console:latest
-      ports:
-        - '9999:80'
-      labels:
-        - "traefik.enable=false"
-      networks:
-        - services
-      deploy:
-        restart_policy:
-          condition: on-failure
-        resources:
-          limits:
-            memory: 512M
-          reservations:
-            memory: 128M
-
-
-
   ##############################################################
   # Pushpin
   ##############################################################
@@ -178,8 +152,3 @@ services:
 #          memory: 512M
 #        reservations:
 #          memory: 256M
-
-networks:
-  services:
-  realtime:
-

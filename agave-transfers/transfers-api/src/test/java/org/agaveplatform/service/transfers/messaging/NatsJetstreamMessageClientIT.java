@@ -130,31 +130,28 @@ public class NatsJetstreamMessageClientIT {
             messageClient = new NatsJetstreamMessageClient(NATS_URL,TEST_STREAM, "push-test-consumer");
 
             // test pushing of message for each message type
-            for (String messageType : MessageType.values()) {
-                String subject = TEST_MESSAGE_SUBJECT_PREFIX + messageType;
-                messageClient.push(subject, testBody);
+//            for (String messageType : MessageType.values()) {
+            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFER_COMPLETED;
+            messageClient.push(subject, testBody);
 
-                nc.flush(Duration.ofSeconds(1));
-                msg = getSingleNatsMessage();
+            nc.flush(Duration.ofSeconds(1));
+            msg = getSingleNatsMessage();
 
-                assertNotNull(msg,
-                        "No message found on test stream with the given subject after pushing message.");
+            assertNotNull(msg,
+                    "No message found on test stream with the given subject after pushing message.");
 
-                assertEquals(subject, msg.getSubject(),
-                        "Subject of read message should match subject of message sent. " +
-                                "Something else is likely writing test data");
+            assertEquals(subject, msg.getSubject(),
+                    "Subject of read message should match subject of message sent. " +
+                            "Something else is likely writing test data");
 
-                assertEquals(testBody, new String(msg.getData()),
-                        "Received message should match sent message");
+            assertEquals(testBody, new String(msg.getData()),
+                    "Received message should match sent message");
 
-                try {
-                    if (!jsm.deleteMessage(TEST_STREAM, Long.parseLong(msg.getSID()))) {
-                        log.debug("Failed to delete test message after test");
-                    }
-                } catch (Exception e1) {
-                    log.debug("Failed to delete test message after test", e1);
-                }
-            }
+            try {
+                // clean up test client
+                nc.jetStreamManagement().deleteConsumer(TEST_STREAM, subject);
+            } catch (Exception ignored) {}
+//            }
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
         }
@@ -169,36 +166,31 @@ public class NatsJetstreamMessageClientIT {
             agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
 
             // test pushing of message for each message type
-            for (String messageType : MessageType.values()) {
-                String testBody = UUID.randomUUID().toString();
-                String subject = TEST_MESSAGE_SUBJECT_PREFIX + messageType;
+//            for (String messageType : MessageType.values()) {
 
-                // push a message with a unique body to ensure we can get it back.
-                agaveMessageClient.push(subject, testBody);
+            String testBody = UUID.randomUUID().toString();
+            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_CREATED;
 
-                List<org.iplantc.service.common.messaging.Message> messages =
-                        agaveMessageClient.fetch(subject, 1, 2);
+            // push a message with a unique body to ensure we can get it back.
+            agaveMessageClient.push(subject, testBody);
 
-                assertFalse(messages.isEmpty(), "Test message pushed to stream should be fetched ");
+            List<org.iplantc.service.common.messaging.Message> messages =
+                    agaveMessageClient.fetch(subject, 1, 2);
 
-                assertEquals(1, messages.size(),
-                        "Exactly one message should be returned from test stream with when one is requested");
+            assertFalse(messages.isEmpty(), "Test message pushed to stream should be fetched ");
 
-                assertEquals(testBody, messages.get(0).getMessage(),
-                        "Body of fetched message should match body of message sent. " +
-                                "Something else is likely writing test data");
+            assertEquals(1, messages.size(),
+                    "Exactly one message should be returned from test stream with when one is requested");
 
-                messages.forEach(msg -> {
-                    try {
-                        if (!jsm.deleteMessage(TEST_STREAM, (long)msg.getId())) {
-                            log.debug("Failed to delete test message after test");
-                        }
-                    } catch (Exception e1) {
-                        log.debug("Failed to delete test message after test", e1);
-                    }
-                });
-//                break;
-            }
+            assertEquals(testBody, messages.get(0).getMessage(),
+                    "Body of fetched message should match body of message sent. " +
+                            "Something else is likely writing test data");
+
+            try {
+                // clean up test client
+                nc.jetStreamManagement().deleteConsumer(TEST_STREAM, subject);
+            } catch (Exception ignored) {}
+//            }
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
         }
@@ -233,22 +225,11 @@ public class NatsJetstreamMessageClientIT {
             assertEquals(testMessageCount, messages.size(),
                     "Exactly " + testMessageCount + " messages should be returned from test stream with when one is requested");
 
+            try {
+                // clean up test client
+                nc.jetStreamManagement().deleteConsumer(TEST_STREAM, subject);
+            } catch (Exception ignored) {}
 
-            for (int i=0; i<testMessageCount; i++) {
-                assertEquals(bodies.get(i), messages.get(i).getMessage(),
-                        "Body of fetched message should match body of message sent. " +
-                                "Messages should come off the stream in the order they were written.");
-            }
-
-            messages.forEach(msg -> {
-                try {
-                    if (!jsm.deleteMessage(TEST_STREAM, (long)msg.getId())) {
-                        log.debug("Failed to delete test message " + msg.getId() + " after test");
-                    }
-                } catch (Exception e1) {
-                    log.debug("Failed to delete test message " + msg.getId() + " after test", e1);
-                }
-            });
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
         }
@@ -263,9 +244,9 @@ public class NatsJetstreamMessageClientIT {
             agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
 
             // test pushing of message for each message type
-            for (String messageType : MessageType.values()) {
+//            for (String messageType : MessageType.values()) {
                 String testBody = UUID.randomUUID().toString();
-                String subject = TEST_MESSAGE_SUBJECT_PREFIX + messageType;
+                String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_DELETED;
 
                 // push a message with a unique body to ensure we can get it back.
                 agaveMessageClient.push(subject, testBody);
@@ -280,13 +261,10 @@ public class NatsJetstreamMessageClientIT {
                                 "Something else is likely writing test data");
 
                 try {
-                    if (!jsm.deleteMessage(TEST_STREAM, (long)popMessage.getId())) {
-                        log.debug("Failed to delete test message after test");
-                    }
-                } catch (Exception e1) {
-                    log.debug("Failed to delete test message after test", e1);
-                }
-            }
+                    // clean up test client
+                    nc.jetStreamManagement().deleteConsumer(TEST_STREAM, subject);
+                } catch (Exception ignored) {}
+//            }
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
         }
@@ -345,15 +323,11 @@ public class NatsJetstreamMessageClientIT {
             assertEquals(0, ignored.get(),
                     "No message should be ingored in the test");
 
-            messages.forEach(msg -> {
-                try {
-                    if (!jsm.deleteMessage(TEST_STREAM, Long.parseLong(msg.getSID()))) {
-                        log.debug("Failed to delete test message " + msg.getSID() + " after test");
-                    }
-                } catch (Exception e1) {
-                    log.debug("Failed to delete test message " + msg.getSID() + " after test", e1);
-                }
-            });
+            try {
+                // clean up test client
+                nc.jetStreamManagement().deleteConsumer(TEST_STREAM, subject);
+            } catch (Exception e) {}
+
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
         }

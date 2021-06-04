@@ -19,7 +19,6 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.listener.AbstractNatsListener;
-import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.model.TransferUpdate;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
@@ -29,7 +28,6 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
-import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
@@ -47,7 +45,6 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 import java.util.TimeZone;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_DB_QUEUE;
@@ -64,9 +61,6 @@ public class TransferAPIVertical extends AbstractNatsListener {
     private TransferTaskDatabaseService dbService;
     protected String eventChannel = TRANSFERTASK_DB_QUEUE;
     protected JWTAuth jwtAuth;
-    private RemoteDataClient sourceClient;
-    private RemoteDataClient destClient;
-    private NatsJetstreamMessageClient natsCleint;
 
     public TransferAPIVertical() throws IOException, InterruptedException {super();}
 
@@ -290,45 +284,44 @@ public class TransferAPIVertical extends AbstractNatsListener {
         String dest = body.getString("dest");
 
         // request body was validated prior to this method being called
-//        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);
         TransferTask transferTask = new TransferTask();
         transferTask.setCreated(Instant.now());
         transferTask.setTenantId(tenantId);
         transferTask.setOwner(username);
         try {
-            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
-            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
+
+            final URI srcUri = URI.create(source);
+            final URI destUri = URI.create(dest);
 
             //URLEncode paths
-            transferTask.setSource(URI.create(body.getString("source")).toString());
-            transferTask.setDest(URI.create(body.getString("dest")).toString());
+            transferTask.setSource(srcUri.toString());
+            transferTask.setDest(destUri.toString());
 
-            RemoteDataClient finalSrcClient = sourceClient;
             dbService.create(tenantId, transferTask, reply -> {
                 if (reply.succeeded()) {
                     TransferTask tt = new TransferTask(reply.result());
                     try {
                         //transfers.$tenantid.$uid.$systemid.transfer.$protocol
-                        srcUri.set(URI.create(source));
-                        String messageName = createPushMessageSubject("transfers", tt.getTenantId(), tt.getOwner(), sourceClient.getHost(), MessageType.TRANSFERTASK_CREATED);
-                        //_doPublishEvent(messageName, tt.toJson());
-                        natsCleint.push(messageName, tt.toJson().toString());
+//                        srcUri.set(URI.create(source));
+                        String subject = createPushMessageSubject("transfers", tt.getTenantId(), tt.getOwner(), srcUri.getHost(), MessageType.TRANSFERTASK_CREATED);
+                        _doPublishEvent(subject, tt.toJson());
+
                         routingContext.response()
-                            .putHeader("content-type", "application/json")
+                                .putHeader("content-type", "application/json")
                                 .setStatusCode(201)
                                 .end(AgaveResponseBuilder.getInstance(routingContext)
                                         .setResult(tt.toJson())
                                         .build()
                                         .toString());
-                    } catch(Exception e) {
-                        log.debug(e.getMessage());
+                    } catch (Exception e) {
+                        log.error("Failed to insert new transfertask record: {}", e.getMessage());
                     }
                 } else {
                     routingContext.fail(reply.cause());
                 }
             });
-        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
-            log.debug(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid src URI in transfer task request.");
         }
     }
 
@@ -357,12 +350,12 @@ public class TransferAPIVertical extends AbstractNatsListener {
         transferTask.setTenantId(tenantId);
         transferTask.setOwner(username);
         try {
-            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
-            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
+            final URI srcUri = URI.create(source);
+            final URI destUri = URI.create(dest);
 
             //URLEncode paths
-            transferTask.setSource(URI.create(body.getString("source")).toString());
-            transferTask.setDest(URI.create(body.getString("dest")).toString());
+            transferTask.setSource(srcUri.toString());
+            transferTask.setDest(destUri.toString());
 
             // lookup task to get the id
             dbService.getByUuid(tenantId, uuid, getByIdReply -> {
@@ -378,16 +371,14 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 if (deleteReply.succeeded()) {
                                     try {
 
-                                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_CANCELED);
-                                        natsCleint = new NatsJetstreamMessageClient(config().getString(NATS_URL), streamName, messageName);
-                                        //_doPublishEvent( messageName, deleteReply.result());
-                                        natsCleint.push( messageName, deleteReply.result().toString());
+                                        String subject = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),MessageType.TRANSFERTASK_CANCELED);
+                                        _doPublishEvent( subject, deleteReply.result());
 
                                         routingContext.response()
                                                 .putHeader("content-type", "application/json")
                                                 .setStatusCode(203).end();
                                     } catch (Exception e) {
-                                        log.debug(e.getMessage());
+                                        log.error(e.getMessage());
                                     }
                                 } else {
                                     // delete failed
@@ -404,8 +395,8 @@ public class TransferAPIVertical extends AbstractNatsListener {
                     routingContext.fail(getByIdReply.cause());
                 }
             });
-        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
-            log.debug(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid src URI in transfer task request.");
         }
     }
 
@@ -433,15 +424,12 @@ public class TransferAPIVertical extends AbstractNatsListener {
         transferTask.setTenantId(tenantId);
         transferTask.setOwner(username);
         try {
-            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
-            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
+            final URI srcUri = URI.create(source);
+            final URI destUri = URI.create(dest);
 
             //URLEncode paths
-            transferTask.setSource(URI.create(body.getString("source")).toString());
-            transferTask.setDest(URI.create(body.getString("dest")).toString());
-
-            transferTask.setSource(body.getString("source"));
-            transferTask.setDest(body.getString("dest"));
+            transferTask.setSource(srcUri.toString());
+            transferTask.setDest(destUri.toString());
 
             // lookup task to get the id
             dbService.getByUuid(tenantId, transferTask.getUuid(), getByIdReply -> {
@@ -455,21 +443,11 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 user.isAdminRoleExists()) {
                             dbService.cancelAll(tenantId, deleteReply -> {
                                 if (deleteReply.succeeded()) {
-                                    JsonObject jo = null;
-                                    if (deleteReply.result() == null){
-                                        jo = new JsonObject();
-                                    }else{
-                                        jo = new JsonObject(String.valueOf(deleteReply.result()));
-                                    }
-                                    // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
-                                    //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                    try {
-                                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(), MessageType.TRANSFERTASK_CANCELED);
-                                        //_doPublishEvent(messageName, jo);
-                                        natsCleint.push( messageName, jo.toString());
-                                    } catch (MessagingException e) {
-                                        log.debug(e.getMessage());
-                                    }
+                                    JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
+
+                                    // TODO: need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
+                                    String subject = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(), MessageType.TRANSFERTASK_CANCELED);
+                                    _doPublishEvent(subject, jo);
 
                                     routingContext.response()
                                             .putHeader("content-type", "application/json")
@@ -490,15 +468,13 @@ public class TransferAPIVertical extends AbstractNatsListener {
                 }
             });
 
-
+            // why is this here? It will run before the previous block completes
             dbService.getByUuid(tenantId, transferTask.getUuid(), reply -> {
                 if (reply.succeeded()) {
                     TransferTask tt = new TransferTask(reply.result());
                     try {
-                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_CANCELED);
-                       //_doPublishEvent(messageName, jo);
-                        natsCleint.push( messageName, tt.toString());
-                        //_doPublishEvent(messageName, tt.toJson());
+                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),MessageType.TRANSFERTASK_CANCELED);
+                        _doPublishEvent(messageName, tt.toJson());
                         routingContext.response()
                                 .putHeader("content-type", "application/json")
                                 .setStatusCode(201)
@@ -513,9 +489,8 @@ public class TransferAPIVertical extends AbstractNatsListener {
                     routingContext.fail(reply.cause());
                 }
             });
-
-        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
-            log.debug(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid src URI in transfer task request.");
         }
     }
 
@@ -541,12 +516,12 @@ public class TransferAPIVertical extends AbstractNatsListener {
         transferTask.setTenantId(tenantId);
         transferTask.setOwner(username);
         try {
-            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
-            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
+            final URI srcUri = URI.create(source);
+            final URI destUri = URI.create(dest);
 
             //URLEncode paths
-            transferTask.setSource(URI.create(body.getString("source")).toString());
-            transferTask.setDest(URI.create(body.getString("dest")).toString());
+            transferTask.setSource(srcUri.toString());
+            transferTask.setDest(destUri.toString());
 
             // lookup task to get the id
             dbService.getByUuid(tenantId, uuid, getByIdReply -> {
@@ -562,17 +537,8 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 if (deleteReply.succeeded()) {
                                     JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
 
-                                    try {
-                                        //String messageName = _createMessageName("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost().toString(),MessageType.TRANSFERTASK_CANCELED);
-                                        //_doPublishEvent(messageName, jo);
-
-                                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_DELETED);
-                                        natsCleint.push( messageName, jo.toString());
-
-                                        natsCleint.push( messageName, jo.toString());
-                                    } catch (MessagingException e) {
-                                        log.debug(e.getMessage());
-                                    }
+                                    String subject = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),MessageType.TRANSFERTASK_DELETED);
+                                    _doPublishEvent(subject, jo);
 
                                     routingContext.response()
                                             .putHeader("content-type", "application/json")
@@ -592,8 +558,8 @@ public class TransferAPIVertical extends AbstractNatsListener {
                     routingContext.fail(getByIdReply.cause());
                 }
             });
-        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
-            log.debug(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid src URI in transfer task request.");
         }
     }
 
@@ -619,13 +585,12 @@ public class TransferAPIVertical extends AbstractNatsListener {
         transferTask.setTenantId(tenantId);
         transferTask.setOwner(username);
         try {
-            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
-            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
+            final URI srcUri = URI.create(source);
+            final URI destUri = URI.create(dest);
 
             //URLEncode paths
-            transferTask.setSource(URI.create(body.getString("source")).toString());
-            transferTask.setDest(URI.create(body.getString("dest")).toString());
-
+            transferTask.setSource(srcUri.toString());
+            transferTask.setDest(destUri.toString());
 
             // lookup task to get the id
             dbService.getByUuid(tenantId, uuid, getByIdReply -> {
@@ -643,13 +608,8 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                     //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
                                     JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
 
-                                    try {
-                                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_DELETED);
-                                        //_doPublishEvent(messageName, jo);
-                                        natsCleint.push( messageName, jo.toString());
-                                    } catch (MessagingException e) {
-                                        log.debug(e.getMessage());
-                                    }
+                                    String subject = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),MessageType.TRANSFERTASK_DELETED);
+                                    _doPublishEvent(subject, jo);
 
                                     routingContext.response()
                                             .putHeader("content-type", "application/json")
@@ -669,9 +629,8 @@ public class TransferAPIVertical extends AbstractNatsListener {
                     routingContext.fail(getByIdReply.cause());
                 }
             });
-
-        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
-            log.debug(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid src URI in transfer task request.");
         }
     }
 
@@ -699,13 +658,12 @@ public class TransferAPIVertical extends AbstractNatsListener {
         transferTask.setOwner(username);
 
         try {
-            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
-            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
+            final URI srcUri = URI.create(source);
+            final URI destUri = URI.create(dest);
 
             //URLEncode paths
-            transferTask.setSource(URI.create(body.getString("source")).toString());
-            transferTask.setDest(URI.create(body.getString("dest")).toString());
-
+            transferTask.setSource(srcUri.toString());
+            transferTask.setDest(destUri.toString());
 
             // lookup the transfer task regardless
             dbService.getByUuid(tenantId, uuid, getByIdReply -> {
@@ -737,8 +695,8 @@ public class TransferAPIVertical extends AbstractNatsListener {
                     routingContext.fail(getByIdReply.cause());
                 }
             });
-        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
-            log.debug(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid src URI in transfer task request.");
         }
 
     }
@@ -766,61 +724,57 @@ public class TransferAPIVertical extends AbstractNatsListener {
         transferTask.setCreated(Instant.now());
 
         try {
-            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
-            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
+            final URI srcUri = URI.create(source);
+            final URI destUri = URI.create(dest);
 
             //URLEncode paths
-            transferTask.setSource(URI.create(body.getString("source")).toString());
-            transferTask.setDest(URI.create(body.getString("dest")).toString());
-
+            transferTask.setSource(srcUri.toString());
+            transferTask.setDest(destUri.toString());
 
             dbService.getByUuid(tenantId, uuid, getByIdReply -> {
-            if (getByIdReply.succeeded()) {
-                if (getByIdReply.result() == null) {
-                    /// not found
-                    routingContext.fail(404);
-                } else {
-                    // if the current user is the owner or has admin privileges, allow the action
-                    if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
-                            user.isAdminRoleExists()) {
-
-                        TransferTask tt = TransferRateHelper.updateSummaryStats(new TransferTask(getByIdReply.result()), transferUpdate);
-
-                        // perform the update
-                        dbService.update(tenantId, uuid, tt, updateReply -> {
-                            if (updateReply.succeeded()) {
-                                try {
-                                    //_doPublishEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
-
-                                    String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_UPDATED);
-                                    //_doPublishEvent(messageName, jo);
-                                    natsCleint.push( messageName, updateReply.result().toString());
-
-                                    routingContext.response().end(
-                                            AgaveResponseBuilder.getInstance(routingContext)
-                                                    .setResult(updateReply.result())
-                                                    .build()
-                                                    .toString());
-                                } catch (Exception e) {
-                                    log.debug(e.getMessage());
-                                }
-                            } else {
-                                // update failed
-                                routingContext.fail(updateReply.cause());
-                            }
-                        });
+                if (getByIdReply.succeeded()) {
+                    if (getByIdReply.result() == null) {
+                        /// not found
+                        routingContext.fail(404);
                     } else {
-                        // permission denied
-                        routingContext.fail(403);
+                        // if the current user is the owner or has admin privileges, allow the action
+                        if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
+                                user.isAdminRoleExists()) {
+
+                            TransferTask tt = TransferRateHelper.updateSummaryStats(new TransferTask(getByIdReply.result()), transferUpdate);
+
+                            // perform the update
+                            dbService.update(tenantId, uuid, tt, updateReply -> {
+                                if (updateReply.succeeded()) {
+                                    try {
+                                        String subject = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),MessageType.TRANSFERTASK_UPDATED);
+                                        _doPublishEvent(subject, updateReply.result());
+
+                                        routingContext.response().end(
+                                                AgaveResponseBuilder.getInstance(routingContext)
+                                                        .setResult(updateReply.result())
+                                                        .build()
+                                                        .toString());
+                                    } catch (Exception e) {
+                                        log.debug(e.getMessage());
+                                    }
+                                } else {
+                                    // update failed
+                                    routingContext.fail(updateReply.cause());
+                                }
+                            });
+                        } else {
+                            // permission denied
+                            routingContext.fail(403);
+                        }
                     }
+                } else {
+                    // task lookup failure
+                    routingContext.fail(getByIdReply.cause());
                 }
-            } else {
-                // task lookup failure
-                routingContext.fail(getByIdReply.cause());
-            }
-        });
-        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
-            log.debug(e.getMessage());
+            });
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid src URI in transfer task request.");
         }
     }
 
@@ -1011,18 +965,17 @@ public class TransferAPIVertical extends AbstractNatsListener {
      * the TransferTask.rootTask.source and TransferTask.rootTask.dest fields and
      * create the child source and dest values.
      *
-     * @param serializedUri
-     * @return
+     * @param serializedUri the URL containing a valid URI. This may just be a hostname
+     * @return the hostname of the provided URI.
      */
     private String getSystemId(String serializedUri) {
-        URI uri = null;
         try {
-            uri = URI.create(serializedUri);
-            return uri.getHost();
+            return URI.create(serializedUri).getHost();
         } catch (Exception e) {
             return null;
         }
     }
+
 
     protected RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
         TenancyHelper.setCurrentTenantId(tenantId);

@@ -381,7 +381,6 @@ public class URLCopyIT extends BaseTestCase {
         } finally {
             Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
         }
-
     }
 
     @Test

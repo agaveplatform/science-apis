@@ -8,6 +8,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
@@ -15,6 +16,7 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.messaging.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,17 +35,14 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 	public Connection nc;
 	public TransferTaskErrorFailureHandler() throws IOException, InterruptedException {
 		super();
-		setConnection();
 	}
 
 	public TransferTaskErrorFailureHandler(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
-		setConnection();
 	}
 
 	public TransferTaskErrorFailureHandler(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
-		setConnection();
 	}
 
 	public String getDefaultEventChannel() {
@@ -51,15 +50,6 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 	}
 
 	public Connection getConnection(){return nc;}
-
-	public void setConnection() throws IOException, InterruptedException {
-		try {
-			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
-		} catch (IOException e) {
-			//use default URL
-			nc = _connect(Options.DEFAULT_URL);
-		}
-	}
 
 	public void handle(RoutingContext context){
 		Throwable thrown = context.failure();
@@ -79,37 +69,60 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-		//final String err ;
-		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		//Connection nc = _connect();
-		Dispatcher d = getConnection().createDispatcher((msg) -> {});
-		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(MessageType.TRANSFER_FAILED, msg -> {
-			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-			JsonObject body = new JsonObject(response) ;
 
-			log.info("Transfer task {} failed: {}: {}",
-					body.getString("uuid"), body.getString("cause"), body.getString("message"));
+		try {
+			//group subscription so each message only processed by this vertical type once
+			subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
+		} catch (Exception e) {
+			log.error("TRANSFER_ALL - Exception {}", e.getMessage());
+		}
 
-			processFailure(body, resp -> {
-				if (resp.succeeded()) {
-					log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
-					body.put("event", this.getClass().getName());
-					body.put("type", getEventChannel());
-					try {
-						_doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
-					} catch (Exception e) {
-						log.debug(e.getMessage());
-					}
-				} else {
-					log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
-				}
-			});
-		});
-		d.subscribe(MessageType.TRANSFER_FAILED);
-		getConnection().flush(Duration.ofMillis(500));
+//		//final String err ;
+//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+//		//Connection nc = _connect();
+//		Dispatcher d = getConnection().createDispatcher((msg) -> {});
+//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+//		Subscription s = d.subscribe(MessageType.TRANSFER_FAILED, msg -> {
+//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//			JsonObject body = new JsonObject(response) ;
+//
+//			log.info("Transfer task {} failed: {}: {}",
+//					body.getString("uuid"), body.getString("cause"), body.getString("message"));
+//
+//			processFailure(body, resp -> {
+//				if (resp.succeeded()) {
+//					log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
+//					body.put("event", this.getClass().getName());
+//					body.put("type", getEventChannel());
+//					try {
+//						_doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+//					} catch (Exception e) {
+//						log.debug(e.getMessage());
+//					}
+//				} else {
+//					log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
+//				}
+//			});
+//		});
+//		d.subscribe(MessageType.TRANSFER_FAILED);
+//		getConnection().flush(Duration.ofMillis(500));
 		//d.unsubscribe(EVENT_CHANNEL);
+	}
+
+	protected void handleMessage(Message message) {
+		try {
+			JsonObject body = new JsonObject(message.getMessage());
+			String uuid = body.getString("uuid");
+			String source = body.getString("source");
+			String dest = body.getString("dest");
+			log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+
+		} catch (DecodeException e) {
+			log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+		} catch (Throwable t) {
+			log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+		}
 	}
 
 	protected void processFailure(JsonObject body, Handler<AsyncResult<Boolean>> handler) {

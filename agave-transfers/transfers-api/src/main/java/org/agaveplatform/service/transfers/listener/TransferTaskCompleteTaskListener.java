@@ -8,6 +8,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -15,6 +16,7 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
+import org.iplantc.service.common.messaging.Message;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,18 +42,15 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 	public Connection nc;
 	public TransferTaskCompleteTaskListener() throws IOException, InterruptedException {
 		super();
-		setConnection();
 	}
 
 	public TransferTaskCompleteTaskListener(Vertx vertx) throws IOException, InterruptedException {
 		super();
 		setVertx(vertx);
-		setConnection();
 	}
 
 	public TransferTaskCompleteTaskListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
-		setConnection();
 	}
 
 	public String getDefaultEventChannel() {
@@ -60,14 +59,14 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 
 	public Connection getConnection(){return nc;}
 
-	public void setConnection() throws IOException, InterruptedException {
-		try {
-			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
-		} catch (IOException e) {
-			//use default URL
-			nc = _connect(Options.DEFAULT_URL);
-		}
-	}
+//	public void setConnection() throws IOException, InterruptedException {
+//		try {
+//			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
+//		} catch (IOException e) {
+//			//use default URL
+//			nc = _connect(Options.DEFAULT_URL);
+//		}
+//	}
 
 	@Override
 	public void start() throws IOException, InterruptedException, TimeoutException {
@@ -78,45 +77,69 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-		//EventBus bus = vertx.eventBus();
-		//Connection nc = _connect();
-		Dispatcher d = getConnection().createDispatcher((msg) -> {});
-		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
-			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-			JsonObject body = new JsonObject(response) ;
+
+		try {
+			//group subscription so each message only processed by this vertical type once
+			subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
+		} catch (Exception e) {
+			logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
+		}
+
+
+//		//EventBus bus = vertx.eventBus();
+//		//Connection nc = _connect();
+//		Dispatcher d = getConnection().createDispatcher((msg) -> {});
+//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+//		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//			JsonObject body = new JsonObject(response) ;
+//			String uuid = body.getString("uuid");
+//			String source = body.getString("source");
+//			String dest = body.getString("dest");
+//
+//			String tenant = body.getString("tenant_id");
+//			TransferTask tt = new TransferTask(body);
+//
+//			logger.info("Transfer task {} completed: {} -> {} and tenant id is {}", uuid, source, dest, tenant);
+//
+//			try {
+//				this.processEvent(body, result -> {
+//					if (result.succeeded()) {
+//						logger.info("Succeeded with the processing transfer completed event for transfer task {}", uuid);
+//					} else {
+//						logger.error("Error with return from complete event {} and body {}", uuid, body);
+//						//error is handled in processEvent
+////						try {
+////							_doPublishEvent(MessageType.TRANSFERTASK, body);
+////						} catch (IOException e) {
+////							logger.debug(e.getMessage());
+////						} catch (InterruptedException e) {
+////							logger.debug(e.getMessage());
+////						}
+//					}
+//				});
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			}
+//		});
+//		d.subscribe(EVENT_CHANNEL);
+//		getConnection().flush(Duration.ofMillis(500));
+	}
+
+	protected void handleMessage(Message message) {
+		try {
+			JsonObject body = new JsonObject(message.getMessage());
 			String uuid = body.getString("uuid");
 			String source = body.getString("source");
 			String dest = body.getString("dest");
+			logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
-			String tenant = body.getString("tenant_id");
-			TransferTask tt = new TransferTask(body);
-
-			logger.info("Transfer task {} completed: {} -> {} and tenant id is {}", uuid, source, dest, tenant);
-
-			try {
-				this.processEvent(body, result -> {
-					if (result.succeeded()) {
-						logger.info("Succeeded with the processing transfer completed event for transfer task {}", uuid);
-					} else {
-						logger.error("Error with return from complete event {} and body {}", uuid, body);
-						//error is handled in processEvent
-//						try {
-//							_doPublishEvent(MessageType.TRANSFERTASK, body);
-//						} catch (IOException e) {
-//							logger.debug(e.getMessage());
-//						} catch (InterruptedException e) {
-//							logger.debug(e.getMessage());
-//						}
-					}
-				});
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		});
-		d.subscribe(EVENT_CHANNEL);
-		getConnection().flush(Duration.ofMillis(500));
+		} catch (DecodeException e) {
+			logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+		} catch (Throwable t) {
+			logger.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+		}
 	}
 
 	public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {

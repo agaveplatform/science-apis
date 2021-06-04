@@ -52,17 +52,14 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 
 	public TransferTaskRetryListener() throws IOException, InterruptedException {
 		super();
-		setConnection();
 	}
 
 	public TransferTaskRetryListener(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
-		setConnection();
 	}
 
 	public TransferTaskRetryListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
-		setConnection();
 	}
 
 	public String getDefaultEventChannel() {
@@ -85,7 +82,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
-
+		setConnection();
 
 		//EventBus bus = vertx.eventBus();
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {

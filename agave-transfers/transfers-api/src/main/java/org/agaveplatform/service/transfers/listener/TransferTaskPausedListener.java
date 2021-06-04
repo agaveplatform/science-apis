@@ -8,6 +8,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -15,6 +16,7 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
+import org.iplantc.service.common.messaging.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,17 +41,14 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 
 	public TransferTaskPausedListener() throws IOException, InterruptedException {
 		super();
-		setConnection();
 	}
 	public TransferTaskPausedListener(Vertx vertx) throws IOException, InterruptedException {
 		this(vertx, null);
-		setConnection();
 	}
 	public TransferTaskPausedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super();
 		setVertx(vertx);
 		setEventChannel(eventChannel);
-		setConnection();
 	}
 
 	public String getDefaultEventChannel() {
@@ -58,14 +57,6 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 
 	public Connection getConnection(){return nc;}
 
-	public void setConnection() throws IOException, InterruptedException {
-		try {
-			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
-		} catch (IOException e) {
-			//use default URL
-			nc = _connect(Options.DEFAULT_URL);
-		}
-	}
 
 	@Override
 	public void start() throws TimeoutException, IOException, InterruptedException {
@@ -73,59 +64,80 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-		//EventBus bus = vertx.eventBus();
-		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		//Connection nc = _connect();
-		Dispatcher d = getConnection().createDispatcher((msg) -> {});
-		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(MessageType.TRANSFERTASK_PAUSED, msg -> {
-			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-			JsonObject body = new JsonObject(response) ;
-			String uuid = body.getString("uuid");
+		try {
+			//group subscription so each message only processed by this vertical type once
+			subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
+		} catch (Exception e) {
+			logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
+		}
 
-			logger.info("Transfer task {} pause detected.", uuid);
 
-			processPauseRequest(body, result -> {
-				if (result.succeeded()) {
-					logger.error("Succeeded with the processing the pause transfer event for transfer task {}", uuid);
-				} else {
-					logger.error("Error with return from pausing the event {}", uuid);
-					try {
-						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-					} catch (Exception e) {
-						logger.debug(e.getMessage());
-					}
-				}
-			});
-		});
-		d.subscribe(MessageType.TRANSFERTASK_PAUSED);
-		getConnection().flush(Duration.ofMillis(500));
-
-		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
-			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-			JsonObject body = new JsonObject(response) ;
-			String uuid = body.getString("uuid");
-
-//			msg.reply(TransferTaskPausedListener.class.getName() + " received.");
-
-			String parentTaskId = body.getString("parentTaskId");
-			String rootTaskId = body.getString("rootTaskId");
-			String tenantId = body.getString("owner");
-
-			logger.info("Transfer task {} ackowledged paused", uuid);
-
-			processPauseAckRequest(body, result -> {
-
-			});
-		});
-		d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK);
-		getConnection().flush(Duration.ofMillis(500));
+//		//EventBus bus = vertx.eventBus();
+//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+//		//Connection nc = _connect();
+//		Dispatcher d = getConnection().createDispatcher((msg) -> {});
+//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+//		Subscription s = d.subscribe(MessageType.TRANSFERTASK_PAUSED, msg -> {
+//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//			JsonObject body = new JsonObject(response) ;
+//			String uuid = body.getString("uuid");
+//
+//			logger.info("Transfer task {} pause detected.", uuid);
+//
+//			processPauseRequest(body, result -> {
+//				if (result.succeeded()) {
+//					logger.error("Succeeded with the processing the pause transfer event for transfer task {}", uuid);
+//				} else {
+//					logger.error("Error with return from pausing the event {}", uuid);
+//					try {
+//						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+//					} catch (Exception e) {
+//						logger.debug(e.getMessage());
+//					}
+//				}
+//			});
+//		});
+//		d.subscribe(MessageType.TRANSFERTASK_PAUSED);
+//		getConnection().flush(Duration.ofMillis(500));
+//
+//		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
+//		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
+//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//			JsonObject body = new JsonObject(response) ;
+//			String uuid = body.getString("uuid");
+//
+////			msg.reply(TransferTaskPausedListener.class.getName() + " received.");
+//
+//			String parentTaskId = body.getString("parentTaskId");
+//			String rootTaskId = body.getString("rootTaskId");
+//			String tenantId = body.getString("owner");
+//
+//			logger.info("Transfer task {} ackowledged paused", uuid);
+//
+//			processPauseAckRequest(body, result -> {
+//
+//			});
+//		});
+//		d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK);
+//		getConnection().flush(Duration.ofMillis(500));
 
 	}
+	protected void handleMessage(Message message) {
+		try {
+			JsonObject body = new JsonObject(message.getMessage());
+			String uuid = body.getString("uuid");
+			String source = body.getString("source");
+			String dest = body.getString("dest");
+			logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
+		} catch (DecodeException e) {
+			logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+		} catch (Throwable t) {
+			logger.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+		}
+	}
 	/**
 	 * Handles processing of paused events, updating the transfer task status and checking for active siblings
 	 * before sending the parent paused ack event as well.

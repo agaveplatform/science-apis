@@ -148,7 +148,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
     @Test
     @DisplayName("Create new transfer task")
-    //@Disabled
+    @Disabled
     void create(Vertx vertx, VertxTestContext ctx) {
         TransferTask tt = _createTestTransferTask();
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -210,7 +210,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
     @Test
     @DisplayName("List transfer tasks by admin")
-    //@Disabled
+    @Disabled
     void getAllForAdmin(Vertx vertx, VertxTestContext ctx) {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -281,7 +281,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
     @Test
     @DisplayName("List transfer tasks by user")
-    //@Disabled
+    @Disabled
     void getAllForUser(Vertx vertx, VertxTestContext ctx) {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -367,7 +367,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
     @Test
     @DisplayName("Delete transfer task by admin")
-    //@Disabled
+    @Disabled
     void deleteForAdmin(Vertx vertx, VertxTestContext ctx) {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -505,6 +505,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
     @Test
     @DisplayName("Cancel transfer task by admin")
+    @Disabled
     void cancelTaskForAdmin(Vertx vertx, VertxTestContext ctx) {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);

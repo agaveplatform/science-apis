@@ -95,56 +95,56 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                     });
             });
 
-            subscribeToSubject(MessageType.TRANSFERTASK_CANCELED_SYNC, message -> {
-                     //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-                    JsonObject body = new JsonObject(message.getMessage());
-                    String uuid = body.getString("uuid");
-                    String source = body.getString("source");
-                    String dest = body.getString("dest");
-                    log.debug("response is {}", message);
-
-                    log.info("Transfer task {} cancel detected", uuid);
-                    if (uuid != null) {
-                        addCancelledTask(uuid);
-                        checkPausedTask(uuid);
-                    }
-            });
-
-            subscribeToSubjectGroup(MessageType.TRANSFERTASK_CANCELED_COMPLETED, message -> {
-                     log.debug("response is {}", message.getMessage());
-                    JsonObject body = new JsonObject(message.getMessage());
-
-                    String uuid = body.getString("uuid");
-
-                    log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
-                    if (uuid != null) {
-                        removeCancelledTask(uuid);
-                    }
-            });
-
-            subscribeToSubject(MessageType.TRANSFERTASK_PAUSED_SYNC, message -> {
-                    log.debug("response is {}", message.getMessage());
-                    JsonObject body = new JsonObject(message.getMessage());
-
-                    String uuid = body.getString("uuid");
-
-                    log.info("Transfer task {} paused detected", uuid);
-                    if (uuid != null) {
-                        addPausedTask(uuid);
-                    }
-            });
-
-            subscribeToSubjectGroup(MessageType.TRANSFERTASK_PAUSED_COMPLETED, message -> {
-                   log.debug("response is {}", message.getMessage());
-                    JsonObject body = new JsonObject(message.getMessage());
-
-                    String uuid = body.getString("uuid");
-
-                    log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-                    if (uuid != null) {
-                        addPausedTask(uuid);
-                    }
-            });
+//            subscribeToSubject(MessageType.TRANSFERTASK_CANCELED_SYNC, message -> {
+//                     //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//                    JsonObject body = new JsonObject(message.getMessage());
+//                    String uuid = body.getString("uuid");
+//                    String source = body.getString("source");
+//                    String dest = body.getString("dest");
+//                    log.debug("response is {}", message);
+//
+//                    log.info("Transfer task {} cancel detected", uuid);
+//                    if (uuid != null) {
+//                        addCancelledTask(uuid);
+//                        checkPausedTask(uuid);
+//                    }
+//            });
+//
+//            subscribeToSubjectGroup(MessageType.TRANSFERTASK_CANCELED_COMPLETED, message -> {
+//                     log.debug("response is {}", message.getMessage());
+//                    JsonObject body = new JsonObject(message.getMessage());
+//
+//                    String uuid = body.getString("uuid");
+//
+//                    log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
+//                    if (uuid != null) {
+//                        removeCancelledTask(uuid);
+//                    }
+//            });
+//
+//            subscribeToSubject(MessageType.TRANSFERTASK_PAUSED_SYNC, message -> {
+//                    log.debug("response is {}", message.getMessage());
+//                    JsonObject body = new JsonObject(message.getMessage());
+//
+//                    String uuid = body.getString("uuid");
+//
+//                    log.info("Transfer task {} paused detected", uuid);
+//                    if (uuid != null) {
+//                        addPausedTask(uuid);
+//                    }
+//            });
+//
+//            subscribeToSubjectGroup(MessageType.TRANSFERTASK_PAUSED_COMPLETED, message -> {
+//                   log.debug("response is {}", message.getMessage());
+//                    JsonObject body = new JsonObject(message.getMessage());
+//
+//                    String uuid = body.getString("uuid");
+//
+//                    log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
+//                    if (uuid != null) {
+//                        addPausedTask(uuid);
+//                    }
+//            });
         } catch (MessagingException e) {
             log.error("Unable to subscribe to the message subject for push delivery.", e);
         }

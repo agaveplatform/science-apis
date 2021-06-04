@@ -8,11 +8,13 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.messaging.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,17 +39,14 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
 
     public TransferTaskHealthcheckParentListener() throws IOException, InterruptedException {
         super();
-        setConnection();
     }
 
     public TransferTaskHealthcheckParentListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
-        setConnection();
     }
 
     public TransferTaskHealthcheckParentListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
-        setConnection();
     }
 
     public String getDefaultEventChannel() {
@@ -56,15 +55,6 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
 
     public Connection getConnection(){return nc;}
 
-    public void setConnection() throws IOException, InterruptedException {
-        try {
-            nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
-        } catch (IOException e) {
-            //use default URL
-            nc = _connect(Options.DEFAULT_URL);
-        }
-    }
-
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
 
@@ -72,37 +62,59 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         setDbService(TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue));
 
-        // listen for healthcheck events to determine if a task is complete
-        // before its transfertask_completed event was received.
-        //getVertx().eventBus().<JsonObject>consumer(TRANSFERTASK_HEALTHCHECK_PARENT, msg -> {
-        //Connection nc = _connect();
-        Dispatcher d = getConnection().createDispatcher((msg) -> {});
-        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
-            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-            JsonObject body = new JsonObject(response) ;
-            String uuid = body.getString("uuid");
-            String source = body.getString("source");
-            String dest = body.getString("dest");
-           // msg.reply(TransferTaskHealthcheckParentListener.class.getName() + " received.");
+        try {
+            //group subscription so each message only processed by this vertical type once
+            subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
+        } catch (Exception e) {
+            logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
+        }
 
-            String id = body.getValue("id").toString();
-            logger.info("Performing healthcheck parent on transfer tasks ");
-
-            processChildrenActiveAndExceedTimeEvent(body, resp -> {
-                if (resp.succeeded()) {
-                    logger.info("Succeeded with the processing parent transfer created event for transfer task {}", id);
-                } else {
-                    logger.error("Error with return from processing parent transfer tasks. ");
-                }
-            });
-        });
-        d.subscribe(EVENT_CHANNEL);
-        getConnection().flush(Duration.ofMillis(500));
+//
+//        // listen for healthcheck events to determine if a task is complete
+//        // before its transfertask_completed event was received.
+//        //getVertx().eventBus().<JsonObject>consumer(TRANSFERTASK_HEALTHCHECK_PARENT, msg -> {
+//        //Connection nc = _connect();
+//        Dispatcher d = getConnection().createDispatcher((msg) -> {});
+//        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
+//        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+//            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//            JsonObject body = new JsonObject(response) ;
+//            String uuid = body.getString("uuid");
+//            String source = body.getString("source");
+//            String dest = body.getString("dest");
+//           // msg.reply(TransferTaskHealthcheckParentListener.class.getName() + " received.");
+//
+//            String id = body.getValue("id").toString();
+//            logger.info("Performing healthcheck parent on transfer tasks ");
+//
+//            processChildrenActiveAndExceedTimeEvent(body, resp -> {
+//                if (resp.succeeded()) {
+//                    logger.info("Succeeded with the processing parent transfer created event for transfer task {}", id);
+//                } else {
+//                    logger.error("Error with return from processing parent transfer tasks. ");
+//                }
+//            });
+//        });
+//        d.subscribe(EVENT_CHANNEL);
+//        getConnection().flush(Duration.ofMillis(500));
 
     }
 
+    protected void handleMessage(Message message) {
+        try {
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+            logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+
+        } catch (DecodeException e) {
+            logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            logger.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+        }
+    }
 
     /**
      * Set all active tasks that have exceeded the time event to {@link org.agaveplatform.service.transfers.enumerations.TransferStatusType#CANCELED_ERROR}

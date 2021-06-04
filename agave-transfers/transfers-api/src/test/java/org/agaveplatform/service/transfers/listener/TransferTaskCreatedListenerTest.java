@@ -115,7 +115,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid source")
-	@Disabled
+	//@Disabled
 	public void assignTransferTaskFailSrcTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 
 		// get the JsonObject to pass back and forth between verticles
@@ -154,7 +154,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid dest")
-	@Disabled
+	//@Disabled
 	public void assignTransferTaskFailDestTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 
 		// get the JsonObject to pass back and forth between verticles
@@ -192,7 +192,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCreatedListener - taskIsNotInterrupted")
-	@Disabled
+	//@Disabled
 	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());

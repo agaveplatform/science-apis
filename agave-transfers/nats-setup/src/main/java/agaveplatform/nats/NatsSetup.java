@@ -85,7 +85,7 @@ public class NatsSetup {
         }
         Map<String, String> bashEnv = System.getenv();
         String streamName = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","AGAVE_DEV");
-        String subjectPrefix =  bashEnv.getOrDefault("AGAVE_MESSAGE_PREFIX","transfers.");
+        String subjectPrefix =  bashEnv.getOrDefault("AGAVE_MESSAGE_PREFIX","transfer.");
         subjectPrefix = subjectPrefix.replaceAll("\\.{2,}",".");
         subjectPrefix = StringUtils.stripEnd(subjectPrefix, ".");
         // slugify each component

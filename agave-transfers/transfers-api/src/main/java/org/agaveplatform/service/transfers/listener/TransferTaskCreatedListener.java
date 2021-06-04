@@ -56,6 +56,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
+
         try {
             //group subscription so each message only processed by this vertical type once
             subscribeToSubjectGroup(EVENT_CHANNEL, this::handleCreatedMessage);
@@ -70,25 +71,101 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             log.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
         }
 
-        try {
-            // broadcast subscription so each message gets to every verticle to pause the task where ever it may be
-            subscribeToSubject(TRANSFERTASK_PAUSED_SYNC, this::handlePausedSyncMessage);
-        } catch (Exception e) {
-            log.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
-        }
+//        try {
+//            // broadcast subscription so each message gets to every verticle to pause the task where ever it may be
+//            subscribeToSubject(TRANSFERTASK_PAUSED_SYNC, this::handlePausedSyncMessage);
+//        } catch (Exception e) {
+//            log.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
+//        }
+//
+//        try {
+//            // broadcast subscription so each message gets to every verticle to remove the task from list of cancelled tasks
+//            subscribeToSubject(TRANSFERTASK_CANCELED_COMPLETED, this::handleCanceledCompletedMessage);
+//        } catch (Exception e) {
+//            log.error("TRANSFERTASK_CANCELED_COMPLETED - Exception {}", e.getMessage());
+//        }
+//
+//        try {
+//            // broadcast subscription so each message gets to every verticle to remove the task from list of paused tasks
+//            subscribeToSubject(TRANSFERTASK_PAUSED_COMPLETED, this::handlePausedCompletedMessage);
+//        } catch (Exception e) {
+//            log.error("TRANSFERTASK_PAUSED_COMPLETED - Exception {}", e.getMessage());
+//        }
+    }
 
+    /**
+     * Wrapper to process paused completed message body and call {@link #processEvent(JsonObject, Handler)} to handle the pausing complete of the message.
+     * @param message
+     */
+    protected void handlePausedCompletedMessage(Message message) {
         try {
-            // broadcast subscription so each message gets to every verticle to remove the task from list of cancelled tasks
-            subscribeToSubject(TRANSFERTASK_CANCELED_COMPLETED, this::handleCanceledCompletedMessage);
-        } catch (Exception e) {
-            log.error("TRANSFERTASK_CANCELED_COMPLETED - Exception {}", e.getMessage());
-        }
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+            log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
+        } catch (DecodeException e) {
+            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+        }
+    }
+
+    /**
+     * Wrapper to process canceled completed message body and call {@link #processEvent(JsonObject, Handler)} to handle the canceled complete of the message.
+     * @param message
+     */
+    protected void handleCanceledCompletedMessage(Message message) {
         try {
-            // broadcast subscription so each message gets to every verticle to remove the task from list of paused tasks
-            subscribeToSubject(TRANSFERTASK_PAUSED_COMPLETED, this::handlePausedCompletedMessage);
-        } catch (Exception e) {
-            log.error("TRANSFERTASK_PAUSED_COMPLETED - Exception {}", e.getMessage());
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+            log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+
+        } catch (DecodeException e) {
+            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+        }
+    }
+
+    /**
+     * Wrapper to process canceled message body and call {@link #processEvent(JsonObject, Handler)} to handle the cancelation of the message.
+     * @param message
+     */
+    protected void handleCanceledSyncMessage(Message message) {
+        try {
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+            log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+
+        } catch (DecodeException e) {
+            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+        }
+    }
+
+    /**
+     * Wrapper to process paused message body and call {@link #processEvent(JsonObject, Handler)} to handle the pausing of the message.
+     * @param message
+     */
+    protected void handlePausedSyncMessage(Message message) {
+        try {
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+            log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+
+        } catch (DecodeException e) {
+            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
         }
     }
 

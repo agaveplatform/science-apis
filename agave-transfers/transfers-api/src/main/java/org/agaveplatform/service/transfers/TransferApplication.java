@@ -80,33 +80,30 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskCreatedListener.class.getName(),
                                     localOptions, res30 -> {
                                         if (res30.succeeded()) {
-                                            log.info("TransferTaskCreatedListener Deployment id is " + res.result());
+                                            log.info("TransferTaskCreatedListener Deployment id is {}", res30.result());
                                         } else {
-                                            log.error("TransferTaskCreatedListener Deployment failed !");
-                                            log.error( res30.cause().getMessage());
-                                            log.error( res30.cause().getCause().toString());
-                                            log.error( res30.cause().getLocalizedMessage());
+                                            log.error("TransferTaskCreatedListener Deployment failed ! {}", res30.result());
                                         }
                                     });
 
-//
-//                            //Deploy the TransferTaskAssignedListener vertical
-//                            vertx.deployVerticle(TransferTaskAssignedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener",
-//                                    localOptions, res0 -> {
-//                                        if (res0.succeeded()) {
-//                                            log.info("TransferTaskAssignedListener Deployment id is " + res.result());
-//                                        } else {
-//                                            log.error("TransferTaskAssignedListener Deployment failed !");
-//                                        }
-//                                    });
+
+                            //Deploy the TransferTaskAssignedListener vertical
+                            vertx.deployVerticle(TransferTaskAssignedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener",
+                                    localOptions, res0 -> {
+                                        if (res0.succeeded()) {
+                                            log.info("TransferTaskAssignedListener Deployment id is {}", res0.result());
+                                        } else {
+                                            log.error("TransferTaskAssignedListener Deployment failed ! {}", res0.result());
+                                        }
+                                    });
 
                             // Deploy the TransferRetryListener vertical
                             vertx.deployVerticle(TransferTaskRetryListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferRetryListener",
                                     localOptions, res3 -> {
                                         if (res3.succeeded()) {
-                                            log.info("TransferRetryListener Deployment id is " + res.result());
+                                            log.info("TransferRetryListener Deployment id is {}", res3.result());
                                         } else {
-                                            log.error("TransferRetryListener Deployment failed !");
+                                            log.error("TransferRetryListener Deployment failed ! ", res3.cause());
                                         }
                                     });
 
@@ -125,7 +122,7 @@ public class TransferApplication {
                                         if (res4.succeeded()) {
                                             log.info("TransferAllProtocolVertical Deployment id is " + res.result());
                                         } else {
-                                            log.error("TransferAllProtocolVertical Deployment failed !");
+                                            log.error("TransferAllProtocolVertical Deployment failed ! {}", res4.result());
                                         }
                                     });
 
@@ -133,9 +130,9 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskCompleteTaskListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferCompleteTaskListener",
                                     localOptions, res5 -> {
                                         if (res5.succeeded()) {
-                                            log.info("TransferCompleteTaskListener Deployment id is " + res.result());
+                                            log.info("TransferCompleteTaskListener Deployment id is " + res5.result());
                                         } else {
-                                            log.error("TransferCompleteTaskListener Deployment failed !");
+                                            log.error("TransferCompleteTaskListener Deployment failed ! {}",res5.result());
                                         }
                                     });
 
@@ -144,9 +141,9 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorTaskListener",
                                     localOptions, res6 -> {
                                         if (res6.succeeded()) {
-                                            log.info("ErrorTaskListener Deployment id is " + res.result());
+                                            log.info("TransferTaskErrorTaskListener Deployment id is " + res6.result());
                                         } else {
-                                            log.info("ErrorTaskListener Deployment failed !");
+                                            log.error("TransferTaskErrorTaskListener Deployment failed !{}", res6.result());
                                         }
                                     });
 
@@ -154,9 +151,9 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskErrorFailureHandler.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferFailureHandler",
                                     localOptions, res7 -> {
                                         if (res7.succeeded()) {
-                                            log.info("TransferFailureHandler Deployment id is " + res.result());
+                                            log.info("TransferFailureHandler Deployment id is " + res7.result());
                                         } else {
-                                            log.error("TransferFailureHandler Deployment failed !");
+                                            log.error("TransferFailureHandler Deployment failed ! {}", res7.result());
                                         }
                                     });
 
@@ -164,9 +161,9 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskCancelListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskCancelListener",
                                     localOptions, res8 -> {
                                         if (res8.succeeded()) {
-                                            log.info("TransferTaskCancelListener Deployment id is " + res.result());
+                                            log.info("TransferTaskCancelListener Deployment id is " + res8.result());
                                         } else {
-                                            log.error("TransferTaskCancelListener Deployment failed !");
+                                            log.error("TransferTaskCancelListener Deployment failed ! {}", res8.result());
                                         }
                                     });
 
@@ -174,9 +171,9 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskPausedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskPausedListener",
                                     localOptions, res9 -> {
                                         if (res9.succeeded()) {
-                                            log.info("TransferTaskPausedListener Deployment id is " + res.result());
+                                            log.info("TransferTaskPausedListener Deployment id is " + res9.result());
                                         } else {
-                                            log.error("TransferTaskPausedListener Deployment failed !");
+                                            log.error("TransferTaskPausedListener Deployment failed ! {}", res9.result());
                                         }
                                     });
 
@@ -194,9 +191,9 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskNotificationListener.class.getName(), //"org.agaveplatform.service.transfers.listener.NotificationListener",
                                     notificationWorkerOptions, res10 -> {
                                         if (res10.succeeded()) {
-                                            log.info("NotificationListener Deployment id is " + res.result());
+                                            log.info("NotificationListener Deployment id is " + res10.result());
                                         } else {
-                                            log.error("NotificationListener Deployment failed !");
+                                            log.error("NotificationListener Deployment failed ! {}", res10.result());
                                         }
                                     });
 
@@ -204,9 +201,9 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorListener"
                                     localOptions, res11 -> {
                                         if (res11.succeeded()){
-                                            log.info("TransferErrorListener Deployment id is " + res.result());
+                                            log.info("TransferErrorListener Deployment id is " + res11.result());
                                         }else{
-                                            log.error("TransferErrorListener Deployment failed !"+ res.result());
+                                            log.error("TransferErrorListener Deployment failed ! {}", res11.result());
                                         }
                                     });
 
@@ -214,27 +211,27 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskHealthcheckListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferHealthcheckListener",
                                     localOptions, res12 -> {
                                         if (res12.succeeded()) {
-                                            log.info("TransferHealthcheckListener Deployment id is " + res.result());
+                                            log.info("TransferHealthcheckListener Deployment id is " + res12.result());
                                         } else {
-                                            log.error("TransferHealthcheckListener Deployment failed !");
+                                            log.error("TransferHealthcheckListener Deployment failed ! {}", res12.result());
                                         }
                                     });
                             // Deploy the TransferHealthParentcheckListener vertical
                             vertx.deployVerticle(TransferTaskHealthcheckParentListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferHealthcheckListener",
                                     localOptions, res22 -> {
                                         if (res22.succeeded()) {
-                                            log.info("TransferHealthcheckParentListener Deployment id is " + res.result());
+                                            log.info("TransferHealthcheckParentListener Deployment id is " + res22.result());
                                         } else {
-                                            log.error("TransferHealthcheckParentListener Deployment failed !");
+                                            log.error("TransferHealthcheckParentListener Deployment failed ! {}", res22.result());
                                         }
                                     });
                             // Deploy the TransferWatchListener vertical
                             vertx.deployVerticle(TransferTaskWatchListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferWatchListener",
                                     localOptions, res13 -> {
                                         if (res13.succeeded()) {
-                                            log.info("TransferWatchListener Deployment id is " + res.result());
+                                            log.info("TransferWatchListener Deployment id is " + res13.result());
                                         } else {
-                                            log.error("TransferWatchListener Deployment failed !");
+                                            log.error("TransferWatchListener Deployment failed ! {}", res13.result());
                                         }
                                     });
 
@@ -242,9 +239,9 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskUpdateListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskUpdateListener",
                                     localOptions, res14 -> {
                                         if (res14.succeeded()) {
-                                            log.info("TransferTaskUpdateListener Deployment id is " + res.result());
+                                            log.info("TransferTaskUpdateListener Deployment id is " + res14.result());
                                         } else {
-                                            log.error("TransferTaskUpdateListener Deployment failed !");
+                                            log.error("TransferTaskUpdateListener Deployment failed ! {}", res14.result());
                                         }
                                     });
 
@@ -252,9 +249,9 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskFinishedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskFinishedListener",
                                     localOptions, res15 -> {
                                         if (res15.succeeded()) {
-                                            log.info("TransferTaskFinishedListener Deployment id is " + res.result());
+                                            log.info("TransferTaskFinishedListener Deployment id is " + res15.result());
                                         } else {
-                                            log.error("TransferTaskFinishedListener Deployment failed !");
+                                            log.error("TransferTaskFinishedListener Deployment failed ! {}", res15.result());
                                         }
                                     });
 
@@ -264,13 +261,11 @@ public class TransferApplication {
 //                                        if (res56.succeeded()) {
 //                                            log.info("Nats Deployment id is " + res56.result());
 //                                        } else {
-//                                            log.error("Nats Deployment failed !");
-//                                            log.debug(res56.cause().getCause().toString());
-//                                            log.debug( res56.cause().getMessage() );
+//                                            log.error("Nats Deployment failed !" + res56.result());
 //                                        }
 //                                    });
                         } else {
-                            log.error("TransferAPIVertical deployment failed !\n" + res.cause());
+                            log.error("TransferAPIVertical deployment failed !\n ", res.cause());
                             res.cause().printStackTrace();
                         }
                     });
@@ -283,7 +278,7 @@ public class TransferApplication {
                         log.info("TransferApiVertical ({}) started on port {}", ar.result(), config.getInteger("HTTP_PORT"));
 
                     } else {
-                        log.error("TransferApiVertical deployment failed !\n" + ar.cause());
+                        log.error("TransferApiVertical deployment failed !\n {}", ar.result());
                         ar.cause().printStackTrace();
                     }
                 });

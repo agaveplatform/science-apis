@@ -277,7 +277,7 @@ class TransferApplicationTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("testEndToEndTaskAssignmentSmoke")
-	@Disabled
+	//@Disabled  // disabled due to using vertx.eventbus need to change this
 	void testEndToEndTaskAssignmentSmoke(Vertx vertx, VertxTestContext ctx) {
 
 		TransferTask tt = _createTestTransferTask();

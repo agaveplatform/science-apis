@@ -459,7 +459,7 @@ public class NatsJetstreamMessageClient {
             ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
                     .ackPolicy(AckPolicy.Explicit)
                     .ackWait(Duration.ofSeconds(60))
-                    .durable(consumerName)
+                    .durable(this.getConsumerName())
                     .filterSubject(subject)
                     .deliverPolicy(DeliverPolicy.All)
                     .maxDeliver(10)

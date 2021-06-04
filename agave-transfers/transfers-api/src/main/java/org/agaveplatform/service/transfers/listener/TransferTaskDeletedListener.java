@@ -5,6 +5,7 @@ import io.nats.client.Dispatcher;
 import io.nats.client.Options;
 import io.nats.client.Subscription;
 import io.vertx.core.*;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -13,6 +14,7 @@ import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
+import org.iplantc.service.common.messaging.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +54,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
         return EVENT_CHANNEL;
     }
 
-    public Connection getConnection(){return nc;}
+//    public Connection getConnection(){return nc;}
 
     public void setConnection() throws IOException, InterruptedException {
         try {
@@ -69,43 +71,64 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-        //Connection nc = _connect();
-        Dispatcher d = getConnection().createDispatcher((msg) -> {});
-        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(getEventChannel(), msg -> {
-            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-            JsonObject body = new JsonObject(response) ;
-            String uuid = body.getString("uuid");
-            String source = body.getString("source");
-            String dest = body.getString("dest");
+        try {
+            //group subscription so each message only processed by this vertical type once
+            subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
+        } catch (Exception e) {
+            logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
+        }
 
-            logger.info("Transfer task {} cancel detected.", uuid);
-            this.processDeletedRequest(body, result -> {
-                //result should be true
-            });
-        });
-        d.subscribe(getEventChannel());
-        getConnection().flush(Duration.ofMillis(500));
-
-
-        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
-        s = d.subscribe(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
-            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-            JsonObject body = new JsonObject(response) ;
-            String uuid = body.getString("uuid");
-
-            logger.info("Transfer task {} ackowledged cancellation", uuid);
-            this.processDeletedAck(body, result -> {});
-        });
-        d.subscribe(MessageType.TRANSFERTASK_DELETED_ACK);
-        getConnection().flush(Duration.ofMillis(500));
-
+//
+//        //Connection nc = _connect();
+//        Dispatcher d = getConnection().createDispatcher((msg) -> {});
+//        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
+//        Subscription s = d.subscribe(getEventChannel(), msg -> {
+//            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//            JsonObject body = new JsonObject(response) ;
+//            String uuid = body.getString("uuid");
+//            String source = body.getString("source");
+//            String dest = body.getString("dest");
+//
+//            logger.info("Transfer task {} cancel detected.", uuid);
+//            this.processDeletedRequest(body, result -> {
+//                //result should be true
+//            });
+//        });
+//        d.subscribe(getEventChannel());
+//        getConnection().flush(Duration.ofMillis(500));
+//
+//
+//        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
+//        s = d.subscribe(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
+//            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//            JsonObject body = new JsonObject(response) ;
+//            String uuid = body.getString("uuid");
+//
+//            logger.info("Transfer task {} ackowledged cancellation", uuid);
+//            this.processDeletedAck(body, result -> {});
+//        });
+//        d.subscribe(MessageType.TRANSFERTASK_DELETED_ACK);
+//        getConnection().flush(Duration.ofMillis(500));
+//
 
     }
 
+    protected void handleMessage(Message message) {
+        try {
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+            logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
+        } catch (DecodeException e) {
+            logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            logger.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+        }
+    }
 
     protected void processDeletedRequest(JsonObject body, Handler<AsyncResult<Boolean>> resultHandler) {
         String tenantId = body.getString("tenant_id");

@@ -53,7 +53,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
         return EVENT_CHANNEL;
     }
 
-    public Connection getConnection(){return nc;}
+//    public Connection getConnection(){return nc;}
 
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {

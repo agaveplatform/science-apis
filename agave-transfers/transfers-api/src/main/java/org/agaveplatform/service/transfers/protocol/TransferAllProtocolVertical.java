@@ -65,7 +65,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 	}
 	public Connection nc;
 
-	public Connection getConnection(){return nc;}
+//	public Connection getConnection(){return nc;}
 
 //	public void setConnection() throws IOException, InterruptedException {
 //		try {

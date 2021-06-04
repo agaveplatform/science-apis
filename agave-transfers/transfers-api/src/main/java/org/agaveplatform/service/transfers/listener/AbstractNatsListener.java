@@ -1,5 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
+import com.github.slugify.Slugify;
 import io.nats.client.Connection;
 import io.nats.client.Nats;
 import io.nats.client.Options;
@@ -37,9 +38,10 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @deprecated
      * @see TransferTaskConfigProperties#NATS_URL
      */
-    private static final String CONNECTION = "nats://nats:4222";
+    protected static final String CONNECTION = "nats://nats:4222";
     protected NatsJetstreamMessageClient messageClient;
     protected String streamName;
+    protected String consumerName;
 
     public AbstractNatsListener(Vertx vertx) throws IOException, InterruptedException {
         this(vertx, null);
@@ -50,12 +52,14 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         setEventChannel(eventChannel);
         setStreamName("AGAVE_" + config().getString(TransferTaskConfigProperties.AGAVE_ENVIRONMENT,"DEV"));
     }
-
     public AbstractNatsListener() throws IOException, InterruptedException {
         super();
         setStreamName("AGAVE_" + config().getString(TransferTaskConfigProperties.AGAVE_ENVIRONMENT,"DEV"));
     }
 
+    public String getConnection(){
+        return this.CONNECTION;
+    }
     @Override
     public String getDefaultEventChannel() {
         return null;
@@ -90,14 +94,20 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
                 Map<String, String> bashEnv = System.getenv();
                 String streamName = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","AGAVE_DEV");
                 setStreamName(streamName);
-
             }
             this.messageClient = new NatsJetstreamMessageClient(
                     config().getString(TransferTaskConfigProperties.NATS_URL, CONNECTION),
                     getStreamName(),
-                    this.getClass().getSimpleName());
-        }
+                    this.getConsumerName());
 
+            //
+            // we need to check if the client already exists in the NatsJetstreamClient map if it does not exist then we need to put it into the map
+            //
+        //}else {
+            //if (this.messageClient.getConsumerName() = createConsumerName(messageType, this.getClass().getSimpleName())){
+
+         //   }
+        }
         return this.messageClient;
     }
 
@@ -124,6 +134,19 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         return consumerName;
     }
 
+    public String createConsumerName(String eventName, String callingClass){
+        String consumerName = callingClass +"-"+eventName;
+        consumerName = Slug.toSlug(consumerName);
+        this.consumerName = consumerName;
+        return consumerName;
+    }
+    public void setConsumerName(String consumerName){
+        this.consumerName = consumerName;
+    }
+    public String getConsumerName(){
+
+        return this.consumerName;
+    }
     /**
      * Convenience method to creates a subscription subject using the context of the event being sent. The
      * resource type will be {@link UUIDType#TRANSFER}, tenant, owner, and system will all be wildcards, "*".
@@ -148,17 +171,17 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @return the derived subject with built in routing for downstream consumers.
      */
     public String createSubscriptionSubject(String agaveResourceType, String tenantId, String owner, String sourceSystemId, String eventName) {
-        String consumerName = String.format("%s.%s.%s.%s.%s",
+        String subscriptionSubject = String.format("%s.%s.%s.%s.%s",
                                         agaveResourceType,
                                         StringUtils.isBlank(tenantId) ? "*" : tenantId,
                                         StringUtils.isBlank(owner) ? "*" : owner,
                                         StringUtils.isBlank(sourceSystemId) ? "*" : sourceSystemId,
                                         StringUtils.isBlank(eventName) ? "*" : eventName);
 
-        consumerName = consumerName.replaceAll("\\.{2,}", ".");
-        consumerName = StringUtils.strip(consumerName, ". ");
+        subscriptionSubject = subscriptionSubject.replaceAll("\\.{2,}", ".");
+        subscriptionSubject = StringUtils.strip(subscriptionSubject, ". ");
         //consumerName = Slug.toSlug(consumerName);
-        return consumerName;
+        return subscriptionSubject;
     }
 
     /**
@@ -170,7 +193,8 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @throws IOException if unable to connect to the NATS server
      */
     protected void subscribeToSubjectGroup(String messageType, Handler<Message> callback) throws IOException, InterruptedException, MessagingException {
-        String subject = createSubscriptionSubject(messageType);  // returns "transfers.*.*.*.'EVENT_CHANEL'"
+        String conName = createConsumerName(messageType, this.getClass().getSimpleName());  // returns "transfers.*.*.*.'EVENT_CHANEL'"
+        String subject = createSubscriptionSubject("transfer","","","", messageType);
         String groupName = Slug.toSlug(this.getClass().getSimpleName() + "-" + messageType); // returns "transfertaskcreatedlistener-transfertask_created"
 
         getMessageClient().listen(subject, groupName, msg -> {

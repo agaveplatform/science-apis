@@ -8,6 +8,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -18,6 +19,7 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
@@ -66,7 +68,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 		return EVENT_CHANNEL;
 	}
 
-	public Connection getConnection(){return nc;}
+//	public Connection getConnection(){return nc;}
 
 	public void setConnection() throws IOException, InterruptedException {
 		try {
@@ -84,127 +86,152 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 		setConnection();
 
-		//EventBus bus = vertx.eventBus();
-		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		//Connection nc = _connect();
-		Dispatcher d = getConnection().createDispatcher((msg) -> {});
-		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(getDefaultEventChannel(), msg -> {
-			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-			JsonObject body = new JsonObject(response) ;
-			String uuid = body.getString("uuid");
-			String source = body.getString("source");
-			String dest = body.getString("dest");
-//			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
 
-			log.info("Transfer task {} retry: {} -> {}", uuid, source, dest);
+		try {
+			//group subscription so each message only processed by this vertical type once
+			subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
+		} catch (Exception e) {
+			log.error("TRANSFER_ALL - Exception {}", e.getMessage());
+		}
 
-			try {
-				processRetryTransferTask(body, resp -> {
-					if (resp.succeeded()) {
-						log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
-						// TODO: retry won't be reflected in the message body, so what are we listening to here? At
-						//   this point
-						body.put("event", this.getClass().getName());
-						body.put("type", getEventChannel());
-						try {
-							_doPublishEvent( TRANSFERTASK_NOTIFICATION, body);
-						} catch (Exception e) {
-							log.debug(e.getMessage());
-						}
-					} else {
-						log.debug("Unable to process {} event for transfer task (TTRL) message: {}", getEventChannel(), body.encode(), resp.cause());
-						try {
-							_doPublishEvent( MessageType.TRANSFERTASK_ERROR, body);
-						} catch (Exception e) {
-							log.debug(e.getMessage());
-						}
-					}
-				});
-			} catch (Exception ex) {
-				log.debug("Error with the TRANSFER_RETRY message.  The error is {}", ex.getMessage());
-				try {
-					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-				} catch (Exception e) {
-					log.debug(e.getMessage());
-				}
-			}
-		});
-		d.subscribe(getDefaultEventChannel());
-		getConnection().flush(Duration.ofMillis(500));
-
-
-		// cancel tasks
-		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
-			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-			JsonObject body = new JsonObject(response) ;
-			String uuid = body.getString("uuid");
-			String source = body.getString("source");
-			String dest = body.getString("dest");
-			//msg.reply(TransferTaskRetryListener.class.getName() + " received.");
-
-			log.info("Transfer task {} cancel detected", uuid);
-			if (uuid != null) {
-				addCancelledTask(uuid);
-			}
-		});
-		d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
-		getConnection().flush(Duration.ofMillis(500));
-
-		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-			JsonObject body = new JsonObject(response) ;
-			String uuid = body.getString("uuid");
-			//msg.reply(TransferTaskRetryListener.class.getName() + " received.");
-
-			log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
-			if (uuid != null) {
-				removeCancelledTask(uuid);
-			}
-		});
-		d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-		getConnection().flush(Duration.ofMillis(500));
-
-		// paused tasks
-		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
-			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-			JsonObject body = new JsonObject(response) ;
-			String uuid = body.getString("uuid");
-//			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
-
-			log.info("Transfer task {} paused detected", uuid);
-			if (uuid != null) {
-				addPausedTask(uuid);
-			}
-		});
-		d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
-		getConnection().flush(Duration.ofMillis(500));
-
-
-		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-			JsonObject body = new JsonObject(response) ;
-			String uuid = body.getString("uuid");
-//			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
-			log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-			if (uuid != null) {
-				addPausedTask(uuid);
-			}
-		});
-		d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
-		getConnection().flush(Duration.ofMillis(500));
+//		//EventBus bus = vertx.eventBus();
+//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+//		//Connection nc = _connect();
+//		Dispatcher d = getConnection().createDispatcher((msg) -> {});
+//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+//		Subscription s = d.subscribe(getDefaultEventChannel(), msg -> {
+//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//			JsonObject body = new JsonObject(response) ;
+//			String uuid = body.getString("uuid");
+//			String source = body.getString("source");
+//			String dest = body.getString("dest");
+////			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
+//
+//			log.info("Transfer task {} retry: {} -> {}", uuid, source, dest);
+//
+//			try {
+//				processRetryTransferTask(body, resp -> {
+//					if (resp.succeeded()) {
+//						log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
+//						// TODO: retry won't be reflected in the message body, so what are we listening to here? At
+//						//   this point
+//						body.put("event", this.getClass().getName());
+//						body.put("type", getEventChannel());
+//						try {
+//							_doPublishEvent( TRANSFERTASK_NOTIFICATION, body);
+//						} catch (Exception e) {
+//							log.debug(e.getMessage());
+//						}
+//					} else {
+//						log.debug("Unable to process {} event for transfer task (TTRL) message: {}", getEventChannel(), body.encode(), resp.cause());
+//						try {
+//							_doPublishEvent( MessageType.TRANSFERTASK_ERROR, body);
+//						} catch (Exception e) {
+//							log.debug(e.getMessage());
+//						}
+//					}
+//				});
+//			} catch (Exception ex) {
+//				log.debug("Error with the TRANSFER_RETRY message.  The error is {}", ex.getMessage());
+//				try {
+//					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+//				} catch (Exception e) {
+//					log.debug(e.getMessage());
+//				}
+//			}
+//		});
+//		d.subscribe(getDefaultEventChannel());
+//		getConnection().flush(Duration.ofMillis(500));
+//
+//
+//		// cancel tasks
+//		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+//		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//			JsonObject body = new JsonObject(response) ;
+//			String uuid = body.getString("uuid");
+//			String source = body.getString("source");
+//			String dest = body.getString("dest");
+//			//msg.reply(TransferTaskRetryListener.class.getName() + " received.");
+//
+//			log.info("Transfer task {} cancel detected", uuid);
+//			if (uuid != null) {
+//				addCancelledTask(uuid);
+//			}
+//		});
+//		d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
+//		getConnection().flush(Duration.ofMillis(500));
+//
+//		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+//		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//			JsonObject body = new JsonObject(response) ;
+//			String uuid = body.getString("uuid");
+//			//msg.reply(TransferTaskRetryListener.class.getName() + " received.");
+//
+//			log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
+//			if (uuid != null) {
+//				removeCancelledTask(uuid);
+//			}
+//		});
+//		d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
+//		getConnection().flush(Duration.ofMillis(500));
+//
+//		// paused tasks
+//		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+//		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//			JsonObject body = new JsonObject(response) ;
+//			String uuid = body.getString("uuid");
+////			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
+//
+//			log.info("Transfer task {} paused detected", uuid);
+//			if (uuid != null) {
+//				addPausedTask(uuid);
+//			}
+//		});
+//		d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
+//		getConnection().flush(Duration.ofMillis(500));
+//
+//
+//		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+//		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+//			JsonObject body = new JsonObject(response) ;
+//			String uuid = body.getString("uuid");
+////			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
+//			log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
+//			if (uuid != null) {
+//				addPausedTask(uuid);
+//			}
+//		});
+//		d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
+//		getConnection().flush(Duration.ofMillis(500));
 
 
 	}
+
+
+	protected void handleMessage(Message message) {
+		try {
+			JsonObject body = new JsonObject(message.getMessage());
+			String uuid = body.getString("uuid");
+			String source = body.getString("source");
+			String dest = body.getString("dest");
+			log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+
+		} catch (DecodeException e) {
+			log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+		} catch (Throwable t) {
+			log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+		}
+	}
+
 
 	/**
 	 * Handles the event body processing. This will lookup the task record, and if in an active state, attempt to retry

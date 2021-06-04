@@ -49,7 +49,7 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 		return EVENT_CHANNEL;
 	}
 
-	public Connection getConnection(){return nc;}
+//	public Connection getConnection(){return nc;}
 
 	public void handle(RoutingContext context){
 		Throwable thrown = context.failure();

@@ -39,7 +39,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
 	}
-	public Connection getConnection(){return nc;}
+//	public Connection getConnection(){return nc;}
 
 	@Override
 	public void start() {

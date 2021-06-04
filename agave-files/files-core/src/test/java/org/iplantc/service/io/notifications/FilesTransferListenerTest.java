@@ -1,10 +1,11 @@
 package org.iplantc.service.io.notifications;
 
-import io.vertx.core.Handler;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
-import io.vertx.junit5.VertxTestContext;
+import org.iplantc.service.common.messaging.MessageClientFactory;
+import org.iplantc.service.common.messaging.MessageQueueClient;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.io.BaseTestCase;
@@ -12,11 +13,10 @@ import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.manager.FilesTransferListener;
 import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
-import org.iplantc.service.io.model.QueueTask;
+import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.json.JSONException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -24,11 +24,9 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 
 @ExtendWith(VertxExtension.class)
@@ -38,7 +36,6 @@ import static org.mockito.Mockito.*;
 
 class FilesTransferListenerTest extends BaseTestCase {
     private StorageSystem system;
-    private QueueTask task;
     private LogicalFile file;
     private SystemDao systemDao = new SystemDao();
     private String destPath;
@@ -84,11 +81,7 @@ class FilesTransferListenerTest extends BaseTestCase {
 
     private FilesTransferListener getMockFilesTransferListenerInstance (Vertx vertx){
         FilesTransferListener listener = mock(FilesTransferListener.class);
-        when(listener.getFailedEventChannel()).thenReturn("transfertask.failed");
-        when(listener.getCompletedEventChannel()).thenReturn("transfer.completed");
         when(listener.getVertx()).thenReturn(vertx);
-        doCallRealMethod().when(listener).processTransferNotification(any(StagingTaskStatus.class),
-                any(JsonObject.class), any(Handler.class));
         return listener;
     }
 
@@ -99,17 +92,17 @@ class FilesTransferListenerTest extends BaseTestCase {
         return dbService;
     }
 
-    private JsonObject getTransferTask(LogicalFile file, String status){
-        JsonObject transferTask = new JsonObject()
+    private JsonNode getTransferTask(LogicalFile file, String status){
+        JsonNode transferTask = new ObjectMapper().createObjectNode()
                 .put("attempts", 1)
                 .put("source", file.getSourceUri())
                 .put("dest", file.getPath())
                 .put("owner", file.getOwner())
                 .put("tenantId", file.getTenantId())
                 .put("uuid", file.getTransferUuid())
-                .put("created", Instant.now())
-                .put("lastUpdated", Instant.now())
-                .put("endTime", Instant.now())
+                .put("created", String.valueOf(Instant.now()))
+                .put("lastUpdated", String.valueOf(Instant.now()))
+                .put("endTime", String.valueOf(Instant.now()))
                 .putNull("parentTask")
                 .putNull("rootTask")
                 .put("status", status);
@@ -117,8 +110,8 @@ class FilesTransferListenerTest extends BaseTestCase {
         return transferTask;
     };
 
-    private JsonObject getTransferResponse(LogicalFile file, String status){
-        JsonObject response = new JsonObject()
+    private JsonNode getTransferResponse(LogicalFile file, String status){
+        JsonNode response = new ObjectMapper().createObjectNode()
                 .put("status", "success")
                 .putNull("message")
                 .put("version", 2)
@@ -127,32 +120,57 @@ class FilesTransferListenerTest extends BaseTestCase {
         return response;
     }
 
-    @Test
-    @DisplayName("Files Transfer Listener - Logical file updated to COMPLETED Status on transfer complete")
-    public void testTransferCompletedUpdatesLogicalFile(Vertx vertx, VertxTestContext ctx) throws JSONException {
-        FilesTransferListener filesTransferListener = getMockFilesTransferListenerInstance(vertx);
+    public void executeProcessTransferNotification(String status, String expectedStatus) {
+        MessageQueueClient messageClient = null;
+        FilesTransferListener listener = null;
 
-        filesTransferListener.processTransferNotification(StagingTaskStatus.STAGING_COMPLETED, getTransferResponse(file, "QUEUED"),
-                ctx.succeeding(isProcessed -> ctx.verify(()-> {
-                    assertTrue(isProcessed, "Future should return true on successful transfer notification processing.");
-                    LogicalFile updatedFile = LogicalFileDao.findById(file.getId());
-                    assertEquals(updatedFile.getStatus(), StagingTaskStatus.STAGING_COMPLETED.name(), "Logical File should be updated to COMPLETE.");
-                    ctx.completeNow();
-        })));
+        try{
+            messageClient = MessageClientFactory.getMessageClient();
+            listener = new FilesTransferListener();
+
+            JsonNode json = getTransferTask(file, status);
+
+            listener.processTransferNotification(StagingTaskStatus.STAGING, json.toString(), result -> {
+                if (result.succeeded()){
+                    LogicalFile processedFile = LogicalFileDao.findById(file.getId());
+                    Assertions.assertEquals(processedFile.getStatus(), expectedStatus, "Logical file status should match status from queue.");
+                } else {
+                    Assertions.fail(result.cause().getMessage(), result.cause());
+                }
+            });
+
+        } catch (Exception e) {
+            Assertions.fail(e.getMessage(), e);
+        } finally {
+            try { messageClient.stop(); } catch (Exception ignored) {}
+        }
     }
 
     @Test
-    @DisplayName("Files Transfer Listener - Logical file updated to FAILED Status on transfer failed")
-    public void testTransferFailedUpdatesLogicalFile(Vertx vertx, VertxTestContext ctx) throws JSONException {
-        FilesTransferListener filesTransferListener = getMockFilesTransferListenerInstance(vertx);
-
-        filesTransferListener.processTransferNotification(StagingTaskStatus.STAGING_FAILED, getTransferResponse(file, "QUEUED"),
-                ctx.succeeding(isProcessed -> ctx.verify(()-> {
-                    assertTrue(isProcessed, "Future should return true on successful transfer notification processing.");
-                    LogicalFile updatedFile = LogicalFileDao.findById(file.getId());
-                    assertEquals(updatedFile.getStatus(), StagingTaskStatus.STAGING_FAILED.name(), "Logical File should be updated to COMPLETE.");
-                    ctx.completeNow();
-        })));
+    public void executeProcessTransferNotificationForStagingQueued(){
+        executeProcessTransferNotification("transfertask.assigned", StagingTaskStatus.STAGING_QUEUED.name());
     }
+
+    @Test
+    public void executeProcessTransferNotificationForStaging(){
+        executeProcessTransferNotification("transfertask.created", StagingTaskStatus.STAGING.name());
+    }
+
+    @Test
+    public void executeProcessTransferNotificationForStagingCompleted(){
+        executeProcessTransferNotification("transfertask.completed", StagingTaskStatus.STAGING_COMPLETED.name());
+    }
+
+    @Test
+    public void executeProcessTransferNotificationForStagingFailed(){
+        executeProcessTransferNotification("transfertask.failed", StagingTaskStatus.STAGING_FAILED.name());
+    }
+
+    @Test
+    public void executeProcessTransferNotificationForCreatedFile(){
+        executeProcessTransferNotification("transfer.completed", FileEventType.CREATED.name());
+    }
+
+
 
 }

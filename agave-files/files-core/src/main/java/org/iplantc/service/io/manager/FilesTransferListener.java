@@ -154,6 +154,7 @@ public class FilesTransferListener extends AbstractVerticle {
             JsonNode jsonBody = new ObjectMapper().readTree(body);
 
             String srcUrl = jsonBody.get("source").textValue();
+            String destPath = jsonBody.get("dest").textValue();
             String createdBy = jsonBody.get("owner").textValue();
             String transferUuid = jsonBody.get("uuid").textValue();
             String transferStatus = jsonBody.get("status").textValue();
@@ -179,12 +180,14 @@ public class FilesTransferListener extends AbstractVerticle {
                     } else if (transferStatus.equals("transfer.completed")) {
                         LogicalFileDao.updateTransferStatus(file, StagingTaskStatus.STAGING_COMPLETED, createdBy);
 
-                        LogicalFile destFile = LogicalFileDao.findBySystemAndPath(file.getSystem(), file.getPath());
+                        LogicalFile destFile = LogicalFileDao.findBySourceUrl(file.getPublicLink());
                         if (destFile != null) {
                             destFile.setStatus(FileEventType.OVERWRITTEN.name());
-                            LogicalFileDao.persist(file);
+                            LogicalFileDao.persist(destFile);
                         } else {
-                            destFile = new LogicalFile(file.getOwner(), file.getSystem(), file.getPath());
+                            destFile = new LogicalFile(createdBy, file.getSystem(), destPath);
+                            destFile.setSourceUri(file.getPublicLink());
+                            destFile.setStatus(FileEventType.CREATED.name());
                             LogicalFileDao.persist(destFile);
                         }
                     }

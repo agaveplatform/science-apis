@@ -19,6 +19,7 @@ import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.testng.Assert;
 
 import java.net.URI;
 import java.time.Instant;
@@ -120,7 +121,7 @@ class FilesTransferListenerTest extends BaseTestCase {
         return response;
     }
 
-    public void executeProcessTransferNotification(String status, String expectedStatus) {
+    public void executeProcessTransferNotification(String status, String expectedStatus, Boolean checkDestFileCreated) {
         MessageQueueClient messageClient = null;
         FilesTransferListener listener = null;
 
@@ -133,7 +134,14 @@ class FilesTransferListenerTest extends BaseTestCase {
             listener.processTransferNotification(StagingTaskStatus.STAGING, json.toString(), result -> {
                 if (result.succeeded()){
                     LogicalFile processedFile = LogicalFileDao.findById(file.getId());
-                    Assertions.assertEquals(processedFile.getStatus(), expectedStatus, "Logical file status should match status from queue.");
+                    if (checkDestFileCreated){
+                        LogicalFile destFile = LogicalFileDao.findBySourceUrl(file.getPublicLink());
+                        Assert.assertNotNull(destFile, "Dest logical file should be created on " + status + " status.");
+                        Assertions.assertEquals(StagingTaskStatus.STAGING_COMPLETED.name(), processedFile.getStatus(), "Source logical file status should be in completed state when dest file is created.");
+                        Assertions.assertEquals(expectedStatus, destFile.getStatus(), "Dest logical file status should match status from queue.");
+                    } else {
+                        Assertions.assertEquals(expectedStatus, processedFile.getStatus(), "Logical file status should match status from queue.");
+                    }
                 } else {
                     Assertions.fail(result.cause().getMessage(), result.cause());
                 }
@@ -148,29 +156,27 @@ class FilesTransferListenerTest extends BaseTestCase {
 
     @Test
     public void executeProcessTransferNotificationForStagingQueued(){
-        executeProcessTransferNotification("transfertask.assigned", StagingTaskStatus.STAGING_QUEUED.name());
+        executeProcessTransferNotification("transfertask.assigned", StagingTaskStatus.STAGING_QUEUED.name(), false);
     }
 
     @Test
     public void executeProcessTransferNotificationForStaging(){
-        executeProcessTransferNotification("transfertask.created", StagingTaskStatus.STAGING.name());
+        executeProcessTransferNotification("transfertask.created", StagingTaskStatus.STAGING.name(), false);
     }
 
     @Test
     public void executeProcessTransferNotificationForStagingCompleted(){
-        executeProcessTransferNotification("transfertask.completed", StagingTaskStatus.STAGING_COMPLETED.name());
+        executeProcessTransferNotification("transfertask.completed", StagingTaskStatus.STAGING_COMPLETED.name(), false);
     }
 
     @Test
     public void executeProcessTransferNotificationForStagingFailed(){
-        executeProcessTransferNotification("transfertask.failed", StagingTaskStatus.STAGING_FAILED.name());
+        executeProcessTransferNotification("transfertask.failed", StagingTaskStatus.STAGING_FAILED.name(), false);
     }
 
     @Test
     public void executeProcessTransferNotificationForCreatedFile(){
-        executeProcessTransferNotification("transfer.completed", FileEventType.CREATED.name());
+        executeProcessTransferNotification("transfer.completed", FileEventType.CREATED.name(), true );
     }
-
-
 
 }

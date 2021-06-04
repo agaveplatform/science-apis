@@ -3,17 +3,18 @@ package org.agaveplatform.service.transfers.listener;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.iplantc.service.common.exceptions.UUIDException;
-import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_NOTIFICATION;
+import java.util.List;
+
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 
 public class TransferTaskNotificationListener extends AbstractTransferTaskListener {
@@ -36,108 +37,39 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 
 	@Override
 	public void start() {
-		EventBus bus = vertx.eventBus();
 
-		// poc listener to show propagated notifications that woudl be sent to users
-		bus.<JsonObject>consumer(getEventChannel(), msg -> {
-			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+        List<String> notificationEvents = List.of(
+                TRANSFERTASK_CREATED,
+                TRANSFERTASK_UPDATED,
+                TRANSFERTASK_FINISHED,
+                TRANSFERTASK_FAILED,
+                TRANSFERTASK_PAUSED_COMPLETED,
+                TRANSFERTASK_CANCELED_COMPLETED);
 
-			JsonObject body = msg.body();
-			String uuid = body.getString("uuid");
+        EventBus bus = vertx.eventBus();
 
-			NotificationMessageContext messageBodyContext = new NotificationMessageContext(
-					MessageType.TRANSFERTASK_CANCELED_COMPLETED, body.encode(), uuid);
-
-			NotificationMessageBody messageBody = new NotificationMessageBody(
-					uuid, body.getString("owner"), body.getString("tenant_id"),
-					messageBodyContext);
-
-			if (body.getString("event") == null)
-				body.put("event", body.getString("status"));
-
-            logger.info("{} notification event raised for {} {}: {}",
-                    body.getString("event"), // event that is sending this body
-                    body.getString("type"),  // message type
-                    body.getString("uuid"),
-                    body.encodePrettily());
-
-			// we publish all notifications to the same channel for consumers to subscribe to. Let them
-			// get the event type from the body of the message rather than the channel to reduce the
-			// complexity of their client apps and the documentation of our notification semantics.
-//			_doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
-			try {
-				notificationEventProcess(new JsonObject(messageBody.toJSON()));
-			} catch (JsonProcessingException e) {
-				logger.error("Failed to serialize notification for transfer task {} to legacy message format. {}",
-						body.getString("uuid"), e.getMessage());
-			}
-		});
-
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
-
-            JsonObject body = msg.body();
-            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_CANCELED_COMPLETED, body);
-            notificationEventProcess(notificationMessageBody);
-            logger.info("Transfer task {} completed.", body.getString("uuid"));
-
-			_doPublishEvent(MessageType.NOTIFICATION_CANCELED, body);
-		});
-
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_FINISHED, msg -> {
-			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
-
-            JsonObject body = msg.body();
-            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_FINISHED, body);
-            notificationEventProcess(notificationMessageBody);
-            logger.info("Transfer task {} completed.", body.getString("uuid"));
-
-			getVertx().eventBus().publish(MessageType.NOTIFICATION_COMPLETED, body);
-		});
-
-//		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CREATED, msg -> {
-//			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
-//
-//            JsonObject body = msg.body();
-//            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_CREATED, body);
-//            notificationEventProcess(notificationMessageBody);
-//
-//            logger.info("Transfer task {} created.", body.getString("uuid"));
-//            _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
-//        });
-
-
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
-
-            JsonObject body = msg.body();
-            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_PAUSED_COMPLETED, body);
-            notificationEventProcess(notificationMessageBody);
-            logger.info("Transfer task {} created.", body.getString("uuid"));
+        notificationEvents.stream().forEach(event -> {
+            bus.consumer(event, this::handleNotificationMessage);
         });
+    }
 
-//		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_ERROR, msg -> {
-//			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
-//
-//            JsonObject body = msg.body();
-//            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_ERROR, body);
-//            notificationEventProcess(notificationMessageBody);
-//            logger.info("Transfer task {} created.", body.getString("uuid"));
-//        });
+    /**
+     * Parses messages as they come in from the event bus, serializing to {@link JsonObject} and sending to the
+     * legacy message queue.
+     * @param msg the incoming message from the {@link EventBus}
+     */
+    protected void handleNotificationMessage(Message<JsonObject> msg) {
+        msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
 
-        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
-            msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
-
-            JsonObject body = msg.body();
-            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_PARENT_ERROR, body);
-            notificationEventProcess(notificationMessageBody);
-            logger.info("Transfer task {} created.", body.getString("uuid"));
-        });
+        JsonObject body = msg.body();
+        JsonObject notificationMessageBody = processForNotificationMessageBody(msg.address(), body);
+        sentToLegacyMessageQueue(notificationMessageBody);
     }
 
 
     /**
-     * Process message to {@link NotificationMessageBody} for compatibility with legacy notification queue
+     * Process the {@link JsonObject} we recieve from the {@link EventBus} to a {@link NotificationMessageBody} for \
+     * compatibility with our legacy message queue.
      *
      * @param messageType {@link MessageType} for the Transfer Task notification event
      * @param body        {@link JsonObject} of the Transfer Task
@@ -186,9 +118,12 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
      * @param body the message body to send
      * @return true if a message was written
      */
-    protected boolean notificationEventProcess(JsonObject body) {
+    protected boolean sentToLegacyMessageQueue(JsonObject body) {
         logger.info("Sending legacy notification message for transfer task {}", body.getString("uuid"));
         logger.debug("tenantId = {}", body.getString("tenant_id"));
+        org.iplantc.service.common.Settings.NOTIFICATION_QUEUE = org.iplantc.service.common.Settings.FILES_STAGING_QUEUE;
+        org.iplantc.service.common.Settings.NOTIFICATION_TOPIC = org.iplantc.service.common.Settings.FILES_STAGING_TOPIC;
+
         return NotificationManager.process(body.getString("uuid"), body.encode(), body.getString("owner")) > 0;
     }
 

@@ -49,9 +49,9 @@ class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
 		body.put("id", 1);
 
 		TransferTaskNotificationListener txfrTransferTaskNotificationListener = getMockNotificationListenerInstance(vertx);
-		when(txfrTransferTaskNotificationListener.notificationEventProcess(any())).thenReturn(true);
+		when(txfrTransferTaskNotificationListener.sentToLegacyMessageQueue(any())).thenReturn(true);
 
-		boolean result = txfrTransferTaskNotificationListener.notificationEventProcess(body);
+		boolean result = txfrTransferTaskNotificationListener.sentToLegacyMessageQueue(body);
 
 		assertTrue(result, "notificationEventProcess should return true when the notificationEventProcess returned");
 		ctx.completeNow();

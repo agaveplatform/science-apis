@@ -287,6 +287,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		executor.executeBlocking(promise -> {
 			TransferTask finishedTask = null;
 			try {
+
 				finishedTask = urlCopy.copy(transferTask);
 				_doPublishEvent(MessageType.TRANSFER_COMPLETED, finishedTask.toJson());
 				promise.complete();

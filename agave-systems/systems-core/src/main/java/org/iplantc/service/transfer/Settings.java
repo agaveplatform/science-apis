@@ -3,15 +3,10 @@
  */
 package org.iplantc.service.transfer;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
 import org.apache.log4j.Logger;
 import org.ietf.jgss.GSSCredential;
+
+import java.util.*;
 
 /**
  * @author dooley
@@ -23,7 +18,7 @@ public class Settings {
     
 	private static Properties					props			= new Properties();
 
-	private static Map<String, GSSCredential>	userProxies		= Collections
+	private static final Map<String, GSSCredential>	userProxies		= Collections
 																		.synchronizedMap(new HashMap<String, GSSCredential>());
 
 	/* Trusted user settings */
@@ -89,6 +84,9 @@ public class Settings {
 
 	public static boolean						ALLOW_RELAY_TRANSFERS;
 	public static int 							MAX_RELAY_TRANSFER_SIZE;
+
+	public static String						TRANSFER_NOTIFICATION_SUBJECT;
+	public static String						TRANSFER_NOTIFICATION_QUEUE;
 	
 	// Set the logging level for the Maverick SSH library.
 	// The acceptable values are ERROR, INFO, DEBUG.
@@ -114,9 +112,9 @@ public class Settings {
 			}
 		}
 		
-		API_VERSION = (String)props.getProperty("iplant.api.version");
+		API_VERSION = props.getProperty("iplant.api.version");
 		
-		SERVICE_VERSION = (String)props.getProperty("iplant.service.version");
+		SERVICE_VERSION = props.getProperty("iplant.service.version");
 		
 		IPLANT_MYPROXY_SERVER = (String) props.get("iplant.myproxy.server");
 
@@ -170,13 +168,13 @@ public class Settings {
 		
 		TRUSTED_CA_CERTS_DIRECTORY = (String) props.get("system.ca.certs.path");
 		
-		MAIL_SERVER = (String) props.getProperty("mail.smtps.host");
+		MAIL_SERVER = props.getProperty("mail.smtps.host");
 		
-		MAILSMTPSPROTOCOL = (String) props.getProperty("mail.smtps.auth");
+		MAILSMTPSPROTOCOL = props.getProperty("mail.smtps.auth");
 		
-		MAILLOGIN = (String) props.getProperty("mail.smtps.user");
+		MAILLOGIN = props.getProperty("mail.smtps.user");
 		
-		MAILPASSWORD = (String) props.getProperty("mail.smtps.passwd");
+		MAILPASSWORD = props.getProperty("mail.smtps.passwd");
 
 		try {SLAVE_MODE = Boolean.valueOf(props.getProperty("iplant.slave.mode", "false"));}
         catch (Exception e) {

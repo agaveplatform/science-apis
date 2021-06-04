@@ -45,12 +45,14 @@
 			<plugin>
 				<groupId>com.dkanejs.maven.plugins</groupId>
 				<artifactId>docker-compose-maven-plugin</artifactId>
+				<version>${docker-compose-maven-plugin.version}</version>
 			</plugin>
 
 			<!-- Performs a wait and rediness check for integration test container startup -->
 			<plugin>
 				<groupId>org.agaveplatform.ops</groupId>
 				<artifactId>await-maven-plugin</artifactId>
+				<version>${await-maven-plugin.version}</version>
 			</plugin>
 			<!-- ************************************ -->
 			<!-- *** WAR BUILDER ** -->
@@ -62,6 +64,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-war-plugin</artifactId>
+				<version>${maven-war-plugin.version}</version>
 				<executions>
 					<execution>
 						<id>prepare-war</id>

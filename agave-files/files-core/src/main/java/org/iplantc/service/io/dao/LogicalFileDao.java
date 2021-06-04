@@ -8,6 +8,7 @@ import org.hibernate.ObjectNotFoundException;
 import org.hibernate.Session;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.io.exceptions.LogicalFileException;
 import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
@@ -140,6 +141,37 @@ public class LogicalFileDao {
 		{
 			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
 		}  
+	}
+
+	public static LogicalFile findBySourceUrlAndTenant(String sUrl, String tenantId) throws LogicalFileException
+	{
+		if (!ServiceUtils.isValid(sUrl)) {
+			throw new HibernateException("Invalid url");
+		}
+
+		if (!ServiceUtils.isValid(tenantId)) {
+			throw new HibernateException("Invalid tenantId");
+		}
+
+		try
+		{
+			Session session = getSession();
+
+			LogicalFile file = (LogicalFile) session
+					.createSQLQuery("select * from logical_files where BINARY source = :url and tenant_id = :tenantId")
+					.addEntity(LogicalFile.class)
+					.setString("url", sUrl)
+					.setString("tenantId", tenantId)
+					.setMaxResults(1)
+					.uniqueResult();
+
+			session.flush();
+
+			return file;
+		}
+		catch (HibernateException ex) {
+			throw new LogicalFileException("Failed to lookup logical file by id and url", ex);
+		}
 	}
 	
 	public static LogicalFile findBySourceUrl(String sUrl) 

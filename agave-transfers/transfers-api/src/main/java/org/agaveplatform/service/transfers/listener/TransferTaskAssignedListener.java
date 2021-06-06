@@ -84,13 +84,8 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                             //   respective listeners in the same way.
                             body.put("event", this.getClass().getName());
                             body.put("type", getEventChannel());
-                            try {
-                                _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
-                            } catch (Exception e) {
-                                log.debug(e.getMessage());
-                            }
-                        } else {
-                            //error handled in processTransferTask
+
+                            _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body, null);
                         }
                     });
             });
@@ -211,19 +206,16 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
 
                     // forward copy request directly to protocol if the source/destination is the same
                     if (srcClient.equals(destClient)) {
-                        _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson());
-
-                    } else {
-
+                        _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson(), handler);
+                    }
+                    else {
                         // if the path is a file, then we can move it directly, so we raise an event telling the protocol
                         // listener to move the file item
                         if (srcFileInfo.isFile()) {
                             log.info("srcFileInfo is a file.");
                             // but first, we udpate the transfer task status to ASSIGNED
                             assignedTransferTask.setStatus(TransferStatusType.ASSIGNED);
-                            _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson());
-
-
+                            _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson(), handler);
                         }
                         // the path is a directory, so walk the first level of the directory, spawning new child transfer
                         // tasks for every file item found. folders will be put back on the created queue for further
@@ -244,23 +236,15 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                         assignedTransferTask.setStatus(TransferStatusType.COMPLETED);
                                         assignedTransferTask.setStartTime(Instant.now());
                                         assignedTransferTask.setEndTime(Instant.now());
-                                        try {
-                                            _doPublishEvent(TRANSFER_COMPLETED, assignedTransferTask.toJson());
-                                        } catch (Exception e) {
-                                            log.debug(e.getMessage());
-                                        }
-                                        handler.handle(Future.succeededFuture(true));
+
+                                        _doPublishEvent(TRANSFER_COMPLETED, assignedTransferTask.toJson(), handler);
                                     }
                                     // we couldn't update the transfer task value
                                     else {
                                         String message = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
                                                 uuid, updateResult.cause().getMessage());
                                         // write to error queue. we can retry
-                                        try {
-                                            doHandleError(updateResult.cause(), message, body, handler);
-                                        } catch (IOException | InterruptedException e) {
-                                            e.printStackTrace();
-                                        }
+                                        doHandleError(updateResult.cause(), message, body, handler);
                                     }
                                 });
                             }
@@ -314,12 +298,15 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                                     childResult.result().getString("uuid"),
                                                                     childSource,
                                                                     childDest);
-                                                            try {
-                                                                _doPublishEvent( childMessageType, childResult.result());
-                                                            } catch (Exception e) {
-                                                                log.debug(e.getMessage());
-                                                            }
-                                                            promise.complete();
+
+                                                            _doPublishEvent(childMessageType, childResult.result(), taResp -> {
+                                                                if (taResp.succeeded()) {
+                                                                    promise.complete();
+                                                                }
+                                                                else {
+                                                                    promise.fail(taResp.cause());
+                                                                }
+                                                            });
                                                         }
                                                         // we couldn't create a new task and none previously existed for this child, so we must
                                                         // fail the transfer for this transfertask. The decision about whether to delete the entire
@@ -333,22 +320,17 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
 
                                                             String message = String.format("Error creating new child file transfer task for %s: %s -> %s. %s",
                                                                     uuid, childSource, childDest, childResult.cause().getMessage());
-                                                            log.debug(message);
-                                                            try {
-                                                                doHandleFailure(childResult.cause(), message, body, null);
-                                                            } catch (IOException | InterruptedException e) {
-                                                                e.printStackTrace();
-                                                            }
 
-                                                            promise.fail(childResult.cause());
+                                                            doHandleFailure(childResult.cause(), message, body, taResp -> {
+                                                                promise.fail(childResult.cause());
+                                                            });
                                                         }
                                                     });
                                                 } else {
                                                     // interrupt happened while processing children. skip the rest.
                                                     // TODO: How do we know it wasn't a pause?
                                                     log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
-                                                    _doPublishEvent(TRANSFERTASK_CANCELED_ACK, body);
-
+                                                    _doPublishEvent(TRANSFERTASK_CANCELED_ACK, body, null);
                                                     // this will break the stream processing and exit the loop without completing the
                                                     // remaining RemoteFileItem in the listing.
                                                     ongoing.setFalse();
@@ -361,12 +343,9 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
 
                                                 String message = String.format("Failed processing child file transfer task for %s: %s -> %s. %s",
                                                         uuid, childSource, childDest, t.getMessage());
-                                                log.debug(message);
-                                                try {
-                                                    doHandleFailure(t, message, body, null);
-                                                } catch (IOException | InterruptedException e) {
-                                                    e.printStackTrace();
-                                                }
+
+                                                doHandleFailure(t, message, body, null);
+
                                                 promise.fail(t);
                                             }
 
@@ -395,12 +374,11 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                             else {
                                                 String message = String.format("Error updating status of parent transfer task %s to ASSIGNED. %s",
                                                         uuid, updateResult.cause().getMessage());
-                                                // write to error queue. we can retry
-                                                try {
-                                                    doHandleError(updateResult.cause(), message, body, handler);
-                                                } catch (IOException | InterruptedException e) {
-                                                    e.printStackTrace();
-                                                }
+                                                // write to error queue. we can retry.
+                                                // Changed this to false to indicating the assignment failed?
+                                                doHandleError(updateResult.cause(), message, body, dheResp -> {
+                                                    handler.handle(Future.succeededFuture(false));
+                                                });
                                             }
                                         });
                                     } else if (!ongoing.booleanValue()) {
@@ -419,8 +397,9 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             } else {
                 // task was interrupted, so don't attempt a retry
                 log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
-                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
-                handler.handle(Future.succeededFuture(false));
+                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body, tcaResp -> {
+                    handler.handle(Future.succeededFuture(false));
+                });
             }
             //}
         } catch (RemoteDataSyntaxException e) {
@@ -442,7 +421,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             } catch (Exception ignored) {
             }
         }
-        handler.handle(Future.succeededFuture(true));
+//        handler.handle(Future.succeededFuture(true));
     }
 
     public TransferTaskDatabaseService getDbService() {

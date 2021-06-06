@@ -7,6 +7,7 @@ import io.vertx.core.*;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -23,14 +24,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static io.restassured.RestAssured.given;
 
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers API integration tests")
-//@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-//@Disabled
 public class TransferApplicationIT extends BaseTestCase {
 
     private static final Logger log = LoggerFactory.getLogger(TransferApplicationTest.class);
@@ -38,18 +38,25 @@ public class TransferApplicationIT extends BaseTestCase {
     private static RequestSpecification requestSpecification;
 
     @Test
+    @Timeout(value=30, timeUnit= TimeUnit.SECONDS)
     @DisplayName("Create new transfer task")
     void create(Vertx vertx, VertxTestContext ctx) {
 
         TransferTask tt = _createTestTransferTask();
-        DeploymentOptions options = new DeploymentOptions().setConfig(config);
+        DeploymentOptions dbOptions = new DeploymentOptions().setConfig(config);
         Checkpoint dbDeploymentCheckpoint = ctx.checkpoint();
         Checkpoint apiDeploymentCheckpoint = ctx.checkpoint();
         Checkpoint requestCheckpoint = ctx.checkpoint();
 
-        vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, ctx.succeeding(dbId -> {
+        vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), dbOptions, ctx.succeeding(dbId -> {
             dbDeploymentCheckpoint.flag();
-//            TransferAPIVertical apiVert = new TransferAPIVertical(vertx);
+
+            // give the api longer to respond to requests since it has to orchestrate several service calls.
+            DeploymentOptions options = new DeploymentOptions()
+                    .setConfig(config)
+                    .setMaxWorkerExecuteTime(10)
+                    .setMaxWorkerExecuteTimeUnit(TimeUnit.SECONDS);
+
             vertx.deployVerticle(TransferAPIVertical.class.getName(), options, ctx.succeeding(apiId -> {
                 apiDeploymentCheckpoint.flag();
 

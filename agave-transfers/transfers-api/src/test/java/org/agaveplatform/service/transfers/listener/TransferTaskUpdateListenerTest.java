@@ -56,7 +56,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
      * @param vertx the test vertx instance
      * @return a mocked of {@link TransferTaskUpdateListener}
      */
-    protected TransferTaskUpdateListener getMockTransferUpdateListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
+    protected TransferTaskUpdateListener getMockTransferUpdateListenerInstance(Vertx vertx) throws IOException, InterruptedException, MessagingException {
         TransferTaskUpdateListener listener = mock(TransferTaskUpdateListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFERTASK_UPDATED);
         when(listener.getVertx()).thenReturn(vertx);
@@ -64,7 +64,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
         doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
         doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
-        doNothing().when(listener)._doPublishEvent(any(), any());
+        doNothing().when(listener)._doPublishEvent(any(), any(), any());
         //doNothing().when(listener)._doPublishEvent( any(), any());
         doCallRealMethod().when(listener).processEvent(any(JsonObject.class), any());
         RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
@@ -75,7 +75,8 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         //doNothing().when(listener).setConnection();
         return listener;
     }
-    NatsJetstreamMessageClient getMockNats() throws MessagingException {
+
+    NatsJetstreamMessageClient getMockNats() throws IOException, MessagingException {
         NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
         doNothing().when(natsClient).push(any(), any(), any());
         return getMockNats();

@@ -40,15 +40,15 @@ import static org.mockito.Mockito.*;
 //@Disabled
 class TransferTaskRetryListenerTest extends BaseTestCase {
 
-    protected TransferTaskRetryListener getMockTransferRetryListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
+    protected TransferTaskRetryListener getMockTransferRetryListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
         TransferTaskRetryListener listener = mock(TransferTaskRetryListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFER_RETRY);
         when(listener.getVertx()).thenReturn(vertx);
         when(listener.taskIsNotInterrupted(any())).thenReturn(true);
         when(listener.getRetryRequestManager()).thenCallRealMethod();
         when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
-        doNothing().when(listener)._doPublishEvent(any(), any());
-        //doNothing().when(listener)._doPublishEvent(any(), any());
+        doNothing().when(listener)._doPublishEvent(any(), any(), any());
+        //doNothing().when(listener)._doPublishEvent(any(), any(), any());
         doCallRealMethod().when(listener).processRetryTransferTask(any(), any());
         doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
         doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
@@ -73,7 +73,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
     @Test
     @DisplayName("Process TransferTaskPublishesProtocolEvent")
     @Disabled
-    public void processTransferTaskPublishesProtocolEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+    public void processTransferTaskPublishesProtocolEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
         //JsonObject body = new JsonObject();
         TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 

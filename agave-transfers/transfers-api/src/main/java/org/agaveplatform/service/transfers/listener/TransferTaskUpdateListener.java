@@ -1,26 +1,19 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Options;
-import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.messaging.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -128,12 +121,12 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
         String parentTaskId = body.getString("parentTask");
         logger.debug("Updating status of transfer task {} to {}", uuid, status);
 
-        try {
-            logger.trace("handling updating in-flight transfer progress...");
-            handler.handle(Future.succeededFuture(true));
 
-            //TODO: cache transfer progress instead of directly updating the db for performance
-            // writing update to db may occur after transfer is completed because of slow speeds
+        logger.trace("handling updating in-flight transfer progress...");
+        handler.handle(Future.succeededFuture(true));
+
+        //TODO: cache transfer progress instead of directly updating the db for performance
+        // writing update to db may occur after transfer is completed because of slow speeds
 //            getDbService().updateStatus(tenantId, uuid, status, reply -> {
 //                if (reply.succeeded()) {
 //                    logger.debug("Transfer task {} status updated to {}", uuid, status);
@@ -144,15 +137,6 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
 //                    doHandleError(reply.cause(), msg, body, handler);
 //                }
 //            });
-        } catch (Exception ex) {
-            try {
-                doHandleError(ex, ex.getMessage(), body, handler);
-            } catch (IOException e) {
-                logger.debug(e.getMessage());
-            } catch (InterruptedException e) {
-                logger.debug(e.getMessage());
-            }
-        }
     }
 
     public TransferTaskDatabaseService getDbService() {

@@ -1,16 +1,12 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Options;
-import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -19,8 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -133,6 +127,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
             //this is the root task - don't cancel yet
             logger.debug("Do not timeout the root task, individual transfers shouldn't take as long but the root task " +
                     "has to wait for all children to finish which may take longer");
+            handler.handle(Future.succeededFuture(true));
         } else {
             getDbService().updateById(id, CANCELED_ERROR.name(), updateStatus -> {
                 logger.trace("Got into getDBService.updateStatus(complete) ");
@@ -140,32 +135,21 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
                     TransferTask transferTask = new TransferTask(updateStatus.result());
                     logger.info("[{}] Transfer task {} updated to completed.", transferTask.getTenantId(), transferTask.getUuid());
                     //parentList.remove(uuid);
-                    try {
-                        _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
-                        //promise.handle(Future.succeededFuture(Boolean.TRUE));
-                    } catch (Exception e) {
-                        logger.debug(e.getMessage());
-                    }
+                    _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result(), handler);
                 } else {
                     logger.error("[{}] Task completed, but unable to update status: {}",
                             id, updateStatus.cause());
-//                            logger.error("[{}] Task {} completed, but unable to update status: {}",
-//                                    tenantId, uuid, reply.cause());
                     JsonObject json = new JsonObject()
                             .put("cause", updateStatus.cause().getClass().getName())
                             .put("message", updateStatus.cause().getMessage())
                             .mergeIn(body);
-                    try {
-                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                        //promise.handle(Future.failedFuture(updateStatus.cause()));
-                    } catch (Exception e) {
-                        logger.debug(e.getMessage());
-                    }
+                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+                        // TODO: why is this a positive response?
+                        handler.handle(Future.succeededFuture(true));
+                    });
                 }
             });
         }
-
-        handler.handle(Future.succeededFuture(true));
     }
 
     public TransferTaskDatabaseService getDbService() {

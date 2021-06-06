@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.protocol;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
@@ -23,6 +24,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.ClosedByInterruptException;
 import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -171,8 +173,8 @@ public class URLCopyIT extends BaseTestCase {
     }
 
     @Test
+    @Timeout(value=30, timeUnit=TimeUnit.SECONDS)
     @DisplayName("Test URLCopy relayTransfer")
-//    @Disabled
     public void testUnaryCopy(Vertx vertx, VertxTestContext ctx) {
         try {
             allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
@@ -299,6 +301,7 @@ public class URLCopyIT extends BaseTestCase {
     }
 
     @Test
+    @Timeout(value=30, timeUnit=TimeUnit.SECONDS)
     @DisplayName("Test URLCopy cancel during read in Unary/RelayTransfer")
     public void testCancelReadUnaryCopy(Vertx vertx, VertxTestContext ctx) {
         try {
@@ -384,6 +387,7 @@ public class URLCopyIT extends BaseTestCase {
     }
 
     @Test
+    @Timeout(value=30, timeUnit=TimeUnit.SECONDS)
     @DisplayName("Test URLCopy cancel during write in Unary/RelayTransfer")
     public void testCancelWriteUnaryCopy(Vertx vertx, VertxTestContext ctx) {
         try {
@@ -468,7 +472,6 @@ public class URLCopyIT extends BaseTestCase {
 
     @Test
     @DisplayName("Test URLCopy streamingTransfer")
-//    @Disabled
     public void testStreamingCopy(Vertx vertx, VertxTestContext ctx) {
         try {
             allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;

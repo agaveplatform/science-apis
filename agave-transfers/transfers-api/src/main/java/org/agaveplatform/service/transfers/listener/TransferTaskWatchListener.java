@@ -110,7 +110,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 
 	/**
 	 * Handles generation of health check events for each active transfer task every 10 seconds.
-	 * @return future with boolean result of the batch scheduling operation
+	 * Result to handler is boolean result of the batch scheduling operation
 	 */
 	public void processEvent(Handler<AsyncResult<Boolean>> handler) {
 		log.trace("Got into TransferTaskWatchListener.processEvent ");

@@ -1,14 +1,10 @@
 package org.agaveplatform.service.transfers.protocol;
 
 import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Options;
-import io.nats.client.Subscription;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractNatsListener;
@@ -34,8 +30,6 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.TimeZone;
 import java.util.concurrent.TimeoutException;
 
@@ -248,138 +242,112 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			// over in the coming week to handle current transfertask objects so we
 			// don't need this shim
 			org.iplantc.service.transfer.model.TransferTask legacyTransferTask;
-			boolean makeRealCopy = true;
-			if (makeRealCopy) {
 
-				// pull the system out of the url. system id is the hostname in an agave uri
-				log.debug("Creating source remote data client to {} for transfer task {}", srcUri.getHost(), tt.getUuid());
-				if (makeRealCopy) srcClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), srcUri);
+			// pull the system out of the url. system id is the hostname in an agave uri
+			log.debug("Creating source remote data client to {} for transfer task {}", srcUri.getHost(), tt.getUuid());
+			srcClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), srcUri);
 
-				log.debug("Creating dest remote data client to {} for transfer task {}", destUri.getHost(), tt.getUuid());
-				// pull the dest system out of the url. system id is the hostname in an agave uri
-				if (makeRealCopy) destClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), destUri);
+			log.debug("Creating dest remote data client to {} for transfer task {}", destUri.getHost(), tt.getUuid());
+			// pull the dest system out of the url. system id is the hostname in an agave uri
+			destClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), destUri);
 
-                WorkerExecutor executor = getVertx().createSharedWorkerExecutor("check-cancel-child-all-task-worker-pool");
-                RemoteDataClient finalSrcClient = srcClient;
-                RemoteDataClient finalDestClient = destClient;
+			WorkerExecutor executor = getVertx().createSharedWorkerExecutor("check-cancel-child-all-task-worker-pool");
+			RemoteDataClient finalSrcClient = srcClient;
+			RemoteDataClient finalDestClient = destClient;
 
-                executor.executeBlocking(promise -> {
-                	String taskId = (tt.getRootTaskId() == null) ? tt.getUuid() : tt.getRootTaskId();
-                        getDbService().getByUuid(tt.getTenantId(), taskId, checkCancelled -> {
-                            if (checkCancelled.succeeded()){
-                                TransferTask targetTransferTask = new TransferTask(checkCancelled.result());
-                                if (targetTransferTask.getStatus().isActive()){
-                                    TransferTask resultingTransferTask = new TransferTask();
-                                    try {
-                                        log.info("Initiating worker transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
+			executor.executeBlocking(promise -> {
+				String taskId = (tt.getRootTaskId() == null) ? tt.getUuid() : tt.getRootTaskId();
+					getDbService().getByUuid(tt.getTenantId(), taskId, checkCancelled -> {
+						if (checkCancelled.succeeded()){
+							TransferTask targetTransferTask = new TransferTask(checkCancelled.result());
+							if (targetTransferTask.getStatus().isActive()){
+								TransferTask resultingTransferTask = new TransferTask();
+								try {
+									log.info("Initiating worker transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 
-                                        resultingTransferTask = processCopyRequest(finalSrcClient, finalDestClient, tt);
-                                        handler.handle(Future.succeededFuture(result));
-                                        promise.complete();
-                                    } catch (Exception ex) {
-										log.error("Failed to copy Transfer Task {}", tt.toJSON() );
-										JsonObject json = new JsonObject()
-												.put("cause", ex.getClass().getName())
-												.put("message", ex.getMessage())
-												.mergeIn(body);
-										try {
-											_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-										} catch (Exception e) {
-											log.debug(e.getMessage());
-										}
+									resultingTransferTask = processCopyRequest(finalSrcClient, finalDestClient, tt);
+									handler.handle(Future.succeededFuture(result));
+									promise.complete();
+								} catch (Exception ex) {
+									log.error("Failed to copy Transfer Task {}", tt.toJSON() );
+									JsonObject json = new JsonObject()
+											.put("cause", ex.getClass().getName())
+											.put("message", ex.getMessage())
+											.mergeIn(body);
+									_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
 										handler.handle(Future.failedFuture(ex.getMessage()));
 										promise.fail(ex.getMessage());
-									}
-                                } else {
-                                    log.info("Worker Transfer task {} was interrupted", tt.getUuid());
-                                    try {
-										_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
-									} catch (Exception e) {
-										log.debug(e.getMessage());
-									}
-                                    handler.handle(Future.succeededFuture(false));
-                                    promise.complete();
-                                }
-                            } else {
-								log.error("Failed to get status of parent Transfer Task {}, {}", tt.getParentTaskId(), tt.toJSON());
-								JsonObject json = new JsonObject()
-										.put("cause", checkCancelled.cause())
-										.put("message", checkCancelled.cause().getMessage())
-										.mergeIn(body);
-								try {
-									_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-								} catch (Exception e) {
-									log.debug(e.getMessage());
+									});
 								}
-                                handler.handle(Future.failedFuture(checkCancelled.cause()));
-                                promise.fail("Failed to retrieve status....");
-                            }
-                        });
-                    }, res -> {
+							} else {
+								log.info("Worker Transfer task {} was interrupted", tt.getUuid());
+								_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson(), errorResp -> {
+									handler.handle(Future.succeededFuture(false));
+									promise.complete();
+								});
+							}
+						} else {
+							log.error("Failed to get status of parent Transfer Task {}, {}", tt.getParentTaskId(), tt.toJSON());
+							JsonObject json = new JsonObject()
+									.put("cause", checkCancelled.cause())
+									.put("message", checkCancelled.cause().getMessage())
+									.mergeIn(body);
+
+							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+								handler.handle(Future.failedFuture(checkCancelled.cause()));
+								promise.fail("Failed to retrieve status....");
+							});
+						}
 					});
+				}, res -> {
+				});
 
-			} else {
-				log.debug("Initiating fake transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
-				log.debug("Completed fake transfer of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
-
-//				_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
-				handler.handle(Future.succeededFuture(true));
-			}
 		} catch (RemoteDataException ex){
 			log.error("RemoteDataException occured for TransferAllVerticle {}: {}", body.getString("uuid"), ex.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", ex.getClass().getName())
 					.put("message", ex.getMessage())
 					.mergeIn(body);
-			try {
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			} catch (Exception e) {
-				log.debug(e.getMessage());
-			}
-			handler.handle(Future.failedFuture(ex));
 
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+				handler.handle(Future.failedFuture(ex));
+			});
 		} catch (RemoteCredentialException ex){
 			log.error("RemoteCredentialException occured for TransferAllVerticle {}: {}", body.getString("uuid"), ex.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", ex.getClass().getName())
 					.put("message", ex.getMessage())
 					.mergeIn(body);
-			try {
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			} catch (Exception e) {
-				log.debug(e.getMessage());
-			}
-			handler.handle(Future.failedFuture(ex));
+
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+				handler.handle(Future.failedFuture(ex));
+			});
 		} catch (IOException ex){
 			log.error("IOException occured for TransferAllVerticle {}: {}", body.getString("uuid"), ex.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", ex.getClass().getName())
 					.put("message", ex.getMessage())
 					.mergeIn(body);
-			try {
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			} catch (Exception e) {
-				log.debug(e.getMessage());
-			}
-			handler.handle(Future.failedFuture(ex));
+
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+				handler.handle(Future.failedFuture(ex));
+			});
 		} catch (Exception ex){
 			log.error("Unexpected Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), ex.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", ex.getClass().getName())
 					.put("message", ex.getMessage())
 					.mergeIn(body);
-			try {
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			} catch (Exception e) {
-				log.debug(e.getMessage());
-			}
-			handler.handle(Future.failedFuture(ex));
+
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+				handler.handle(Future.failedFuture(ex));
+			});
 		}
 	}
 
 	protected TransferTask processCopyRequest(RemoteDataClient srcClient, RemoteDataClient destClient, TransferTask transferTask)
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException, InterruptedException {
-		log.debug("Got into TransferAllProtocolVertical.processCopyRequest ");
+		log.trace("Got into TransferAllProtocolVertical.processCopyRequest ");
 
 		log.trace("Got up to the urlCopy");
 
@@ -388,30 +356,28 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 		//   just run the transfer in an observable and interrupt it via a timer task started by vertx.
 		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
 
-		log.debug("Calling urlCopy.copy");
+		log.trace("Calling urlCopy.copy");
 		TransferTask updatedTransferTask = null;
 
 		WorkerExecutor executor = getVertx().createSharedWorkerExecutor("child-all-task-worker-pool");
 		executor.executeBlocking(promise -> {
-			TransferTask finishedTask = null;
 			try {
-				finishedTask = urlCopy.copy(transferTask);
-				_doPublishEvent(MessageType.TRANSFER_COMPLETED, finishedTask.toJson());
-				promise.complete();
-				log.info("Completed copy of {} to {} for transfer task {} with status {}", finishedTask.getSource(),
-						finishedTask.getDest(), finishedTask.getUuid(), finishedTask);
+				final TransferTask finishedTask = urlCopy.copy(transferTask);
+				_doPublishEvent(MessageType.TRANSFER_COMPLETED, finishedTask.toJson(), completedResp -> {
+					promise.complete();
+					log.info("Completed copy of {} to {} for transfer task {} with status {}", finishedTask.getSource(),
+							finishedTask.getDest(), finishedTask.getUuid(), finishedTask);
+				});
 			} catch (Exception e) {
 				log.error("Failed to copy Transfer Task {}, {}", transferTask.getUuid(), transferTask.toJSON() );
 				JsonObject json = new JsonObject()
 						.put("cause", e.getClass().getName())
 						.put("message", e.getMessage())
 						.mergeIn(transferTask.toJson());
-				try {
-					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-				} catch (Exception ex) {
-					log.debug(ex.getMessage());
-				}
-				promise.fail(e.getMessage());
+
+				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+					promise.fail(e.getMessage());
+				});
 			}
 		}, res -> {
 		});

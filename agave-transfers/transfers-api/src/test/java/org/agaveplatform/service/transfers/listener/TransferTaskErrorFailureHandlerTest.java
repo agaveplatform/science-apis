@@ -43,20 +43,20 @@ import static org.mockito.Mockito.*;
 class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 //	private static final Logger log = LoggerFactory.getLogger(TransferFailureHandlerTest.class);
 
-	protected TransferTaskErrorFailureHandler getMockTransferFailureHandlerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
+	protected TransferTaskErrorFailureHandler getMockTransferFailureHandlerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		TransferTaskErrorFailureHandler listener = mock(TransferTaskErrorFailureHandler.class );
 		when(listener.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
 		when(listener.getVertx()).thenReturn(vertx);
 		doCallRealMethod().when(listener).processFailure(any(JsonObject.class), any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		doCallRealMethod().when(listener).processBody(any(), any());
 		return listener;
 	}
-	NatsJetstreamMessageClient getMockNats() throws MessagingException {
+	NatsJetstreamMessageClient getMockNats() throws MessagingException, IOException {
 		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
 		doNothing().when(natsClient).push(any(), any(), any());
 		return getMockNats();
@@ -69,7 +69,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferFailureHandlerTest - testProcessFailure returns true on successful update")
-	void testProcessFailure(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+	void testProcessFailure(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setId(2L);
 
@@ -117,7 +117,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferFailureHandlerTest - testProcessFailure returns true on successful update")
-	void testProcessFailureRecordsAndReturnsDBExceptions(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+	void testProcessFailureRecordsAndReturnsDBExceptions(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setId(2L);
 
@@ -164,7 +164,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorFailureHandler.processBody partial Transfer Task should return Transfer Task")
-	protected void processBodyWithPartialTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+	protected void processBodyWithPartialTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -214,7 +214,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorFailureHandler.processBody Transfer Task should return Transfer Task")
-	protected void processBodyWithTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+	protected void processBodyWithTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();

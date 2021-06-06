@@ -1,15 +1,11 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Options;
-import io.nats.client.Subscription;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.iplantc.service.common.messaging.Message;
@@ -17,8 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -125,12 +119,7 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 						if (updateStatus.succeeded()) {
 							logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);
 							//parentList.remove(uuid);
-							try {
-								_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
-								promise.handle(Future.succeededFuture(Boolean.TRUE));
-							} catch (Exception e) {
-								logger.debug(e.getMessage());
-							}
+							_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result(), promise);
 						} else {
 							logger.error("[{}] Task {} completed, but unable to update status: {}",
 									tenantId, uuid, reply.cause());
@@ -138,12 +127,9 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 									.put("cause", updateStatus.cause().getClass().getName())
 									.put("message", updateStatus.cause().getMessage())
 									.mergeIn(body);
-							try {
-								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
 								promise.handle(Future.failedFuture(updateStatus.cause()));
-							} catch (Exception e) {
-								logger.debug(e.getMessage());
-							}
+							});
 						}
 					});
 				} else {
@@ -162,16 +148,9 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 									.put("cause", updateStatus.cause().getClass().getName())
 									.put("message", updateStatus.cause().getMessage())
 									.mergeIn(body);
-							try {
-								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-								//promise.handle(Future.failedFuture(updateStatus.cause()));
-							} catch (Exception e) {
-								logger.debug(e.getMessage());
-							}
+							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, promise);
 						}
 					});
-
-					promise.handle(Future.succeededFuture(Boolean.TRUE));
 				}
 			} else {
 				logger.error("[{}] Failed to check child status of transfer task {}. Task remains active: {}",
@@ -180,12 +159,10 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 						.put("cause", reply.cause().getClass().getName())
 						.put("message", reply.cause().getMessage())
 						.mergeIn(body);
-				try {
-					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+
+				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
 					promise.handle(Future.failedFuture(reply.cause()));
-				} catch (Exception e) {
-					logger.debug(e.getMessage());
-				}
+				});
 			}
 		});
 

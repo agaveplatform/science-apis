@@ -1,13 +1,9 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Options;
-import io.nats.client.Subscription;
 import io.vertx.core.*;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
@@ -19,8 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -143,12 +137,10 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                             .put("cause", TransferException.class.getName())
                             .put("message", "Cannot cancel non-root transfer tasks.")
                             .mergeIn(body);
-                    try {
-                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                    } catch (Exception e) {
-                        logger.debug(e.getMessage());
-                    }
-                    resultHandler.handle(Future.succeededFuture(false));
+
+                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, resp -> {
+                        resultHandler.handle(Future.succeededFuture(false));
+                    });
                 } else if (targetTransferTask.getStatus().isActive()) {
                     // push the event transfer task onto the queue. this will cause all listening verticals
                     // actively processing any of its children to cancel their existing work and ack.
@@ -169,13 +161,8 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                             String msg = String.format("Unable to update the status of transfer task %s to %s prior " +
                                             "to sending %s event. No sync event will be sent.",
                                             uuid, CANCELING_WAITING.name(), TRANSFERTASK_CANCELED_SYNC);
-                            try {
-                                doHandleError(updateReply.cause(), msg, body, resultHandler);
-                            } catch (IOException e) {
-                                logger.debug(e.getMessage());
-                            } catch (InterruptedException e) {
-                                logger.debug(e.getMessage());
-                            }
+
+                            doHandleError(updateReply.cause(), msg, body, resultHandler);
                         }
                     });
                 } else {
@@ -190,14 +177,8 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
             } else {
                 // failure
                 String msg = "Unable to verify the current status of transfer task " + uuid + ". " + getByIdReply.cause();
-                logger.debug(msg);
-                try {
-                    doHandleError(getByIdReply.cause(), msg, body, resultHandler);
-                } catch (IOException e) {
-                    logger.debug(e.getMessage());
-                } catch (InterruptedException e) {
-                    logger.debug(e.getMessage());
-                }
+
+                doHandleError(getByIdReply.cause(), msg, body, resultHandler);
             }
         });
     }
@@ -238,41 +219,35 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
 
                         // this task and all its children are done, so we can send a complete event
                         // to safely clear out the uuid from all listener verticals' caches
-                        try {
-                            _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_COMPLETED, body);
-                        } catch (Exception e) {
-                            logger.debug(e.getMessage());
-                        }
-                        // we can now also check the parent, if present, for completion of its tree.
-                        // if the parent is empty, the root will be as well. For children of the root
-                        // transfer task, the root == parent
-                        if (StringUtils.isNotEmpty(parentTaskId)) {
-                            logger.debug("Checking parent task {} for completed transfer task {}.", parentTaskId, uuid);
-                            processParentAck(tenantId, parentTaskId, processParentResp -> {
-                                if (processParentResp.succeeded()) {
-                                    logger.trace("Completed parent check for parent transfer task {} after cancel " +
-                                            "ack of transfer task {}.", parentTaskId, uuid);
-                                    resultHandler.handle(Future.succeededFuture(processParentResp.result()));
-                                } else {
-                                    String msg = String.format("Unable to process parent cancel ack for transfer task " +
-                                            "%s after completing the cancel ack for child task %s: %s",
-                                            parentTaskId, uuid, processParentResp.cause().getMessage());
-                                    JsonObject json = new JsonObject()
-                                            .put("cause", processParentResp.cause().getClass().getName())
-                                            .put("message", msg)
-                                            .mergeIn(body);
-                                    try {
-                                        _doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
-                                    } catch (Exception e) {
-                                        logger.debug(e.getMessage());
+                        _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_COMPLETED, body, cancelCompleteResp -> {
+                            // we can now also check the parent, if present, for completion of its tree.
+                            // if the parent is empty, the root will be as well. For children of the root
+                            // transfer task, the root == parent
+                            if (StringUtils.isNotEmpty(parentTaskId)) {
+                                logger.debug("Checking parent task {} for completed transfer task {}.", parentTaskId, uuid);
+                                processParentAck(tenantId, parentTaskId, processParentResp -> {
+                                    if (processParentResp.succeeded()) {
+                                        logger.trace("Completed parent check for parent transfer task {} after cancel " +
+                                                "ack of transfer task {}.", parentTaskId, uuid);
+                                        resultHandler.handle(Future.succeededFuture(processParentResp.result()));
+                                    } else {
+                                        String msg = String.format("Unable to process parent cancel ack for transfer task " +
+                                                        "%s after completing the cancel ack for child task %s: %s",
+                                                parentTaskId, uuid, processParentResp.cause().getMessage());
+                                        JsonObject json = new JsonObject()
+                                                .put("cause", processParentResp.cause().getClass().getName())
+                                                .put("message", msg)
+                                                .mergeIn(body);
+                                        _doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json, parentErrResp -> {
+                                            resultHandler.handle(Future.succeededFuture(false));
+                                        });
                                     }
-                                    resultHandler.handle(Future.succeededFuture(false));
-                                }
-                            });
-                        } else {
-                            logger.info("Skipping parent proccess complete for transfer task {}", uuid);
-                            resultHandler.handle(Future.succeededFuture(true));
-                        }
+                                });
+                            } else {
+                                logger.info("Skipping parent proccess complete for transfer task {}", uuid);
+                                resultHandler.handle(Future.succeededFuture(true));
+                            }
+                        });
                     } else {
                         // update failed on current task
                         String msg = String.format("Unable to update the status of transfer task %s to cancelled. %s",
@@ -282,12 +257,10 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                                 .put("cause", setTransferTaskCanceledIfNotCompletedResult.cause().getClass().getName())
                                 .put("message", msg)
                                 .mergeIn(body);
-                        try {
-                            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                        } catch (Exception e) {
-                            logger.debug(e.getMessage());
-                        }
-                        resultHandler.handle(Future.succeededFuture(false));
+
+                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+                            resultHandler.handle(Future.succeededFuture(false));
+                        });
                     }
                 });
             } else {
@@ -299,12 +272,10 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                         .put("cause", allChildrenCancelledOrCompletedResp.cause().getClass().getName())
                         .put("message", msg)
                         .mergeIn(body);
-                try {
-                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                } catch (Exception e) {
-                    logger.debug(e.getMessage());
-                }
-                resultHandler.handle(Future.succeededFuture(false));
+
+                _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+                    resultHandler.handle(Future.succeededFuture(false));
+                });
             }
         });
     }
@@ -336,13 +307,9 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                             if (!parentChildCancelledOrCompleteResult.result()) {
                                 resultHandler.handle(Future.succeededFuture(false));
                             } else {
-                                // parent has children, but all are now cancelled or completed, so send the parent ack
-                                try {
-                                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, parentTask.toJson());
-                                } catch (Exception e) {
-                                    logger.debug(e.getMessage());
-                                }
-                                resultHandler.handle(Future.succeededFuture(true));
+                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, parentTask.toJson(), ackResp -> {
+                                    resultHandler.handle(Future.succeededFuture(true));
+                                });
                             }
                         } else {
                             // failed to query children statuses
@@ -351,12 +318,9 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                     });
                 } else {
                     // the parent is not active. forward the ack anyway, just to ensure all ancestors get the message
-                    try {
-                        _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, parentTask.toJson());
-                    } catch (Exception e) {
-                        logger.debug(e.getMessage());
-                    }
-                    resultHandler.handle(Future.succeededFuture(false));
+                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, parentTask.toJson(), ackResp -> {
+                        resultHandler.handle(Future.succeededFuture(false));
+                    });
                 }
             } else {
                 resultHandler.handle(Future.failedFuture(ttResult.cause()));
@@ -396,20 +360,15 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                             if (isAllChildrenCancelledOrCompletedResult.result()) {
                                 logger.debug("All child tasks for parent transfer task {} are paused, cancelled or completed. " +
                                 		"A transfer.paused event will be created for this task.", parentTaskId);
-                                // call to our publishing helper for easier testing.
-                                try {
-                                    _doPublishEvent(TRANSFERTASK_CANCELED, getTaskById.result());
-                                } catch (Exception e) {
-                                    logger.debug(e.getMessage());
-                                }
-                            } else {
-                                //logger.debug("Parent transfer task {} has active children. " +
-                                //		"Skipping further processing ", parentTaskId);
-                                // parent has active children. let it run
-                            }
+                                _doPublishEvent(TRANSFERTASK_CANCELED, getTaskById.result(), cancelResp -> {
+                                    // return true indicating the parent event was processed
+                                    resultHandler.handle(isAllChildrenCancelledOrCompletedResult);
+                                });
 
-                            // return true indicating the parent event was processed
-                            resultHandler.handle(isAllChildrenCancelledOrCompletedResult);
+                            } else {
+                                // return true indicating the parent event was processed
+                                resultHandler.handle(isAllChildrenCancelledOrCompletedResult);
+                            }
                         } else {
                             //logger.debug("Failed to look up children for parent transfer task {}. " +
                             //		"Skipping further processing ", parentTaskId);

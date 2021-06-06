@@ -1,6 +1,5 @@
 package org.agaveplatform.service.transfers.listener;
 
-import com.github.slugify.Slugify;
 import io.nats.client.Connection;
 import io.nats.client.Nats;
 import io.nats.client.Options;
@@ -58,7 +57,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     }
 
     public String getConnection(){
-        return this.CONNECTION;
+        return CONNECTION;
     }
     @Override
     public String getDefaultEventChannel() {
@@ -98,15 +97,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
             this.messageClient = new NatsJetstreamMessageClient(
                     config().getString(TransferTaskConfigProperties.NATS_URL, CONNECTION),
                     getStreamName(),
-                    this.getConsumerName());
-
-            //
-            // we need to check if the client already exists in the NatsJetstreamClient map if it does not exist then we need to put it into the map
-            //
-        //}else {
-            //if (this.messageClient.getConsumerName() = createConsumerName(messageType, this.getClass().getSimpleName())){
-
-         //   }
+                    this.getClass().getSimpleName());
         }
         return this.messageClient;
     }
@@ -115,17 +106,16 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * Creates a subject using the context of the event being sent. All values in this subject should be concrete
      * when pushing a message. When subscribing, they should leverage wildcards to the extent that a verticle serves
      * more than one tenant, owner, etc.
-     * @param agaveResourceType the type of agave resource for which this message is being created. ie. {@link UUIDType}
      * @param tenantId the id of the tenant
      * @param owner the subject to whom this message is attributed
      * @param sourceSystemId the id of the source system of the transfer event. TODO: remove this and disambiguate the system id in message subjects
      * @param eventName the event being thrown.
      * @return the derived subject with built in routing for downstream consumers.
      */
-    public String createPushMessageSubject(String agaveResourceType, String tenantId, String owner, String sourceSystemId, String eventName){
+    public String createPushMessageSubject(String tenantId, String owner, String sourceSystemId, String eventName){
         String consumerName = "";
         try {
-            consumerName = getStreamName() + "." + agaveResourceType + "." + tenantId + "." + owner + "." + sourceSystemId + "." + eventName;
+            consumerName = UUIDType.TRANSFER.name().toLowerCase() + "." + tenantId + "." + owner + "." + sourceSystemId + "." + eventName;
             consumerName = consumerName.replaceAll("\\.{2,}", ".");
             consumerName = StringUtils.stripEnd(consumerName, ".");
         } catch (Exception e) {
@@ -134,17 +124,18 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         return consumerName;
     }
 
-    public String createConsumerName(String eventName, String callingClass){
-        String consumerName = callingClass +"-"+eventName;
+    public String createConsumerName(String eventName, Class clazz){
+        String consumerName = clazz.getSimpleName() + "-" + eventName;
         consumerName = Slug.toSlug(consumerName);
         this.consumerName = consumerName;
         return consumerName;
     }
+
     public void setConsumerName(String consumerName){
         this.consumerName = consumerName;
     }
-    public String getConsumerName(){
 
+    public String getConsumerName(){
         return this.consumerName;
     }
     /**
@@ -193,7 +184,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @throws IOException if unable to connect to the NATS server
      */
     protected void subscribeToSubjectGroup(String messageType, Handler<Message> callback) throws IOException, InterruptedException, MessagingException {
-        String conName = createConsumerName(messageType, this.getClass().getSimpleName());  // returns "transfers.*.*.*.'EVENT_CHANEL'"
+        String conName = createConsumerName(messageType, this.getClass());  // returns "transfers.*.*.*.'EVENT_CHANEL'"
         String subject = createSubscriptionSubject("transfer","","","", messageType);
         String groupName = Slug.toSlug(this.getClass().getSimpleName() + "-" + messageType); // returns "transfertaskcreatedlistener-transfertask_created"
 
@@ -244,18 +235,14 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @param originalMessageBody the body of the original message that caused that failed
      * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
      */
-    protected void doHandleFailure(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
+    @Override
+    protected void doHandleFailure(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
         JsonObject json = new JsonObject()
                 .put("cause", throwable.getClass().getName())
                 .put("message", failureMessage)
                 .mergeIn(originalMessageBody);
 
-        _doPublishEvent(TRANSFER_FAILED, json);
-
-        // propagate the exception back to the calling method
-        if (handler != null) {
-            handler.handle(Future.failedFuture(throwable));
-        }
+        _doPublishEvent(TRANSFER_FAILED, json, handler);
     }
 
     /**
@@ -266,18 +253,14 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @param originalMessageBody the body of the original message that caused that failed
      * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
      */
-    protected void doHandleError(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
+    @Override
+    protected void doHandleError(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
         JsonObject json = new JsonObject()
                 .put("cause", throwable.getClass().getName())
                 .put("message", failureMessage)
                 .mergeIn(originalMessageBody);
 
-        _doPublishEvent(TRANSFERTASK_ERROR, json);
-
-        // propagate the exception back to the calling method
-        if (handler != null) {
-            handler.handle(Future.failedFuture(throwable));
-        }
+        _doPublishEvent(TRANSFERTASK_ERROR, json, handler);
     }
 
     /**
@@ -287,12 +270,19 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @param eventName the name of the event. This doubles as the address in the request invocation.
      * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
-    public void _doPublishEvent(String eventName, JsonObject body) {
+    @Override
+    public void _doPublishEvent(String eventName, JsonObject body, Handler<AsyncResult<Boolean>> handler) {
         log.trace(this.getClass().getName() + ": _doPublishEvent({}, {})", eventName, body);
         try {
             getMessageClient().push(eventName, body.toString());
-        } catch (IOException | MessagingException | InterruptedException e) {
-            log.debug("Error with _doPublishEvent:  {}", e.getMessage());
+            if (handler != null) {
+                handler.handle(Future.succeededFuture(true));
+            }
+        } catch (IOException|InterruptedException|MessagingException e) {
+            log.error("Error with _doPublishEvent:  {}", e.getMessage());
+            if (handler != null) {
+                handler.handle(Future.failedFuture(e));
+            }
         }
     }
 

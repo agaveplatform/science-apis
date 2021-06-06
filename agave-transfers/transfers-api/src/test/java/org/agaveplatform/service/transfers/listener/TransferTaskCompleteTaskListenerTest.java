@@ -43,20 +43,20 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         vertx.close(ctx.completing());
     }
 
-    protected TransferTaskCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
+    protected TransferTaskCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
         TransferTaskCompleteTaskListener listener = mock(TransferTaskCompleteTaskListener.class );
         when(listener.config()).thenReturn(config);
         when(listener.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
         when(listener.getVertx()).thenReturn(vertx);
         doCallRealMethod().when(listener).processEvent(any(), any());
         when(listener.getRetryRequestManager()).thenCallRealMethod();
-        doNothing().when(listener)._doPublishEvent(any(), any());
+        doNothing().when(listener)._doPublishEvent(any(), any(), any());
         //doNothing().when(listener)._doPublishEvent( any(), any());
         doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
         doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
         return listener;
     }
-    NatsJetstreamMessageClient getMockNats() throws MessagingException {
+    NatsJetstreamMessageClient getMockNats() throws MessagingException, IOException {
         NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
         doNothing().when(natsClient).push(any(), any(), any());
         return getMockNats();

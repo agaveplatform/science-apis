@@ -40,7 +40,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		vertx.close(ctx.completing());
 	}
 
-	protected TransferTaskErrorListener getMockTransferErrorListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+	protected TransferTaskErrorListener getMockTransferErrorListenerInstance(Vertx vertx) throws IOException, InterruptedException, MessagingException {
 		TransferTaskErrorListener listener = mock(TransferTaskErrorListener.class );
 		when(listener.config()).thenReturn(config);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ERROR);
@@ -50,8 +50,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		when(listener.taskIsNotInterrupted(any())).thenReturn(true);
 		when(listener.getRecoverableExceptionsClassNames()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishEvent( any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		doCallRealMethod().when(listener).processError(any(), any());

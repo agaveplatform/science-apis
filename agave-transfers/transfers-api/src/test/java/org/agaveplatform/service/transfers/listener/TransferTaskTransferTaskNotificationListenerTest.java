@@ -34,20 +34,20 @@ import static org.mockito.Mockito.*;
 class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskTransferTaskNotificationListenerTest.class);
 
-	protected TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
+	protected TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		TransferTaskNotificationListener listener = mock(TransferTaskNotificationListener.class );
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_NOTIFICATION);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 
 		return listener;
 	}
 
-	NatsJetstreamMessageClient getMockNats() throws MessagingException {
+	NatsJetstreamMessageClient getMockNats() throws MessagingException, IOException {
 		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
 		doNothing().when(natsClient).push(any(), any(), any());
 		return getMockNats();
@@ -55,7 +55,7 @@ class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("notificationEventProcess Test")
-	void notificationEventProcess(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+	void notificationEventProcess(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		log.info("Starting process of notificationEventProcess.");
 		TransferTask transferTask = _createTestTransferTask();
 		JsonObject body = transferTask.toJson();

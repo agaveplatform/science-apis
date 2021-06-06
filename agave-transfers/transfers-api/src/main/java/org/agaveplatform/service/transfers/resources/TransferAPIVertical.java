@@ -300,28 +300,35 @@ public class TransferAPIVertical extends AbstractNatsListener {
             dbService.create(tenantId, transferTask, reply -> {
                 if (reply.succeeded()) {
                     TransferTask tt = new TransferTask(reply.result());
-                    try {
-                        //transfers.$tenantid.$uid.$systemid.transfer.$protocol
-//                        srcUri.set(URI.create(source));
-                        String subject = createPushMessageSubject("transfers", tt.getTenantId(), tt.getOwner(), srcUri.getHost(), MessageType.TRANSFERTASK_CREATED);
-                        _doPublishEvent(subject, tt.toJson());
 
-                        routingContext.response()
-                                .putHeader("content-type", "application/json")
-                                .setStatusCode(201)
-                                .end(AgaveResponseBuilder.getInstance(routingContext)
-                                        .setResult(tt.toJson())
-                                        .build()
-                                        .toString());
-                    } catch (Exception e) {
-                        log.error("Failed to insert new transfertask record: {}", e.getMessage());
-                    }
+                    String subject = createPushMessageSubject(
+                            tt.getTenantId(), tt.getOwner(), srcUri.getHost(),
+                            MessageType.TRANSFERTASK_CREATED);
+
+                    _doPublishEvent(subject, tt.toJson(), createdResp -> {
+                        if (createdResp.succeeded()) {
+                            routingContext.response()
+                                    .putHeader("content-type", "application/json")
+                                    .setStatusCode(201)
+                                    .end(AgaveResponseBuilder.getInstance(routingContext)
+                                            .setResult(tt.toJson())
+                                            .build()
+                                            .toString());
+                        } else {
+                            routingContext.response()
+                                    .putHeader("content-type", "application/json")
+                                    .setStatusCode(500)
+                                    .setStatusMessage("Failed to send created event due to internal error.").end();
+                        }
+                    });
                 } else {
                     routingContext.fail(reply.cause());
                 }
             });
         } catch (IllegalArgumentException e) {
-            log.error("Invalid src URI in transfer task request.");
+            routingContext.response()
+                    .setStatusCode(400)
+                    .setStatusMessage("Invalid source or destination URL in the transfer request.").end();
         }
     }
 
@@ -369,17 +376,22 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 user.isAdminRoleExists()) {
                             dbService.updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(),deleteReply -> {
                                 if (deleteReply.succeeded()) {
-                                    try {
+                                    String subject = createPushMessageSubject(
+                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
+                                            MessageType.TRANSFERTASK_CANCELED);
 
-                                        String subject = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),MessageType.TRANSFERTASK_CANCELED);
-                                        _doPublishEvent( subject, deleteReply.result());
-
-                                        routingContext.response()
-                                                .putHeader("content-type", "application/json")
-                                                .setStatusCode(203).end();
-                                    } catch (Exception e) {
-                                        log.error(e.getMessage());
-                                    }
+                                    _doPublishEvent(subject, deleteReply.result(), cancelResp -> {
+                                        if (cancelResp.succeeded()) {
+                                            routingContext.response()
+                                                    .putHeader("content-type", "application/json")
+                                                    .setStatusCode(203).end();
+                                        } else {
+                                            routingContext.response()
+                                                    .putHeader("content-type", "application/json")
+                                                    .setStatusCode(500)
+                                                    .setStatusMessage("Failed to send cancelled event due to internal error.").end();
+                                        }
+                                    });
                                 } else {
                                     // delete failed
                                     routingContext.fail(deleteReply.cause());
@@ -396,7 +408,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
                 }
             });
         } catch (IllegalArgumentException e) {
-            log.error("Invalid src URI in transfer task request.");
+            routingContext.response()
+                    .setStatusCode(500)
+                    .setStatusMessage("Internal error parsing the transfer task source and destination.").end();
         }
     }
 
@@ -446,12 +460,23 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                     JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
 
                                     // TODO: need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                    String subject = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(), MessageType.TRANSFERTASK_CANCELED);
-                                    _doPublishEvent(subject, jo);
+                                    String subject = createPushMessageSubject(
+                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
+                                            MessageType.TRANSFERTASK_CANCELED);
 
-                                    routingContext.response()
-                                            .putHeader("content-type", "application/json")
-                                            .setStatusCode(203).end();
+                                    _doPublishEvent(subject, jo, pubResp -> {
+                                        if (pubResp.succeeded()) {
+                                            routingContext.response()
+                                                    .putHeader("content-type", "application/json")
+                                                    .setStatusCode(203).end();
+                                        }
+                                        else {
+                                            routingContext.response()
+                                                    .putHeader("content-type", "application/json")
+                                                    .setStatusCode(500)
+                                                    .setStatusMessage("Failed to send cancelled event due to internal error.").end();
+                                        }
+                                    });
                                 } else {
                                     // delete failed
                                     routingContext.fail(deleteReply.cause());
@@ -467,34 +492,10 @@ public class TransferAPIVertical extends AbstractNatsListener {
                     routingContext.fail(getByIdReply.cause());
                 }
             });
-
-            // why is this here? It will run before the previous block completes
-            dbService.getByUuid(tenantId, transferTask.getUuid(), reply -> {
-                if (reply.succeeded()) {
-                    TransferTask tt = new TransferTask(reply.result());
-                    try {
-                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),MessageType.TRANSFERTASK_CANCELED);
-                        _doPublishEvent(messageName, tt.toJson());
-                        routingContext.response()
-                                .putHeader("content-type", "application/json")
-                                .setStatusCode(201)
-                                .end(AgaveResponseBuilder.getInstance(routingContext)
-                                        .setResult(tt.toJson())
-                                        .build()
-                                        .toString());
-                    } catch (Exception e) {
-                        log.debug(e.getMessage());
-                    }
-                } else {
-                    routingContext.fail(reply.cause());
-                }
-            });
         } catch (IllegalArgumentException e) {
             log.error("Invalid src URI in transfer task request.");
         }
     }
-
-
 
     /**
      * Delete a {@link TransferTask} from the db.
@@ -537,12 +538,22 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 if (deleteReply.succeeded()) {
                                     JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
 
-                                    String subject = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),MessageType.TRANSFERTASK_DELETED);
-                                    _doPublishEvent(subject, jo);
+                                    String subject = createPushMessageSubject(
+                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
+                                            MessageType.TRANSFERTASK_DELETED);
 
-                                    routingContext.response()
-                                            .putHeader("content-type", "application/json")
-                                            .setStatusCode(203).end();
+                                    _doPublishEvent(subject, jo, deleteResp -> {
+                                        if (deleteResp.succeeded()) {
+                                            routingContext.response()
+                                                    .putHeader("content-type", "application/json")
+                                                    .setStatusCode(203).end();
+                                        } else {
+                                            routingContext.response()
+                                                    .putHeader("content-type", "application/json")
+                                                    .setStatusCode(500)
+                                                    .setStatusMessage("Failed to send deleted event due to internal error.").end();
+                                        }
+                                    });
                                 } else {
                                     // delete failed
                                     routingContext.fail(deleteReply.cause());
@@ -608,12 +619,22 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                     //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
                                     JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
 
-                                    String subject = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),MessageType.TRANSFERTASK_DELETED);
-                                    _doPublishEvent(subject, jo);
+                                    String subject = createPushMessageSubject(
+                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
+                                            MessageType.TRANSFERTASK_DELETED);
 
-                                    routingContext.response()
-                                            .putHeader("content-type", "application/json")
-                                            .setStatusCode(203).end();
+                                    _doPublishEvent(subject, jo, deleteResp -> {
+                                        if (deleteResp.succeeded()) {
+                                            routingContext.response()
+                                                    .putHeader("content-type", "application/json")
+                                                    .setStatusCode(203).end();
+                                        } else {
+                                            routingContext.response()
+                                                    .putHeader("content-type", "application/json")
+                                                    .setStatusCode(500)
+                                                    .setStatusMessage("Failed to send deleted event due to internal error.").end();
+                                        }
+                                    });
                                 } else {
                                     // delete failed
                                     routingContext.fail(deleteReply.cause());
@@ -747,14 +768,27 @@ public class TransferAPIVertical extends AbstractNatsListener {
                             dbService.update(tenantId, uuid, tt, updateReply -> {
                                 if (updateReply.succeeded()) {
                                     try {
-                                        String subject = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),MessageType.TRANSFERTASK_UPDATED);
-                                        _doPublishEvent(subject, updateReply.result());
+                                        String subject = createPushMessageSubject(
+                                                transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
+                                                MessageType.TRANSFERTASK_UPDATED);
 
-                                        routingContext.response().end(
-                                                AgaveResponseBuilder.getInstance(routingContext)
-                                                        .setResult(updateReply.result())
-                                                        .build()
-                                                        .toString());
+                                        _doPublishEvent(subject, updateReply.result(), updateResp -> {
+                                            if (updateResp.succeeded()) {
+                                                routingContext.response().end(
+                                                        AgaveResponseBuilder.getInstance(routingContext)
+                                                                .setResult(updateReply.result())
+                                                                .build()
+                                                                .toString());
+                                            } else {
+                                                // update failed
+                                                routingContext.response().setStatusCode(500)
+                                                        .setStatusMessage("Transfer task was updated, but an error occurred sending the updated event.")
+                                                        .end();
+
+                                            }
+                                        });
+
+
                                     } catch (Exception e) {
                                         log.debug(e.getMessage());
                                     }
@@ -774,7 +808,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
                 }
             });
         } catch (IllegalArgumentException e) {
-            log.error("Invalid src URI in transfer task request.");
+            routingContext.response().setStatusCode(400).setStatusMessage("Invalid URI in transfer task request.").end();
         }
     }
 

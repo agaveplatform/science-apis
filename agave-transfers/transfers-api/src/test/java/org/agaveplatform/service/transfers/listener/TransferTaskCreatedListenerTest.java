@@ -37,7 +37,7 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TransferTaskCreatedListenerTest extends BaseTestCase {
 
-	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
+	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		TransferTaskCreatedListener listener = Mockito.mock(TransferTaskCreatedListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -45,8 +45,8 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		when(listener.taskIsNotInterrupted(any())).thenReturn(true);
 		when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).processEvent(any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());

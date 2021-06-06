@@ -67,9 +67,19 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @param eventName the name of the event. This doubles as the address in the request invocation.
      * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
-    public void _doPublishEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
+    public void _doPublishEvent(String eventName, JsonObject body, Handler<AsyncResult<Boolean>> handler) {
         logger.info(super.getClass().getName() + ": _doPublishEvent({}, {})", eventName, body);
-        getRetryRequestManager().request(eventName, body, config().getInteger(TRANSFERTASK_MAX_ATTEMPTS, 0));
+        try {
+            getRetryRequestManager().request(eventName, body, config().getInteger(TRANSFERTASK_MAX_ATTEMPTS, 0));
+            if (handler != null) {
+                handler.handle(Future.succeededFuture(true));
+            }
+        } catch (Exception e) {
+            logger.error("Error with _doPublishEvent:  {}", e.getMessage());
+            if (handler != null) {
+                handler.handle(Future.failedFuture(e));
+            }
+        }
     }
 
     /**
@@ -80,18 +90,13 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @param originalMessageBody the body of the original message that caused that failed
      * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
      */
-    protected void doHandleFailure(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
+    protected void doHandleFailure(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
         JsonObject json = new JsonObject()
                 .put("cause", throwable.getClass().getName())
                 .put("message", failureMessage)
                 .mergeIn(originalMessageBody);
 
-        _doPublishEvent(TRANSFER_FAILED, json);
-
-        // propagate the exception back to the calling method
-        if (handler != null) {
-            handler.handle(Future.failedFuture(throwable));
-        }
+        _doPublishEvent(TRANSFER_FAILED, json, handler);
     }
 
     /**
@@ -102,18 +107,13 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @param originalMessageBody the body of the original message that caused that failed
      * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
      */
-    protected void doHandleError(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
+    protected void doHandleError(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
         JsonObject json = new JsonObject()
                 .put("cause", throwable.getClass().getName())
                 .put("message", failureMessage)
                 .mergeIn(originalMessageBody);
 
-        _doPublishEvent(TRANSFERTASK_ERROR, json);
-
-        // propagate the exception back to the calling method
-        if (handler != null) {
-            handler.handle(Future.failedFuture(throwable));
-        }
+        _doPublishEvent(TRANSFERTASK_ERROR, json, handler);
     }
 
 //    /**
@@ -235,27 +235,42 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * children exist in the lists of paused and cancelled tasks.
      *
      * @param transferTask the current task being checked from the running task
-     * @return false if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #cancelledTasks} or {@link #pausedTasks} list
+     * @return false if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #cancelledTasks} or
+     *          {@link #pausedTasks} list.
      */
     public boolean taskIsNotInterrupted(TransferTask transferTask) {
-        try {
-            if (transferTask.getParentTaskId() != null && transferTask.getRootTaskId() != null) {
-                final List<String> uuids = List.of(transferTask.getUuid(), transferTask.getParentTaskId(), transferTask.getRootTaskId());
-                if (getCancelledTasks().stream().anyMatch(uuids::contains) || getPausedTasks().stream().anyMatch(uuids::contains)) {
-
-                    String msg = "Transfer was Canceled or Paused";
-                    logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
-                    JsonObject json = new JsonObject()
-                            .put("message", msg);
-                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, json);
-                    return false;
-                }
-            }
-        } catch (Exception e){
-            logger.error("taskIsNotInterrupted Error.  {}", e.toString());
-            return false;
+        if (transferTask.getParentTaskId() != null && transferTask.getRootTaskId() != null) {
+            final List<String> uuids = List.of(transferTask.getUuid(), transferTask.getParentTaskId(), transferTask.getRootTaskId());
+            return getCancelledTasks().stream().noneMatch(uuids::contains) && getPausedTasks().stream().noneMatch(uuids::contains);
         }
         return true;
+    }
+
+    /**
+     * Publishes a {@link MessageType#TRANSFERTASK_CANCELED} message for the given transfer task. This was refactored
+     * from the {@link #taskIsNotInterrupted(TransferTask)} method to allow for quick checks up front, followed by
+     * async propagation of the cancelled event, which was blocking.
+     * @param transferTask the task to report cancelled
+     * @param handler the handler to call upon completion.
+     */
+    protected void publishTaskInterruptedEvent(TransferTask transferTask, Handler<AsyncResult<Boolean>> handler) {
+        String msg = "Transfer was Canceled or Paused";
+        logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
+        JsonObject json = new JsonObject()
+                .put("message", msg);
+        _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, json, resp -> {
+            if (resp.succeeded()) {
+                if (handler != null) {
+                    handler.handle(Future.succeededFuture(true));
+                }
+            } else {
+                logger.error("taskIsNotInterrupted Error.  {}", resp.cause().getMessage());
+                if (handler != null) {
+                    // why do we swallow this? We just failed to propagate the transfer error.
+                    handler.handle(Future.failedFuture(resp.cause()));
+                }
+            }
+        });
     }
 
     /**

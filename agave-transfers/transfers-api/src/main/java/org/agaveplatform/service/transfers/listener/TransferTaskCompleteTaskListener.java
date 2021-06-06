@@ -1,16 +1,12 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Options;
-import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
@@ -22,8 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -156,49 +150,38 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 				if (reply.succeeded()) {
 					logger.debug("Tenant ID is {}", tenantId);
 					logger.debug(TransferTaskCompleteTaskListener.class.getName() + ":Transfer task {} status updated to COMPLETED", uuid);
-					try {
-						_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, reply.result());
-					} catch (Exception e) {
-						logger.debug(e.getMessage());
-					}
-					if (parentTaskId != null ) {
-						logger.debug("Checking parent task {} for completed transfer task {}.", parentTaskId, uuid);
-						processParentEvent(tenantId, parentTaskId, tt -> {
-							if (tt.succeeded()) {
-								tt.result();
-								logger.debug("Check for parent task {} for completed transfer task {} done.", parentTaskId, uuid);
-								handler.handle(Future.succeededFuture(true));
-							} else {
-								JsonObject json = new JsonObject()
-										.put("cause", tt.cause().getClass().getName())
-										.put("message", tt.cause().getMessage())
-										.mergeIn(body);
-								logger.debug("update failed. {}.  The message is {}", tt.cause().getClass().getName(), tt.cause().getMessage());
-								try {
-									_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
-								} catch (Exception e) {
-									logger.debug(e.getMessage());
+					_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, reply.result(), finishedResp -> {
+						if (parentTaskId != null ) {
+							logger.debug("Checking parent task {} for completed transfer task {}.", parentTaskId, uuid);
+							processParentEvent(tenantId, parentTaskId, tt -> {
+								if (tt.succeeded()) {
+									tt.result();
+									logger.debug("Check for parent task {} for completed transfer task {} done.", parentTaskId, uuid);
+									handler.handle(Future.succeededFuture(true));
+								} else {
+									JsonObject json = new JsonObject()
+											.put("cause", tt.cause().getClass().getName())
+											.put("message", tt.cause().getMessage())
+											.mergeIn(body);
+									logger.debug("update failed. {}.  The message is {}", tt.cause().getClass().getName(), tt.cause().getMessage());
+
+									_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json, parentErrorResp -> {
+										handler.handle(Future.succeededFuture(false));
+									});
 								}
-								handler.handle(Future.succeededFuture(false));
-							}
-						});
-					} else {
-						//Transfer task is the root/parent task
-						logger.debug("Transfer task {} has no parent task to process.", uuid);
-						handler.handle(Future.succeededFuture(true));
-					}
+							});
+						} else {
+							//Transfer task is the root/parent task
+							logger.debug("Transfer task {} has no parent task to process.", uuid);
+							handler.handle(Future.succeededFuture(true));
+						}
+					});
 				}
 				else {
 					String msg = String.format("Failed to set status of transfer task %s to completed. error: %s",
 							uuid, reply.cause().getMessage());
 					logger.debug(msg);
-					try {
-						doHandleError(reply.cause(), msg, body, handler);
-					} catch (IOException e) {
-						e.printStackTrace();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
+					doHandleError(reply.cause(), msg, body, handler);
 				}
 			});
 		} catch (Exception e) {
@@ -242,11 +225,10 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 								getDbService().getBytesTransferredForAllChildren(tenantId, parentTaskId, getBytesTransferred -> {
 									if (getBytesTransferred.succeeded()){
 										parentTask.setBytesTransferred(getBytesTransferred.result().getLong("bytes_transferred"));
-										try {
-											_doPublishEvent(MessageType.TRANSFER_COMPLETED, TransferRateHelper.updateTransferRate(parentTask).toJson());
-										} catch (Exception e) {
-											logger.debug(e.getMessage());
-										}
+										_doPublishEvent(MessageType.TRANSFER_COMPLETED, TransferRateHelper.updateTransferRate(parentTask).toJson(), completeResp -> {
+											// return true indicating the parent event was processed
+											resultHandler.handle(isAllChildrenCancelledOrCompleted);
+										});
 									} else {
 										logger.debug("Failed to retrieve bytes transferred for all child tasks for parent task {}, {}", parentTaskId, getBytesTransferred.cause());
 										resultHandler.handle(Future.failedFuture(getBytesTransferred.cause()));
@@ -255,11 +237,12 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 							} else {
 								logger.debug("Parent transfer task {} has active children. " +
 										"Skipping further processing ", parentTaskId);
-								// parent has active children. let it run
+
+								// return true indicating the parent event was processed
+								resultHandler.handle(isAllChildrenCancelledOrCompleted);
 							}
 
-							// return true indicating the parent event was processed
-							resultHandler.handle(isAllChildrenCancelledOrCompleted);
+
 						} else {
 							logger.debug("Failed to look up children for parent transfer task {}. " +
 									"Skipping further processing ", parentTaskId);

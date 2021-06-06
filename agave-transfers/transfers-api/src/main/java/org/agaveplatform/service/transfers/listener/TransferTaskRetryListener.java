@@ -1,9 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
 import io.nats.client.Options;
-import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -35,8 +33,6 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
@@ -86,134 +82,12 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 		setConnection();
 
-
 		try {
 			//group subscription so each message only processed by this vertical type once
 			subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
 		} catch (Exception e) {
 			log.error("TRANSFER_ALL - Exception {}", e.getMessage());
 		}
-
-//		//EventBus bus = vertx.eventBus();
-//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//		//Connection nc = _connect();
-//		Dispatcher d = getConnection().createDispatcher((msg) -> {});
-//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//		Subscription s = d.subscribe(getDefaultEventChannel(), msg -> {
-//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//			JsonObject body = new JsonObject(response) ;
-//			String uuid = body.getString("uuid");
-//			String source = body.getString("source");
-//			String dest = body.getString("dest");
-////			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
-//
-//			log.info("Transfer task {} retry: {} -> {}", uuid, source, dest);
-//
-//			try {
-//				processRetryTransferTask(body, resp -> {
-//					if (resp.succeeded()) {
-//						log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
-//						// TODO: retry won't be reflected in the message body, so what are we listening to here? At
-//						//   this point
-//						body.put("event", this.getClass().getName());
-//						body.put("type", getEventChannel());
-//						try {
-//							_doPublishEvent( TRANSFERTASK_NOTIFICATION, body);
-//						} catch (Exception e) {
-//							log.debug(e.getMessage());
-//						}
-//					} else {
-//						log.debug("Unable to process {} event for transfer task (TTRL) message: {}", getEventChannel(), body.encode(), resp.cause());
-//						try {
-//							_doPublishEvent( MessageType.TRANSFERTASK_ERROR, body);
-//						} catch (Exception e) {
-//							log.debug(e.getMessage());
-//						}
-//					}
-//				});
-//			} catch (Exception ex) {
-//				log.debug("Error with the TRANSFER_RETRY message.  The error is {}", ex.getMessage());
-//				try {
-//					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-//				} catch (Exception e) {
-//					log.debug(e.getMessage());
-//				}
-//			}
-//		});
-//		d.subscribe(getDefaultEventChannel());
-//		getConnection().flush(Duration.ofMillis(500));
-//
-//
-//		// cancel tasks
-//		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
-//		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
-//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//			JsonObject body = new JsonObject(response) ;
-//			String uuid = body.getString("uuid");
-//			String source = body.getString("source");
-//			String dest = body.getString("dest");
-//			//msg.reply(TransferTaskRetryListener.class.getName() + " received.");
-//
-//			log.info("Transfer task {} cancel detected", uuid);
-//			if (uuid != null) {
-//				addCancelledTask(uuid);
-//			}
-//		});
-//		d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
-//		getConnection().flush(Duration.ofMillis(500));
-//
-//		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-//		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//			JsonObject body = new JsonObject(response) ;
-//			String uuid = body.getString("uuid");
-//			//msg.reply(TransferTaskRetryListener.class.getName() + " received.");
-//
-//			log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
-//			if (uuid != null) {
-//				removeCancelledTask(uuid);
-//			}
-//		});
-//		d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-//		getConnection().flush(Duration.ofMillis(500));
-//
-//		// paused tasks
-//		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
-//		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
-//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//			JsonObject body = new JsonObject(response) ;
-//			String uuid = body.getString("uuid");
-////			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
-//
-//			log.info("Transfer task {} paused detected", uuid);
-//			if (uuid != null) {
-//				addPausedTask(uuid);
-//			}
-//		});
-//		d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
-//		getConnection().flush(Duration.ofMillis(500));
-//
-//
-//		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-//		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//			JsonObject body = new JsonObject(response) ;
-//			String uuid = body.getString("uuid");
-////			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
-//			log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-//			if (uuid != null) {
-//				addPausedTask(uuid);
-//			}
-//		});
-//		d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
-//		getConnection().flush(Duration.ofMillis(500));
-
-
 	}
 
 
@@ -272,12 +146,10 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 											.put("cause", updateBody.cause().getClass().getName())
 											.put("message", updateBody.cause().getMessage())
 											.mergeIn(body);
-									try {
-										_doPublishEvent( MessageType.TRANSFERTASK_ERROR, json);
+
+									_doPublishEvent( MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
 										handler.handle(Future.succeededFuture(false));
-									} catch (Exception e) {
-										log.debug(e.getMessage());
-									}
+									});
 								}
 							});
 						} else {
@@ -287,12 +159,10 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 									.put("cause", MaxTransferTaskAttemptsExceededException.class.getName())
 									.put("message", msg)
 									.mergeIn(body);
-							try {
-								_doPublishEvent(TRANSFER_FAILED, json);
+
+							_doPublishEvent(TRANSFER_FAILED, json, errorResp -> {
 								handler.handle(Future.succeededFuture(false));
-							} catch (Exception e) {
-								log.debug(e.getMessage());
-							}
+							});
 						}
 					} else {
 						log.debug("Skipping retry of transfer task {}. Task has a status of {} and is no longer in an active state.",
@@ -305,12 +175,10 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 							.put("cause", reply.cause().getClass().getName())
 							.put("message", msg)
 							.mergeIn(body);
-					try {
-						_doPublishEvent(TRANSFERTASK_ERROR, json);
+
+					_doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
 						handler.handle(Future.succeededFuture(false));
-					} catch (Exception e) {
-						log.debug(e.getMessage());
-					}
+					});
 				}
 
 			});
@@ -322,12 +190,10 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 					.put("cause", t.getClass().getName())
 					.put("message", t.getMessage())
 					.mergeIn(body);
-			try {
-				_doPublishEvent(TRANSFERTASK_ERROR, json);
+
+			_doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
 				handler.handle(Future.failedFuture(t));
-			} catch (Exception e) {
-				log.debug(e.getMessage());
-			}
+			});
 		}
 	}
 
@@ -357,11 +223,8 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 
 			// check to be sure if the root task and parent task are present
 			if (retryTransferTask.getRootTaskId() != null && retryTransferTask.getParentTaskId() != null) {
-
-
 				// check for task interruption
 				if (taskIsNotInterrupted(retryTransferTask)) {
-
 					// basic sanity check on uri again
 					if (uriSchemeIsNotSupported(srcUri)) {
 						String msg = String.format("Failing transfer task %s due to invalid scheme in source URI, %s",
@@ -374,10 +237,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 					} else {
 						// if it's an "agave://" uri, look up the connection info, get a rdc, and process the remote
 						// file item
-//					if (srcUri.getScheme().equalsIgnoreCase("agave")) {
-						// get a remote data client for the source and dest system
 						srcClient = getRemoteDataClient(retryTransferTask.getTenantId(), retryTransferTask.getOwner(), srcUri);
-//					}
 						// should we check writability here?
 						destClient = getRemoteDataClient(retryTransferTask.getTenantId(), retryTransferTask.getOwner(), destUri);
 
@@ -389,15 +249,16 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 						if (fileInfo.isFile()) {
 							// write to the protocol event channel. the uri is all they should need for this....
 							// might need tenant id. not sure yet.
-							_doPublishEvent( TRANSFER_ALL, retryTransferTask.toJson());
-						} else {
+							_doPublishEvent( TRANSFER_ALL, retryTransferTask.toJson(), handler);
+						}
+						else {
 							// path is a directory, so walk the first level of the directory
 							List<RemoteFileInfo> remoteFileInfoList = srcClient.ls(srcUri.getPath());
 
 							// if the directory is empty, the listing will only contain the target path as the "." folder.
 							// mark as complete and wrap it up.
 							if (remoteFileInfoList.size() <= 1) {
-								_doPublishEvent(TRANSFER_COMPLETED, retryTransferTask.toJson());
+								_doPublishEvent(TRANSFER_COMPLETED, retryTransferTask.toJson(), handler);
 							}
 							// if there are contents, walk the first level, creating directories on the remote side
 							// as we go to ensure that out of order processing by worker tasks can still succeed.
@@ -426,7 +287,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 											if (StringUtils.isNotEmpty(retryTransferTask.getRootTaskId())) {
 												transferTask.setRootTaskId(retryTransferTask.getRootTaskId());
 											}
-											_doPublishEvent( MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
+											_doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson(), null);
 										}
 										// if a directory, then create a new transfer task to repeat this process,
 										// keep the association between this transfer task, the original, and the children
@@ -443,66 +304,57 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 											if (StringUtils.isNotEmpty(retryTransferTask.getRootTaskId())) {
 												transferTask.setRootTaskId(retryTransferTask.getRootTaskId());
 											}
-											_doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
+											_doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson(), null);
 										}
-									} else {
+									}
+									else {
 										// interrupt happened wild processing children. skip the rest.
 										log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", retryTransferTask.getUuid());
 										getDbService().updateStatus(retryTransferTask.getTenantId(), retryTransferTask.getUuid(), org.iplantc.service.transfer.model.enumerations.TransferStatusType.CANCELLED.name(), updateReply -> {
 											if (updateReply.succeeded()) {
-												handler.handle(Future.succeededFuture(false));
-												try {
-													_doPublishEvent( MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
-												} catch (Exception e) {
-													log.debug(e.getMessage());
-												}
+												_doPublishEvent( MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson(), errorResp -> {
+													handler.handle(Future.succeededFuture(false));
+												});
 											} else {
-												try {
-													_doPublishEvent( MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+												_doPublishEvent( MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson(), errorResp -> {
 													handler.handle(Future.failedFuture(updateReply.cause()));
-												} catch (Exception e) {
-													log.debug(e.getMessage());
-												}
+												});
 											}
 										});
-
 										break;
 									}
 								}
+								handler.handle(Future.succeededFuture(true));
 							}
 						}
 					}
-
-					handler.handle(Future.succeededFuture(true));
-				} else {
+				}
+				else {
 					// task was interrupted, so don't attempt a retry
 					log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", retryTransferTask.getUuid());
-					_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
-					handler.handle(Future.succeededFuture(false));
+					_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson(), errorResp -> {
+						handler.handle(Future.succeededFuture(false));
+					});
 				}
 			} else {
 				log.info("rootTaskId or parentTaskId are null {}  {}", retryTransferTask.getParentTaskId(), retryTransferTask.getRootTaskId());
+				handler.handle(Future.succeededFuture(true));
 			}
 		} catch (RemoteDataSyntaxException ex) {
 			String message = String.format("Failing transfer task %s due to invalid source syntax. %s", retryTransferTask.getTenantId(), ex.getMessage());
-			try {
-				doHandleFailure(ex, message, retryTransferTask.toJson(), handler);
-			} catch (IOException | InterruptedException e) {
-				log.debug(e.getMessage());
-			}
+			doHandleFailure(ex, message, retryTransferTask.toJson(), errorResp -> {
+				handler.handle(Future.failedFuture(ex.getCause()));
+			});
 		} catch (Exception ex) {
-			try {
-				doHandleError(ex, ex.getMessage(), retryTransferTask.toJson(), handler);
-			} catch (IOException | InterruptedException e) {
-				log.debug(e.getMessage());
-			}
-		} finally {
+			doHandleError(ex, ex.getMessage(), retryTransferTask.toJson(), errorResp -> {
+				handler.handle(Future.failedFuture(ex.getCause()));
+			});
+		}
+		finally {
 			// cleanup the remote data client connections
 			try { if (srcClient != null) srcClient.disconnect(); } catch (Exception ignored) {}
 			try { if (destClient != null) destClient.disconnect(); } catch (Exception ignored) {}
 		}
-
-		handler.handle(Future.succeededFuture(true));
 	}
 
 	public TransferTaskDatabaseService getDbService() {

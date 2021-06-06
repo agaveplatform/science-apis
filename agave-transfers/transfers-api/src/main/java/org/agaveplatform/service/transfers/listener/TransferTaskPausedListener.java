@@ -1,16 +1,12 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Options;
-import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.exception.TransferException;
@@ -21,8 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -70,60 +64,8 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 		} catch (Exception e) {
 			logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
 		}
-
-
-//		//EventBus bus = vertx.eventBus();
-//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//		//Connection nc = _connect();
-//		Dispatcher d = getConnection().createDispatcher((msg) -> {});
-//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//		Subscription s = d.subscribe(MessageType.TRANSFERTASK_PAUSED, msg -> {
-//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//			JsonObject body = new JsonObject(response) ;
-//			String uuid = body.getString("uuid");
-//
-//			logger.info("Transfer task {} pause detected.", uuid);
-//
-//			processPauseRequest(body, result -> {
-//				if (result.succeeded()) {
-//					logger.error("Succeeded with the processing the pause transfer event for transfer task {}", uuid);
-//				} else {
-//					logger.error("Error with return from pausing the event {}", uuid);
-//					try {
-//						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-//					} catch (Exception e) {
-//						logger.debug(e.getMessage());
-//					}
-//				}
-//			});
-//		});
-//		d.subscribe(MessageType.TRANSFERTASK_PAUSED);
-//		getConnection().flush(Duration.ofMillis(500));
-//
-//		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
-//		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
-//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//			JsonObject body = new JsonObject(response) ;
-//			String uuid = body.getString("uuid");
-//
-////			msg.reply(TransferTaskPausedListener.class.getName() + " received.");
-//
-//			String parentTaskId = body.getString("parentTaskId");
-//			String rootTaskId = body.getString("rootTaskId");
-//			String tenantId = body.getString("owner");
-//
-//			logger.info("Transfer task {} ackowledged paused", uuid);
-//
-//			processPauseAckRequest(body, result -> {
-//
-//			});
-//		});
-//		d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK);
-//		getConnection().flush(Duration.ofMillis(500));
-
 	}
+
 	protected void handleMessage(Message message) {
 		try {
 			JsonObject body = new JsonObject(message.getMessage());
@@ -138,6 +80,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 			logger.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
 		}
 	}
+
 	/**
 	 * Handles processing of paused events, updating the transfer task status and checking for active siblings
 	 * before sending the parent paused ack event as well.
@@ -171,29 +114,18 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 					logger.debug("Checking parent task {} for paused transfer task {}.", parentTaskId1, uuid);
 
 					if ( StringUtils.equals(targetTransferTask.getRootTaskId(),targetTransferTask.getUuid()) ||
-							StringUtils.equals(targetTransferTask.getParentTaskId(), targetTransferTask.getUuid()) ){
+							StringUtils.equals(targetTransferTask.getParentTaskId(), targetTransferTask.getUuid())) {
 						JsonObject json = new JsonObject()
 								.put("cause", TransferException.class.getName() )
 								.put("message", "Cannot have root task that matches child transfer tasks.")
 								.mergeIn(body);
-					try {
-						_doPublishEvent( MessageType.TRANSFERTASK_ERROR, json);
-						handler.handle(Future.succeededFuture(true));
-					} catch (Exception e) {
-						logger.debug(e.getMessage());
-					}
-
-					}else {
+						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, handler);
+					} else {
 						JsonObject json = new JsonObject()
 								.put("cause", TransferException.class.getName() )
 								.put("message", "Cannot cancel non-root transfer tasks.")
 								.mergeIn(body);
-						try {
-							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-						} catch (Exception e) {
-							logger.debug(e.getMessage());
-						}
-						handler.handle(Future.succeededFuture(true));
+						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, handler);
 					}
 				} else if (targetTransferTask.getStatus().isActive()) {
 					// push the event transfer task onto the queue. this will cause all listening verticals
@@ -211,12 +143,9 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 													"to sending %s event.",
 											uuid, PAUSE_WAITING.name(), TRANSFERTASK_PAUSED_SYNC));
 									logger.debug("Sending cancel sync event for transfer task {} to signal children to cancel any active work.", uuid);
-									try {
-										_doPublishEvent(TRANSFERTASK_PAUSED_SYNC, updateReply.result());
-										handler.handle(Future.succeededFuture(true));
-									} catch (Exception e) {
-										logger.debug(e.getMessage());
-									}
+
+									_doPublishEvent(TRANSFERTASK_PAUSED_SYNC, updateReply.result(), handler);
+									handler.handle(Future.succeededFuture(true));
 								} else {
 									String message = String.format("Failed to process paused ack event for parent " +
 											"transfertask %s. %s", parentTaskId, processParentReply.cause());
@@ -225,12 +154,9 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 											.put("cause", processParentReply.cause().getClass().getName())
 											.put("message", message)
 											.mergeIn(body);
-									try {
-										_doPublishEvent( MessageType.TRANSFERTASK_PARENT_ERROR, json);
+									_doPublishEvent( MessageType.TRANSFERTASK_PARENT_ERROR, json, errorResp -> {
 										handler.handle(Future.succeededFuture(false));
-									} catch (Exception e) {
-										logger.debug(e.getMessage());
-									}
+									});
 								}
 							});
 
@@ -238,14 +164,8 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 							String msg = String.format("Unable to update the status of transfer task %s to %s prior " +
 											"to sending %s event. No sync event will be sent.",
 									uuid, CANCELING_WAITING.name(), TRANSFERTASK_CANCELED_SYNC);
-							try {
-								logger.debug(msg);
-								doHandleError(updateReply.cause(), msg, body, handler);
-							} catch (IOException e) {
-								logger.debug(e.getMessage());
-							} catch (InterruptedException e) {
-								logger.debug(e.getMessage());
-							}
+							logger.debug(msg);
+							doHandleError(updateReply.cause(), msg, body, handler);
 						}
 					});
 
@@ -260,11 +180,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 			else {
 				String message = String.format("Failed to set status of transfertask %s to paused. error: %s", uuid, reply.cause());
 				logger.debug(message);
-				try {
-					doHandleError(reply.cause(), message, body, handler);
-				} catch (IOException | InterruptedException e) {
-					logger.debug(e.getMessage());
-				}
+				doHandleError(reply.cause(), message, body, handler);
 			}
 		});
 	}
@@ -295,94 +211,70 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 						logger.debug("Updated state of transfer task {} to PAUSED. Creating paused ack event.", uuid);
 						// this task and all its children are done, so we can send a complete event
 						// to safely clear out the uuid from all listener verticals' caches
-						try {
-							_doPublishEvent( MessageType.TRANSFERTASK_PAUSED_COMPLETED, body);
-						} catch (Exception e) {
-							logger.debug(e.getMessage());
-						}
-						// we can now also check the parent, if present, for completion of its tree.
-						// if the parent is empty, the root will be as well. For children of the root
-						// transfer task, the root == parent
-						if (!StringUtils.isEmpty(parentTaskId)) {
-							logger.debug("Checking for active child transfer tasks for transfer task {}.", parentTaskId);
-							// once all tasks in the parents tree are complete, we can update the status of the parent
-							// and send out the completed event to clear its uuid out of any caches that may have it.
-							getDbService().allChildrenCancelledOrCompleted(tenantId, parentTaskId, siblingReply -> {
-								if (siblingReply.succeeded()) {
-									if (siblingReply.result()) {
-										logger.debug("All children of parent transfer task {} are inactive. ", parentTaskId);
-										getDbService().getByUuid(tenantId, parentTaskId, parentReply -> {
-											if (parentReply.succeeded()) {
-												logger.info("Sending pause ack event for parent transfer task {}", parentTaskId);
-												//getVertx().eventBus().publish(MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result());
-												try {
-													_doPublishEvent( MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result());
-												} catch ( Exception e) {
-													logger.debug(e.getMessage());
+						_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_COMPLETED, body, pausedCompletedResp -> {
+							// we can now also check the parent, if present, for completion of its tree.
+							// if the parent is empty, the root will be as well. For children of the root
+							// transfer task, the root == parent
+							if (!StringUtils.isEmpty(parentTaskId)) {
+								logger.debug("Checking for active child transfer tasks for transfer task {}.", parentTaskId);
+								// once all tasks in the parents tree are complete, we can update the status of the parent
+								// and send out the completed event to clear its uuid out of any caches that may have it.
+								getDbService().allChildrenCancelledOrCompleted(tenantId, parentTaskId, siblingReply -> {
+									if (siblingReply.succeeded()) {
+										if (siblingReply.result()) {
+											logger.debug("All children of parent transfer task {} are inactive. ", parentTaskId);
+											getDbService().getByUuid(tenantId, parentTaskId, parentReply -> {
+												if (parentReply.succeeded()) {
+													logger.info("Sending pause ack event for parent transfer task {}", parentTaskId);
+													_doPublishEvent( MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result(), handler);
+												} else {
+													String message = String.format("Unable to lookup parent task %s for transfer task %s while processing a pause event. %s",
+															parentTaskId, uuid, parentReply.cause().getMessage());
+													logger.error(message);
+													JsonObject json = new JsonObject()
+															.put("cause", parentReply.cause().getClass().getName())
+															.put("message", message)
+															.mergeIn(body);
+
+													_doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
+														handler.handle(Future.failedFuture(parentReply.cause()));
+													});
 												}
-												handler.handle(Future.succeededFuture(true));
-											} else {
-												String message = String.format("Unable to lookup parent task %s for transfer task %s while processing a pause event. %s",
-														parentTaskId, uuid, parentReply.cause().getMessage());
-												logger.error(message);
-												JsonObject json = new JsonObject()
-														.put("cause", parentReply.cause().getClass().getName())
-														.put("message", message)
-														.mergeIn(body);
-												try {
-													_doPublishEvent(TRANSFERTASK_ERROR, json);
-													handler.handle(Future.failedFuture(parentReply.cause()));
-												} catch (Exception e) {
-													logger.debug(e.getMessage());
-												}
-											}
-										});
+											});
+										} else {
+											logger.debug("Skipping pause due to all children being in a DONE state {}", parentTaskId);
+											handler.handle(Future.succeededFuture(false));
+										}
 									} else {
-										logger.debug("Skipping pause due to all children being in a DONE state {}", parentTaskId);
-										handler.handle(Future.succeededFuture(false));
+										String message = String.format("Unable to lookup child state for parent transfer task %s  while processing a pause event. %s",
+												parentTaskId, siblingReply.cause().getMessage());
+										logger.error(message);
+										JsonObject json = new JsonObject()
+												.put("cause", siblingReply.cause().getClass().getName())
+												.put("message", message)
+												.mergeIn(body);
+										_doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
+											handler.handle(Future.failedFuture(siblingReply.cause()));
+										});
 									}
-								} else {
-									String message = String.format("Unable to lookup child state for parent transfer task %s  while processing a pause event. %s",
-											parentTaskId, siblingReply.cause().getMessage());
-									logger.error(message);
-									JsonObject json = new JsonObject()
-											.put("cause", siblingReply.cause().getClass().getName())
-											.put("message", message)
-											.mergeIn(body);
-									try {
-										_doPublishEvent(TRANSFERTASK_ERROR, json);
-										handler.handle(Future.failedFuture(siblingReply.cause()));
-									} catch (Exception e) {
-										logger.debug(e.getMessage());
-									}
-								}
-							});
-						} else {
-							logger.debug("Skipping processing of parent task for root transfer task {}.", uuid);
-							handler.handle(Future.succeededFuture(false));
-						}
+								});
+							} else {
+								logger.debug("Skipping processing of parent task for root transfer task {}.", uuid);
+								handler.handle(Future.succeededFuture(false));
+							}
+						});
 					} else {
 						String message = String.format("Unable to update status of transfer task %s to PAUSED. %s",
 								uuid, updateReply.cause().getMessage());
 						logger.debug(message);
-						try {
-							doHandleError(updateReply.cause(), message, body, handler);
-						} catch (IOException | InterruptedException e) {
-							logger.debug(e.getMessage());
-						}
+						doHandleError(updateReply.cause(), message, body, handler);
 					}
 				});
 			} else {
 				String message = String.format("Unable to lookup child tasks for transfer task %s while processing a pause event. %s",
 						uuid, reply.cause().getMessage());
 				logger.debug(message);
-				try {
-					doHandleError(reply.cause(), message, body, handler);
-				} catch (IOException e) {
-					logger.debug(e.getMessage());
-				} catch (InterruptedException e) {
-					logger.debug(e.getMessage());
-				}
+				doHandleError(reply.cause(), message, body, handler);
 			}
 		});
 	}
@@ -424,19 +316,17 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 								//logger.debug("All child tasks for parent transfer task {} are paused, cancelled or completed. " +
 								//		"A transfer.paused event will be created for this task.", parentTaskId);
 								// call to our publishing helper for easier testing.
-								try {
-									_doPublishEvent(TRANSFERTASK_PAUSED, getTaskById.result());
-								} catch (Exception e) {
-									logger.debug(e.getMessage());
-								}
+								_doPublishEvent(TRANSFERTASK_PAUSED, getTaskById.result(), pausedResp -> {
+									// return true indicating the parent event was processed
+									resultHandler.handle(isAllChildrenCancelledOrCompleted);
+								});
 							} else {
 								//logger.debug("Parent transfer task {} has active children. " +
 								//		"Skipping further processing ", parentTaskId);
 								// parent has active children. let it run
+								// return true indicating the parent event was processed
+								resultHandler.handle(isAllChildrenCancelledOrCompleted);
 							}
-
-							// return true indicating the parent event was processed
-							resultHandler.handle(isAllChildrenCancelledOrCompleted);
 						} else {
 							//logger.debug("Failed to look up children for parent transfer task {}. " +
 							//		"Skipping further processing ", parentTaskId);
@@ -468,9 +358,6 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 	public void setDbService(TransferTaskDatabaseService dbService) {
 		this.dbService = dbService;
 	}
-
-	public void processInterrupt(JsonObject body, io.vertx.core.Handler<io.vertx.core.AsyncResult<Boolean>> handler) {}
-
 }
 
 

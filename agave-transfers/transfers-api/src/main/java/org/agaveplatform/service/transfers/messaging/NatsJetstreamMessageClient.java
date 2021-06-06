@@ -249,14 +249,15 @@ public class NatsJetstreamMessageClient {
      * @param body  the message content to persist
      * @throws MessagingException if communication with Nats fails
      */
-    public void push(String subject, String body) throws MessagingException {
+    public void push(String subject, String body) throws IOException, MessagingException {
         // create a typical NATS message
         io.nats.client.Message natsMessage = NatsMessage.builder()
                 .subject(subject)
                 .data(body.getBytes(StandardCharsets.UTF_8))
                 .build();
 
-        PublishOptions pubishOptions = PublishOptions.builder()
+        PublishOptions publishOptions = PublishOptions.builder()
+                .stream(getStreamName())
                 .expectedStream(getStreamName())
                 .build();
 
@@ -266,7 +267,7 @@ public class NatsJetstreamMessageClient {
 
         while (attempts < MAX_ATTEMPTS) {
             try {
-                PublishAck pa = getJetStream().publish(natsMessage, pubishOptions);
+                PublishAck pa = getJetStream().publish(natsMessage, publishOptions);
                 if (pa.isDuplicate()) {
                     throw new DuplicateMessageException("Message already exists in NATS stream");
                 } else if (pa.hasError()) {
@@ -287,9 +288,7 @@ public class NatsJetstreamMessageClient {
                     return;
                 }
             } catch (JetStreamApiException e) {
-                throw new MessagingException("Invalid message body response returned from NATS.", e);
-            } catch (IOException e) {
-                throw new MessagingException("Unexpected error while pushing message to NATS server.", e);
+                throw new MessagingException(e.getMessage(), e);
             }
         }
     }
@@ -301,8 +300,9 @@ public class NatsJetstreamMessageClient {
      * @param body        the message body to persist
      * @param secondsToDelay the number of seconds to delay the message from being processed
      * @throws MessagingException if communication with the subject fails
+     * @throws IOException when unable to connect to the NATS server
      */
-    public void push(String subject, String body, int secondsToDelay) throws MessagingException {
+    public void push(String subject, String body, int secondsToDelay) throws IOException, MessagingException {
         log.debug("Delayed messages are not supported by NATS JetStream. Message will be added immediately");
         push(subject, body);
     }
@@ -314,8 +314,9 @@ public class NatsJetstreamMessageClient {
      * @param messageId the unique id of the message to reject
      * @param message   the body of the message to reject. This is ignored for this client
      * @throws MessagingException if communication with the NATS server fails
+     * @throws IOException when unable to connect to the NATS server
      */
-    public void reject(String subject, Object messageId, String message) throws MessagingException {
+    public void reject(String subject, Object messageId, String message) throws IOException, MessagingException {
         log.info("Message rejection is not supported. The same message will instead be pushed back to the stream.");
         delete(messageId);
         push(subject, message);

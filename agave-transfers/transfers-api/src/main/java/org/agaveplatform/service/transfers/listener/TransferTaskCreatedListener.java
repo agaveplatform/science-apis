@@ -11,6 +11,7 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.RemoteSystemAO;
+import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.systems.exceptions.SystemRoleException;
@@ -289,7 +290,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         try {
                             String owner = updateResult.result().getString("owner");
                             String host = srcUri.getHost();
-                            String subject = createPushMessageSubject("transfers", tenantId, owner, host, TRANSFERTASK_ASSIGNED);
+                            String subject = createPushMessageSubject(tenantId, owner, host, TRANSFERTASK_ASSIGNED);
                             _doPublishEvent(subject, updateResult.result());
 
                         } catch (Exception e) {
@@ -300,24 +301,20 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         // update failed
                         String msg = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
                                 uuid, updateResult.cause().getMessage());
-                        log.error(msg);
                         try {
                             doHandleError(updateResult.cause(), msg, body, handler);
-                        } catch (IOException | InterruptedException e) {
-                            log.debug(e.getMessage());
-                            log.debug(e.getCause().toString());
-                        }
+                        } catch (IOException | MessagingException |InterruptedException ignored) {}
                     }
                 });
             } else {
                 log.info("Skipping processing of child file items for transfer tasks in TransferTaskCreatedListener {} due to interrupt event.", uuid);
-                String subject = createPushMessageSubject("transfers", tenantId, username, srcUri.getHost(), TRANSFERTASK_CANCELED_ACK);
+                String subject = createPushMessageSubject(tenantId, username, srcUri.getHost(), TRANSFERTASK_CANCELED_ACK);
                 getMessageClient().push(subject, createdTransferTask.toString());
                 handler.handle(Future.succeededFuture(false));
             }
         } catch (Exception e) {
             log.error("Error with TransferTaskCreatedListener {}", e.getMessage());
-            doHandleError(e, e.getMessage(), body, handler);
+            try { doHandleError(e, e.getMessage(), body, handler); } catch (Exception ignored){}
         }
     }
 

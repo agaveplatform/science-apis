@@ -36,16 +36,14 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 	private Vertx vertx;
 	private JWTAuth jwtAuth;
 
-	TransferTaskHealthcheckListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+	TransferTaskHealthcheckListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, MessagingException {
 		TransferTaskHealthcheckListener listener = Mockito.mock(TransferTaskHealthcheckListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.processAllChildrenCanceledEvent(any())).thenCallRealMethod();
 		when(listener.config()).thenReturn(config);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;
 	}

@@ -36,11 +36,11 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	private Object Handler;
 
-	TransferTaskCancelListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
+	TransferTaskCancelListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		TransferTaskCancelListener listener = Mockito.mock(TransferTaskCancelListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CANCELED);
 		when(listener.getVertx()).thenReturn(vertx);
-		doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		//doNothing().when(listener)._doPublishEvent( any(), any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
@@ -48,12 +48,12 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		return listener;
 	}
 
-	TransferTaskCancelListener getMockCancelAckListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
+	TransferTaskCancelListener getMockCancelAckListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		TransferTaskCancelListener listener = Mockito.mock(TransferTaskCancelListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CANCELED_ACK);
 		when(listener.getVertx()).thenReturn(vertx);
-		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		return listener;
 	}
 //	NatsJetstreamMessageClient getMockNats() throws MessagingException {
@@ -1071,8 +1071,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		when(listener.getDbService()).thenReturn(dbService);
 
 		doCallRealMethod().when(listener).processParentAck( any(), any() ,any());
-		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any(), any());
 //		doNothing().when(getMockNats()).push(any(), any(), any());
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
@@ -1133,8 +1133,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		when(listener.getDbService()).thenReturn(dbService);
 
 		doCallRealMethod().when(listener).processParentAck( any(), any() ,any());
-		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any(), any());
 //		doNothing().when(getMockNats()).push(any(), any(), any());
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);

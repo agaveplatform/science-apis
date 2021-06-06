@@ -31,15 +31,15 @@ import static org.mockito.Mockito.*;
 @DisplayName("Transfers Watch Listener Test")
 class TransferTaskWatchListenerTest extends BaseTestCase {
 
-	TransferTaskWatchListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
+	TransferTaskWatchListener getMockListenerInstance(Vertx vertx) throws IOException, MessagingException, InterruptedException {
 		TransferTaskWatchListener listener = Mockito.mock(TransferTaskWatchListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.config()).thenReturn(config);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
 //		doNothing().when(listener)._doPublishEvent( any(), any());
-		when(listener.createPushMessageSubject(any(), any(), any(), any(), any())).thenCallRealMethod ();
+		when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod ();
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;

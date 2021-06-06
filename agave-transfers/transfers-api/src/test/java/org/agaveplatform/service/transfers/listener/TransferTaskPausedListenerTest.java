@@ -44,13 +44,13 @@ import static org.mockito.Mockito.*;
 //@Disabled
 class TransferTaskPausedListenerTest extends BaseTestCase {
 
-	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
+	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		TransferTaskPausedListener listener = Mockito.mock(TransferTaskPausedListener.class);
 		when(listener.getEventChannel()).thenReturn(MessageType.TRANSFERTASK_PAUSED);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).processPauseRequest(any(), any());
 		doCallRealMethod().when(listener).processParentEvent(any(),any(),any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
@@ -58,7 +58,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		return listener;
 	}
 
-	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
+	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -67,8 +67,8 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any());
-		//doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		//doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
 		try {
 			doCallRealMethod().when(listener).start();
@@ -81,7 +81,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		}
 		return listener;
 	}
-	NatsJetstreamMessageClient getMockNats() throws MessagingException {
+	NatsJetstreamMessageClient getMockNats() throws MessagingException, IOException {
 		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
 		doNothing().when(natsClient).push(any(), any(), any());
 		return getMockNats();

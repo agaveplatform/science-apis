@@ -3,13 +3,13 @@ package org.agaveplatform.service.transfers.listener;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import org.agaveplatform.service.transfers.handler.RetryRequestManager;
-import io.vertx.core.eventbus.*;
+import io.vertx.core.eventbus.DeliveryContext;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
@@ -21,11 +21,10 @@ import org.mockito.stubbing.Answer;
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyString;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
 
 
@@ -47,7 +46,7 @@ public class RetryRequestManagerTest extends BaseTestCase {
      * @param vertx the test vertx instance
      * @return a mocked of {@link TransferTaskAssignedListener}
      */
-    protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+    protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException, MessagingException {
         TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
         when(listener.getVertx()).thenReturn(vertx);
@@ -56,7 +55,7 @@ public class RetryRequestManagerTest extends BaseTestCase {
         doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
         doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 //		when(listener.getRetryRequestManager()).thenCallRealMethod();
-        doNothing().when(listener)._doPublishEvent(any(), any());
+        doNothing().when(listener)._doPublishEvent(any(), any(), any());
         doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
 
         RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
@@ -66,7 +65,7 @@ public class RetryRequestManagerTest extends BaseTestCase {
         when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
         return listener;
     }
-    NatsJetstreamMessageClient getMockNats() throws MessagingException {
+    NatsJetstreamMessageClient getMockNats() throws MessagingException, IOException {
         NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
         doNothing().when(natsClient).push(any(), any(), any());
         return getMockNats();

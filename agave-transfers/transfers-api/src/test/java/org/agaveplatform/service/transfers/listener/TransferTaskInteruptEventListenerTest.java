@@ -4,6 +4,7 @@ import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
+import org.iplantc.service.common.exceptions.MessagingException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
@@ -24,12 +25,12 @@ import static org.mockito.Mockito.*;
 class TransferTaskInteruptEventListenerTest extends BaseTestCase {
 	private static final Logger logger = LoggerFactory.getLogger(TransferTaskInteruptEventListenerTest.class);
 
-	protected InteruptEventListener getMockInteruptEventListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+	protected InteruptEventListener getMockInteruptEventListenerInstance(Vertx vertx) throws IOException, InterruptedException, MessagingException {
 		InteruptEventListener listener = mock(InteruptEventListener.class );
 		when(listener.getDefaultEventChannel()).thenReturn(TRANSFERTASK_INTERUPTED);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 
@@ -39,7 +40,7 @@ class TransferTaskInteruptEventListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("This is a test of the start function")
 	@Disabled
-	protected void startTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void startTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		InteruptEventListener transferInteruptEventListener = getMockInteruptEventListenerInstance(vertx);
 
 		//verify(transferInteruptEventListener.start())._doPublishEvent(TRANSFERTASK_INTERUPTED, json);

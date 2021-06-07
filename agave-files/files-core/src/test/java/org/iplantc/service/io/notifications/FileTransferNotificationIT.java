@@ -11,7 +11,7 @@ import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.dao.QueueTaskDao;
-import org.iplantc.service.io.manager.FilesTransferListener;
+import org.iplantc.service.io.queue.listeners.FilesTransferListener;
 import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.QueueTask;

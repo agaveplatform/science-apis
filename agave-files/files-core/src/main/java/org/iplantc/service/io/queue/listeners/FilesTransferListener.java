@@ -249,15 +249,17 @@ public class FilesTransferListener implements Runnable {
         }
 
         @Override
-        public void processMessage(String body) {
+        public void processMessage(String body) throws MessageProcessingException {
             logger.debug("Received completed notification from transfertask event");
             try {
                 JsonNode jsonBody = objectMapper.readTree(body);
-                if (jsonBody.get("status").textValue().equalsIgnoreCase(getMessageStatus())) {
-                    processTransferNotification(getMessageStatus(), jsonBody);
+                if (jsonBody.get("status").textValue().equalsIgnoreCase(getMessageStatus().name())) {
+                    processTransferNotification(jsonBody);
                 } else {
-                    throw new MessageProcessingException()
+                    throw new MessageProcessingException();
                 }
+            } catch (MessageProcessingException e) {
+                throw e;
             } catch (IOException e) {
                 logger.error("Unable to parse message body: {}", e.getMessage());
             }

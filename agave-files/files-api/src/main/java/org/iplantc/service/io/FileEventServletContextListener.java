@@ -1,6 +1,6 @@
 package org.iplantc.service.io;
 
-import org.iplantc.service.io.manager.FilesTransferListener;
+import org.iplantc.service.io.queue.listeners.FilesTransferListener;
 
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;

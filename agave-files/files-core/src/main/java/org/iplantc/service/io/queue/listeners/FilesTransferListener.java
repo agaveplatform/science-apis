@@ -159,6 +159,9 @@ public class FilesTransferListener implements Runnable {
 
                     // now we update the destination if it exists and is warranted
                     updateDestinationLogicalFile(sourceLogicalFile, destUrl, createdBy);
+                } else {
+                    logger.error("Failed to process notification due to unknown status " + transferStatus);
+                    throw new MessageProcessingException("Unable to process notification due to unknown status " + transferStatus);
                 }
             } else {
                 throw new MessageProcessingException("No existing file found matching transfer " + transferUuid);

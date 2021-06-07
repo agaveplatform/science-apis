@@ -49,7 +49,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
         clearLogicalFiles();
     }
 
-    protected LogicalFile getMockLogicalFile() throws Exception {
+    protected LogicalFile getMockLogicalFile(){
         RemoteSystem system = mock(RemoteSystem.class);
         when(system.getSystemId()).thenReturn(UUID.randomUUID().toString());
 
@@ -206,6 +206,19 @@ public class FilesTransferListenerTest extends BaseTestCase {
         } catch (Exception e) {
             fail("No exception should be thrown for valid transfer notification", e);
         }
+    }
+
+    @Test (expectedExceptions = MessageProcessingException.class)
+    public void executeProcessTransferNotificationHandlesUnknownTransferStatus() throws Exception {
+        FilesTransferListener listener = getMockFilesTransferListenerInstance();
+
+        LogicalFile logicalFile = getMockLogicalFile();
+
+        when(listener.lookupLogicalFileByUrl(logicalFile.getSourceUri(), logicalFile.getTenantId())).thenReturn(logicalFile);
+        doCallRealMethod().when(listener).processTransferNotification(any());
+
+        JsonNode json = getTransferTask(logicalFile, "transfertask.unknown");
+        listener.processTransferNotification(json);
     }
 
 }

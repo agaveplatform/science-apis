@@ -617,8 +617,8 @@
     <profiles>
         <profile>
             <!-- *********************************************************************
-                **	turns off tests and build of docker containers                      **
-                ***********************************************************************-->
+                **	turns off tests                                                 **
+                **********************************************************************-->
             <id>dev</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -688,6 +688,18 @@
                     </plugin>
                 </plugins>
             </reporting>
+        </profile>
+        <profile>
+            <!-- *********************************************************************
+                **	turns off tests and build of docker containers                      **
+                ***********************************************************************-->
+            <id>docker-build</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <skip.docker.build>false</skip.docker.build>
+            </properties>
         </profile>
         <profile>
             <id>agave</id>

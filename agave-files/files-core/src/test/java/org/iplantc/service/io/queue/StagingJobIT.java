@@ -1,12 +1,5 @@
 package org.iplantc.service.io.queue;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.net.URI;
-import java.util.*;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -27,11 +20,14 @@ import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.json.JSONObject;
-import org.mockito.Mockito;
 import org.testng.Assert;
-import org.testng.ITestContext;
 import org.testng.annotations.*;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.util.*;
 
 /**
  * Tests the behavior of the StagingJob. URL Copy should be tested independently
@@ -51,10 +47,10 @@ public class StagingJobIT extends BaseTestCase {
 	private StorageSystem irods4System;
 	private StorageSystem ftpSystem;
 	private StorageSystem s3System;
-	private ThreadLocal<HashMap<String, RemoteDataClient>> threadClientMap = new ThreadLocal<HashMap<String, RemoteDataClient>>();
-	private ThreadLocal<String> uniqueSrcTestDir = new ThreadLocal<String>();
-	private ThreadLocal<String> uniqueDestTestDir = new ThreadLocal<String>();
-	private SystemDao systemDao = new SystemDao();
+	private final ThreadLocal<HashMap<String, RemoteDataClient>> threadClientMap = new ThreadLocal<HashMap<String, RemoteDataClient>>();
+	private final ThreadLocal<String> uniqueSrcTestDir = new ThreadLocal<String>();
+	private final ThreadLocal<String> uniqueDestTestDir = new ThreadLocal<String>();
+	private final SystemDao systemDao = new SystemDao();
 	private List<StorageSystem> testSystems;
 	
 	@BeforeClass
@@ -217,7 +213,7 @@ public class StagingJobIT extends BaseTestCase {
 	}
 
 	private StagingTask createStagingTaskForUrl(URI sourceUri, RemoteSystem destSystem, String destPath)
-	throws FileNotFoundException, Exception 
+	throws Exception
 	{
 
 		LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
@@ -226,11 +222,8 @@ public class StagingJobIT extends BaseTestCase {
 		
 		LogicalFileDao.persist(file);
 		
-		StagingTask task = new StagingTask(file, SYSTEM_OWNER);
-		task.setRetryCount(Settings.MAX_STAGING_RETRIES);
-		QueueTaskDao.persist(task);
-		
-		return task;
+		new QueueTaskDao().enqueueStagingTask(file, SYSTEM_OWNER);
+
 	} 
 	
 	@Test
@@ -272,7 +265,7 @@ public class StagingJobIT extends BaseTestCase {
 		                                    true,
 		                                    FilenameUtils.getName(uri.getPath()),
                         		            String.format("Retrieving valid uri from %s to %s %s %s system should succeed",
-                        		                    uri.toString(),
+													uri,
                         		                    system.isGlobalDefault() ? " default " : "",
                                                     system.getStorageConfig().getProtocol().name(),
                                                     system.getType().name()) });
@@ -284,7 +277,7 @@ public class StagingJobIT extends BaseTestCase {
 										false,
 										FilenameUtils.getName(fileNotFoundUri.getPath()),
 										String.format("Staging 404 at %s to default sotrage system should fail.",
-												fileNotFoundUri.toString())});
+												fileNotFoundUri)});
 
 			testCases.add(new Object[]{ httpMissingPasswordBasicUri,
 										defaultStorageSystem,
@@ -292,7 +285,7 @@ public class StagingJobIT extends BaseTestCase {
 										false,
 										FilenameUtils.getName(httpMissingPasswordBasicUri.getPath()),
 										String.format("Missing basic password copying file at %s to default sotrage system should fail.",
-												httpMissingPasswordBasicUri.toString())});
+												httpMissingPasswordBasicUri)});
 
 			testCases.add(new Object[]{ httpInvalidPasswordBasicUri,
 										defaultStorageSystem,
@@ -300,7 +293,7 @@ public class StagingJobIT extends BaseTestCase {
 										false,
 										FilenameUtils.getName(httpInvalidPasswordBasicUri.getPath()),
 										String.format("Bad basic password copying file at %s to default sotrage system should fail.",
-										httpInvalidPasswordBasicUri.toString())});
+												httpInvalidPasswordBasicUri)});
 
 			testCases.add(new Object[]{ httpNoPathUri,
 										defaultStorageSystem,
@@ -308,14 +301,14 @@ public class StagingJobIT extends BaseTestCase {
 										false,
 										FilenameUtils.getName(httpNoPathUri.getPath()),
 										String.format("No source path found copying file at %s to default sotrage system should fail.",
-												httpNoPathUri.toString())});
+												httpNoPathUri)});
 			testCases.add(new Object[]{ httpEmptyPathUri,
 										defaultStorageSystem,
 										"",
 										false,
 										FilenameUtils.getName(httpEmptyPathUri.getPath()),
 										String.format("No source path found copying file at %s to default sotrage system should fail.",
-												httpEmptyPathUri.toString())});
+												httpEmptyPathUri)});
 		}
 		return testCases.toArray(new Object[][] {});
 	}
@@ -341,13 +334,13 @@ public class StagingJobIT extends BaseTestCase {
 			remoteExpectedPath = remoteBaseDir + "/" + expectedPath;
 
 			StagingTask task = createStagingTaskForUrl(sourceUri, destSystem, remoteDestPath);
-			
+
 			StagingJob stagingJob = new StagingJob();
 
 			stagingJob.setQueueTask(task);
-			
+
 			stagingJob.doExecute();
-			
+
 			LogicalFile file = LogicalFileDao.findById(task.getLogicalFile().getId());
 
 			Assert.assertNotNull(file, "LogicalFile should exist if the stagingJob could run.");

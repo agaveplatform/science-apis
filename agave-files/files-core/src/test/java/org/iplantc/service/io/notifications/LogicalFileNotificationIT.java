@@ -3,22 +3,8 @@
  */
 package org.iplantc.service.io.notifications;
 
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.Settings;
@@ -41,40 +27,36 @@ import org.iplantc.service.notification.queue.NewNotificationQueueProcessor;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.JobListener;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SimpleTrigger;
+import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.KeyMatcher;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.surftools.BeanstalkClientImpl.ClientImpl;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"integration","notifications","files"})
-public class LogicalFileNotificationTest extends BaseTestCase
+@Test(singleThreaded=true, groups={"integration"})
+public class LogicalFileNotificationIT extends BaseTestCase
 {
-	private static final Logger log = Logger.getLogger(LogicalFileNotificationTest.class);
+	private static final Logger log = Logger.getLogger(LogicalFileNotificationIT.class);
 	
-	private static String TEST_NOTIFICATION_EMAIL = "foo@example.com";
+	private static final String TEST_NOTIFICATION_EMAIL = "foo@example.com";
 	private String TEST_NOTIFICATION_URL;
 	private org.iplantc.service.io.model.JSONTestDataUtil util;
-	private NotificationDao notificationDao = new NotificationDao();
-	private ObjectMapper mapper = new ObjectMapper();
+	private final NotificationDao notificationDao = new NotificationDao();
+	private final ObjectMapper mapper = new ObjectMapper();
 	private Scheduler sched;
 	private SimpleTrigger trigger;
 	private RequestBin requestBin;
@@ -127,7 +109,7 @@ public class LogicalFileNotificationTest extends BaseTestCase
 			.withIdentity("test-" + name)
 			.build();
 		
-		trigger = (SimpleTrigger)newTrigger()
+		trigger = newTrigger()
 				.withIdentity("trigger-LogicalFileNotificationTest")
 				.startNow()
 				.withSchedule(simpleSchedule()
@@ -167,7 +149,7 @@ public class LogicalFileNotificationTest extends BaseTestCase
 	
 	protected String createRequestBin() throws IOException, RemoteDataException {
 	    requestBin = RequestBin.getInstance();
-		return requestBin.toString() + "?status=${EVENT}&logicalFileid=${UUID}";
+		return requestBin + "?status=${EVENT}&logicalFileid=${UUID}";
 	}
 
 	/**
@@ -307,7 +289,7 @@ public class LogicalFileNotificationTest extends BaseTestCase
         sched = schedulerFactory.getScheduler();
         sched.start();
     }
-    
+
     protected void createIndividualNotifications(LogicalFile logicalFile, String notificationUri, boolean persistent) 
     throws NotificationException 
     {
@@ -437,7 +419,7 @@ public class LogicalFileNotificationTest extends BaseTestCase
 		Assert.assertEquals(notifications.size(), 1, "Wrong number of notifications returned for status " + eventType.name() + " ");
 		
 		Notification n = notifications.get(0);
-		System.out.println(n.getLastUpdated());
+
 //		Assert.assertNotNull(n.getLastSent(), "Message for status " + testStatus + " was attempted.");
 		
 		Assert.assertTrue(n.getStatus() == NotificationStatusType.COMPLETE, "Message for status " + eventType.name() + " was successfully sent.");

@@ -5,10 +5,13 @@ package org.iplantc.service.io.dao;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.fileupload.util.Streams;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.*;
+import org.iplantc.service.common.auth.JWTClient;
+import org.iplantc.service.common.exceptions.TenantException;
+import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.exceptions.TaskException;
@@ -17,12 +20,18 @@ import org.iplantc.service.io.model.QueueTask;
 import org.iplantc.service.io.model.StagingTask;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.transfer.exceptions.TransferException;
+import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.SchedulerException;
 
-import java.io.*;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 /**
@@ -32,26 +41,21 @@ import java.util.Date;
 public class QueueTaskDao
 {
     private static final Logger log = Logger.getLogger(QueueTaskDao.class);
-//	protected ObjectMapper mapper = new ObjectMapper();
-	private String strJwtToken;
-
-	public String getStrJwtToken() {
-		return strJwtToken;
-	}
-
-	public void setStrJwtToken(String strJwtToken) {
-		this.strJwtToken = strJwtToken;
-	}
+	private static final ObjectMapper objectMapper = new ObjectMapper();
 
 	// Used internally to distinguish between task types.
     private enum TaskType {STAGING}
-
 	public static Long getNextStagingTask(String[] tenantIds)
 	{
 	    return getNextTask(tenantIds, TaskType.STAGING);
 	}
 
-
+	/**
+	 *
+	 * @param id
+	 * @return
+	 * @deprecated
+	 */
 	public static StagingTask getStagingTaskById(Long id)
 	{
 		try
@@ -81,7 +85,12 @@ public class QueueTaskDao
 		}
 	}
 
-
+	/**
+	 * @param task
+	 * @throws TaskException
+	 * @throws StaleObjectStateException
+	 * @deprecated
+	 */
 	public static void persist(QueueTask task)
 	throws TaskException, StaleObjectStateException
 	{
@@ -113,6 +122,13 @@ public class QueueTaskDao
 		}
 	}
 
+	/**
+	 *
+	 * @param task
+	 * @throws TaskException
+	 * @throws StaleObjectStateException
+	 * @deprecated
+	 */
 	public static void remove(QueueTask task)
 	throws TaskException, StaleObjectStateException
 	{
@@ -147,6 +163,13 @@ public class QueueTaskDao
 		}
 	}
 
+	/**
+	 *
+	 * @param task
+	 * @return
+	 * @throws TransferException
+	 * @deprecated
+	 */
 	public static QueueTask merge(QueueTask task) throws TransferException
 	{
 		if (task == null)
@@ -182,100 +205,145 @@ public class QueueTaskDao
 
 
 	/**
-	 * Pushes a job into the quartz queue by adding a StagingTask record to the db.
-	 * The task will be pulled by the existing triggers and run.
+	 * Submits a {@link TransferTask} to the transfers api via HTTP.
 	 *
-	 * @param file the file to transfer
-	 * @param createdBy the user to whom the staging task belongs
-	 * @throws SchedulerException
+	 * @param file the logical file to transfer. This represents the destination of the transfer
+	 * @param username the user who requested the transfer
+	 * @throws SchedulerException if unable to submit the request
 	 */
-	public void enqueueStagingTask(LogicalFile file, String createdBy)
-	throws SchedulerException
-	{
+	public void enqueueStagingTask(LogicalFile file, String username) throws SchedulerException {
         DataOutputStream wr = null;
-        HttpURLConnection connection = null;
+
         ObjectMapper mapper = new ObjectMapper();
-		try
-		{
-			StagingTask task = new StagingTask(file, createdBy);
-//			TransferTask tt = FileTransferVerticle.getInstance().submit(task);
-//			return tt;
+		String transfersApiAddress = "http://transfers/api/transfers";
+		URL transfersApiUrl = null;
+		try {
+			transfersApiUrl = new URL(transfersApiAddress);
+		} catch (MalformedURLException e) {
+			throw new SchedulerException("Unable to connect to transfers api. " + e.getMessage());
+		}
 
-//            String strUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) +
-//                    "api/transfers/";
-            String strUrl = "http://localhost:8085/api/transfers";
-            URL url = new URL(strUrl);
+		HttpURLConnection connection = null;
+		try {
 
-            log.info("Calling transfers service " + strUrl + " with src uri " + file.getSourceUri() + " and dest: " + file.getPath());
+			log.info("Calling transfers service " + transfersApiAddress + " with src uri " +
+					file.getSourceUri() + " and dest: " + file.getPath());
 
-            // Construct data
-            ObjectNode transfer = mapper.createObjectNode();
-            transfer.put("source", file.getSourceUri());
-            transfer.put("dest", file.getPath());
+            // Construct transfer request body
+            String transferRequestBody = objectMapper.createObjectNode()
+					.put("source", file.getSourceUri())
+					.put("dest", file.getPath())
+					.toString();
 
-            // Send data
-            connection = (HttpURLConnection) url.openConnection();
+            // create post request
+            connection = (HttpURLConnection) transfersApiUrl.openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json; utf-8");
             connection.setRequestProperty("Accept", "application/json");
-            connection.setRequestProperty("Content-Length", "" + transfer.asInt());
+            connection.setRequestProperty("Content-Length", "" + transferRequestBody.length());
             connection.setRequestProperty("Content-Language", "en-US");
-           	connection.setRequestProperty("x-jwt-assertion-dev-staging", getStrJwtToken());
+           	connection.setRequestProperty(getHttpAuthHeader(file.getTenantId()), getHttpAuthToken(username, file.getTenantId()));
             connection.setUseCaches(false);
             connection.setDoOutput(true);
             connection.setDoInput(true);
 
-            wr = new DataOutputStream(connection.getOutputStream());
-            wr.writeBytes(transfer.toString());
-            wr.flush();
-            wr.close();
-
-            //Get Response
-            InputStream is = connection.getInputStream();
-
-            if (connection.getResponseCode() == 201){
-                BufferedReader rd = new BufferedReader(new InputStreamReader(is));
-                String line;
-                StringBuffer response = new StringBuffer();
-                while ((line = rd.readLine()) != null) {
-                    response.append(line);
-                    response.append('\r');
-                }
-                rd.close();
-
-                //Add transfer uuid to track in the transfers service
-				JsonNode jsonResponse = mapper.readTree(response.toString());
-                file.setTransferUuid(jsonResponse.get("result").get("uuid").textValue());
-
-                LogicalFileDao.updateTransferStatus(file, StagingTaskStatus.STAGING_QUEUED, createdBy);
-
-            } else {
-                //failed to queue staging task
-                file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
-                try {
-                    LogicalFileDao.persist(file);
-                } catch (Exception e1) {
-                    String msg2 = "Failure to save logical file " + file.getName() + " while enqueuing staging task.";
-                    log.error(msg2, e1);
-                }
-            }		}
-		catch (Exception e)
-		{
-		    String msg = "Failure to enqueue staging task with logical file " + file.getName() + ".";
-		    log.error(msg, e);
-
-			file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
-			try {
-				LogicalFileDao.persist(file);
-			} catch (Exception e1) {
-			    String msg2 = "Failure to save logical file " + file.getName() + " while enqueuing staging task.";
-			    log.error(msg2, e1);
+            // send request
+			try (OutputStream connectionOutputStream = connection.getOutputStream()) {
+				connectionOutputStream.write(transferRequestBody.getBytes(StandardCharsets.UTF_8));
+				connectionOutputStream.flush();
+			} catch (IOException e) {
+				throw new SchedulerException("Failed to submit transfer request to api: " + e.getMessage());
 			}
 
-			throw new SchedulerException(msg, e);
+			String responseBody = null;
+			int responseCode = 0;
+			String responseMessage = null;
+			try (InputStream is = connection.getInputStream()) {
+				responseBody = Streams.asString(is);
+				responseCode = connection.getResponseCode();
+				responseMessage = connection.getResponseMessage();
+			} catch (IOException e) {
+				throw new SchedulerException("Failed to read response from transfers api: " + e.getMessage());
+			}
+
+			// Handle response from transfer api request
+			if (responseCode == 201) {
+				// this is the only success response
+				JsonNode jsonResponse = objectMapper.readTree(responseBody);
+				if (jsonResponse == null) {
+					throw new SchedulerException("Unable to parse response from transfers api: " + responseBody);
+				} else {
+					JsonNode uuidNode = jsonResponse.at("/response/uuid");
+					if (uuidNode == null || uuidNode.isNull()) {
+						throw new SchedulerException("No uuid returned from transfers api: " + responseBody);
+					}
+					//Add transfer uuid to track in the transfers service
+					file.setTransferUuid(uuidNode.asText());
+				}
+
+				// this will be handled by the transfers api created event notification listener
+				// LogicalFileDao.updateTransferStatus(file, StagingTaskStatus.STAGING_QUEUED, createdBy);
+            }
+			else {
+				// request failed
+				file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
+
+				throw new SchedulerException("Error response received while submitting a new transfer request: " +
+						"code: " + responseCode + ", message: " + responseMessage);
+
+			}
+		}
+		catch (SchedulerException e) {
+			throw e;
+		}
+		catch (IOException e) {
+			throw new SchedulerException("Failed to parse the response from the transfers api: " + e.getMessage());
+		}
+		catch (Exception e) {
+
+			file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
+
+			throw new SchedulerException("Unexpected error encountered submitting transfer " +
+					"request to the transfers api.", e);
+		}
+		finally {
+			// save the uuid with the logical file
+			updateLogicalFileAndSwallowException(file);
 		}
 	}
 
+	/**
+	 * Mockable method to udpate a logical file without relying on the static {@link LogicalFileDao#persist(LogicalFile)}
+	 * method.
+	 * @param logicalFile the logical file to update.
+	 */
+	protected void updateLogicalFileAndSwallowException(LogicalFile logicalFile) {
+		try {
+			LogicalFileDao.persist(logicalFile);
+		} catch (Throwable t) {
+			log.error("Failure to update logical file " + logicalFile.getUuid() + " while submitting transfer request: "
+					+ t.getMessage());
+		}
+	}
+
+	/**
+	 * Generates the JWT header expected for this tenant. {@code x-jwt-assertion-<tenant_code>} where the tenant code
+	 * is noncified.
+	 * @param tenantId the current {@link Tenant#getTenantCode()}
+	 * @return the expected internal JWT for the given {@code tenantId}
+	 */
+	protected String getHttpAuthHeader(String tenantId) {
+		return String.format("x-jwt-assertion-%s", StringUtils.replace(tenantId, ".", "-")).toLowerCase();
+	}
+
+	/**
+	 * The jwt auth token string to get
+	 * @return the serialized jwt auth token for a given user
+	 * @throws TenantException if the tenantId is no good
+	 */
+	public String getHttpAuthToken(String username, String tenantId) throws TenantException {
+		return JWTClient.createJwtForTenantUser(username, tenantId, false);
+	}
 
 	/**
 	 * Generate keys to use in the request to the transfers-api

@@ -5,7 +5,7 @@ package org.iplantc.service.io;
 
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.JndiSetup;
-import org.iplantc.service.io.manager.FilesTransferListener;
+import org.iplantc.service.io.queue.listeners.FilesTransferListener;
 import org.restlet.Server;
 import org.restlet.data.Protocol;
 import org.restlet.resource.Get;

@@ -48,6 +48,10 @@
     </listener>
 
     <listener>
+        <listener-class>org.iplantc.service.io.FileUploadServletContextListener</listener-class>
+    </listener>
+
+    <listener>
 		<listener-class>org.iplantc.service.common.persistence.HibernateListener</listener-class>
 	</listener>
 

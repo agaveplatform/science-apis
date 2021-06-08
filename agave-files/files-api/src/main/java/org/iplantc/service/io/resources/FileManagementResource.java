@@ -15,6 +15,7 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveErrorRepresentation;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.util.AgaveStringUtils;
+import org.iplantc.service.io.FileUploadServletContextListener;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.dao.QueueTaskDao;
@@ -28,7 +29,7 @@ import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.FileOperationType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.io.permissions.PermissionManager;
-import org.iplantc.service.io.queue.UploadJob;
+import org.iplantc.service.io.queue.UploadRunnable;
 import org.iplantc.service.io.util.PathResolver;
 import org.iplantc.service.io.util.ServiceUtils;
 import org.iplantc.service.notification.model.Notification;
@@ -47,11 +48,6 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.joda.time.DateTime;
 import org.json.JSONException;
-import org.quartz.JobDetail;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SimpleTrigger;
-import org.quartz.impl.StdSchedulerFactory;
 import org.restlet.Request;
 import org.restlet.data.Status;
 import org.restlet.data.*;
@@ -65,11 +61,8 @@ import java.io.*;
 import java.net.URI;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Properties;
 
 import static org.iplantc.service.io.model.enumerations.FileOperationType.*;
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * Class to handle get and post requests for jobs
@@ -912,8 +905,8 @@ public class FileManagementResource extends AbstractFileResource
 				
 							LogicalFile logicalFile = null;
 				            try {
-				            	logicalFile = LogicalFileDao.findBySystemAndPath(system, remoteDataClient.resolvePath(remotePath));;
-				            } catch(Exception e) {
+				            	logicalFile = LogicalFileDao.findBySystemAndPath(system, remoteDataClient.resolvePath(remotePath));
+							} catch(Exception e) {
 				            	if (log.isDebugEnabled()) {
 				            		String msg = "LogicalFileDao.findBySystemAndPath() failed, creating new logical file " +
 						                         remotePath + ".";
@@ -969,11 +962,11 @@ public class FileManagementResource extends AbstractFileResource
 	                        // logical file in an intermediate state.  The goal of this hack is to disrupt this method's 
 	                        // convoluted logic as little as possible.
 							adjustDestinationPath(logicalFile);
-							logicalFile.addContentEvent(FileEventType.STAGING_QUEUED, username);
-							LogicalFileDao.persist(logicalFile);
+//							logicalFile.addContentEvent(FileEventType.STAGING_QUEUED, username);
+//							LogicalFileDao.persist(logicalFile);
 
 							// add the logical file to the staging queue
-		                    QueueTaskDao.enqueueStagingTask(logicalFile, username);
+		                    new QueueTaskDao().enqueueStagingTask(logicalFile, username);
 
 	                        setStatus(Status.SUCCESS_ACCEPTED);
 		                    return new AgaveSuccessRepresentation(logicalFile.toJsonWithNotifications(notifications));
@@ -1093,38 +1086,13 @@ public class FileManagementResource extends AbstractFileResource
 
                                     // Copy the contents of the FileItem to the remoteDataClient location.
 		    						File cachedDir = Files.createTempDir();
-		    						File cachedFile = new File(cachedDir, fileName);
-		    						cachedFile.createNewFile();
+									File cachedFile = new File(cachedDir, fileName);
 		    						fi.write(cachedFile);
+
+									// TODO: pass over to the transfers-api so the connection can be returned
+									FileUploadServletContextListener.scheduleUploadTask(new UploadRunnable(logicalFile, cachedFile, (StringUtils.isEmpty(owner) ? username : owner), username));
+
 		    						log.debug("File upload of " + cachedFile.length() + " bytes received from " + getAuthenticatedUsername());
-
-		    						//TODO: pass over to the transfers-api so the connection can be returned
-
-		    						// kick off a background task to stage the file so we can return the connection immediately
-		    						JobDetail jobDetail = newJob(UploadJob.class)
-                    					.withIdentity("cache-upload-" + logicalFile.getId() + "-" + System.currentTimeMillis(), "Staging upload")
-                    					.usingJobData("logicalFileId", logicalFile.getId())
-                    					.usingJobData("cachedFile", cachedFile.getAbsolutePath())
-                    					.usingJobData("owner", StringUtils.isEmpty(owner) ? username : owner)
-                    					.usingJobData("tenantId", TenancyHelper.getCurrentTenantId())
-                    					.usingJobData("createdBy", username)
-                    					.usingJobData("sourceUrl", tmpUrl)
-                    					.usingJobData("destUrl", "agave://" + system.getSystemId() + "/" + logicalFile.getAgaveRelativePathFromAbsolutePath())
-                    				    .usingJobData("isRangeCopyOperation", Boolean.toString(!ranges.isEmpty()))
-            					        .usingJobData("rangeIndex", ranges.isEmpty() ? Long.valueOf(0) : ranges.get(0).getIndex())
-            					        .usingJobData("rangeSize", ranges.isEmpty() ? Long.valueOf(-1) : ranges.get(0).getSize())
-                    					.build();
-
-									SimpleTrigger trigger = (SimpleTrigger)newTrigger()
-										.withIdentity("trigger-" + logicalFile.getId() + "-" + System.currentTimeMillis(), "Upload")
-										.startNow()
-										.build();
-
-									Scheduler sched = getUploadScheduler();
-									if (!sched.isStarted()) {
-                                	   sched.start();
-									}
-									sched.scheduleJob(jobDetail, trigger);
 
 									break;
 		                        }
@@ -1286,11 +1254,11 @@ public class FileManagementResource extends AbstractFileResource
                         // logical file in an intermediate state.  The goal of this hack is to disrupt this method's 
 						// convoluted logic as little as possible.
                         adjustDestinationPath(logicalFile);
-						logicalFile.addContentEvent(FileEventType.STAGING_QUEUED, username);
-						LogicalFileDao.persist(logicalFile);
+//						logicalFile.addContentEvent(FileEventType.STAGING_QUEUED, username);
+//						LogicalFileDao.persist(logicalFile);
 
 						// add the logical file to the staging queue
-						QueueTaskDao.enqueueStagingTask(logicalFile, username);
+						new QueueTaskDao().enqueueStagingTask(logicalFile, username);
 
 						// append notifications to the hypermedia response.
                         setStatus(Status.SUCCESS_ACCEPTED);
@@ -1331,42 +1299,8 @@ public class FileManagementResource extends AbstractFileResource
         }
     }
 
-	
-
-	/**
-	 * Fetches the custom scheduler needed to manage file upload tasks.
-	 * @return
-	 * @throws SchedulerException
-	 */
-	private Scheduler getUploadScheduler() throws SchedulerException {
-	    StdSchedulerFactory schedulerFactory = new StdSchedulerFactory();
-	    InputStream in = null;
-	    Scheduler scheduler = null;
-	    try {
-	        in = getClass().getClassLoader().getResourceAsStream("quartz-httpupload.properties");
-	        schedulerFactory.initialize(in);
-	    }
-	    catch (SchedulerException e) {
-	    	log.error(e.getMessage(), e);
-	        Properties props = new Properties();
-	        props.put("org.quartz.scheduler.instanceName", "AgaveFileUploadScheduler");
-	        props.put("org.quartz.threadPool.threadCount", "5");
-	        props.put("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore");
-	        props.put("org.quartz.plugin.shutdownhook.class", "org.quartz.plugins.management.ShutdownHookPlugin");
-	        props.put("org.quartz.plugin.shutdownhook.cleanShutdown", "true");
-	        props.put("org.quartz.scheduler.skipUpdateCheck","true");
-	        schedulerFactory.initialize(props);
-	    }
-	    finally {
-	    	if (in != null) try { in.close(); } catch (Exception e) {}
-	    }
-	    scheduler = schedulerFactory.getScheduler();
-	    return scheduler;
-    }
-
     /**
 	 * Deletes a file or folder with provenance and alerts
-	 *
 	 */
 	@Delete
 	@Override
@@ -2341,7 +2275,7 @@ public class FileManagementResource extends AbstractFileResource
             log.error(msg, e);
         } finally {
             if (destClient != null) 
-                try {destClient.disconnect();} catch (Exception e) {}
+                try {destClient.disconnect();} catch (Exception ignored) {}
         }
 	}
 }

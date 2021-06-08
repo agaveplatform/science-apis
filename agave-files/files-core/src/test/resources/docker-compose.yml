@@ -181,11 +181,9 @@ services:
 
 
   transfers:
-    image: agaveplatform/transfers-api:2.2.27
+    image: transfers-api:${buildNumber}
     ports:
       - 8085:8085
-    environment:
-      TRANSFERTASK_DB_SQL_QUERIES_RESOURCE_FILE: /verticles/db-queries.yml
     networks:
       - services
 

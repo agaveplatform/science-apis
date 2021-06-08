@@ -59,7 +59,7 @@ import java.io.IOException;
  */
 public class PublishAction extends AbstractWorkerAction<Software> {
     
-    private static Logger log = Logger.getLogger(PublishAction.class);
+    private static final Logger log = Logger.getLogger(PublishAction.class);
     private Software publishedSoftware;
     private String publishingUsername;
     private String publishedSoftwareName;
@@ -362,7 +362,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
     {
         // resolve the path to the folder for public apps on the public default storage system
         // note that this may change over time, but it's saved with the app, so that's fine.
-        String remotePublicAppsFolder = publishedSoftwareStorageSystem.getStorageConfig().getPublicAppsDir();;
+        String remotePublicAppsFolder = publishedSoftwareStorageSystem.getStorageConfig().getPublicAppsDir();
         if (StringUtils.isEmpty(remotePublicAppsFolder)) {
             remotePublicAppsFolder = Settings.PUBLIC_APPS_DEFAULT_DIRECTORY;
         }
@@ -612,9 +612,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
                     LogicalFileDao.persist(logicalFile);
                     
                     // add the logical file to the staging queue
-                    QueueTaskDao.enqueueStagingTask(logicalFile, getPublishingUsername());
-        
-                    LogicalFileDao.updateTransferStatus(logicalFile, StagingTaskStatus.STAGING_QUEUED, "xxx");
+                    new QueueTaskDao().enqueueStagingTask(logicalFile, getPublishingUsername());
                 }
             }
             

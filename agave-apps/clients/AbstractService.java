@@ -34,7 +34,6 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.clients.exceptions.APIClientException;
-import org.iplantc.service.clients.model.AuthenticationToken;
 
 /**
  * Abstract parent class for all API Service clients
@@ -52,11 +51,11 @@ public abstract class AbstractService {
 	 * APIResponse.
 	 * 
 	 * @param endpoint URL to which to post the form.
-	 * @param token AuthenticationToken used for the request
+	 * @param token serialized jwt used for the request
 	 * @return
 	 * @throws APIClientException
 	 */
-	public APIResponse get(String endpoint, AuthenticationToken token)
+	public APIResponse get(String endpoint, String token)
 	throws APIClientException {
 		
 		if (StringUtils.isEmpty(endpoint)) {

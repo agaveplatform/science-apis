@@ -20,6 +20,7 @@ public class QueueTaskDaoIT extends BaseTestCase {
     private QueueTask task;
     private LogicalFile file;
     private SystemDao systemDao = new SystemDao();
+    private QueueTaskDao queueTaskDao = new QueueTaskDao();
     private String destPath;
     private URI httpUri;
 
@@ -66,7 +67,7 @@ public class QueueTaskDaoIT extends BaseTestCase {
 
     @Test
     public void testEnqueueStagingTask() throws SchedulerException {
-        QueueTaskDao.enqueueStagingTask(file, SYSTEM_OWNER);
+        queueTaskDao.enqueueStagingTask(file, SYSTEM_OWNER);
 
         LogicalFile queuedFile = LogicalFileDao.findById(file.getId());
         Assert.assertEquals(queuedFile.getStatus(), StagingTaskStatus.STAGING_QUEUED.name(), "Logical file " +

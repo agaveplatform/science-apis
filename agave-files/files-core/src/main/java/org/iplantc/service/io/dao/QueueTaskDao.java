@@ -3,15 +3,9 @@
  */
 package org.iplantc.service.io.dao;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.PubSecKeyOptions;
-import io.vertx.ext.auth.jwt.JWTAuthOptions;
-import io.vertx.ext.jwt.JWTOptions;
-import io.vertx.ext.web.handler.impl.AgaveJWTAuthProviderImpl;
-import org.agaveplatform.service.transfers.util.CryptoHelper;
-import org.agaveplatform.service.transfers.util.ServiceUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.*;
@@ -29,10 +23,7 @@ import java.io.*;
 import java.math.BigInteger;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Date;
-import java.util.List;
 
 /**
  * @author dooley
@@ -41,8 +32,18 @@ import java.util.List;
 public class QueueTaskDao
 {
     private static final Logger log = Logger.getLogger(QueueTaskDao.class);
+//	protected ObjectMapper mapper = new ObjectMapper();
+	private String strJwtToken;
 
-    // Used internally to distinguish between task types.
+	public String getStrJwtToken() {
+		return strJwtToken;
+	}
+
+	public void setStrJwtToken(String strJwtToken) {
+		this.strJwtToken = strJwtToken;
+	}
+
+	// Used internally to distinguish between task types.
     private enum TaskType {STAGING}
 
 	public static Long getNextStagingTask(String[] tenantIds)
@@ -188,11 +189,12 @@ public class QueueTaskDao
 	 * @param createdBy the user to whom the staging task belongs
 	 * @throws SchedulerException
 	 */
-	public static void enqueueStagingTask(LogicalFile file, String createdBy)
+	public void enqueueStagingTask(LogicalFile file, String createdBy)
 	throws SchedulerException
 	{
         DataOutputStream wr = null;
         HttpURLConnection connection = null;
+        ObjectMapper mapper = new ObjectMapper();
 		try
 		{
 			StagingTask task = new StagingTask(file, createdBy);
@@ -207,11 +209,9 @@ public class QueueTaskDao
             log.info("Calling transfers service " + strUrl + " with src uri " + file.getSourceUri() + " and dest: " + file.getPath());
 
             // Construct data
-            ObjectNode transfer = new ObjectMapper().createObjectNode();
+            ObjectNode transfer = mapper.createObjectNode();
             transfer.put("source", file.getSourceUri());
             transfer.put("dest", file.getPath());
-
-            String token = getJWTToken(file.getOwner(), "");
 
             // Send data
             connection = (HttpURLConnection) url.openConnection();
@@ -220,7 +220,7 @@ public class QueueTaskDao
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("Content-Length", "" + transfer.asInt());
             connection.setRequestProperty("Content-Language", "en-US");
-           	connection.setRequestProperty("x-jwt-assertion-dev-staging", token);
+           	connection.setRequestProperty("x-jwt-assertion-dev-staging", getStrJwtToken());
             connection.setUseCaches(false);
             connection.setDoOutput(true);
             connection.setDoInput(true);
@@ -244,8 +244,8 @@ public class QueueTaskDao
                 rd.close();
 
                 //Add transfer uuid to track in the transfers service
-                JsonObject jsonResponse = new JsonObject(response.toString());
-                file.setTransferUuid(jsonResponse.getJsonObject("result").getString("uuid"));
+				JsonNode jsonResponse = mapper.readTree(response.toString());
+                file.setTransferUuid(jsonResponse.get("result").get("uuid").textValue());
 
                 LogicalFileDao.updateTransferStatus(file, StagingTaskStatus.STAGING_QUEUED, createdBy);
 
@@ -284,57 +284,57 @@ public class QueueTaskDao
 	 * @return
 	 * @throws IOException
 	 */
-	private static String getJWTToken(String username, String roles) throws IOException {
-//		// generate keys to use in the test. We persist them to temp files so we can pass them to the api via the
-//		// config settings.
-		CryptoHelper cryptoHelper = new CryptoHelper();
-		Path privateKey = Files.write(Files.createTempFile("private", "pem"), cryptoHelper.getPrivateKey().getBytes());
-		Path publicKey = Files.write(Files.createTempFile("public", "pem"), cryptoHelper.getPublicKey().getBytes());
-
-
-		JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
-				.setJWTOptions(new JWTOptions()
-						.setLeeway(30)
-						.setAlgorithm("RS256"))
-				.setPermissionsClaimKey("http://wso2.org/claims/role")
-				.addPubSecKey(new PubSecKeyOptions()
-						.setAlgorithm("RS256")
-						.setPublicKey(CryptoHelper.publicKey(publicKey.toAbsolutePath().toString()))
-						.setSecretKey(CryptoHelper.privateKey(privateKey.toAbsolutePath().toString())));
-
-		AgaveJWTAuthProviderImpl jwtAuth = new AgaveJWTAuthProviderImpl(jwtAuthOptions);
-
-		// Add wso2 claims set
-		String givenName = username.replace("user", "");
-		JsonObject claims = new JsonObject()
-				.put("http://wso2.org/claims/subscriber", username)
-				.put("http://wso2.org/claims/applicationid", "-9999")
-				.put("http://wso2.org/claims/applicationname", "agaveops")
-				.put("http://wso2.org/claims/applicationtier", "Unlimited")
-				.put("http://wso2.org/claims/apicontext", "/internal")
-				.put("http://wso2.org/claims/version", org.iplantc.service.common.Settings.SERVICE_VERSION)
-				.put("http://wso2.org/claims/tier", "Unlimited")
-				.put("http://wso2.org/claims/keytype", "PRODUCTION")
-				.put("http://wso2.org/claims/usertype", "APPLICATION_USER")
-				.put("http://wso2.org/claims/enduser", username)
-				.put("http://wso2.org/claims/enduserTenantId", "-9999")
-				.put("http://wso2.org/claims/emailaddress", username + "@example.com")
-				.put("http://wso2.org/claims/fullname", org.apache.commons.lang3.StringUtils.capitalize(givenName) + " User")
-				.put("http://wso2.org/claims/givenname", givenName)
-				.put("http://wso2.org/claims/lastname", "User")
-				.put("http://wso2.org/claims/primaryChallengeQuestion", "N/A")
-				.put("http://wso2.org/claims/role", ServiceUtils.explode(",", List.of("Internal/everyone,Internal/subscriber", roles)))
-				.put("http://wso2.org/claims/title", "N/A");
-
-		JWTOptions jwtOptions = (JWTOptions) new JWTOptions()
-				.setAlgorithm("RS256")
-				.setExpiresInMinutes(10_080) // 7 days
-				.setIssuer("transfers-api-integration-tests")
-				.setSubject(username);
-
-		return jwtAuth.generateToken(claims, jwtOptions);
-
-	}
+//	private static String getJWTToken(String username, String roles) throws IOException {
+////		// generate keys to use in the test. We persist them to temp files so we can pass them to the api via the
+////		// config settings.
+//		CryptoHelper cryptoHelper = new CryptoHelper();
+//		Path privateKey = Files.write(Files.createTempFile("private", "pem"), cryptoHelper.getPrivateKey().getBytes());
+//		Path publicKey = Files.write(Files.createTempFile("public", "pem"), cryptoHelper.getPublicKey().getBytes());
+//
+//
+//		JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
+//				.setJWTOptions(new JWTOptions()
+//						.setLeeway(30)
+//						.setAlgorithm("RS256"))
+//				.setPermissionsClaimKey("http://wso2.org/claims/role")
+//				.addPubSecKey(new PubSecKeyOptions()
+//						.setAlgorithm("RS256")
+//						.setPublicKey(CryptoHelper.publicKey(publicKey.toAbsolutePath().toString()))
+//						.setSecretKey(CryptoHelper.privateKey(privateKey.toAbsolutePath().toString())));
+//
+//		AgaveJWTAuthProviderImpl jwtAuth = new AgaveJWTAuthProviderImpl(jwtAuthOptions);
+//
+//		// Add wso2 claims set
+//		String givenName = username.replace("user", "");
+//		JsonObject claims = new JsonObject()
+//				.put("http://wso2.org/claims/subscriber", username)
+//				.put("http://wso2.org/claims/applicationid", "-9999")
+//				.put("http://wso2.org/claims/applicationname", "agaveops")
+//				.put("http://wso2.org/claims/applicationtier", "Unlimited")
+//				.put("http://wso2.org/claims/apicontext", "/internal")
+//				.put("http://wso2.org/claims/version", org.iplantc.service.common.Settings.SERVICE_VERSION)
+//				.put("http://wso2.org/claims/tier", "Unlimited")
+//				.put("http://wso2.org/claims/keytype", "PRODUCTION")
+//				.put("http://wso2.org/claims/usertype", "APPLICATION_USER")
+//				.put("http://wso2.org/claims/enduser", username)
+//				.put("http://wso2.org/claims/enduserTenantId", "-9999")
+//				.put("http://wso2.org/claims/emailaddress", username + "@example.com")
+//				.put("http://wso2.org/claims/fullname", org.apache.commons.lang3.StringUtils.capitalize(givenName) + " User")
+//				.put("http://wso2.org/claims/givenname", givenName)
+//				.put("http://wso2.org/claims/lastname", "User")
+//				.put("http://wso2.org/claims/primaryChallengeQuestion", "N/A")
+//				.put("http://wso2.org/claims/role", ServiceUtils.explode(",", List.of("Internal/everyone,Internal/subscriber", roles)))
+//				.put("http://wso2.org/claims/title", "N/A");
+//
+//		JWTOptions jwtOptions = (JWTOptions) new JWTOptions()
+//				.setAlgorithm("RS256")
+//				.setExpiresInMinutes(10_080) // 7 days
+//				.setIssuer("transfers-api-integration-tests")
+//				.setSubject(username);
+//
+//		return jwtAuth.generateToken(claims, jwtOptions);
+//
+//	}
 
 	/** Do the real work of querying for the next task.  This method
 	 * throws some type of runtime execution on error and may modify

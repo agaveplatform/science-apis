@@ -32,7 +32,7 @@ import java.util.*;
 /**
  * Tests the behavior of the StagingJob. URL Copy should be tested independently
  */
-@Test(singleThreaded=true, groups={"integration"})
+@Test(singleThreaded=true, enabled=false, groups={"integration"})
 public class StagingJobIT extends BaseTestCase {
 	private static final Logger log = Logger.getLogger(StagingJobIT.class);
 
@@ -224,6 +224,7 @@ public class StagingJobIT extends BaseTestCase {
 		
 		new QueueTaskDao().enqueueStagingTask(file, SYSTEM_OWNER);
 
+		return null;
 	} 
 	
 	@Test

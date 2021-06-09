@@ -154,4 +154,5 @@ find_transfertask_by_root_task_id_src_dest: |
 get_bytes_transferred_for_all_children: |
   SELECT SUM(bytes_transferred) as bytes_transferred from TransferApiTasks
   WHERE `tenant_id` = ? AND `parent_task` = ?
-
+ping: |
+  SELECT 1 FROM TransferApiTasks

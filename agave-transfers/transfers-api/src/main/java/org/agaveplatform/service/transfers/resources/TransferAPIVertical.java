@@ -1,6 +1,7 @@
 package org.agaveplatform.service.transfers.resources;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
@@ -9,6 +10,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
+import io.vertx.ext.healthchecks.HealthCheckHandler;
+import io.vertx.ext.healthchecks.Status;
 import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -81,13 +84,13 @@ public class TransferAPIVertical extends AbstractVerticle {
         TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
 
         // set the config from the main vertical
-
-        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, TRANSFERTASK_DB_QUEUE); // <1>
+        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         // define our routes
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
+
 
         // Bind "/" to our hello message - so we are still compatible.
         router.route("/").handler(routingContext -> {
@@ -104,6 +107,10 @@ public class TransferAPIVertical extends AbstractVerticle {
             router.route("/api/transfers*").handler(new AgaveJWTAuthHandlerImpl(getAuthProvider()));
         }
 
+        // add health check handler
+        router.get("/health").handler(initHealthCheckHandler());
+
+        // generate a client jwt if enabled at startup
         router.get("/api/client").handler(routingContext -> {
             jwtAuth = getAuthProvider() ;
             HttpServerResponse response = routingContext.response();
@@ -117,49 +124,18 @@ public class TransferAPIVertical extends AbstractVerticle {
 
         // define the service routes
         router.get("/api/transfers").handler(this::getAll);
+        router.post("/api/transfers").handler(this::addOne);
+        router.delete("/api/transfers").handler(this::deleteAll);
+
         router.get("/api/transfers/:uuid").handler(this::getOne);
-
-        router.delete("/api/transfers/deleteAll").handler(this::deleteAll);
+        router.put("/api/transfers/:uuid").handler(this::updateOne);
         router.delete("/api/transfers/:uuid").handler(this::deleteOne);
-        log.debug("got here");
-        // Accept post of a TransferTask, validates the request, and inserts into the db.
-        router.post("/api/transfers")
-                // Mount validation handler to ensure the posted json is valid prior to adding
-//                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
-                // Mount primary handler
-                .handler(this::addOne);
 
-        router.put("/api/transfers/:uuid")
-                // Mount validation handler to ensure the posted json is valid prior to adding
-//                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferUpdate.class)))
-                // Mount primary handler
-                .handler(this::updateOne);
-
-        // Accept post of a cancel TransferTask, validates the request, and updates the db.
-        router.post("/api/transfers/:uuid/cancel")
-                // Mount primary handler
-                .handler(this::cancelOne);
+        router.post("/api/transfers/:uuid/cancel").handler(this::cancelOne);
 
         // Accept post of a cancel TransferTask, validates the request, and inserts into the db.
         router.post("/api/transfers/cancel")
-                // Mount validation handler to ensure the posted json is valid prior to adding
-//                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
-                // Mount primary handler
                 .handler(this::cancelAll);
-
-//        Route cancelRoute = router.put("/api/cancelone");
-//        cancelRoute.failureHandler(failureRoutingContext -> {
-//            log.debug("error occurred {}, {}", failureRoutingContext.response().getStatusCode(), failureRoutingContext.response().getStatusMessage());
-//
-//            log.debug("failure url path params{}", failureRoutingContext.pathParams());
-//            log.debug("failure url query params{}", failureRoutingContext.queryParams());
-//            log.debug("failure body {}", failureRoutingContext.getBodyAsString());
-//
-//            int statusCode = failureRoutingContext.statusCode();
-//            HttpServerResponse response = failureRoutingContext.response();
-//            response.setStatusCode(statusCode).end("Sorry! Not today");
-//        });
-
 
         router.errorHandler(500, ctx -> ctx.response()
             .putHeader("content-type", "application/json")
@@ -185,9 +161,40 @@ public class TransferAPIVertical extends AbstractVerticle {
             });
     }
 
+    /**
+     * Creates a {@link HealthCheckHandler} and registers checks for db and message queue health.
+     * @return the registered health check handler
+     */
+    private Handler<RoutingContext> initHealthCheckHandler() {
+        // Register health checks for db and queue. If the endpoints are down, the health check won't respond anyway
+        HealthCheckHandler healthCheckHandler = HealthCheckHandler.create(vertx);
+
+        // db check
+        healthCheckHandler.register("db-check", 2000, dbCheckPromise -> {
+            dbService.ping(resp -> {
+                if (resp.succeeded()) {
+                    dbCheckPromise.complete(Status.OK());
+                } else {
+                    dbCheckPromise.complete(Status.KO());
+                }
+            });
+        });
+
+        // message queue check
+        healthCheckHandler.register("queue-check", 2000, dbCheckPromise -> {
+            // put call to nats health check here
+            dbCheckPromise.complete(Status.OK());
+//            if (natsClient.isAlive()) {
+//                dbCheckPromise.complete(Status.OK());
+//            } else {
+//                dbCheckPromise.complete(Status.KO());
+//            };
+        });
+
+        return healthCheckHandler;
+    }
 
     // ---- HTTP Actions ----
-
     /**
      * Fetches all {@link TransferTask} from the db. Results are added to the routing context.
      * If the user does not have admin privileges, then the call is delegated to {@link #getAllForUser(RoutingContext)}
@@ -346,8 +353,7 @@ public class TransferAPIVertical extends AbstractVerticle {
     }
 
     /**
-     * Inserts a new {@link TransferTask} into the db. Validation happens in a previous handler,
-     * so this method only needs to worry about running the insertion.
+     * Cancels all {@link TransferTask}. This is an admin-only action.
      *
      * @param routingContext the current rounting context for the request
      */
@@ -359,68 +365,26 @@ public class TransferAPIVertical extends AbstractVerticle {
         String username = principal.getString("username");
         log.debug("username = {}", username);
         JsonObject body = routingContext.getBodyAsJson();
-        // request body was validated prior to this method being called
-//        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);
-        TransferTask transferTask = new TransferTask();
-        transferTask.setTenantId(tenantId);
-        transferTask.setOwner(username);
-        transferTask.setSource(body.getString("source"));
-        transferTask.setDest(body.getString("dest"));
 
         // lookup task to get the id
-        dbService.getByUuid(tenantId, transferTask.getUuid(), getByIdReply -> {
-            if (getByIdReply.succeeded()) {
-                if (getByIdReply.result() == null) {
-                    // not found
-                    routingContext.fail(404);
+        if (user.isAdminRoleExists()) {
+            dbService.cancelAll(tenantId, deleteReply -> {
+                if (deleteReply.succeeded()) {
+                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+
+                    routingContext.response()
+                            .putHeader("content-type", "application/json")
+                            .setStatusCode(203).end();
                 } else {
-                    // if the current user is the owner or has admin privileges, allow the action
-                    if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
-                            user.isAdminRoleExists()) {
-                        dbService.cancelAll(tenantId, deleteReply -> {
-                            if (deleteReply.succeeded()) {
-                                // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
-                                //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
-
-                                routingContext.response()
-                                        .putHeader("content-type", "application/json")
-                                        .setStatusCode(203).end();
-                            } else {
-                                // delete failed
-                                routingContext.fail(deleteReply.cause());
-                            }
-                        });
-                    } else {
-                        // permission denied if they don't have access
-                        routingContext.fail(403);
-                    }
+                    // delete failed
+                    routingContext.fail(deleteReply.cause());
                 }
-            } else {
-                // task lookup failed
-                routingContext.fail(getByIdReply.cause());
-            }
-        });
-
-
-        dbService.getByUuid(tenantId, transferTask.getUuid(), reply -> {
-            if (reply.succeeded()) {
-                TransferTask tt = new TransferTask(reply.result());
-                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
-                routingContext.response()
-                        .putHeader("content-type", "application/json")
-                        .setStatusCode(201)
-                        .end(AgaveResponseBuilder.getInstance(routingContext)
-                                .setResult(tt.toJson())
-                                .build()
-                                .toString());
-            } else {
-                routingContext.fail(reply.cause());
-            }
-        });
+            });
+        } else {
+            // permission denied if they don't have access
+            routingContext.fail(403);
+        }
     }
-
-
 
     /**
      * Delete a {@link TransferTask} from the db.
@@ -479,45 +443,24 @@ public class TransferAPIVertical extends AbstractVerticle {
         Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
         JsonObject principal = user.principal();
         String tenantId = principal.getString("tenantId");
-        String username = principal.getString("username");
-        String uuid = routingContext.pathParam("uuid");
 
         // lookup task to get the id
-        dbService.getByUuid(tenantId, uuid, getByIdReply -> {
-            if (getByIdReply.succeeded()) {
-                if (getByIdReply.result() == null) {
-                    // not found
-                    routingContext.fail(404);
+        if (user.isAdminRoleExists()) {
+            dbService.deleteAll(tenantId, deleteReply -> {
+                if (deleteReply.succeeded()) {
+                    routingContext.response()
+                            .putHeader("content-type", "application/json")
+                            .setStatusCode(203).end();
                 } else {
-                    // if the current user is the owner or has admin privileges, allow the action
-                    if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
-                            user.isAdminRoleExists()) {
-                        dbService.deleteAll(tenantId, deleteReply -> {
-                            if (deleteReply.succeeded()) {
-                               // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
-                                //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
-
-                                routingContext.response()
-                                        .putHeader("content-type", "application/json")
-                                        .setStatusCode(203).end();
-                            } else {
-                                // delete failed
-                                routingContext.fail(deleteReply.cause());
-                            }
-                        });
-                    } else {
-                        // permission denied if they don't have access
-                        routingContext.fail(403);
-                    }
+                    // delete failed
+                    routingContext.fail(deleteReply.cause());
                 }
-            } else {
-                // task lookup failed
-                routingContext.fail(getByIdReply.cause());
-            }
-        });
+            });
+        } else {
+            // permission denied if they don't have access
+            routingContext.fail(403);
+        }
     }
-
 
     /**
      * Fetches a single {@link TransferTask} from the db.
@@ -659,7 +602,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                 }
 
                 authProvider = new AgaveJWTAuthProviderImpl(jwtAuthOptions);
-                System.out.println(authProvider.toString());
+                System.out.println(authProvider);
             } catch (IOException e) {
                 log.error("Failed to load public key from file.", e);
             }
@@ -720,14 +663,21 @@ public class TransferAPIVertical extends AbstractVerticle {
         }
     }
 
+    /**
+     * Gets the current db service proxy
+     * @return proxy instance of {@link TransferTaskDatabaseService}
+     */
     public TransferTaskDatabaseService getDbService() {
         return dbService;
     }
 
+    /**
+     * Sets the {@link TransferTaskDatabaseService} to use
+     * @param dbService the dbService to set
+     */
     public void setDbService(TransferTaskDatabaseService dbService) {
         this.dbService = dbService;
     }
-
 
     /**
      * Generates a JWT token to authenticate to the service. Token is signed using the

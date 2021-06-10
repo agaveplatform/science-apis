@@ -1,40 +1,46 @@
 package org.iplantc.service.io.model;
 
+import org.iplantc.service.transfer.model.TransferTask;
+
 import java.util.Date;
 
+/**
+ * @deprecated
+ * @see TransferTask instead
+ */
 public interface QueueTask {
 
     /**
      * @return
      */
-    public abstract Long getId();
+    Long getId();
     
     /**
      * @param id
      */
-    public abstract void setId(Long id);
+    void setId(Long id);
     
 	/**
 	 * @return the logicalFile
 	 */
-	public abstract LogicalFile getLogicalFile();
+    LogicalFile getLogicalFile();
 
 	/**
 	 * @param logicalFile the logicalFile to set
 	 */
-	public abstract void setLogicalFile(LogicalFile logicalFile);
+    void setLogicalFile(LogicalFile logicalFile);
 
 	/**
 	 * Get username of the user who creatd the task
 	 * @return
 	 */
-	public abstract String getOwner();
+    String getOwner();
 	
 	/**
 	 * Set username of the user who created this task
 	 * @param owner
 	 */
-	public abstract void setOwner(String owner);
+    void setOwner(String owner);
 	
 //	/**
 //	 * @return the eventId
@@ -49,27 +55,27 @@ public interface QueueTask {
 	/**
 	 * @return the created
 	 */
-	public abstract Date getCreated();
+    Date getCreated();
 
 	/**
 	 * @param created the created to set
 	 */
-	public abstract void setCreated(Date created);
+    void setCreated(Date created);
 	
 	/**
 	 * @return the lastUpdated
 	 */
-	public abstract Date getLastUpdated();
+    Date getLastUpdated();
 
 	/**
 	 * @param lastUpdated the lastUpdated to set
 	 */
-	public abstract void setLastUpdated(Date lastUpdated);
+    void setLastUpdated(Date lastUpdated);
 	
 	
 	/**
 	 * Returns string value of enumerated status object.
 	 * @return
 	 */
-	public abstract String getStatusAsString();
+    String getStatusAsString();
 }

@@ -35,11 +35,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  */
 public class URLCopy {
-    private static Logger log = Logger.getLogger(URLCopy.class);
+    private static final Logger log = Logger.getLogger(URLCopy.class);
     private TransferTaskImpl task;
-    private RemoteDataClient sourceClient;
-    private RemoteDataClient destClient;
-    private AtomicBoolean killed = new AtomicBoolean(false);
+    private final RemoteDataClient sourceClient;
+    private final RemoteDataClient destClient;
+    private final AtomicBoolean killed = new AtomicBoolean(false);
 
     public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient) {
         this.sourceClient = sourceClient;
@@ -444,7 +444,8 @@ public class URLCopy {
                         "file://" + tmpFile.getPath(),
                         getProtocolForClass(destClient.getClass()),
                         "local"));
-            } else {
+            }
+            else {
                 tempDir = new File(org.iplantc.service.common.Settings.TEMP_DIRECTORY,
                         DigestUtils.md5Hex(srcPath) + "-" + System
                                 .currentTimeMillis() + ".relay.tmp");
@@ -461,13 +462,13 @@ public class URLCopy {
                         "Beginning first leg of relay transfer for task %s. %s to %s . Protocol: %s => %s",
                         aggregateTransferTask.getUuid(),
                         aggregateTransferTask.getSource(),
-                        "file://" + tmpFile.getPath(),
+                        tmpFile.toURI(),
                         getProtocolForClass(sourceClient.getClass()),
                         "local"));
                 try {
                     srcChildTransferTask = new TransferTaskImpl(
                             aggregateTransferTask.getSource(),
-                            "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
+                            tmpFile.toURI().toString(),
                             aggregateTransferTask.getOwner(),
                             aggregateTransferTask,
                             aggregateTransferTask);
@@ -541,13 +542,13 @@ public class URLCopy {
                     log.debug(String.format(
                             "Beginning second leg of relay transfer for task %s. %s to %s . Protocol: %s => %s",
                             aggregateTransferTask.getUuid(),
-                            "file://" + tmpFile.getPath(),
+                            tmpFile.toURI(),
                             aggregateTransferTask.getDest(),
                             "local",
                             getProtocolForClass(destClient.getClass())));
 
                     destChildTransferTask = new TransferTaskImpl(
-                            "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
+                            tmpFile.toURI().toString(),
                             aggregateTransferTask.getDest(),
                             aggregateTransferTask.getOwner(),
                             aggregateTransferTask,
@@ -574,7 +575,8 @@ public class URLCopy {
 
                     TransferTaskDao.updateProgress(destChildTransferTask);
 
-                } catch (RemoteDataException e) {
+                }
+                catch (RemoteDataException e) {
                     try {
                         destChildTransferTask.setStatus(TransferStatusType.FAILED);
                         destChildTransferTask.setEndTime(Instant.now());
@@ -591,7 +593,8 @@ public class URLCopy {
                             "local",
                             getProtocolForClass(destClient.getClass())), e);
                     throw e;
-                } catch (Throwable e) {
+                }
+                catch (Throwable e) {
                     // fail the destination transfer task
                     try {
                         if (destChildTransferTask != null) {
@@ -599,7 +602,8 @@ public class URLCopy {
                             destChildTransferTask.setEndTime(Instant.now());
                             TransferTaskDao.updateProgress(destChildTransferTask);
                         }
-                    } catch (Throwable t) {
+                    }
+                    catch (Throwable t) {
                         log.error("Failed to set status of relay dest child task to failed.", t);
                     }
 
@@ -613,17 +617,18 @@ public class URLCopy {
                     throw new RemoteDataException("Transfer failed to " + sourceClient.getUriForPath(srcPath) +
                             " using " + destClient.getClass().getSimpleName(), e);
                 }
-            } else {
+            }
+            else {
                 log.debug(String.format(
                         "Skipping second leg of relay transfer for task %s. %s to %s. Protocol: %s => %s",
                         aggregateTransferTask.getUuid(),
-                        "file://" + tmpFile.getPath(),
+                        tmpFile.toURI(),
                         aggregateTransferTask.getDest(),
                         "local",
                         getProtocolForClass(destClient.getClass())));
 
                 destChildTransferTask = new TransferTaskImpl(
-                        "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
+                        tmpFile.toURI().toString(),
                         aggregateTransferTask.getDest(),
                         aggregateTransferTask.getOwner(),
                         aggregateTransferTask,
@@ -650,7 +655,8 @@ public class URLCopy {
 
                 aggregateTransferTask.updateSummaryStats(destChildTransferTask);
             }
-        } catch (ClosedByInterruptException e) {
+        }
+        catch (ClosedByInterruptException e) {
             log.debug(String.format(
                     "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
                     aggregateTransferTask.getUuid(),
@@ -660,7 +666,8 @@ public class URLCopy {
                     getProtocolForClass(destClient.getClass())), e);
             Thread.currentThread().interrupt();
             throw e;
-        } catch (RemoteDataException e) {
+        }
+        catch (RemoteDataException e) {
             try {
                 aggregateTransferTask.setEndTime(Instant.now());
                 aggregateTransferTask.setStatus(TransferStatusType.FAILED);
@@ -673,7 +680,8 @@ public class URLCopy {
 //			checkCancelled(remoteTransferListener);
 
             throw e;
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             try {
                 aggregateTransferTask.setEndTime(Instant.now());
                 aggregateTransferTask.setStatus(TransferStatusType.FAILED);
@@ -688,7 +696,8 @@ public class URLCopy {
             throw new RemoteDataException(
                     getDefaultErrorMessage(
                             srcPath, new RemoteTransferListenerImpl(aggregateTransferTask)), e);
-        } finally {
+        }
+        finally {
             if (aggregateTransferTask != null) {
                 log.info(String.format(
                         "Total of %s bytes transferred in task %s . Protocol %s => %s",
@@ -1381,15 +1390,15 @@ public class URLCopy {
 //	            TransferTaskDao.persist(task);
 //	        }
 
-            if (((GridFTP) sourceClient).getHost().equals(((GridFTP) destClient).getHost())) {
+            if (sourceClient.getHost().equals(destClient.getHost())) {
                 ((GridFTP) sourceClient).extendedTransfer(srcPath,
                         (GridFTP) destClient,
-                        ((GridFTP) destClient).resolvePath(destPath),
+                        destClient.resolvePath(destPath),
                         listener);
             } else {
                 ((GridFTP) sourceClient).extendedTransfer(srcPath,
                         (GridFTP) destClient,
-                        ((GridFTP) destClient).resolvePath(destPath),
+                        destClient.resolvePath(destPath),
                         listener);
             }
 

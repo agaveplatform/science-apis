@@ -19,6 +19,7 @@ import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.QueueTask;
 import org.iplantc.service.io.model.StagingTask;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.io.queue.TransferTaskScheduler;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.SchedulerException;
@@ -35,8 +36,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 /**
- * @author dooley
+ * DAO for {@link StagingTask} and {@link TransferTask}. This is deprecated in favor of the new transfers api.
  *
+ * @author dooley
+ * @deprecated
+ * @see TransferTaskScheduler
  */
 public class QueueTaskDao
 {
@@ -210,6 +214,8 @@ public class QueueTaskDao
 	 * @param file the logical file to transfer. This represents the destination of the transfer
 	 * @param username the user who requested the transfer
 	 * @throws SchedulerException if unable to submit the request
+	 * @deprecated 
+	 * @see TransferTaskScheduler#enqueueStagingTask(LogicalFile, String)
 	 */
 	public void enqueueStagingTask(LogicalFile file, String username) throws SchedulerException {
         DataOutputStream wr = null;

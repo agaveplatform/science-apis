@@ -64,7 +64,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	private static final Logger log = Logger.getLogger(AbstractJobLauncher.class);
 	public static final String ARCHIVE_FILENAME = ".agave.archive";
 	
-	private AtomicBoolean stopped = new AtomicBoolean(false);
+	private final AtomicBoolean stopped = new AtomicBoolean(false);
     
 	protected File 						tempAppDir = null;
 	protected String 					step;
@@ -143,7 +143,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	 * @see org.iplantc.service.jobs.managers.launchers.JobLauncher#launch()
 	 */
 	@Override
-	public abstract void launch() throws JobException, ClosedByInterruptException, SchedulerException, IOException, SystemUnavailableException;
+	public abstract void launch() throws JobException, SchedulerException, IOException, SystemUnavailableException;
 	
 	/**
 	 * Users can include any of the {@link WrapperTemplateStatusVariableType#userAccessibleJobCallbackMacros()} in their
@@ -367,7 +367,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	        		// first copy the remote data here
 	        		transferTask = new TransferTaskImpl(
 	    					"agave://" + getSoftware().getStorageSystem().getSystemId() + "/" + getSoftware().getDeploymentPath(), 
-	    					"https://workers.prod.agaveplatform.org/" + tempAppDir.getAbsolutePath(),
+	    					tempAppDir.toURI().toString(),
 	    					getJob().getOwner(), null, null);
 	    			
 	        		TransferTaskDao.persist(transferTask);
@@ -422,7 +422,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
                                     "Name: " + getSoftware().getUniqueName() + "\n" + 
                                     "User: " + getJob().getOwner() + "\n" +
                                     "Job: " + getJob().getUuid() + "\n" +
-                                    "Time: " + new DateTime(getJob().getCreated()).toString();
+                                    "Time: " + new DateTime(getJob().getCreated());
 	    					try {
 	    						EmailMessage.send(tenant.getContactName(), 
 					    							tenant.getContactEmail(), 
@@ -521,7 +521,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 			checkStopped();
 			
 			transferTask = new TransferTaskImpl(
-					"https://workers.prod.agaveplatform.org/" + tempAppDir.getAbsolutePath(),
+					tempAppDir.toURI().toString(),
 					"agave://" + getJob().getSystem() + "/" + getJob().getWorkPath(), 
 					getJob().getOwner(), null, null);
 			

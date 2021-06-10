@@ -17,12 +17,13 @@ import java.util.UUID;
 
 import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.STAGING_FAILED;
 import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.STAGING_QUEUED;
-import static org.mockito.Matchers.*;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertEquals;
 
 
-public class StagingTransferTaskTest extends BaseTestCase {
+public class TransferTaskSchedulerTest extends BaseTestCase {
     private String destPath;
     private URI httpUri;
 
@@ -49,37 +50,37 @@ public class StagingTransferTaskTest extends BaseTestCase {
 
     @Test (expectedExceptions = SchedulerException.class)
     public void testEnqueueStagingTaskHandlesSchedulerException() throws SchedulerException, IOException, TenantException, FileProcessingException {
-        StagingTransferTask stagingTransferTask = mock(StagingTransferTask.class);
-        doCallRealMethod().when(stagingTransferTask).enqueueStagingTask(any(LogicalFile.class), anyString());
-        doNothing().when(stagingTransferTask).updateLogicalFileAndSwallowException(any(LogicalFile.class));
-        when(stagingTransferTask.callTransferClient(any(LogicalFile.class), anyString())).thenReturn(null);
+        TransferTaskScheduler transferTaskScheduler = mock(TransferTaskScheduler.class);
+        doCallRealMethod().when(transferTaskScheduler).enqueueStagingTask(any(LogicalFile.class), anyString());
+        doNothing().when(transferTaskScheduler).updateLogicalFileAndSwallowException(any(LogicalFile.class));
+        when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString())).thenReturn(null);
 
         LogicalFile file = getMockLogicalFile();
-        stagingTransferTask.enqueueStagingTask(file, SYSTEM_OWNER);
+        transferTaskScheduler.enqueueStagingTask(file, SYSTEM_OWNER);
         assertEquals(file.getStatus(), STAGING_FAILED.name());
     }
 
-    @Test (expectedExceptions = IOException.class)
+    @Test (expectedExceptions = SchedulerException.class)
     public void testEnqueueStagingTaskHandlesIOException() throws SchedulerException, IOException, TenantException, FileProcessingException {
-        StagingTransferTask stagingTransferTask = mock(StagingTransferTask.class);
-        doCallRealMethod().when(stagingTransferTask).enqueueStagingTask(any(LogicalFile.class), anyString());
-        doNothing().when(stagingTransferTask).updateLogicalFileAndSwallowException(any(LogicalFile.class));
-        when(stagingTransferTask.callTransferClient(any(LogicalFile.class), anyString())).thenThrow(IOException.class);
+        TransferTaskScheduler transferTaskScheduler = mock(TransferTaskScheduler.class);
+        doCallRealMethod().when(transferTaskScheduler).enqueueStagingTask(any(LogicalFile.class), anyString());
+        doNothing().when(transferTaskScheduler).updateLogicalFileAndSwallowException(any(LogicalFile.class));
+        when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString())).thenThrow(IOException.class);
 
         LogicalFile file = getMockLogicalFile();
-        stagingTransferTask.enqueueStagingTask(file, SYSTEM_OWNER);
+        transferTaskScheduler.enqueueStagingTask(file, SYSTEM_OWNER);
         assertEquals(file.getStatus(), STAGING_FAILED.name());
     }
 
     @Test (expectedExceptions = TenantException.class)
     public void testEnqueueStagingTaskHandlesTenantException() throws SchedulerException, IOException, TenantException, FileProcessingException {
-        StagingTransferTask stagingTransferTask = mock(StagingTransferTask.class);
-        doCallRealMethod().when(stagingTransferTask).enqueueStagingTask(any(LogicalFile.class), anyString());
-        doNothing().when(stagingTransferTask).updateLogicalFileAndSwallowException(any(LogicalFile.class));
-        when(stagingTransferTask.callTransferClient(any(LogicalFile.class), anyString())).thenThrow(TenantException.class);
+        TransferTaskScheduler transferTaskScheduler = mock(TransferTaskScheduler.class);
+        doCallRealMethod().when(transferTaskScheduler).enqueueStagingTask(any(LogicalFile.class), anyString());
+        doNothing().when(transferTaskScheduler).updateLogicalFileAndSwallowException(any(LogicalFile.class));
+        when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString())).thenThrow(TenantException.class);
 
         LogicalFile file = getMockLogicalFile();
-        stagingTransferTask.enqueueStagingTask(file, SYSTEM_OWNER);
+        transferTaskScheduler.enqueueStagingTask(file, SYSTEM_OWNER);
         assertEquals(file.getStatus(), STAGING_FAILED.name());
     }
 

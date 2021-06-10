@@ -25,11 +25,11 @@ import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.util.HTMLizer;
 import org.iplantc.service.io.dao.LogicalFileDao;
-import org.iplantc.service.io.dao.QueueTaskDao;
 import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.io.queue.TransferTaskScheduler;
 import org.iplantc.service.notification.util.EmailMessage;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
@@ -612,7 +612,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
                     LogicalFileDao.persist(logicalFile);
                     
                     // add the logical file to the staging queue
-                    new QueueTaskDao().enqueueStagingTask(logicalFile, getPublishingUsername());
+                    new TransferTaskScheduler().enqueueStagingTask(logicalFile, getPublishingUsername());
                 }
             }
             

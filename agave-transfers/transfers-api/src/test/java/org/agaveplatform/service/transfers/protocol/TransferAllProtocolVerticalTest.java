@@ -9,6 +9,7 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.apache.commons.lang.NotImplementedException;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -19,6 +20,7 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
+import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.junit.jupiter.api.*;
@@ -28,13 +30,15 @@ import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Paths;
 import java.time.Instant;
+import java.util.UUID;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_ALL;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
@@ -63,6 +67,23 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 
 	RemoteDataClient getRemoteDataClientInstance() {
 		return Mockito.mock(RemoteDataClient.class);
+	}
+
+
+	@Test
+	@DisplayName("Test the getRemoteDataClient handles local systems")
+	public void testGetRemoteDataClient() throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
+		TransferAllProtocolVertical transferAllProtocolVertical = new TransferAllProtocolVertical();
+		try {
+			// generate a path for a local file. It does not have to exist for this to work.
+			URI testPath = Paths.get("/scratch/").resolve(UUID.randomUUID().toString()).toUri();
+			// passing in the file uri should return a Local RDC
+			RemoteDataClient remoteDataClient = transferAllProtocolVertical.getRemoteDataClient(TENANT_ID, TEST_USERNAME, testPath);
+			assertNotNull(remoteDataClient, "File URI should not return null system");
+			assertEquals(Local.class, remoteDataClient.getClass(), "File URI should return a Local RemoteDataClient., ");
+		} catch (IllegalArgumentException e) {
+			fail("Valid URI for local file should not thorw exception", e);
+		}
 	}
 
 	@Test

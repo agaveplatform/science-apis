@@ -612,13 +612,12 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		TransferTask that = (TransferTask) o;
-		return Objects.equals(id, that.id) &&
-				Objects.equals(source, that.source) &&
-				Objects.equals(dest, that.dest) &&
-				Objects.equals(owner, that.owner) &&
-				status == that.status &&
-				Objects.equals(tenantId, that.tenantId) &&
-				Objects.equals(uuid, that.uuid);
+		return Objects.equals(getSource(), that.getSource()) &&
+				Objects.equals(getDest(), that.getDest()) &&
+				Objects.equals(getOwner(), that.getOwner()) &&
+				getStatus() == that.getStatus() &&
+				Objects.equals(getTenantId(), that.getTenantId()) &&
+				Objects.equals(getUuid(), that.getUuid());
 	}
 
 	@Override
@@ -662,7 +661,7 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 		if (milliseconds > 0) {
 			return getBytesTransferred() / (milliseconds/1000.0);
 		} else {
-			return (double)0.0;
+			return 0.0;
 		}
 	}
 }

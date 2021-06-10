@@ -17,8 +17,7 @@ import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
-import org.iplantc.service.transfer.exceptions.TransferException;
+import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -165,74 +164,62 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			// smoke test this method with real object. We'll port the url copy class
 			// over in the coming week to handle current transfertask objects so we
 			// don't need this shim
-			org.iplantc.service.transfer.model.TransferTask legacyTransferTask;
-			boolean makeRealCopy = true;
-			if (makeRealCopy) {
 
-				// pull the system out of the url. system id is the hostname in an agave uri
-				log.debug("Creating source remote data client to {} for transfer task {}", srcUri.getHost(), tt.getUuid());
-				if (makeRealCopy) srcClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), srcUri);
+			// pull the system out of the url. system id is the hostname in an agave uri
+			log.debug("Creating source remote data client to {} for transfer task {}", srcUri.getHost(), tt.getUuid());
+			srcClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), srcUri);
 
-				log.debug("Creating dest remote data client to {} for transfer task {}", destUri.getHost(), tt.getUuid());
-				// pull the dest system out of the url. system id is the hostname in an agave uri
-				if (makeRealCopy) destClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), destUri);
+			log.debug("Creating dest remote data client to {} for transfer task {}", destUri.getHost(), tt.getUuid());
+			// pull the dest system out of the url. system id is the hostname in an agave uri
+			destClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), destUri);
 
-                WorkerExecutor executor = getVertx().createSharedWorkerExecutor("check-cancel-child-all-task-worker-pool");
-                RemoteDataClient finalSrcClient = srcClient;
-                RemoteDataClient finalDestClient = destClient;
+			WorkerExecutor executor = getVertx().createSharedWorkerExecutor("check-cancel-child-all-task-worker-pool");
+			RemoteDataClient finalSrcClient = srcClient;
+			RemoteDataClient finalDestClient = destClient;
 
-                executor.executeBlocking(promise -> {
-                	String taskId = (tt.getRootTaskId() == null) ? tt.getUuid() : tt.getRootTaskId();
+			executor.executeBlocking(promise -> {
+				String taskId = (tt.getRootTaskId() == null) ? tt.getUuid() : tt.getRootTaskId();
 
 				getDbService().getByUuid(tt.getTenantId(), taskId, checkCancelled -> {
+					if (checkCancelled.succeeded()){
+						TransferTask targetTransferTask = new TransferTask(checkCancelled.result());
+						if (targetTransferTask.getStatus().isActive()){
+							TransferTask resultingTransferTask = new TransferTask();
+							try {
+								log.info("Initiating worker transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 
-							if (checkCancelled.succeeded()){
-                                TransferTask targetTransferTask = new TransferTask(checkCancelled.result());
-                                if (targetTransferTask.getStatus().isActive()){
-                                    TransferTask resultingTransferTask = new TransferTask();
-                                    try {
-                                        log.info("Initiating worker transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
-
-                                        resultingTransferTask = processCopyRequest(finalSrcClient, finalDestClient, tt);
-                                        handler.handle(Future.succeededFuture(result));
-                                        promise.complete();
-                                    } catch (Exception e) {
-										log.error("Failed to copy Transfer Task {}", tt.toJSON() );
-										JsonObject json = new JsonObject()
-												.put("cause", e.getClass().getName())
-												.put("message", e.getMessage())
-												.mergeIn(body);
-										_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-										handler.handle(Future.failedFuture(e.getMessage()));
-										promise.fail(e.getMessage());
-									}
-                                } else {
-                                    log.info("Worker Transfer task {} was interrupted", tt.getUuid());
-                                    _doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
-                                    handler.handle(Future.succeededFuture(false));
-                                    promise.complete();
-                                }
-                            } else {
-								log.error("Failed to get status of parent Transfer Task {}, {}", tt.getParentTaskId(), tt.toJSON());
+								resultingTransferTask = processCopyRequest(finalSrcClient, finalDestClient, tt);
+								handler.handle(Future.succeededFuture(result));
+								promise.complete();
+							} catch (Exception e) {
+								log.error("Failed to copy Transfer Task {}", tt.toJSON() );
 								JsonObject json = new JsonObject()
-										.put("cause", checkCancelled.cause())
-										.put("message", checkCancelled.cause().getMessage())
+										.put("cause", e.getClass().getName())
+										.put("message", e.getMessage())
 										.mergeIn(body);
 								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                                handler.handle(Future.failedFuture(checkCancelled.cause()));
-                                promise.fail("Failed to retrieve status....");
-                            }
-                        });
-                    }, res -> {
-					});
-
-			} else {
-				log.debug("Initiating fake transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
-				log.debug("Completed fake transfer of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
-
-//				_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
-				handler.handle(Future.succeededFuture(true));
-			}
+								handler.handle(Future.failedFuture(e.getMessage()));
+								promise.fail(e.getMessage());
+							}
+						} else {
+							log.info("Worker Transfer task {} was interrupted", tt.getUuid());
+							_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
+							handler.handle(Future.succeededFuture(false));
+							promise.complete();
+						}
+					} else {
+						log.error("Failed to get status of parent Transfer Task {}, {}", tt.getParentTaskId(), tt.toJSON());
+						JsonObject json = new JsonObject()
+								.put("cause", checkCancelled.cause())
+								.put("message", checkCancelled.cause().getMessage())
+								.mergeIn(body);
+						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+						handler.handle(Future.failedFuture(checkCancelled.cause()));
+						promise.fail("Failed to retrieve status....");
+					}
+				});
+			}, res -> {
+			});
 		} catch (RemoteDataException e){
 			log.error("RemoteDataException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
@@ -269,8 +256,18 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		}
 	}
 
+	/**
+	 * Creates {@link WorkerExecutor} to run the {@link URLCopy} operation in the background. Upon completion, a
+	 * {@link MessageType#TRANSFER_COMPLETED} event will be thrown signalling completion of the transfer.
+	 * @param srcClient the remote data client to the source of the transfer task
+	 * @param destClient the remote data client to the destination of the transfer task
+	 * @param transferTask the transfer task to update with progress of the transfer.
+	 * @return the completed transfer task.
+	 * @throws RemoteDataException when a connection cannot be made to the {@link RemoteSystem}
+	 * @throws IOException if unable to connect to the remote host.
+	 */
 	protected TransferTask processCopyRequest(RemoteDataClient srcClient, RemoteDataClient destClient, TransferTask transferTask)
-			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
+			throws RemoteDataException, IOException {
 		log.debug("Got into TransferAllProtocolVertical.processCopyRequest ");
 
 		log.trace("Got up to the urlCopy");
@@ -308,6 +305,13 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		return updatedTransferTask;
 	}
 
+	/**
+	 * Mockable method to instantiate an instance of the {@link URLCopy} using the current {@link #getVertx()} instance
+	 * and method arguments.
+	 * @param srcClient the remote data client to the source of the transfer task
+	 * @param destClient the remote data client to the destination of the transfer task
+	 * @return an instance of a {@link URLCopy} initialized to perform the transfer task.
+	 */
 	protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient){
 		return new URLCopy(srcClient, destClient, getVertx(), getRetryRequestManager());
 	}
@@ -329,7 +333,14 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	 */
 	protected RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
 		TenancyHelper.setCurrentTenantId(tenantId);
-		return new RemoteDataClientFactory().getInstance(username, null, target);
+
+		// allow for handling transfer of local files cached to the local (shared) file system. This happens during
+		// file uploads and file processing operations between services.
+		if (target.getScheme().equalsIgnoreCase("file")) {
+			return new Local(null, "/", "/");
+		} else {
+			return new RemoteDataClientFactory().getInstance(username, null, target);
+		}
 	}
 
 	public TransferTaskDatabaseService getDbService() {

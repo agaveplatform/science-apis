@@ -9,10 +9,12 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.apache.commons.lang.RandomStringUtils;
 import org.iplantc.service.transfer.*;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
+import org.iplantc.service.transfer.local.Local;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatcher;
@@ -22,11 +24,14 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -68,6 +73,36 @@ public class URLCopyIT extends BaseTestCase {
 //            ((JsonObject) actualJsonTransferTask).remove("endTime");
 
             return actualJsonTransferTask.equals(this.expectedJsonTransferTask);
+        }
+    }
+
+    class IsSameTransferTask extends ArgumentMatcher<TransferTask> {
+        TransferTask expectedTransferTask;
+
+        public IsSameTransferTask(TransferTask expectedTransferTask) {
+            this.expectedTransferTask = expectedTransferTask;
+        }
+
+        /**
+         * Returns whether this matcher accepts the given argument.
+         * <p>
+         * The method should <b>never</b> assert if the argument doesn't match. It
+         * should only return false.
+         *
+         * @param actualJsonTransferTask the argument
+         * @return whether this matcher accepts the given argument.
+         */
+        @Override
+        public boolean matches(Object actualJsonTransferTask) {
+            if (!(actualJsonTransferTask instanceof TransferTask)) return false;
+
+            return Objects.equals(expectedTransferTask.getSource(), ((TransferTask)actualJsonTransferTask).getSource()) &&
+                    Objects.equals(expectedTransferTask.getDest(), ((TransferTask)actualJsonTransferTask).getDest()) &&
+                    Objects.equals(expectedTransferTask.getOwner(), ((TransferTask)actualJsonTransferTask).getOwner()) &&
+                    Objects.equals(expectedTransferTask.getParentTaskId(), ((TransferTask)actualJsonTransferTask).getParentTaskId()) &&
+                    Objects.equals(expectedTransferTask.getRootTaskId(), ((TransferTask)actualJsonTransferTask).getRootTaskId()) &&
+                    expectedTransferTask.getStatus() == ((TransferTask)actualJsonTransferTask).getStatus() &&
+                    Objects.equals(expectedTransferTask.getTenantId(), ((TransferTask)actualJsonTransferTask).getTenantId());
         }
     }
 
@@ -170,7 +205,6 @@ public class URLCopyIT extends BaseTestCase {
 
     @Test
     @DisplayName("Test URLCopy relayTransfer")
-//    @Disabled
     public void testUnaryCopy(Vertx vertx, VertxTestContext ctx) {
         try {
             allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
@@ -202,7 +236,7 @@ public class URLCopyIT extends BaseTestCase {
             //first leg child transfer task
             TransferTask srcChildTransferTask = new TransferTask(
                     tt.getSource(),
-                    "https://workers.prod.agaveplatform.org/" + new File(TRANSFER_SRC).getPath(),
+                    new File(TRANSFER_SRC).toURI().toString(),
                     tt.getOwner(),
                     tt.getUuid(),
                     tt.getRootTaskId());
@@ -215,7 +249,7 @@ public class URLCopyIT extends BaseTestCase {
 
             //second leg child transfer task
             TransferTask destChildTransferTask = new TransferTask(
-                    "https://workers.prod.agaveplatform.org/" + new File(LOCAL_TXT_FILE).getPath(),
+                    new File(LOCAL_TXT_FILE).toURI().toString(),
                     tt.getDest(),
                     tt.getOwner(),
                     tt.getParentTaskId(),
@@ -297,6 +331,112 @@ public class URLCopyIT extends BaseTestCase {
     }
 
     @Test
+    @DisplayName("Test URLCopy local relayTransfer")
+    public void testUnaryLocalCopy(Vertx vertx, VertxTestContext ctx) {
+        File testFile = null;
+        int testDataLength = FILE_SIZE.intValue();
+        try {
+            allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
+            Settings.ALLOW_RELAY_TRANSFERS = true;
+
+            testFile = File.createTempFile("test", ".tmp");
+            byte[] testData = RandomStringUtils.random(512, true, true).getBytes(StandardCharsets.UTF_8);
+            Files.write(testFile.toPath(), testData, StandardOpenOption.APPEND);
+
+            Vertx mockVertx = mock(Vertx.class);
+            RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
+            doNothing().when(mockRetryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
+
+            RemoteDataClient mockSrcRemoteDataClient = new Local(null, "/","/");
+            RemoteDataClient mockDestRemoteDataClient = getMockRemoteDataClientInstance(TRANSFER_DEST);
+
+            TransferTask tt = _createTestTransferTask();
+            tt.setId(1L);
+            tt.setSource(testFile.toURI().toString());
+            tt.setDest(TRANSFER_DEST);
+            int attempts = tt.getAttempts();
+            Instant lastUpdated = tt.getLastUpdated();
+            JsonObject rootJson = tt.toJson();
+
+
+            URLCopy mockCopy = getMockURLCopyInstance(vertx, tt);
+            when(mockCopy.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
+            when(mockCopy.getSourceClient()).thenReturn(mockSrcRemoteDataClient);
+            when(mockCopy.getDestClient()).thenReturn(mockDestRemoteDataClient);
+
+            //remote transfer listener
+            RemoteTransferListenerImpl mockRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(tt, mockRetryRequestManager);
+            doReturn(mockRemoteTransferListenerImpl).when(mockCopy).getRemoteUnaryTransferListenerForTransferTask(tt);
+
+            //second leg child transfer task
+            TransferTask destChildTransferTask = new TransferTask(
+                    testFile.toURI().toString(),
+                    tt.getDest(),
+                    tt.getOwner(),
+                    tt.getParentTaskId(),
+                    tt.getRootTaskId()
+            );
+            destChildTransferTask.setTenantId(tt.getTenantId());
+            destChildTransferTask.setStatus(TransferStatusType.WRITE_STARTED);
+            JsonObject rootDestChildJson = destChildTransferTask.toJson();
+
+            RemoteUnaryTransferListenerImpl mockDestChildRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(destChildTransferTask, mockRetryRequestManager);
+
+            when(mockCopy.getRemoteUnaryTransferListenerForTransferTask(any(TransferTask.class))).thenReturn(mockDestChildRemoteTransferListenerImpl);
+
+            TransferTask copiedTransfer = mockCopy.copy(tt);
+            JsonObject writeStartedJson = rootDestChildJson.copy().put("startTime", destChildTransferTask.getStartTime());
+            writeStartedJson.put("attempts", destChildTransferTask.getAttempts());
+            writeStartedJson.put("totalFiles", 1);
+            writeStartedJson.put("totalSize", testDataLength);
+
+            JsonObject writeInProgressJson = writeStartedJson.copy().put("status", TransferStatusType.WRITE_IN_PROGRESS);
+            writeInProgressJson.put("transferRate", TRANSFER_RATE);
+            writeInProgressJson.put("bytesTransferred", destChildTransferTask.getBytesTransferred());
+            writeInProgressJson.put("lastUpdated", destChildTransferTask.getLastUpdated());
+
+            JsonObject writeCompletedJson = writeInProgressJson.copy().put("status", TransferStatusType.WRITE_COMPLETED);
+            writeCompletedJson.put("transferRate", destChildTransferTask.getTransferRate());
+            writeCompletedJson.put("endTime", destChildTransferTask.getEndTime());
+
+            ctx.verify(() -> {
+                // only destination transfer task should have a listener. src is skipped because it is local
+                verify(mockCopy, times(1)).getRemoteUnaryTransferListenerForTransferTask(any());
+
+                //check that events are published correctly using the RetryRequestManager
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        argThat(new IsSameJsonTransferTask(writeStartedJson)), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        argThat(new IsSameJsonTransferTask(writeInProgressJson)), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        argThat(new IsSameJsonTransferTask(writeCompletedJson)), eq(2));
+
+                // original tt should only be updated once because there should only be one listener created
+                verify(mockCopy, times(1)).updateAggregateTaskFromChildTask(eq(tt), any());
+
+                assertEquals(1, copiedTransfer.getAttempts(), "TransferTask attempts should be incremented upon copy.");
+                assertEquals(copiedTransfer.getStatus(), TransferStatusType.WRITE_COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");
+                assertEquals(1, copiedTransfer.getTotalFiles(), "TransferTask total files be 1 upon successful transfer of a single file.");
+                assertEquals(testDataLength, copiedTransfer.getBytesTransferred(), "TransferTask total bytes transferred should be 32768, the size of the httpbin download name.");
+                assertTrue(copiedTransfer.getLastUpdated().isAfter(lastUpdated), "TransferTask last updated should be updated after URLCopy completes.");
+                assertNotNull(copiedTransfer.getStartTime(), "TransferTask start time should be set by URLCopy.");
+                assertNotNull(copiedTransfer.getEndTime(), "TransferTask end time should be set by URLCopy.");
+                assertTrue(copiedTransfer.getStartTime().isAfter(tt.getCreated()), "TransferTask start time should be after created time.");
+                assertTrue(copiedTransfer.getEndTime().isAfter(tt.getStartTime()), "TransferTask end time should be after start time.");
+                assertEquals(copiedTransfer.getTotalSize(), copiedTransfer.getBytesTransferred(), "Total size should be same as bytes transferred upon successful completion of single file transfer.");
+                assertEquals(0, copiedTransfer.getTotalSkippedFiles(), "TransferTask skipped files should be zero upon successful completion of a single file.");
+
+                ctx.completeNow();
+            });
+
+        } catch (Exception e) {
+            Assertions.fail("Unary copy from " + TRANSFER_SRC + " to " + TRANSFER_DEST + " should not throw exception, " + e);
+        } finally {
+            Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
+        }
+    }
+
+    @Test
     @DisplayName("Test URLCopy cancel during read in Unary/RelayTransfer")
     public void testCancelReadUnaryCopy(Vertx vertx, VertxTestContext ctx) {
         try {
@@ -328,7 +468,7 @@ public class URLCopyIT extends BaseTestCase {
             //first leg child transfer task
             TransferTask srcChildTransferTask = new TransferTask(
                     tt.getSource(),
-                    "https://workers.prod.agaveplatform.org/" + new File(TRANSFER_SRC).getPath(),
+                    new File(TRANSFER_SRC).toURI().toString(),
                     tt.getOwner(),
                     tt.getUuid(),
                     tt.getRootTaskId());
@@ -343,7 +483,7 @@ public class URLCopyIT extends BaseTestCase {
 
             //second leg child transfer task
             TransferTask destChildTransferTask = new TransferTask(
-                    "https://workers.prod.agaveplatform.org/" + new File(LOCAL_TXT_FILE).getPath(),
+                    new File(LOCAL_TXT_FILE).toURI().toString(),
                     tt.getDest(),
                     tt.getOwner(),
                     tt.getParentTaskId(),
@@ -413,7 +553,7 @@ public class URLCopyIT extends BaseTestCase {
             //first leg child transfer task
             TransferTask srcChildTransferTask = new TransferTask(
                     tt.getSource(),
-                    "https://workers.prod.agaveplatform.org/" + new File(TRANSFER_SRC).getPath(),
+                    new File(TRANSFER_SRC).toURI().toString(),
                     tt.getOwner(),
                     tt.getUuid(),
                     tt.getRootTaskId());
@@ -427,7 +567,7 @@ public class URLCopyIT extends BaseTestCase {
 
             //second leg child transfer task
             TransferTask destChildTransferTask = new TransferTask(
-                    "https://workers.prod.agaveplatform.org/" + new File(LOCAL_TXT_FILE).getPath(),
+                    new File(LOCAL_TXT_FILE).toURI().toString(),
                     tt.getDest(),
                     tt.getOwner(),
                     tt.getParentTaskId(),

@@ -48,8 +48,10 @@ public class BaseTestCase {
 	public static final String SYSTEM_PUBLIC_USER = "public";
 	public static final String SYSTEM_UNSHARED_USER = "testotheruser";
 	public static final String SYSTEM_INTERNAL_USERNAME = "test_internal_user";
+    public static final String TENANT_ID = "agave.dev";
 
-	public static final String SHARED_SYSTEM_USER = "testshareuser";
+
+    public static final String SHARED_SYSTEM_USER = "testshareuser";
 	public static String EXECUTION_SYSTEM_TEMPLATE_DIR = "systems/execution";
 	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "systems/storage";
 	public static String SOFTWARE_SYSTEM_TEMPLATE_DIR = "software";

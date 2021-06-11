@@ -5,11 +5,13 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.Settings;
+import org.iplantc.service.io.clients.APIResponse;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.dao.QueueTaskDao;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.StagingTask;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.io.queue.listeners.FilesTransferListener;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.dao.SystemRoleDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
@@ -52,7 +54,8 @@ public class StagingJobIT extends BaseTestCase {
 	private final ThreadLocal<String> uniqueDestTestDir = new ThreadLocal<String>();
 	private final SystemDao systemDao = new SystemDao();
 	private List<StorageSystem> testSystems;
-	
+	private FilesTransferListener listener;
+
 	@BeforeClass
 	@Override
 	protected void beforeClass() throws Exception {
@@ -69,6 +72,8 @@ public class StagingJobIT extends BaseTestCase {
 		irods4System = initSystem("irods4", false, false);
 
 		testSystems = Arrays.asList(sftpSystem, irods4System);//defaultStorageSystem, sftpSystem, s3System, irodsSystem, );
+
+		initFilesTransferListener();
 	}
 	
 	private StorageSystem initSystem(String protocol, boolean setDefault, boolean setPublic) 
@@ -89,6 +94,11 @@ public class StagingJobIT extends BaseTestCase {
 		SystemRoleDao.persist(new SystemRole(Settings.COMMUNITY_USERNAME, RoleType.ADMIN, system));
 //		systemDao.persist(system);
 		return system;
+	}
+
+	private void initFilesTransferListener(){
+		FilesTransferListener listener = new FilesTransferListener();
+		listener.run();
 	}
 
 	@AfterClass
@@ -224,8 +234,11 @@ public class StagingJobIT extends BaseTestCase {
 		
 		new QueueTaskDao().enqueueStagingTask(file, SYSTEM_OWNER);
 
+//		new StagingTransferTask().enqueueStagingTask(file, SYSTEM_OWNER);
+//		new QueueTaskDao().enqueueStagingTask(file, SYSTEM_OWNER);
+
 		return null;
-	} 
+	}
 	
 	@Test
 	public void testStageNextFileQueueEmpty() 
@@ -332,24 +345,31 @@ public class StagingJobIT extends BaseTestCase {
 				remoteDestPath += "/" + destPath;
 			}
 
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
+
 			remoteExpectedPath = remoteBaseDir + "/" + expectedPath;
 
-			StagingTask task = createStagingTaskForUrl(sourceUri, destSystem, remoteDestPath);
+			TransferTaskScheduler scheduler = new TransferTaskScheduler();
+			scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
 
-			StagingJob stagingJob = new StagingJob();
+//			StagingTask task = createStagingTaskForUrl(sourceUri, destSystem, remoteDestPath);
+//
+//			StagingJob stagingJob = new StagingJob();
+//
+//			stagingJob.setQueueTask(task);
+//
+//			stagingJob.doExecute();
 
-			stagingJob.setQueueTask(task);
-
-			stagingJob.doExecute();
-
-			LogicalFile file = LogicalFileDao.findById(task.getLogicalFile().getId());
-
-			Assert.assertNotNull(file, "LogicalFile should exist if the stagingJob could run.");
+			LogicalFile queuedFile = LogicalFileDao.findById(file.getId());
+			Assert.assertNotNull(queuedFile, "LogicalFile should exist if TransferTaskScheduler is run");
+			Assert.assertEquals(queuedFile.getStatus(), StagingTaskStatus.STAGING_QUEUED, "LogicalFile status should " +
+					"be queued if TransferTaskScheduler is run");
 
 			destClient = getClient(destSystem);
 
 			if (shouldSucceed) 
 			{
+
 				Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_COMPLETED.name(), message );
 				
 				Assert.assertTrue(destClient.doesExist(remoteExpectedPath),
@@ -420,17 +440,20 @@ public class StagingJobIT extends BaseTestCase {
 			// adjust the expected path for the remote directory
 			remoteExpectedPath = remoteDestBaseDir + "/" + expectedPath;
 
-			StagingTask task = createStagingTaskForUrl(new URI("agave://" + sourceSystem.getSystemId() + "/" + remoteSrcPath), destSystem, remoteDestPath);
+			URI sourceUri = new URI("agave://" + sourceSystem.getSystemId() + "/" + remoteSrcPath);
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
+			TransferTaskScheduler scheduler = new TransferTaskScheduler();
+			scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
 
-			StagingJob stagingJob = new StagingJob();
+//			StagingJob stagingJob = new StagingJob();
+//
+//			stagingJob.setQueueTask(task);
+//
+//            stagingJob.doExecute();
 
-			stagingJob.setQueueTask(task);
-
-            stagingJob.doExecute();
-
-			LogicalFile file = LogicalFileDao.findById(task.getLogicalFile().getId());
+			LogicalFile queuedFile = LogicalFileDao.findById(file.getId());
 			
-			Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_COMPLETED.name(),
+			Assert.assertEquals(queuedFile.getStatus(), StagingTaskStatus.STAGING_COMPLETED.name(),
 					"Logical file status was not STAGING_COMPLETED" );
 			
 			Assert.assertTrue(getClient(destSystem).doesExist(remoteExpectedPath),
@@ -488,17 +511,21 @@ public class StagingJobIT extends BaseTestCase {
 			remoteDestPath = remoteDestBaseDir + "/" + LOCAL_BINARY_FILE_NAME;
 			getClient(destSystem).put(LOCAL_BINARY_FILE, remoteDestPath);
 
-			StagingTask task = createStagingTaskForUrl(new URI("agave://" + sourceSystem.getSystemId() + "/" + remoteSrcBaseDir), destSystem, remoteDestPath);
-			
-			StagingJob stagingJob = new StagingJob();
+			URI sourceUri = new URI("agave://" + sourceSystem.getSystemId() + "/" + remoteSrcBaseDir);
 
-			stagingJob.setQueueTask(task);
-			
-			stagingJob.doExecute();
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(remoteDestPath));
+			TransferTaskScheduler scheduler = new TransferTaskScheduler();
+			scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
 
-			LogicalFile file = LogicalFileDao.findById(task.getLogicalFile().getId());
+//			StagingJob stagingJob = new StagingJob();
+//
+//			stagingJob.setQueueTask(task);
+//
+//			stagingJob.doExecute();
+
+			LogicalFile queuedFile = LogicalFileDao.findById(file.getId());
 			
-			Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_FAILED.name(),
+			Assert.assertEquals(queuedFile.getStatus(), StagingTaskStatus.STAGING_FAILED.name(),
 					"Logical file status was not STAGING_FAILED when staging a directory onto a file" );
 		} 
 		catch (Exception e) {
@@ -509,10 +536,6 @@ public class StagingJobIT extends BaseTestCase {
 			try { getClient(destSystem).delete(remoteDestBaseDir); } catch (Exception ignored) {}
 		}
 	}
-
-
-
-
 
 	@DataProvider(parallel = false)
 	private Object[][] testStageNextAgaveFolderProvider(Method m) throws Exception
@@ -566,15 +589,21 @@ public class StagingJobIT extends BaseTestCase {
                 remoteExpectedPath +=  "/" + expectedPath;
             }
 
-			StagingTask task = createStagingTaskForUrl(new URI("agave://" + sourceSystem.getSystemId() + "/" + remoteSrcPath), destSystem, remoteDestPath);
 
-			StagingJob stagingJob = new StagingJob();
 
-			stagingJob.setQueueTask(task);
+			URI sourceUri = new URI("agave://" + sourceSystem.getSystemId() + "/" + remoteSrcPath);
 
-			stagingJob.doExecute();
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(remoteDestPath));
+			TransferTaskScheduler scheduler = new TransferTaskScheduler();
+			scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
 
-			LogicalFile file = LogicalFileDao.findById(task.getLogicalFile().getId());
+//			StagingJob stagingJob = new StagingJob();
+//
+//			stagingJob.setQueueTask(task);
+//
+//			stagingJob.doExecute();
+
+			LogicalFile queuedFile = LogicalFileDao.findById(file.getId());
 
 			Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_COMPLETED.name(),
 					"Logical file status was not STAGING_COMPLETED" );
@@ -637,16 +666,20 @@ public class StagingJobIT extends BaseTestCase {
 				srcClient.delete(srcPath);
 			}
 			
-			StagingTask task = createStagingTaskForUrl(new URI("agave://" + sourceSystem.getSystemId() + "/" + srcPath), destSystem, destPath);
-			
-			StagingJob stagingJob = new StagingJob();
+			URI sourceUri = new URI("agave://" + sourceSystem.getSystemId() + "/" + srcPath);
 
-			stagingJob.setQueueTask(task);
-            
-            stagingJob.doExecute();
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
+			TransferTaskScheduler scheduler = new TransferTaskScheduler();
+			scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+
+//			StagingJob stagingJob = new StagingJob();
+//
+//			stagingJob.setQueueTask(task);
+//
+//            stagingJob.doExecute();
 			
-			LogicalFile file = task.getLogicalFile();
-			
+//			LogicalFile queuedFile = task.getLogicalFile();
+
 			Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_FAILED.name(), message);
 		} 
 		catch (Exception e) {
@@ -696,15 +729,19 @@ public class StagingJobIT extends BaseTestCase {
 			srcClient.mkdirs("");
 			srcClient.put(LOCAL_BINARY_FILE, "");
 			
-			StagingTask task = createStagingTaskForUrl(new URI("agave://" + sourceSystem.getSystemId() + "/" + srcPath), destSystem, destPath);
-			
-			StagingJob stagingJob = new StagingJob();
+			URI sourceUri = new URI("agave://" + sourceSystem.getSystemId() + "/" + srcPath);
 
-			stagingJob.setQueueTask(task);
-            
-            stagingJob.doExecute();
-			
-			LogicalFile file = task.getLogicalFile();
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
+			TransferTaskScheduler scheduler = new TransferTaskScheduler();
+			scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+
+//			StagingJob stagingJob = new StagingJob();
+//
+//			stagingJob.setQueueTask(task);
+//
+//            stagingJob.doExecute();
+//
+//			LogicalFile file = task.getLogicalFile();
 			
 			Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_FAILED.name(), message);
 		} 
@@ -742,16 +779,22 @@ public class StagingJobIT extends BaseTestCase {
 			if (!destClient.doesExist("")) {
 				destClient.mkdirs("");
 			}
-			
-			StagingTask task = createStagingTaskForUrl(new URI("agave://" + sourceSystem.getSystemId() + "/" + srcPath), destSystem, destPath);
-			
-			StagingJob stagingJob = new StagingJob();
 
-			stagingJob.setQueueTask(task);
-            
-            stagingJob.doExecute();
+
 			
-			LogicalFile file = task.getLogicalFile();
+			URI sourceUri = new URI("agave://" + sourceSystem.getSystemId() + "/" + srcPath);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
+			TransferTaskScheduler scheduler = new TransferTaskScheduler();
+			scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+
+//			StagingJob stagingJob = new StagingJob();
+//
+//			stagingJob.setQueueTask(task);
+//
+//            stagingJob.doExecute();
+//
+//			LogicalFile file = task.getLogicalFile();
 			
 			Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_FAILED.name(), message);
 		} 
@@ -798,16 +841,20 @@ public class StagingJobIT extends BaseTestCase {
 			srcClient.authenticate();
 			srcClient.mkdirs("");
 			srcClient.put(LOCAL_BINARY_FILE, "");
-			
-			StagingTask task = createStagingTaskForUrl(new URI("agave://" + sourceSystem.getSystemId() + "/" + srcPath), destSystem, destPath);
-			
-            StagingJob stagingJob = new StagingJob();
 
-			stagingJob.setQueueTask(task);
-            
-            stagingJob.doExecute();
-			
-			LogicalFile file = task.getLogicalFile();
+			URI sourceUri = new URI("agave://" + sourceSystem.getSystemId() + "/" + srcPath);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
+			TransferTaskScheduler scheduler = new TransferTaskScheduler();
+			scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+
+//            StagingJob stagingJob = new StagingJob();
+//
+//			stagingJob.setQueueTask(task);
+//
+//            stagingJob.doExecute();
+//
+//			LogicalFile file = task.getLogicalFile();
 			
 			Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_FAILED.name(), message);
 		} 

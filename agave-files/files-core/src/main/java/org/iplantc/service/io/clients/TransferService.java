@@ -26,7 +26,8 @@ import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Abstract parent class for all API Service clients
+ * HTTP client to send transfer requests to the transfers-api
+ *
  * @author dooley
  *
  */

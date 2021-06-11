@@ -236,7 +236,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 															.put("message", message)
 															.mergeIn(body);
 
-													_doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
+													_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
 														handler.handle(Future.failedFuture(parentReply.cause()));
 													});
 												}
@@ -253,7 +253,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 												.put("cause", siblingReply.cause().getClass().getName())
 												.put("message", message)
 												.mergeIn(body);
-										_doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
+										_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
 											handler.handle(Future.failedFuture(siblingReply.cause()));
 										});
 									}
@@ -316,7 +316,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 								//logger.debug("All child tasks for parent transfer task {} are paused, cancelled or completed. " +
 								//		"A transfer.paused event will be created for this task.", parentTaskId);
 								// call to our publishing helper for easier testing.
-								_doPublishEvent(TRANSFERTASK_PAUSED, getTaskById.result(), pausedResp -> {
+								_doPublishEvent(MessageType.TRANSFERTASK_PAUSED, getTaskById.result(), pausedResp -> {
 									// return true indicating the parent event was processed
 									resultHandler.handle(isAllChildrenCancelledOrCompleted);
 								});

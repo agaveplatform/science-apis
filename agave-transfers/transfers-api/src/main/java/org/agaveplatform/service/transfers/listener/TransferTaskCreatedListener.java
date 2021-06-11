@@ -193,7 +193,8 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                     body.put("event", this.getClass().getName());
                     body.put("type", getEventChannel());
                     try {
-                        _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+                        Handler<AsyncResult<Boolean>> handle = null;
+                        _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body, handle);
                     } catch (Exception e) {
                         log.debug(e.getMessage());
                     }
@@ -288,10 +289,12 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                     if (updateResult.succeeded()) {
                         // continue assigning the task and return
                         try {
+
                             String owner = updateResult.result().getString("owner");
                             String host = srcUri.getHost();
                             String subject = createPushMessageSubject(tenantId, owner, host, TRANSFERTASK_ASSIGNED);
-                            _doPublishEvent(subject, updateResult.result());
+                            Handler<AsyncResult<Boolean>> handle = null;
+                            _doPublishEvent(subject, updateResult.result(), handle);
 
                         } catch (Exception e) {
                             log.debug(e.getMessage());
@@ -303,7 +306,9 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                                 uuid, updateResult.cause().getMessage());
                         try {
                             doHandleError(updateResult.cause(), msg, body, handler);
-                        } catch (IOException | MessagingException |InterruptedException ignored) {}
+                        } catch (Exception e) {
+                            log.error("Error with TTCreatedLisntener in the processEvent method. {}", e.getMessage());
+                        }
                     }
                 });
             } else {

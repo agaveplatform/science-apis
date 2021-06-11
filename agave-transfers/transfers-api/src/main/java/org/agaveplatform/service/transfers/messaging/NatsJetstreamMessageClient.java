@@ -451,7 +451,7 @@ public class NatsJetstreamMessageClient {
     public void listen(String subject, String queueName, MessageHandler handler) throws MessagingException, InterruptedException {
 
         JetStreamSubscription subscription = subscriptionMap.get(subject);
-        if (subscription!= null) {
+        if (subscription != null) {
             subscription.unsubscribe();
             subscriptionMap.remove(subject);
         }

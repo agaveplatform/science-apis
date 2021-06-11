@@ -57,8 +57,8 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		when(listener.getEventChannel()).thenCallRealMethod();
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.config()).thenReturn(config);
-		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class), any());
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class), any());
 		return listener;
 	}
 
@@ -67,73 +67,73 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		when(listener.getEventChannel()).thenCallRealMethod();
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.config()).thenReturn(config);
-		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class), any());
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class), any());
 		return listener;
 	}
 
 	InteruptEventListener getMockInteruptListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		InteruptEventListener listener = spy(new InteruptEventListener(vertx));
 		when(listener.config()).thenReturn(config);
-		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class), any());
 		return listener;
 	}
 	TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 //		NotificationListener listener = spy(new NotificationListener(vertx));
 		TransferTaskNotificationListener listener = Mockito.spy(new TransferTaskNotificationListener(vertx));
 		when(listener.config()).thenReturn(config);
-		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
 		return listener;
 	}
 	TransferTaskCompleteTaskListener getMockTCTListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskCompleteTaskListener listener = spy(new TransferTaskCompleteTaskListener(vertx));
 		when(listener.config()).thenReturn(config);
-		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class), any());
 		return listener;
 	}
 	TransferTaskAssignedListener getMockTTAListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskAssignedListener listener = spy(new TransferTaskAssignedListener(vertx));
 		when(listener.config()).thenReturn(config);
-		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
 		return listener;
 	}
 	TransferTaskCancelListener getMockTTCancelListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskCancelListener listener = spy(new TransferTaskCancelListener(vertx));
 		when(listener.config()).thenReturn(config);
-		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class), any());
 		return listener;
 	}
 	TransferTaskCreatedListener getMockTTCListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskCreatedListener listener = spy(new TransferTaskCreatedListener(vertx));
 		doReturn(config).when(listener).config();
-		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class), any());
 		return listener;
 	}
 	TransferTaskPausedListener getMockTTPausedListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskPausedListener listener = spy(new TransferTaskPausedListener(vertx));
 		when(listener.config()).thenReturn(config);
-		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class), any());
 		return listener;
 	}
 
 	TransferAllProtocolVertical getMockAllProtocolVerticalInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferAllProtocolVertical listener = spy(new TransferAllProtocolVertical(vertx));
 		when(listener.config()).thenReturn(config);
-		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class), any());
 		return listener;
 	}
 
 	TransferAPIVertical getMockTransferAPIVerticalInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferAPIVertical listener = spy(new TransferAPIVertical(vertx));
 		when(listener.config()).thenReturn(config);
-		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
-		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
+		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class), any());
 		return listener;
 	}
 

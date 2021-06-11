@@ -58,38 +58,37 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
             //group subscription so each message only processed by this vertical type once
             subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
         } catch (Exception e) {
-            logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
+            logger.error("{} - Exception {}",EVENT_CHANNEL, e.getMessage());
         }
-//        //EventBus bus = vertx.eventBus();
-//        //Connection nc = _connect();
-//        Dispatcher d = getConnection().createDispatcher((msg) -> {});
-//        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
-//            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//            JsonObject body = new JsonObject(response) ;
-//            String uuid = body.getString("uuid");
-//            String source = body.getString("source");
-//            String dest = body.getString("dest");
-//            logger.info("Transfer task {} cancel detected.", uuid);
-//            this.processCancelRequest(body, result -> {
-//                //result should be true
-//            });
-//        });
-//        d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
-//        getConnection().flush(Duration.ofMillis(500));
-//
-//        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//        s = d.subscribe(EVENT_CHANNEL, msg -> {
-//            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//            JsonObject body = new JsonObject(response) ;
-//            String uuid = body.getString("uuid");
-//
-//            logger.info("Transfer task {} ackowledged cancellation", uuid);
-//            this.processCancelAck(body, result -> {});
-//        });
-//        d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
-//        getConnection().flush(Duration.ofMillis(500));
+
+        try {
+            // broadcast subscription so each message gets to every verticle to cancel the task where ever it may be
+            subscribeToSubjectGroup(TRANSFERTASK_CANCELED_SYNC, this::handleCanceledSyncMessage);
+        } catch (Exception e) {
+            logger.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
+        }
+    }
+
+    protected void handleCanceledSyncMessage(Message message) {
+        try {
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+            logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+            processCancelAck(body, result -> {
+                if (result.succeeded()){
+                    logger.info("processCancelAck succeeded uuid {}", uuid);
+                }
+                else{
+                    logger.error("processCancelAck failed for uuid {},  {}", uuid, result.cause());
+                }
+            });
+        } catch (DecodeException e) {
+            logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            logger.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+        }
     }
 
     protected void handleMessage(Message message) {
@@ -99,7 +98,14 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
             String source = body.getString("source");
             String dest = body.getString("dest");
             logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-
+            processCancelRequest(body, result -> {
+                if (result.succeeded()){
+                    logger.info("processCancelRequest succeeded uuid {}", uuid);
+                }
+                else{
+                    logger.error("processCancelRequest failed for uuid {},  {}", uuid, result.cause());
+                }
+            });
         } catch (DecodeException e) {
             logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
@@ -155,8 +161,10 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                                             "to sending %s event.",
                                             uuid, CANCELING_WAITING.name(), TRANSFERTASK_CANCELED_SYNC));
                             logger.debug("Sending cancel sync event for transfer task {} to signal children to cancel any active work.", uuid);
-                            getVertx().eventBus().publish("TRANSFERTASK", updateReply.result());
-                            resultHandler.handle(Future.succeededFuture(true));
+                            //getVertx().eventBus().publish("TRANSFERTASK", updateReply.result());
+                            _doPublishEvent(TRANSFERTASK_CANCELED_SYNC, updateReply.result(), resp -> {
+                                resultHandler.handle(Future.succeededFuture(true));
+                            });
                         } else {
                             String msg = String.format("Unable to update the status of transfer task %s to %s prior " +
                                             "to sending %s event. No sync event will be sent.",
@@ -171,7 +179,10 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                     // be cleaned up. This is a bit of an aggressive way to override eventual consistency.
                     logger.info("Transfer task {} is not in an active state and will not be updated.", uuid);
                     logger.debug("Sending cancel sync event for transfer task {} to ensure children are cleaned up.", uuid);
-                    getVertx().eventBus().publish("TRANSFERTASK", getByIdReply.result());
+                   // getVertx().eventBus().publish("TRANSFERTASK", getByIdReply.result());
+                    _doPublishEvent(TRANSFERTASK_CANCELED_SYNC, getByIdReply.result(), resp -> {
+                        resultHandler.handle(Future.succeededFuture(true));
+                    });
                     resultHandler.handle(Future.succeededFuture(false));
                 }
             } else {

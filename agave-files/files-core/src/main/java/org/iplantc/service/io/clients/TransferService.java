@@ -135,7 +135,6 @@ public class TransferService {
             HttpPost post = new HttpPost(getBaseUrl());
 			post.setHeader("Content-Type", "application/json; utf-8");
 			post.setHeader("Accept", "application/json");
-			post.setHeader("Content-Length", "" + body.getBytes(StandardCharsets.UTF_8).length );
 			post.setHeader("Content-Language", "en-US");
 			post.setHeader(getHttpAuthHeader(getTenantId()), getHttpAuthToken(getUsername(), getTenantId()));
 
@@ -156,7 +155,7 @@ public class TransferService {
         	throw e;
         }
         catch (Exception e) {
-        	throw new TaskException("Failed to perform PUT on " + baseUrl, e);
+        	throw new TaskException("Failed to perform POST on " + baseUrl, e);
         } 
         finally {
             try { httpClient.getConnectionManager().shutdown(); } catch (Exception ignored) {}

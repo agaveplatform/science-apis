@@ -26,8 +26,20 @@ public class TransferTaskScheduler {
      * @throws SchedulerException if unable to submit the request
      */
     public void enqueueStagingTask(LogicalFile file, String username) throws SchedulerException {
+        enqueueStagingTask(file, username, "");
+    }
+
+    /**
+     * Submits a {@link TransferTask} to the transfers api via HTTP.
+     *
+     * @param file     the logical file to transfer. This represents the destination of the transfer
+     * @param username the user who requested the transfer
+     * @param baseUrl  the address of the transfer api
+     * @throws SchedulerException if unable to submit the request
+     */
+    public void enqueueStagingTask(LogicalFile file, String username, String baseUrl) throws SchedulerException {
         try {
-            JsonNode responseBody = callTransferClient(file, username);
+            JsonNode responseBody = callTransferClient(file, username, baseUrl);
 
             if (responseBody.isNull()) {
                 //failed
@@ -65,7 +77,7 @@ public class TransferTaskScheduler {
         // the apiResultObject is the value of the result field in the response. We can query for uuid as a top
         // level field. The text value will be null, so we're safe to request it directly and do a single null
         // check on the value.
-        String uuid = apiResultObject.get("/uuid").asText();
+        String uuid = apiResultObject.get("uuid").asText();
         if (uuid == null || uuid.isEmpty()) {
             throw new SchedulerException("No uuid returned from transfers api: " + apiResultObject);
         }
@@ -82,7 +94,28 @@ public class TransferTaskScheduler {
      * @throws TaskException if unable to make the request
      */
     protected JsonNode callTransferClient(LogicalFile file, String username) throws SchedulerException, TaskException {
-        TransferService transferService = new TransferService(username, file.getTenantId());
+        return callTransferClient(file, username, "");
+    }
+
+
+    /**
+     * Make POST request to the transfer service client to submit transfer request
+     * @param file {@link LogicalFile} to transfer
+     * @param username user requesting the transfer
+     * @param baseUrl the address of the transfer api
+     * @return the result object from the json response
+     * @throws SchedulerException if unable to make the request
+     * @throws TaskException if unable to make the request
+     */
+    protected JsonNode callTransferClient(LogicalFile file, String username, String baseUrl) throws SchedulerException {
+        TransferService transferService = null;
+
+        if (baseUrl.isEmpty()){
+            transferService = new TransferService(username, file.getTenantId());
+        } else {
+            transferService = new TransferService(username, file.getTenantId(), baseUrl);
+        }
+
         APIResponse response = transferService.post(file.getSourceUri(), file.getPath());
 
         if (response.isSuccess()) {

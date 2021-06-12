@@ -449,7 +449,7 @@ public class StagingJobIT extends BaseTestCase {
             URI sourceUri = new URI("agave://" + sourceSystem.getSystemId() + "/" + remoteSrcPath);
             LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
             TransferTaskScheduler scheduler = new TransferTaskScheduler();
-            scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+            scheduler.enqueueStagingTask(file, SYSTEM_OWNER, TRANSFER_API_URL);
 
 //			StagingJob stagingJob = new StagingJob();
 //
@@ -521,7 +521,7 @@ public class StagingJobIT extends BaseTestCase {
 
             LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(remoteDestPath));
             TransferTaskScheduler scheduler = new TransferTaskScheduler();
-            scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+            scheduler.enqueueStagingTask(file, SYSTEM_OWNER, TRANSFER_API_URL);
 
 //			StagingJob stagingJob = new StagingJob();
 //
@@ -601,7 +601,7 @@ public class StagingJobIT extends BaseTestCase {
 
             LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(remoteDestPath));
             TransferTaskScheduler scheduler = new TransferTaskScheduler();
-            scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+            scheduler.enqueueStagingTask(file, SYSTEM_OWNER, TRANSFER_API_URL);
 
 //			StagingJob stagingJob = new StagingJob();
 //
@@ -676,7 +676,7 @@ public class StagingJobIT extends BaseTestCase {
 
             LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
             TransferTaskScheduler scheduler = new TransferTaskScheduler();
-            scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+            scheduler.enqueueStagingTask(file, SYSTEM_OWNER, TRANSFER_API_URL);
 
 //			StagingJob stagingJob = new StagingJob();
 //
@@ -739,7 +739,7 @@ public class StagingJobIT extends BaseTestCase {
 
             LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
             TransferTaskScheduler scheduler = new TransferTaskScheduler();
-            scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+            scheduler.enqueueStagingTask(file, SYSTEM_OWNER, TRANSFER_API_URL);
 
 //			StagingJob stagingJob = new StagingJob();
 //
@@ -792,7 +792,7 @@ public class StagingJobIT extends BaseTestCase {
 
             LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
             TransferTaskScheduler scheduler = new TransferTaskScheduler();
-            scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+            scheduler.enqueueStagingTask(file, SYSTEM_OWNER, TRANSFER_API_URL);
 
 //			StagingJob stagingJob = new StagingJob();
 //
@@ -852,7 +852,7 @@ public class StagingJobIT extends BaseTestCase {
 
             LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
             TransferTaskScheduler scheduler = new TransferTaskScheduler();
-            scheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+            scheduler.enqueueStagingTask(file, SYSTEM_OWNER, TRANSFER_API_URL);
 
 //            StagingJob stagingJob = new StagingJob();
 //

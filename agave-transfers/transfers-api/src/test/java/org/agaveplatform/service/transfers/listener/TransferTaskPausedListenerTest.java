@@ -1,6 +1,9 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
@@ -16,7 +19,6 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
-
 
 import java.io.IOException;
 import java.net.URI;
@@ -117,9 +119,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				// if the path should represent a directory, generate the items in the listing response
 				listing = List.of(
 						generateRemoteFileInfo(remotePath + "/.", true),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), true),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), false),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), false)
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), true),
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), false),
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), false)
 				);
 			} else {
 				// if the path should represent a file, a listing will only return the file item itself
@@ -813,6 +815,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@DisplayName("Transfer Paused Listener smoke test with Assigned Vertical and checking Paused Vertical")
 	@Disabled
 	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) {
+
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 		// mock of the Paused Listener
@@ -898,79 +901,14 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		// invocation of the method and false thereafter.
 		when(ta.taskIsNotInterrupted(any())).thenReturn(true,false);
 
-
-
 		ta.start();
 		vertx.eventBus().send(TRANSFERTASK_PAUSED_SYNC, rootTransferTaskJson);
+		doCallRealMethod().when(ta).addCancelledTask(anyString());
+
 		ctx.verify(() ->{
-			doCallRealMethod().when(ta).addCancelledTask(anyString());
 			ctx.completeNow();
 		});
-//
-//		ta.processTransferTask(rootTransferTaskJson, result -> {
-//			ctx.verify(() -> {
-//				assertTrue(result.succeeded(), "Task assignment should return true on successful processing.");
-//				assertFalse(result.result(), "Callback result should be true after successful assignment.");
-//
-//				verify(ta).addCancelledTask(rootTransferTask.getUuid() );
 
-//				// remote file info should be obtained once.
-//				verify(srcRemoteDataClient, times(1)).getFileInfo(eq(srcUri.getPath()));
-//
-//				// mkdir should never be called on the src client.
-//				verify(srcRemoteDataClient, never()).mkdirs(eq(srcUri.getPath()));
-//
-//				// mkdir should only be called on non-empty directory items.
-//				verify(destRemoteDataClient, times(1)).mkdirs(any());
-//
-//				// listing should be called with srch path
-//				verify(srcRemoteDataClient, times(1)).ls(eq(srcUri.getPath()));
-//
-//				// should be called once after the children are processed
-//				verify(dbService, never()).updateStatus(any(), any(), any(), any());
-//
-//				// get the test list of remote child file items
-//				List<RemoteFileInfo> remoteFileInfoList = srcRemoteDataClient.ls(srcUri.getPath());
-//
-//				// according to our above mock, this interruption check should be called twice. once upon entry
-//				// where it returns true. Another time when processing the first child when it shold return false and
-//				// trigger an abortion of the stream processing.
-//				verify(ta, times(2)).taskIsNotInterrupted(eq(rootTransferTask));
-//
-//				// the method should never be reached. the interrupt should abort all further processing of the children
-//				verify(dbService, never()).createOrUpdateChildTransferTask(any(), any(), any());
-//
-//				// directory children should raise TRANSFERTASK_CREATED events
-//				verify(ta, times(1))._doPublishEvent(eq(TRANSFERTASK_CANCELED_ACK), eq(rootTransferTaskJson));
-//				// file item children should never be reached
-//				verify(ta, never())._doPublishEvent(eq(TRANSFER_ALL), any(JsonObject.class));
-//				verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_CREATED), any(JsonObject.class));
-//
-//				// no error event should have been raised
-//				verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-//
-//				ctx.completeNow();
-//			});
-
-//			tp.processPauseRequest(rootTransferTask.toJson(), tpResult -> {
-//				ctx.verify(() -> {
-//					assertTrue(tpResult.succeeded(), "Task assignment should return true on successful processing.");
-//					assertFalse(tpResult.result(), "Callback result should be true after successful assignment.");
-//
-//					// verify that the completed event was created. this should always be throws
-//					// if the updateStatus result succeeds.
-//					verify(tp)._doPublishEvent(eq(TRANSFERTASK_PAUSED_SYNC), any());
-//
-//					// make sure the parent was processed at least one time
-//					verify(tp).processParentEvent(any(), any(), any());
-//
-//					verify(tp, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-//					verify(tp, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-//
-//					ctx.completeNow();
-//				});
-//			});
-//		});
 	}
 
 

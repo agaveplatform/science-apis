@@ -199,7 +199,7 @@ public class URLCopy{
             // otherwise, we're doing the heavy lifting ourselves
             else {
 
-                try {
+//                try {
                     double srcFileLength = getSourceClient().length(srcPath);
                     long availableBytes = new File("/").getUsableSpace();
 
@@ -224,11 +224,11 @@ public class URLCopy{
                     else {
                         transferTask = streamingTransfer(srcPath, destPath, getRemoteStreamingTransferListenerForTransferTask(transferTask));
                     }
-                } catch (ClosedByInterruptException e) {
-                    throw e;
-                } catch (Throwable e) {
-                    log.error("Exception {}", e.getMessage(), e.getCause());
-                }
+//                } catch (ClosedByInterruptException e) {
+//                    throw e;
+//                } catch (Throwable e) {
+//                    throw e;
+//                }
             }
 
             return transferTask;

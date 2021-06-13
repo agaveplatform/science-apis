@@ -22,6 +22,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
 
     protected ConcurrentHashSet<String> cancelledTasks = new ConcurrentHashSet<>();
     protected ConcurrentHashSet<String> pausedTasks = new ConcurrentHashSet<>();
+
     private RetryRequestManager retryRequestManager;
     protected String eventChannel;
     public AbstractTransferTaskListener() {
@@ -166,26 +167,30 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * children exist in the lists of paused and cancelled tasks.
      *
      * @param transferTask the current task being checked from the running task
-     * @return false if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #cancelledTasks} or {@link #pausedTasks} list
+     * @return false if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #cancelledTasks} or
+     *          {@link #pausedTasks} list.
      */
     public boolean taskIsNotInterrupted(TransferTask transferTask) {
-        try {
-            if (transferTask.getParentTaskId() != null && transferTask.getRootTaskId() != null) {
-                final List<String> uuids = List.of(transferTask.getUuid(), transferTask.getParentTaskId(), transferTask.getRootTaskId());
-                if (getCancelledTasks().stream().anyMatch(uuids::contains) || getPausedTasks().stream().anyMatch(uuids::contains)) {
-
-                    String msg = "Transfer was Canceled or Paused";
-                    logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
-                    JsonObject json = new JsonObject().put("message", msg);
-                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, json);
-                    return false;
-                }
-            }
-        } catch (Exception e){
-            logger.error("taskIsNotInterrupted Error.  {}", e.toString());
-            return false;
+        if (transferTask.getParentTaskId() != null && transferTask.getRootTaskId() != null) {
+            final List<String> uuids = List.of(transferTask.getUuid(), transferTask.getParentTaskId(), transferTask.getRootTaskId());
+            return getCancelledTasks().stream().noneMatch(uuids::contains) && getPausedTasks().stream().noneMatch(uuids::contains);
         }
         return true;
+    }
+
+    /**
+     * Publishes a {@link MessageType#TRANSFERTASK_CANCELED} message for the given transfer task. This was refactored
+     * from the {@link #taskIsNotInterrupted(TransferTask)} method to allow for quick checks up front, followed by
+     * async propagation of the cancelled event, which was blocking.
+     * @param transferTask the task to report cancelled
+     * @param handler the handler to call upon completion.
+     */
+    protected void publishTaskInterruptedEvent(TransferTask transferTask, Handler<AsyncResult<Boolean>> handler) {
+        String msg = "Transfer was Canceled or Paused";
+        logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
+        JsonObject json = new JsonObject()
+                .put("message", msg);
+        _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, json);
     }
 
     /**

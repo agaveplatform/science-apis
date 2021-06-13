@@ -43,6 +43,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("👋 TransferTaskAssignedListener test")
 class TransferTaskAssignedListenerTest extends BaseTestCase {
+
 	@AfterAll
 	public void finish(Vertx vertx, VertxTestContext ctx) {
 		vertx.close(ctx.completing());

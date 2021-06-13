@@ -81,7 +81,6 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
-//  getTransferTaskTree
   /**
    * Retrieve tree of parent and children {@link TransferTask}
    *

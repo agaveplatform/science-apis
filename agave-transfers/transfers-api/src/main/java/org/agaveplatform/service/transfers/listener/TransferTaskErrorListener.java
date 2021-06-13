@@ -104,7 +104,12 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 			String message = body.getString("message", "");
 			int maxTries = config().getInteger(TRANSFERTASK_MAX_ATTEMPTS, Settings.MAX_STAGING_RETRIES);
 			//String status = body.getString("COMPLETED", null);
-			String tenantId = body.getString("tenant_id");
+			String tenantId;
+			if (body.containsKey("tenant_id")) {
+				tenantId = body.getString("tenant_id");
+			} else {
+				tenantId = body.getString("tenantId");
+			}
 			String uuid = body.getString("uuid");
 
 			log.error("Tenant ID is {}", tenantId);
@@ -118,7 +123,7 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 							// check to see if the job was canceled so we don't retry an interrupted task
 							if (taskIsNotInterrupted(tt)) {
 								// see if the error in the event is recoverable or not
-								if (getRecoverableExceptionsClassNames().contains(cause)) {
+								if (cause != null && getRecoverableExceptionsClassNames().contains(cause)) {
 									// now check its status
 									if (tt.getStatus().isActive()) {
 										// check the retry count on the transfer task. if it has not yet tapped out, examine the error to see if

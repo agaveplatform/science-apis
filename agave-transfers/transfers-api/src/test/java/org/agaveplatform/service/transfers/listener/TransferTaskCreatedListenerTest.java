@@ -10,8 +10,6 @@ import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.systems.exceptions.SystemRoleException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
@@ -25,7 +23,8 @@ import org.mockito.stubbing.Answer;
 import java.net.URI;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(VertxExtension.class)
@@ -98,7 +97,6 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid source")
-	@Disabled
 	public void assignTransferTaskFailSrcTest(Vertx vertx, VertxTestContext ctx) {
 
 		// get the JsonObject to pass back and forth between verticles
@@ -132,7 +130,6 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid dest")
-	@Disabled
 	public void assignTransferTaskFailDestTest(Vertx vertx, VertxTestContext ctx) {
 
 		// get the JsonObject to pass back and forth between verticles
@@ -164,42 +161,5 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		})));
 	}
 
-	@Test
-	@DisplayName("TransferTaskCreatedListener - taskIsNotInterrupted")
-	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) {
-		TransferTask tt = _createTestTransferTask();
-		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
-		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
-
-		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-
-		ctx.verify(() -> {
-			ta.addCancelledTask(tt.getUuid());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in cancelledTasks list should indicate task is interrupted");
-			ta.removeCancelledTask(tt.getUuid());
-
-			ta.addPausedTask(tt.getUuid());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in pausedTasks list should indicate task is interrupted");
-			ta.removePausedTask(tt.getUuid());
-
-			ta.addCancelledTask(tt.getParentTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in cancelledTasks list should indicate task is interrupted");
-			ta.removeCancelledTask(tt.getParentTaskId());
-
-			ta.addPausedTask(tt.getParentTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in pausedTasks list should indicate task is interrupted");
-			ta.removePausedTask(tt.getParentTaskId());
-
-			ta.addCancelledTask(tt.getRootTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in cancelledTasks list should indicate task is interrupted");
-			ta.removeCancelledTask(tt.getRootTaskId());
-
-			ta.addPausedTask(tt.getRootTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in pausedTasks list should indicate task is interrupted");
-			ta.removePausedTask(tt.getRootTaskId());
-
-			ctx.completeNow();
-		});
-	}
 
 }

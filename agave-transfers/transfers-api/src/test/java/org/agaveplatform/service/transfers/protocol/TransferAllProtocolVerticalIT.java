@@ -3,6 +3,7 @@ package org.agaveplatform.service.transfers.protocol;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.impl.ConcurrentHashSet;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
@@ -57,6 +58,15 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 		TransferAllProtocolVertical listener = Mockito.mock(TransferAllProtocolVertical.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFER_ALL);
 		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.getCancelledTasks()).thenCallRealMethod();
+		doCallRealMethod().when(listener).setCancelledTasks(any());
+		when(listener.getPausedTasks()).thenCallRealMethod();
+		doCallRealMethod().when(listener).setPausedTasks(any());
+
+		// have to set them here because they won't be initialized when the mock is created.
+		listener.setCancelledTasks(new ConcurrentHashSet<String>());
+		listener.setPausedTasks(new ConcurrentHashSet<String>());
+
 		return listener;
 	}
 
@@ -102,13 +112,13 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 			JSONObject json = getSystemJson(protocolType);
 			json.remove("id");
 			json.put("id", this.getClass().getSimpleName());
-			RemoteSystem system = (StorageSystem) StorageSystem.fromJSON(json);
+			RemoteSystem system = StorageSystem.fromJSON(json);
 			system.setOwner(SYSTEM_USER);
 			Optional<String> hd = Optional.ofNullable(system.getStorageConfig().getHomeDir());
 			String homeDir = String.format("%s/%s/%s",
 					hd.orElse(""),
 					getClass().getSimpleName(),
-					UUID.randomUUID().toString());
+					UUID.randomUUID());
 			system.getStorageConfig().setHomeDir(homeDir);
 			return system;
 		} catch (Exception e) {

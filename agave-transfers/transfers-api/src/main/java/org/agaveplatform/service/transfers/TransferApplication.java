@@ -23,8 +23,8 @@ public class TransferApplication {
         Vertx vertx = Vertx.vertx();
 
         int poolSize = 10;
-        int instanceSize = 50;
-        int dbInstanceSize = 10;
+        int instanceSize = 5;
+        int dbInstanceSize = 5;
 
         ConfigStoreOptions fileStore = new ConfigStoreOptions()
                 .setType("file")
@@ -259,12 +259,13 @@ public class TransferApplication {
                     if (ar.succeeded()) {
                         log.info("TransferApiVertical ({}) started on port {}", ar.result(), config.getInteger("HTTP_PORT"));
                     } else {
-                        log.error("TransferApiVertical deployment failed !\n" + ar.cause());
-                        ar.cause().printStackTrace();
+                        log.error("TransferApiVertical deployment failed !", ar.cause());
+                        System.exit(1);
                     }
                 });
             } else {
-                log.error("Error retrieving configuration.");
+                log.error("Error retrieving service configuration.");
+                System.exit(1);
             }
         });
     }

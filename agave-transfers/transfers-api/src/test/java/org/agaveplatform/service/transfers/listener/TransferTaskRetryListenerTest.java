@@ -278,49 +278,4 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 		}));
 	}
 
-	@Test
-	@DisplayName("TransferRetryListener - isTaskInterruptedTest")
-	void isTaskInterrupted(Vertx vertx, VertxTestContext ctx){
-		TransferTask tt = _createTestTransferTask();
-		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
-		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
-
-		TransferTaskRetryListener ta = new TransferTaskRetryListener(vertx);
-
-		// mock out the db service so we can can isolate method logic rather than db
-		TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(tt.toJson());
-
-
-
-		//doNothing().when(ta).getRetryRequestManager().request(any(), any(), any());
-
-		ctx.verify(() -> {
-			ta.addCancelledTask(tt.getUuid());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in cancelledTasks list should indicate task is interrupted");
-			ta.removeCancelledTask(tt.getUuid());
-
-			ta.addPausedTask(tt.getUuid());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in pausedTasks list should indicate task is interrupted");
-			ta.removePausedTask(tt.getUuid());
-
-			ta.addCancelledTask(tt.getParentTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in cancelledTasks list should indicate task is interrupted");
-			ta.removeCancelledTask(tt.getParentTaskId());
-
-			ta.addPausedTask(tt.getParentTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in pausedTasks list should indicate task is interrupted");
-			ta.removePausedTask(tt.getParentTaskId());
-
-			ta.addCancelledTask(tt.getRootTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in cancelledTasks list should indicate task is interrupted");
-			ta.removeCancelledTask(tt.getRootTaskId());
-
-			ta.addPausedTask(tt.getRootTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in pausedTasks list should indicate task is interrupted");
-			ta.removePausedTask(tt.getRootTaskId());
-
-			ctx.completeNow();
-		});
-	}
-
 }

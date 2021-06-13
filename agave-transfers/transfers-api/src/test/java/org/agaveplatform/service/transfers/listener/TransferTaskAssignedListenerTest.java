@@ -12,8 +12,6 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -142,9 +140,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				// if the path should represent a directory, generate the items in the listing response
 				listing = List.of(
 						generateRemoteFileInfo(remotePath + "/.", true),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), true),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), false),
-						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID().toString(), false)
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), true),
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), false),
+						generateRemoteFileInfo(remotePath + "/" + UUID.randomUUID(), false)
 				);
 			} else {
 				// if the path should represent a file, a listing will only return the file item itself
@@ -475,7 +473,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 					assertTrue(ttPath.startsWith(parentPath),
 							String.format("Actual task source does not begin with parent source: %s !startsWith %s\n",
-									ttPath.toString(), rootTransferTask.getSource()));
+									ttPath, rootTransferTask.getSource()));
 
 					assertEquals(rootTransferTask.getSource() + "/" + ttPath.getFileName().toString(),
 							tt.getSource(), "Actual task source does not match expected value based on parent source");
@@ -598,44 +596,6 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 				ctx.completeNow();
 			});
-		});
-	}
-
-	@Test
-	@DisplayName("TransferTaskAssignedListener - taskIsNotInterrupted")
-	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) {
-		TransferTask tt = _createTestTransferTask();
-		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
-		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
-
-		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-
-		ctx.verify(() -> {
-			ta.addCancelledTask(tt.getUuid());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in cancelledTasks list should indicate task is interrupted");
-			ta.removeCancelledTask(tt.getUuid());
-
-			ta.addPausedTask(tt.getUuid());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in pausedTasks list should indicate task is interrupted");
-			ta.removePausedTask(tt.getUuid());
-
-			ta.addCancelledTask(tt.getParentTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in cancelledTasks list should indicate task is interrupted");
-			ta.removeCancelledTask(tt.getParentTaskId());
-
-			ta.addPausedTask(tt.getParentTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in pausedTasks list should indicate task is interrupted");
-			ta.removePausedTask(tt.getParentTaskId());
-
-			ta.addCancelledTask(tt.getRootTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in cancelledTasks list should indicate task is interrupted");
-			ta.removeCancelledTask(tt.getRootTaskId());
-
-			ta.addPausedTask(tt.getRootTaskId());
-			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in pausedTasks list should indicate task is interrupted");
-			ta.removePausedTask(tt.getRootTaskId());
-
-			ctx.completeNow();
 		});
 	}
 }

@@ -3,16 +3,6 @@
  */
 package org.iplantc.service.io.permissions;
 
-import java.io.FileNotFoundException;
-import java.math.BigInteger;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -45,6 +35,11 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
+import java.io.FileNotFoundException;
+import java.math.BigInteger;
+import java.net.URI;
+import java.util.*;
+
 /**
  * Management class for file and folder permissions. This class determines
  * whether a user other than the owner has permission to view/modify a 
@@ -55,9 +50,9 @@ import org.iplantc.service.transfer.model.enumerations.PermissionType;
  */
 public class PermissionManager {
 
-	private String remoteUsername;
-	private String apiUsername;
-	private RemoteSystem remoteSystem;
+	private final String remoteUsername;
+	private final String apiUsername;
+	private final RemoteSystem remoteSystem;
 	
 	//private IrodsClient irodsClient;
 
@@ -277,7 +272,7 @@ public class PermissionManager {
         
         if (StringUtils.isEmpty(apiUsername))// || userRole.getRole().equals(RoleType.NONE)) 
 		{
-        		if (log.isDebugEnabled()) st = SimpleTimer.start("Marker1");
+        		if (log.isTraceEnabled()) st = SimpleTimer.start("Marker1");
         		RemoteFilePermission perm = new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, true);
         		if (st != null) log.debug(st.getShortStopMsg());
         		return perm;
@@ -285,7 +280,7 @@ public class PermissionManager {
 		// admins have total control
 		else if (userRole.canAdmin())
 		{
-			if (log.isDebugEnabled()) st = SimpleTimer.start("Marker2");
+			if (log.isTraceEnabled()) st = SimpleTimer.start("Marker2");
 			RemoteFilePermission perm = new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.ALL, true);
 			if (st != null) log.debug(st.getShortStopMsg());
 			return perm;
@@ -294,7 +289,7 @@ public class PermissionManager {
         // when searching for a known parent
 		else if (!isUnderSystemRootDir(systemAbsolutePath)) 
 		{
-			if (log.isDebugEnabled()) st = SimpleTimer.start("Marker3");
+			if (log.isTraceEnabled()) st = SimpleTimer.start("Marker3");
 			RemoteFilePermission perm =  new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, true);
 			if (st != null) log.debug(st.getShortStopMsg());
 			return perm;
@@ -313,7 +308,7 @@ public class PermissionManager {
 			// RemoteFilePermissions trump the system permissions.
 			if (remoteDataClient != null)
         	{
-				if (log.isDebugEnabled()) st = SimpleTimer.start("Marker4");
+				if (log.isTraceEnabled()) st = SimpleTimer.start("Marker4");
 				// no logical file, check for public or world pems, or readonly system
 				if (logicalFile == null) 
 				{
@@ -422,7 +417,7 @@ public class PermissionManager {
 			// no permission mirroring on this public system
         	else 
         	{
-        		if (log.isDebugEnabled()) st = SimpleTimer.start("Marker5");
+        		if (log.isTraceEnabled()) st = SimpleTimer.start("Marker5");
     			// user should have access to all files and folders in their 
         		// public system home directory tree unless explicitly denied
         		if (isUserHomeDirOnPublicSystem(systemAbsolutePath) || isUnderUserHomeDirOnPublicSystem(systemAbsolutePath)) 
@@ -593,7 +588,7 @@ public class PermissionManager {
         }
         else // not publicly available system
         {
-        	if (log.isDebugEnabled()) st = SimpleTimer.start("Marker6");
+        	if (log.isTraceEnabled()) st = SimpleTimer.start("Marker6");
         	// mirroring is turned on, so we should delegate to the system
         	// in this situation. The exception being if the path or one of its parent folders
 			// was given public or world permissions. In this case, the 
@@ -705,7 +700,7 @@ public class PermissionManager {
     		// the closest parent to check for recursive permissions
     		else if (logicalFile != null)
         	{	
-    			if (log.isDebugEnabled()) st = SimpleTimer.start("Marker7");
+    			if (log.isTraceEnabled()) st = SimpleTimer.start("Marker7");
     			// because this is a private system, the user will always have at least
     			// read permission on any system path. If they did not have access to this
     			// system, they would not have gotten this far.
@@ -750,7 +745,7 @@ public class PermissionManager {
     		// no logical file found
     		else 
     		{
-    			   if (log.isDebugEnabled()) st = SimpleTimer.start("Marker8");
+    			   if (log.isTraceEnabled()) st = SimpleTimer.start("Marker8");
     			// find the closest known parent and check for recursive permisisons
 				LogicalFile parent = LogicalFileDao.findClosestParent(remoteSystem, systemAbsolutePath);
 				if (parent == null)
@@ -825,7 +820,7 @@ public class PermissionManager {
 	public boolean isUserHomeDirOnPublicSystem(String path)
 	{
 		SimpleTimer st = null;
-		if (log.isDebugEnabled()) st = SimpleTimer.start("isUserHomeDirOnPublicSystem");
+		if (log.isTraceEnabled()) st = SimpleTimer.start("isUserHomeDirOnPublicSystem");
 		
 		if (remoteSystem.isPubliclyAvailable())
 		{
@@ -894,7 +889,7 @@ public class PermissionManager {
 	public boolean isUnderUserHomeDirOnPublicSystem(String systemAbsolutePath)
 	{
 		SimpleTimer st = null;
-		if (log.isDebugEnabled()) st = SimpleTimer.start("isUnderUserHomeDirOnPublicSystem");
+		if (log.isTraceEnabled()) st = SimpleTimer.start("isUnderUserHomeDirOnPublicSystem");
 		
 		if (remoteSystem.isPubliclyAvailable())
 		{

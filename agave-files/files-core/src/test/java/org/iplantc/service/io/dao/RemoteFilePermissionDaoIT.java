@@ -1,9 +1,5 @@
 package org.iplantc.service.io.dao;
 
-import java.net.URI;
-import java.util.List;
-import java.util.UUID;
-
 import org.hibernate.HibernateException;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.model.JSONTestDataUtil;
@@ -15,17 +11,17 @@ import org.iplantc.service.transfer.dao.RemoteFilePermissionDao;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
 
 @Test(groups={"integration"})
-public class RemoteFilePermissionDaoTest extends BaseTestCase {
+public class RemoteFilePermissionDaoIT extends BaseTestCase {
 
 	private LogicalFile file;
-	private SystemDao systemDao = new SystemDao();
+	private final SystemDao systemDao = new SystemDao();
 	private StorageSystem system;
 	private String destPath;
 	private URI httpUri;
@@ -37,7 +33,7 @@ public class RemoteFilePermissionDaoTest extends BaseTestCase {
 		clearSystems();
 		clearLogicalFiles();
 
-		destPath = String.format("/home/%s/%s/%s", SYSTEM_OWNER, UUID.randomUUID().toString(), LOCAL_TXT_FILE_NAME);
+		destPath = String.format("/home/%s/%s/%s", SYSTEM_OWNER, UUID.randomUUID(), LOCAL_TXT_FILE_NAME);
 		httpUri = new URI("http://example.com/foo/bar/baz");
 
 

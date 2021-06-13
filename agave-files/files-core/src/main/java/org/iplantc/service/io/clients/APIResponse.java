@@ -50,7 +50,7 @@ public class APIResponse
 						this.status = APIResponseStatus.ERROR;
 					}
 					this.message = response.get("message").asText();
-					this.result = response.get("result");
+					this.result = response.has("result") ? response.get("result") : response;
 				} 
 				else
 				{

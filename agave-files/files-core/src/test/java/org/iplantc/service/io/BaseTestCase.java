@@ -157,9 +157,11 @@ public class BaseTestCase {
 
 			session.createQuery("DELETE LogicalFile").executeUpdate();
 			session.createQuery("DELETE StagingTask").executeUpdate();
+            session.createQuery("DELETE TransferTaskImpl").executeUpdate();
+            session.createSQLQuery("DELETE FROM TransferApiTasks").executeUpdate();
 			session.createQuery("DELETE RemoteFilePermission").executeUpdate();
 			session.createQuery("DELETE TransferTaskPermission").executeUpdate();
-//			session.createQuery("DELETE TransferTask").executeUpdate();
+            session.createQuery("DELETE FileEvent").executeUpdate();
 			session.createQuery("DELETE Notification").executeUpdate();
 		}
 		catch (HibernateException ex)

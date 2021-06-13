@@ -3,9 +3,7 @@
  */
 package org.iplantc.service.io.dao;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.fileupload.util.Streams;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.*;
@@ -24,15 +22,8 @@ import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.SchedulerException;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.math.BigInteger;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 /**
@@ -42,6 +33,7 @@ import java.util.Date;
  * @deprecated
  * @see TransferTaskScheduler
  */
+@Deprecated
 public class QueueTaskDao
 {
     private static final Logger log = Logger.getLogger(QueueTaskDao.class);
@@ -218,104 +210,8 @@ public class QueueTaskDao
 	 * @see TransferTaskScheduler#enqueueStagingTask(LogicalFile, String)
 	 */
 	public void enqueueStagingTask(LogicalFile file, String username) throws SchedulerException {
-        DataOutputStream wr = null;
-
-        ObjectMapper mapper = new ObjectMapper();
-		String transfersApiAddress = "http://transfers/api/transfers";
-		URL transfersApiUrl = null;
-		try {
-			transfersApiUrl = new URL(transfersApiAddress);
-		} catch (MalformedURLException e) {
-			throw new SchedulerException("Unable to connect to transfers api. " + e.getMessage());
-		}
-
-		HttpURLConnection connection = null;
-		try {
-
-			log.info("Calling transfers service " + transfersApiAddress + " with src uri " +
-					file.getSourceUri() + " and dest: " + file.getPath());
-
-            // Construct transfer request body
-            String transferRequestBody = objectMapper.createObjectNode()
-					.put("source", file.getSourceUri())
-					.put("dest", file.getPath())
-					.toString();
-
-            // create post request
-            connection = (HttpURLConnection) transfersApiUrl.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json; utf-8");
-            connection.setRequestProperty("Accept", "application/json");
-            connection.setRequestProperty("Content-Length", "" + transferRequestBody.length());
-            connection.setRequestProperty("Content-Language", "en-US");
-           	connection.setRequestProperty(getHttpAuthHeader(file.getTenantId()), getHttpAuthToken(username, file.getTenantId()));
-            connection.setUseCaches(false);
-            connection.setDoOutput(true);
-            connection.setDoInput(true);
-
-            // send request
-			try (OutputStream connectionOutputStream = connection.getOutputStream()) {
-				connectionOutputStream.write(transferRequestBody.getBytes(StandardCharsets.UTF_8));
-				connectionOutputStream.flush();
-			} catch (IOException e) {
-				throw new SchedulerException("Failed to submit transfer request to api: " + e.getMessage());
-			}
-
-			String responseBody = null;
-			int responseCode = 0;
-			String responseMessage = null;
-			try (InputStream is = connection.getInputStream()) {
-				responseBody = Streams.asString(is);
-				responseCode = connection.getResponseCode();
-				responseMessage = connection.getResponseMessage();
-			} catch (IOException e) {
-				throw new SchedulerException("Failed to read response from transfers api: " + e.getMessage());
-			}
-
-			// Handle response from transfer api request
-			if (responseCode == 201) {
-				// this is the only success response
-				JsonNode jsonResponse = objectMapper.readTree(responseBody);
-				if (jsonResponse == null) {
-					throw new SchedulerException("Unable to parse response from transfers api: " + responseBody);
-				} else {
-					JsonNode uuidNode = jsonResponse.at("/response/uuid");
-					if (uuidNode == null || uuidNode.isNull()) {
-						throw new SchedulerException("No uuid returned from transfers api: " + responseBody);
-					}
-					//Add transfer uuid to track in the transfers service
-					file.setTransferUuid(uuidNode.asText());
-				}
-
-				// this will be handled by the transfers api created event notification listener
-				// LogicalFileDao.updateTransferStatus(file, StagingTaskStatus.STAGING_QUEUED, createdBy);
-            }
-			else {
-				// request failed
-				file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
-
-				throw new SchedulerException("Error response received while submitting a new transfer request: " +
-						"code: " + responseCode + ", message: " + responseMessage);
-
-			}
-		}
-		catch (SchedulerException e) {
-			throw e;
-		}
-		catch (IOException e) {
-			throw new SchedulerException("Failed to parse the response from the transfers api: " + e.getMessage());
-		}
-		catch (Exception e) {
-
-			file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
-
-			throw new SchedulerException("Unexpected error encountered submitting transfer " +
-					"request to the transfers api.", e);
-		}
-		finally {
-			// save the uuid with the logical file
-			updateLogicalFileAndSwallowException(file);
-		}
+		TransferTaskScheduler scheduler = new TransferTaskScheduler();
+		scheduler.enqueueStagingTask(file, username);
 	}
 
 	/**

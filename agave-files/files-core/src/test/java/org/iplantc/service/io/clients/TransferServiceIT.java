@@ -6,12 +6,8 @@ import org.iplantc.service.io.BaseTestCase;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.UUID;
 
-import static org.mockito.Matchers.*;
-import static org.mockito.Mockito.*;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 
@@ -24,7 +20,8 @@ public class TransferServiceIT extends BaseTestCase {
     @BeforeClass
     public void beforeClass() throws URISyntaxException {
         source = "https://httpd:8443/public/test_upload.bin";
-        dest = String.format("/home/%s/%s/%s", SYSTEM_OWNER, UUID.randomUUID(), LOCAL_BINARY_FILE_NAME);
+        // Transfers api is an internal service. The destination must be a valid location.
+        dest = "file:/dev/null";
     }
 
     @Test
@@ -32,13 +29,14 @@ public class TransferServiceIT extends BaseTestCase {
         TransferService service = new TransferService(SYSTEM_OWNER, TENANT_ID);
         APIResponse postResponse = service.post(source, dest);
         assertNotNull(postResponse);
-        transferUuid = postResponse.getResult().get("/uuid").asText();
+        transferUuid = postResponse.getResult().get("uuid").asText();
         assertNotNull(transferUuid, "Response from successful request to transfer service should return valid uuid.");
 
         JsonNode jsonResponse = postResponse.getResult();
 
         assertEquals(jsonResponse.get("source").asText(), source, "Source from transfer api should match source from request");
-        assertEquals(jsonResponse.get("tenantId").asText(), TENANT_ID, "Tenant id from transfer api should match tenant id from request");
+        assertEquals(jsonResponse.get("dest").asText(), dest, "Dest from transfer api should match dest from request");
+        assertEquals(jsonResponse.get("tenant_id").asText(), TENANT_ID, "Tenant id from transfer api should match tenant id from request");
     }
 
     @Test (dependsOnMethods = {"sendPost"})
@@ -50,6 +48,6 @@ public class TransferServiceIT extends BaseTestCase {
         JsonNode jsonResponse = getResponse.getResult();
 
         assertEquals(jsonResponse.get("source").asText(), source, "Source from transfer api should match source from request");
-        assertEquals(jsonResponse.get("tenantId").asText(), TENANT_ID, "Tenant id from transfer api should match tenant id from request");
+        assertEquals(jsonResponse.get("tenant_id").asText(), TENANT_ID, "Tenant id from transfer api should match tenant id from request");
     }
 }

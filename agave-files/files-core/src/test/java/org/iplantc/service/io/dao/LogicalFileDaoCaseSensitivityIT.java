@@ -1,9 +1,5 @@
 package org.iplantc.service.io.dao;
 
-import java.net.URI;
-import java.util.List;
-import java.util.UUID;
-
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.HibernateException;
 import org.iplantc.service.io.BaseTestCase;
@@ -12,15 +8,14 @@ import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
 
 @Test(groups={"integration"})
-public class LogicalFileDaoCaseSensitivityTest extends BaseTestCase 
+public class LogicalFileDaoCaseSensitivityIT extends BaseTestCase
 {
 	private LogicalFile file;
 	private LogicalFile sibling;
@@ -30,7 +25,7 @@ public class LogicalFileDaoCaseSensitivityTest extends BaseTestCase
 	private LogicalFile parentParent;
 	private LogicalFile parentParentParent;
 	private LogicalFile rootParent;
-	private SystemDao systemDao = new SystemDao();
+	private final SystemDao systemDao = new SystemDao();
 	private StorageSystem system;
 	private String basePath;
 	private String otherPath;
@@ -54,7 +49,7 @@ public class LogicalFileDaoCaseSensitivityTest extends BaseTestCase
 		
 		basePath = "/var/home/" + SYSTEM_OWNER + "/some";
 		otherPath = "/var/home/" + SYSTEM_OWNER + "/other";
-		destPath = String.format("/home/%s/%s/%s", SYSTEM_OWNER, UUID.randomUUID().toString(), LOCAL_TXT_FILE_NAME);
+		destPath = String.format("/home/%s/%s/%s", SYSTEM_OWNER, UUID.randomUUID(), LOCAL_TXT_FILE_NAME);
 		httpUri = new URI("http://example.com/foo/bar/baz");
 
 		file = new LogicalFile(SYSTEM_OWNER, system, httpUri.toString().toLowerCase(), destPath.toLowerCase(), "originalFilename");

@@ -7,11 +7,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
@@ -22,8 +22,6 @@ import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.io.exceptions.TaskException;
 
 import javax.validation.constraints.NotNull;
-import java.net.HttpURLConnection;
-import java.nio.charset.StandardCharsets;
 
 /**
  * HTTP client to send transfer requests to the transfers-api
@@ -77,12 +75,10 @@ public class TransferService {
 			throw new TaskException("No endpoint provided");
 		}
 		
-		HttpClient httpClient = null;
 		String endpoint = getBaseUrl() + "/" + transferId;
 
-		try {
-        	httpClient = HttpClientBuilder.create().build();
-            HttpGet get = new HttpGet(endpoint);
+		try (CloseableHttpClient httpClient = HttpClientBuilder.create().build()){
+        	HttpGet get = new HttpGet(endpoint);
 			get.setHeader("Content-Type", "application/json; utf-8");
 			get.setHeader("Accept", "application/json");
 			get.setHeader("Content-Language", "en-US");
@@ -91,7 +87,7 @@ public class TransferService {
             HttpResponse response = httpClient.execute(get);
 
             try {
-                log.debug(response.getStatusLine());
+                log.debug("Response from transfers api: " + response.getStatusLine());
                 HttpEntity entity = response.getEntity();
                 String body = EntityUtils.toString(entity, "UTF-8");
                 EntityUtils.consume(entity);
@@ -105,9 +101,6 @@ public class TransferService {
         }
         catch (Exception e) {
         	throw new TaskException("Failed to perform GET on " + endpoint, e);
-        } 
-        finally {
-            try { httpClient.getConnectionManager().shutdown(); } catch (Exception ignored) {}
         }
     }
 
@@ -123,15 +116,12 @@ public class TransferService {
 	public APIResponse post(String source, String dest)
     throws TaskException {
 
-		HttpClient httpClient = null;
-
-		HttpURLConnection connection = null;
-		try {
+		try (CloseableHttpClient httpClient = HttpClientBuilder.create().build()){
         	String body = objectMapper.createObjectNode()
 					.put("source", source)
 					.put("dest", dest).toString();
 
-			httpClient = HttpClientBuilder.create().build();
+
             HttpPost post = new HttpPost(getBaseUrl());
 			post.setHeader("Content-Type", "application/json; utf-8");
 			post.setHeader("Accept", "application/json");
@@ -143,7 +133,7 @@ public class TransferService {
             HttpResponse response = httpClient.execute(post);
 
             try {
-                log.debug(response.getStatusLine());
+				log.debug("Response from transfers api: " + response.getStatusLine());
                 HttpEntity entity = response.getEntity();
                 String entityContent = EntityUtils.toString(entity, "UTF-8");
                 return new APIResponse(entityContent);
@@ -156,9 +146,6 @@ public class TransferService {
         }
         catch (Exception e) {
         	throw new TaskException("Failed to perform POST on " + baseUrl, e);
-        } 
-        finally {
-            try { httpClient.getConnectionManager().shutdown(); } catch (Exception ignored) {}
         }
     }
 	

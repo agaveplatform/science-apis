@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.quartz.JobBuilder.newJob;
 import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.newTrigger;
+import static org.testng.Assert.*;
 
 /**
  * @author dooley
@@ -200,8 +201,8 @@ public class LogicalFileNotificationIT extends BaseTestCase
 			e.printStackTrace();
 		}
 		finally {
-			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable e) {}
-			try { client.close(); } catch (Throwable e) {}
+			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable ignored) {}
+			try { client.close(); } catch (Throwable ignored) {}
 			client = null;
 		}
 	}
@@ -235,8 +236,8 @@ public class LogicalFileNotificationIT extends BaseTestCase
 			throw new MessagingException("Failed to read logicalFiles from queue " + queueName, e);
 		}
 		finally {
-			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable e) {}
-			try { client.close(); } catch (Throwable e) {}
+			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable ignored) {}
+			try { client.close(); } catch (Throwable ignored) {}
 			client = null;
 		}
 	}
@@ -252,17 +253,20 @@ public class LogicalFileNotificationIT extends BaseTestCase
 		try 
 		{
 		    StorageSystem storageSystem = new SystemManager().getDefaultStorageSystem();
-		    file = new LogicalFile(SYSTEM_OWNER, storageSystem, URI.create("agave://" + storageSystem.getSystemId() + "/" + LOCAL_TXT_FILE_NAME), storageSystem.getRemoteDataClient().resolvePath(LOCAL_TXT_FILE_NAME + ".copy"));
+		    file = new LogicalFile(SYSTEM_OWNER, storageSystem,
+					URI.create("agave://" + storageSystem.getSystemId() + "/" + LOCAL_TXT_FILE_NAME),
+					storageSystem.getRemoteDataClient().resolvePath(LOCAL_TXT_FILE_NAME + ".copy"));
 	        file.setStatus(StagingTaskStatus.STAGING_QUEUED);
 	        file.setOwner(SYSTEM_OWNER);
 	        
 	        LogicalFileDao.persist(file);
+//			HibernateUtil.commitTransaction();
 	        
 //	        task = new StagingTask(file);
 //	        task.setRetryCount(Settings.MAX_STAGING_RETRIES);
 //	        QueueTaskDao.persist(task);
 //	        
-            LogicalFileDao.persist(file);    
+//            LogicalFileDao.persist(file);
 		} 
 		catch (Exception e) {
 			Assert.fail("Failed to create LogicalFile object", e);
@@ -302,10 +306,10 @@ public class LogicalFileNotificationIT extends BaseTestCase
         LogicalFileDao.persist(logicalFile);
     }
     
-    protected void createSingleNotification(LogicalFile logicalFile, FileEventType eventType, String url, boolean persistent) 
+    protected Notification createSingleNotification(LogicalFile logicalFile, FileEventType eventType, String url, boolean persistent)
     throws NotificationException 
     {
-        LogicalFileManager.addNotification(logicalFile, eventType, url, persistent, logicalFile.getOwner());
+        return LogicalFileManager.addNotification(logicalFile, eventType, url, persistent, logicalFile.getOwner());
     }
 
     @DataProvider(name = "logicalFileNotificationStatusProvider")
@@ -323,13 +327,13 @@ public class LogicalFileNotificationIT extends BaseTestCase
 	@Test(dataProvider="logicalFileNotificationStatusProvider")
 	public void testLogicalFileIndividualEmailNotificationProcessed(FileEventType testStatus) throws Exception
 	{
-	    genericLogicalFileSpecificNotificationTest(testStatus, TEST_NOTIFICATION_EMAIL, true);
+	    genericLogicalFileSpecificNotificationTest(testStatus, TEST_NOTIFICATION_EMAIL, false);
 	}
 	
 	@Test(dataProvider="logicalFileNotificationStatusProvider", dependsOnMethods={"testLogicalFileIndividualEmailNotificationProcessed"})
     public void testLogicalFileWildcardEmailNotificationProcessed(FileEventType testStatus) throws Exception
     {
-	    genericLogicalFileSpecificNotificationTest(testStatus, TEST_NOTIFICATION_EMAIL, true);
+	    genericLogicalFileSpecificNotificationTest(testStatus, TEST_NOTIFICATION_EMAIL, false);
     }
 	
 	@Test(dataProvider="logicalFileNotificationStatusProvider", dependsOnMethods={"testLogicalFileWildcardEmailNotificationProcessed"})
@@ -358,9 +362,9 @@ public class LogicalFileNotificationIT extends BaseTestCase
     {
         LogicalFile logicalFile = createLogicalFile();
 		
-        createSingleNotification(logicalFile, eventType, notificationUri, persistent);
-		
-		processNotification(logicalFile, eventType);
+        Notification notification = createSingleNotification(logicalFile, eventType, notificationUri, persistent);
+
+		processSingleNotification(logicalFile, eventType, notification.getUuid());
     }
 	
 	/**
@@ -376,20 +380,60 @@ public class LogicalFileNotificationIT extends BaseTestCase
     throws Exception
     {
         LogicalFile logicalFile = createLogicalFile();
-        
-        createIndividualNotifications(logicalFile, notificationUri, persistent);
+
+		createIndividualNotifications(logicalFile, notificationUri, persistent);
         
         processNotification(logicalFile, testStatus);
     }
-	
+
 	/**
-	 * Executes a nofication event processing.
-	 * 
+	 * Executes a notification event processing.
+	 *
 	 * @param logicalFile
 	 * @param eventType
 	 * @throws Exception
 	 */
 	private void processNotification(LogicalFile logicalFile, FileEventType eventType)
+			throws Exception
+	{
+		notificationProcessed.set(false);
+
+		logicalFile.setStatus(eventType.name());
+		LogicalFileDao.persist(logicalFile);
+
+		// update logicalFile status
+		logicalFile.addContentEvent(new FileEvent(
+				eventType,
+				"Logical file " + logicalFile.getPublicLink() + " recieved " + eventType.name() + " event.",
+				logicalFile.getOwner()));
+		LogicalFileDao.persist(logicalFile);
+
+		// force the queue listener to fire. This should pull the logicalFile message off the queue and notifiy us
+		//queueListener.execute(null);
+		int i = 0;
+		while(!notificationProcessed.get() && i < 5) {
+			Thread.sleep(1000);
+			i++;
+		}
+
+		List<Notification> notifications = notificationDao.getActiveForAssociatedUuidAndEvent(logicalFile.getUuid(), eventType.name());
+
+		assertFalse(notifications.isEmpty(), "No notifications found for logical file " + logicalFile.getUuid() + " and status " + eventType.name());
+
+		assertEquals(notifications.size(), 1, "Exactly one notification should be found matching the logical file uuid and event");
+
+		assertEquals(notifications.get(0).getStatus(), NotificationStatusType.ACTIVE, "Message for status " + eventType.name() + " was successfully sent.");
+	}
+
+	
+	/**
+	 * Executes a notification event processing.
+	 * 
+	 * @param logicalFile
+	 * @param eventType
+	 * @throws Exception
+	 */
+	private void processSingleNotification(LogicalFile logicalFile, FileEventType eventType, String notificationUuid)
 	throws Exception
     {
 		notificationProcessed.set(false);
@@ -401,28 +445,26 @@ public class LogicalFileNotificationIT extends BaseTestCase
 		logicalFile.addContentEvent(new FileEvent(
 				eventType, 
                 "Logical file " + logicalFile.getPublicLink() + " recieved " + eventType.name() + " event.", 
-                null));
+                logicalFile.getOwner()));
 		LogicalFileDao.persist(logicalFile);
         
 		// force the queue listener to fire. This should pull the logicalFile message off the queue and notifiy us
 		//queueListener.execute(null);
 		int i = 0;
-		while(!notificationProcessed.get() && i < 5) {
-		    Thread.sleep(1000);
+		while(!notificationProcessed.get() && i < 50) {
+		    Thread.sleep(100);
 		    i++;
 		}
 		
-		List<Notification> notifications = notificationDao.getActiveForAssociatedUuidAndEvent(logicalFile.getUuid(), eventType.name());
+		Notification notification = notificationDao.findByUuidAcrossTenants(notificationUuid);
 		
-		Assert.assertFalse(notifications.isEmpty(), "No notifications found for status " + eventType.name());
+		assertNotNull(notification, "No notifications found for uuid " + notification);
 		
-		Assert.assertEquals(notifications.size(), 1, "Wrong number of notifications returned for status " + eventType.name() + " ");
-		
-		Notification n = notifications.get(0);
+		assertEquals(notification.getAssociatedUuid(), logicalFile.getUuid(),"Notification associatedUuid does not match the logical file UUID " + logicalFile.getUuid() + " ");
 
-//		Assert.assertNotNull(n.getLastSent(), "Message for status " + testStatus + " was attempted.");
-		
-		Assert.assertTrue(n.getStatus() == NotificationStatusType.COMPLETE, "Message for status " + eventType.name() + " was successfully sent.");
+		assertEquals(notification.getEvent(), eventType.name(), "Notification event not match the test event.");
+
+		assertEquals(notification.getStatus(), NotificationStatusType.COMPLETE, "Notification status for non persistent subscription should be complete. This indicates the message was not sent.");
 	}
 
 }

@@ -19,7 +19,8 @@
         <property name="hbm2ddl.auto">update</property>
         <property name="hibernate.show_sql">false</property>
         <property name="hibernate.query.substitutions">true 1, false 0</property>
-		
+        <property name="javax.persistence.validation.group.pre-persist"></property>
+
 		<!-- Uncomment these if you want to run queries via the Hibernate
              plugin in your IDE. -->
         <!-- <mapping class="org.iplantc.service.system.model.RemoteSystem"/>

@@ -3,28 +3,21 @@
  */
 package org.iplantc.service.notification.dao;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.hibernate.HibernateException;
-import org.hibernate.ObjectNotFoundException;
-import org.hibernate.Query;
-import org.hibernate.Session;
-import org.hibernate.transform.Transformers;
+import org.hibernate.*;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.dao.AbstractDao;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.search.SearchTerm;
-import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
-import org.iplantc.service.notification.model.NotificationAttempt;
-import org.iplantc.service.notification.model.enumerations.NotificationEventType;
 import org.iplantc.service.notification.model.enumerations.NotificationStatusType;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Data access class for internal users.
@@ -256,11 +249,14 @@ public class NotificationDao extends AbstractDao
 		try
 		{
 			Session session = getSession();
+
 			
 			String hql = "from Notification t where t.uuid = :uuid";
 			
 			Notification notification = (Notification)session.createQuery(hql)
 					.setString("uuid",uuid)
+					.setCacheMode(CacheMode.IGNORE)
+					.setCacheable(false)
 					.uniqueResult();
 			
 //			session.flush();
@@ -668,7 +664,7 @@ public class NotificationDao extends AbstractDao
                 {
                     query.setParameter(searchTerm.getSafeSearchField(), 
                             searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)));
-                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "'" + searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)) + "'");
                 }
                 
             }

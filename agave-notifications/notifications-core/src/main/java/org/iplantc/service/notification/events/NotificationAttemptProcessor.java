@@ -3,8 +3,7 @@
  */
 package org.iplantc.service.notification.events;
 
-import java.util.Date;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.exceptions.MessagingException;
@@ -18,17 +17,13 @@ import org.iplantc.service.notification.exceptions.MissingNotificationException;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.exceptions.NotificationPolicyViolationException;
 import org.iplantc.service.notification.managers.NotificationManager;
-import org.iplantc.service.notification.model.Notification;
-import org.iplantc.service.notification.model.NotificationAttempt;
-import org.iplantc.service.notification.model.NotificationAttemptBackoffCalculator;
-import org.iplantc.service.notification.model.NotificationAttemptResponse;
-import org.iplantc.service.notification.model.NotificationPolicy;
+import org.iplantc.service.notification.model.*;
 import org.iplantc.service.notification.model.enumerations.NotificationStatusType;
 import org.iplantc.service.notification.providers.NotificationAttemptProvider;
 import org.iplantc.service.notification.providers.NotificationAttemptProviderFactory;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Date;
 
 /**
  * @author dooley
@@ -37,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class NotificationAttemptProcessor {
 	
 	private static final Logger	log	= Logger.getLogger(NotificationAttemptProcessor.class);
+	private static final ObjectMapper objectMapper = new ObjectMapper();
 
 	private NotificationAttempt attempt;
 	private Notification notification;
@@ -174,8 +170,10 @@ public class NotificationAttemptProcessor {
 				// if it's active, then set it to completed
 				if (NotificationStatusType.ACTIVE == getNotification().getStatus()) {
 					getNotification().setStatus(NotificationStatusType.COMPLETE);
-					NotificationManager.updateStatus(getAttempt().getNotificationId(), 
-							NotificationStatusType.COMPLETE);
+					getNotification().setLastUpdated(new Date());
+					new NotificationDao().update(getNotification());
+//					NotificationManager.updateStatus(getAttempt().getNotificationId(),
+//							NotificationStatusType.COMPLETE);
 				}
 				// if not, then we're just going to retire the attempt. the notification
 				// was updated during the notificatino processing, so we'll ignore it
@@ -319,11 +317,10 @@ public class NotificationAttemptProcessor {
 		MessageQueueClient queue = null;
 
 		try {
-			ObjectMapper mapper = new ObjectMapper();
 			queue = MessageClientFactory.getMessageClient();
 			
 			queue.push(Settings.NOTIFICATION_RETRY_TOPIC,
-					Settings.NOTIFICATION_RETRY_QUEUE, mapper.writeValueAsString(attempt), 
+					Settings.NOTIFICATION_RETRY_QUEUE, objectMapper.writeValueAsString(attempt),
 					secondsUntilNextScheduledAttempt);
 
 		} 

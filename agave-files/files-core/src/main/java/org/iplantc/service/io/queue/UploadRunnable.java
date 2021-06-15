@@ -4,10 +4,13 @@ import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
 import org.iplantc.service.io.dao.LogicalFileDao;
+import org.iplantc.service.io.manager.LogicalFileManager;
 import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.notification.exceptions.NotificationException;
+import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
@@ -16,6 +19,7 @@ import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
+import org.quartz.SchedulerException;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,6 +47,7 @@ public class UploadRunnable implements Runnable
 
 	protected boolean rangeCopyOperation = false;
 	protected long rangeStart = 0;
+
 
 	public UploadRunnable(LogicalFile destinationLogicalFile, File localFile, String sourceFileItemOwner, String uploadUsername) {
 		this.destinationLogicalFile = destinationLogicalFile;
@@ -77,46 +82,20 @@ public class UploadRunnable implements Runnable
 	}
 
 	/**
-	 * Performs the last leg of the file upload operation by copying the cached file on disk to the remote system.
+	 * Create File Upload notification event and set proper completed event for destination logical file
 	 */
 	public void run()
 	{
-		RemoteDataClient remoteDataClient = null;
-		RemoteDataClient localDataClient = null;
-
-		TransferTaskImpl transferTask = null;
 		LogicalFile destinationLogicalFile = getDestinationLogicalFile();
-		String destUrl = null;
-		String srcUrl = null;
+		File localFile = getLocalFile();
+
 		try {
-			String agavePath = destinationLogicalFile.getAgaveRelativePathFromAbsolutePath();
+			String strFileUploadWebhookUrl = "";
 
-			srcUrl = "file:///" + localFile.getPath();
-			destUrl = "agave://" + destinationLogicalFile.getSystem().getSystemId() + "/" + agavePath;
+			log.debug("Subscribing to " + strFileUploadWebhookUrl + " to send file upload events when transfer is completed for " + localFile.getName());
 
-			// get the data clients for this transfer
-			localDataClient = getLocalDataClient();
-			remoteDataClient = getRemoteDataClient(destinationLogicalFile);
-
-			log.debug("Starting background file upload task for " + localFile.getName() + " to " + destUrl);
-
-			// create a new transfer task for tracking
-			transferTask = new TransferTaskImpl(srcUrl, destUrl, uploadUsername, null, null);
-			TransferTaskDao.persist(transferTask);
-
-			// create a URLCopy instance to manage the transfer.
-			URLCopy urlCopy = getUrlCopy(localDataClient, remoteDataClient);
-
-			// adjust for range vs standard copy
-			if (isRangeCopyOperation()) {
-				transferTask = urlCopy.copyRange(localFile.getPath(), 0, localFile.length(), agavePath, rangeStart, transferTask);
-			} else {
-				transferTask = urlCopy.copy(localFile.getPath(), agavePath, transferTask);
-			}
-
-			// transfer is complete. throw an upload event saying an upload just happened
-			destinationLogicalFile.addContentEvent(new FileEvent(FileEventType.UPLOAD,
-					FileEventType.UPLOAD.getDescription(), uploadUsername));
+			//Create notification subscribed to webhook that will send out FILE_UPLOAD event
+			createSingleNotification(destinationLogicalFile, FileEventType.STAGING_COMPLETED, strFileUploadWebhookUrl, true);
 
 			// update our logical file status and create the proper completed event
 			updateLogicalFileStatusAndSwallowException(destinationLogicalFile, StagingTaskStatus.STAGING_COMPLETED,
@@ -124,52 +103,32 @@ public class UploadRunnable implements Runnable
 							" completed staging. You can access the raw file on " + destinationLogicalFile.getSystem().getName() + " at " +
 							destinationLogicalFile.getPath() + " or via the API at " +
 							destinationLogicalFile.getPublicLink() + ".",
-					uploadUsername);
+					getUploadUsername());
 
-			log.info("Completed staging file " + destinationLogicalFile.getAgaveRelativePathFromAbsolutePath() + " for user " + originalFileOwner);
+			log.info("Completed staging file " + destinationLogicalFile.getAgaveRelativePathFromAbsolutePath() + " for user " + getOriginalFileOwner());
 
 			// set it to
 			setDestinationLogicalFile(destinationLogicalFile);
 		}
-		catch (ClosedByInterruptException e) {
-			String msg = String.format("Failed to transfer uploaded file %s to remote destination %s " +
-					"due to thread interruption.", localFile.getPath(), transferTask.getDest());
-
-			updateLogicalFileStatusAndSwallowException(destinationLogicalFile,
-						StagingTaskStatus.STAGING_FAILED,
-						msg + " No further action can be taken to recover. Please attempt the upload again.",
-						uploadUsername);
-
-			log.error(msg);
-		}
 		catch (StaleObjectStateException e) {
 			log.debug("Just avoided a file upload race condition from worker");
 		}
-		catch (RemoteDataException e) {
-			String msg = String.format("Failed to transfer uploaded file %s to remote destination %s " +
-					"due to an error communicating with the remote system.", localFile.getPath(), destUrl);
-
-			updateLogicalFileStatusAndSwallowException(destinationLogicalFile, StagingTaskStatus.STAGING_FAILED,
-					msg + " No further action can be taken to recover. Please attempt the upload again.",
-					uploadUsername);
-
-			log.error(msg + e.getMessage());
-		}
 		catch (Throwable e) {
+			String agavePath = destinationLogicalFile.getAgaveRelativePathFromAbsolutePath();
+			String destUrl = "agave://" + destinationLogicalFile.getSystem().getSystemId() + "/" + agavePath;
+
 			String msg = String.format("Failed to transfer uploaded file %s to remote destination %s " +
 					"due to an unexpected error.", localFile.getPath(), destUrl);
 
 			updateLogicalFileStatusAndSwallowException(destinationLogicalFile, StagingTaskStatus.STAGING_FAILED,
 					msg + " No further action can be taken to recover. Please attempt the upload again.",
-					uploadUsername);
+					getUploadUsername());
 
 			log.error(msg, e);
 		}
 		finally {
-			if (localDataClient != null) localDataClient.disconnect();
-			if (remoteDataClient != null) remoteDataClient.disconnect();
-			if (localFile != null) {
-				FileUtils.deleteQuietly(localFile.getParentFile());
+			if (getLocalFile() != null) {
+				FileUtils.deleteQuietly(getLocalFile().getParentFile());
 			}
 		}
 	}
@@ -254,6 +213,12 @@ public class UploadRunnable implements Runnable
 
 	public void setRangeStart(long rangeStart) {
 		this.rangeStart = rangeStart;
+	}
+
+	protected Notification createSingleNotification(LogicalFile destLogicalFile, FileEventType eventType, String url, boolean persistent)
+			throws NotificationException
+	{
+		return LogicalFileManager.addNotification(destLogicalFile, eventType, url, persistent, destLogicalFile.getOwner());
 	}
 
 }

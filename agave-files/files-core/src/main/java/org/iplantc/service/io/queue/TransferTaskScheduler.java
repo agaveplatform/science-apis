@@ -56,14 +56,8 @@ public class TransferTaskScheduler {
 
                 //Add transfer uuid to track in the transfers service
                 file.setTransferUuid(uuid);
-
-                //Create notification to handle FILE_UPLOAD events when transfer is completed
-                createNotification(file);
             }
         } catch (SchedulerException e) {
-            throw e;
-        } catch (NotificationException e){
-            log.debug("Unable to create notification event for transfer to " + file.getPath() + ": " + e.getMessage());
             throw e;
         } catch (Exception e) {
 
@@ -77,6 +71,23 @@ public class TransferTaskScheduler {
         }
     }
 
+
+    /**
+     * Submits a {@link TransferTask} to the transfers api via HTTP and creates a notification to handle FILE_UPLOAD events
+     * @param file      the logical file to transfer. This represents the destination file
+     * @param username  the user who requested the transfer
+     * @throws SchedulerException       if unable to submit the request
+     * @throws NotificationException    if unable to create notification
+     */
+    public void enqueueStagingTaskWithNotification(LogicalFile file, String username) throws SchedulerException, NotificationException {
+        enqueueStagingTask(file, username, "");
+        try {
+            createNotification(file);
+        } catch (NotificationException e){
+            log.debug("Unable to create notification event for transfer to " + file.getPath() + ": " + e.getMessage());
+            throw e;
+        }
+    }
 
     /**
      * Extract transfer task uuid from the json response object

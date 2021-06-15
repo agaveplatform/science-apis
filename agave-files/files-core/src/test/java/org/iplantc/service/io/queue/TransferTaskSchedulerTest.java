@@ -76,6 +76,7 @@ public class TransferTaskSchedulerTest extends BaseTestCase {
         doCallRealMethod().when(transferTaskScheduler).enqueueStagingTask(any(LogicalFile.class), anyString());
         doCallRealMethod().when(transferTaskScheduler).enqueueStagingTask(any(LogicalFile.class), anyString(), anyString());
         doNothing().when(transferTaskScheduler).updateLogicalFileAndSwallowException(any(LogicalFile.class));
+        doCallRealMethod().when(transferTaskScheduler).enqueueStagingTaskWithNotification(any(LogicalFile.class), anyString());
         return transferTaskScheduler;
     }
 
@@ -111,7 +112,7 @@ public class TransferTaskSchedulerTest extends BaseTestCase {
     }
 
     @Test (expectedExceptions = NotificationException.class)
-    public void testEnqueueStagingTaskHandlesNotificationException() throws NotificationException, SchedulerException {
+    public void testEnqueueStagingTaskWithNotificationHandlesNotificationException() throws NotificationException, SchedulerException {
         TransferTaskScheduler transferTaskScheduler = getMockTransferTaskScheduler();
         when(transferTaskScheduler.createNotification(any(LogicalFile.class))).thenThrow(NotificationException.class);
         when((transferTaskScheduler.parseTransferResponse(any(JsonNode.class)))).thenCallRealMethod();
@@ -120,12 +121,12 @@ public class TransferTaskSchedulerTest extends BaseTestCase {
         JsonNode jsonTransferTask = getTransferTask(file, STAGING_QUEUED.name());
         when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString(), anyString())).thenReturn(jsonTransferTask);
 
-        transferTaskScheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+        transferTaskScheduler.enqueueStagingTaskWithNotification(file, SYSTEM_OWNER);
         verify(file, times(1)).setTransferUuid(jsonTransferTask.get("uuid").asText());
     }
 
     @Test
-    public void testEnqueueStagingTaskCreatesNotification() throws NotificationException, SchedulerException {
+    public void testEnqueueStagingTaskWithNotificationCreatesNotification() throws NotificationException, SchedulerException {
         TransferTaskScheduler transferTaskScheduler = getMockTransferTaskScheduler();
         when(transferTaskScheduler.createNotification(any(LogicalFile.class))).thenReturn(mock(Notification.class));
         when((transferTaskScheduler.parseTransferResponse(any(JsonNode.class)))).thenCallRealMethod();
@@ -134,7 +135,7 @@ public class TransferTaskSchedulerTest extends BaseTestCase {
         JsonNode jsonTransferTask = getTransferTask(file, STAGING_QUEUED.name());
         when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString(), anyString())).thenReturn(jsonTransferTask);
 
-        transferTaskScheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+        transferTaskScheduler.enqueueStagingTaskWithNotification(file, SYSTEM_OWNER);
         verify(transferTaskScheduler, times(1)).createNotification(file);
     }
 

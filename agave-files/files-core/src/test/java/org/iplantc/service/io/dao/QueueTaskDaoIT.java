@@ -6,6 +6,7 @@ import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.QueueTask;
 import org.iplantc.service.io.model.StagingTask;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.quartz.SchedulerException;
@@ -71,7 +72,7 @@ public class QueueTaskDaoIT extends BaseTestCase {
     }
 
     @Test
-    public void testEnqueueStagingTask() throws SchedulerException {
+    public void testEnqueueStagingTask() throws SchedulerException, NotificationException {
         queueTaskDao.enqueueStagingTask(file, SYSTEM_OWNER);
 
         LogicalFile queuedFile = LogicalFileDao.findById(file.getId());

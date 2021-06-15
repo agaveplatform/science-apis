@@ -10,13 +10,18 @@ import org.iplantc.service.io.clients.APIResponse;
 import org.iplantc.service.io.clients.TransferService;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.exceptions.TaskException;
+import org.iplantc.service.io.manager.LogicalFileManager;
 import org.iplantc.service.io.model.LogicalFile;
+import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.notification.exceptions.NotificationException;
+import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.SchedulerException;
 
 public class TransferTaskScheduler {
     private static final Logger log = Logger.getLogger(TransferTaskScheduler.class);
+    private static final String strFileUploadWebhook = "";
 
     /**
      * Submits a {@link TransferTask} to the transfers api via HTTP.
@@ -25,7 +30,7 @@ public class TransferTaskScheduler {
      * @param username the user who requested the transfer
      * @throws SchedulerException if unable to submit the request
      */
-    public void enqueueStagingTask(LogicalFile file, String username) throws SchedulerException {
+    public void enqueueStagingTask(LogicalFile file, String username) throws SchedulerException, NotificationException {
         enqueueStagingTask(file, username, "");
     }
 
@@ -37,7 +42,7 @@ public class TransferTaskScheduler {
      * @param baseUrl  the address of the transfer api
      * @throws SchedulerException if unable to submit the request
      */
-    public void enqueueStagingTask(LogicalFile file, String username, String baseUrl) throws SchedulerException {
+    public void enqueueStagingTask(LogicalFile file, String username, String baseUrl) throws SchedulerException, NotificationException {
         try {
             JsonNode responseBody = callTransferClient(file, username, baseUrl);
 
@@ -51,8 +56,14 @@ public class TransferTaskScheduler {
 
                 //Add transfer uuid to track in the transfers service
                 file.setTransferUuid(uuid);
+
+                //Create notification to handle FILE_UPLOAD events when transfer is completed
+                createNotification(file);
             }
         } catch (SchedulerException e) {
+            throw e;
+        } catch (NotificationException e){
+            log.debug("Unable to create notification event for transfer to " + file.getPath() + ": " + e.getMessage());
             throw e;
         } catch (Exception e) {
 
@@ -123,6 +134,17 @@ public class TransferTaskScheduler {
         } else {
             throw new SchedulerException("Failed to connect to transfer service to initiate transfer request");
         }
+    }
+
+    /**
+     * Create notification to subscribe to a webhook that will handle FILE_UPLOAD events for transfers
+     *
+     * @param file to create notification for
+     * @return {@link Notification}
+     * @throws NotificationException
+     */
+    protected Notification createNotification(LogicalFile file) throws NotificationException {
+        return LogicalFileManager.addNotification(file, FileEventType.STAGING_COMPLETED, strFileUploadWebhook, true, file.getOwner());
     }
 
 

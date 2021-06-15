@@ -15,7 +15,6 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveErrorRepresentation;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.util.AgaveStringUtils;
-import org.iplantc.service.io.FileUploadServletContextListener;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.exceptions.FileProcessingException;
@@ -29,7 +28,6 @@ import org.iplantc.service.io.model.enumerations.FileOperationType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.io.permissions.PermissionManager;
 import org.iplantc.service.io.queue.TransferTaskScheduler;
-import org.iplantc.service.io.queue.UploadRunnable;
 import org.iplantc.service.io.util.PathResolver;
 import org.iplantc.service.io.util.ServiceUtils;
 import org.iplantc.service.notification.model.Notification;
@@ -1081,11 +1079,8 @@ public class FileManagementResource extends AbstractFileResource
 									File cachedFile = new File(cachedDir, fileName);
 		    						fi.write(cachedFile);
 
-									// TODO: pass over to the transfers-api so the connection can be returned
 									logicalFile.setSourceUri(cachedFile.toURI().toString());
 									new TransferTaskScheduler().enqueueStagingTask(logicalFile, username);
-
-									FileUploadServletContextListener.scheduleUploadTask(new UploadRunnable(logicalFile, cachedFile, (StringUtils.isEmpty(owner) ? username : owner), username));
 
 		    						log.debug("File upload of " + cachedFile.length() + " bytes received from " + getAuthenticatedUsername());
 

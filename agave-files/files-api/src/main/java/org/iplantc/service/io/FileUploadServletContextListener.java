@@ -13,6 +13,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 @WebListener
+@Deprecated
 public class FileUploadServletContextListener implements ServletContextListener {
     private static final Logger log = Logger.getLogger(FileUploadServletContextListener.class);
     private static ExecutorService uploadPool;

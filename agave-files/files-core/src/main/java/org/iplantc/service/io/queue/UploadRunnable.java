@@ -35,6 +35,7 @@ import java.nio.channels.ClosedByInterruptException;
  *
  */
 
+@Deprecated
 public class UploadRunnable implements Runnable
 {
 	private static final Logger log = Logger.getLogger(StagingJob.class);

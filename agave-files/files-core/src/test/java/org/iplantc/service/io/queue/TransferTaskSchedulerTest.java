@@ -1,10 +1,14 @@
 package org.iplantc.service.io.queue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.model.LogicalFile;
+import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.notification.exceptions.NotificationException;
+import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.quartz.SchedulerException;
 import org.testng.annotations.BeforeClass;
@@ -12,10 +16,10 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.time.Instant;
 import java.util.UUID;
 
-import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.STAGING_FAILED;
-import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.STAGING_QUEUED;
+import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
@@ -25,6 +29,8 @@ import static org.testng.Assert.assertEquals;
 public class TransferTaskSchedulerTest extends BaseTestCase {
     private String destPath;
     private URI httpUri;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
 
     @BeforeClass
     protected void beforeClass() throws Exception {
@@ -42,45 +48,94 @@ public class TransferTaskSchedulerTest extends BaseTestCase {
         when(logicalFile.getPath()).thenReturn(destPath);
         when(logicalFile.getUuid()).thenReturn(new AgaveUUID(UUIDType.FILE).toString());
         when(logicalFile.getTenantId()).thenReturn("foo.tenant");
-        when(logicalFile.getStatus()).thenReturn(STAGING_QUEUED.name());
+        doCallRealMethod().when(logicalFile).setStatus(anyString());
+        doCallRealMethod().when(logicalFile).setTransferUuid(anyString());
+        when(logicalFile.getOwner()).thenReturn(SYSTEM_OWNER);
+        when(logicalFile.getTransferUuid()).thenReturn(new AgaveUUID(UUIDType.TRANSFER).toString());
 
         return logicalFile;
     }
+    private JsonNode getTransferTask(LogicalFile file, String status) {
+        return objectMapper.createObjectNode()
+                .put("attempts", 1)
+                .put("source", file.getSourceUri())
+                .put("dest", file.getPath())
+                .put("owner", file.getOwner())
+                .put("tenantId", file.getTenantId())
+                .put("uuid", file.getTransferUuid())
+                .put("created", String.valueOf(Instant.now()))
+                .put("lastUpdated", String.valueOf(Instant.now()))
+                .put("endTime", String.valueOf(Instant.now()))
+                .putNull("parentTask")
+                .putNull("rootTask")
+                .put("status", status);
+    }
 
-    @Test (expectedExceptions = SchedulerException.class)
-    public void testEnqueueStagingTaskHandlesSchedulerException() throws SchedulerException{
+    private TransferTaskScheduler getMockTransferTaskScheduler() throws NotificationException, SchedulerException {
         TransferTaskScheduler transferTaskScheduler = mock(TransferTaskScheduler.class);
         doCallRealMethod().when(transferTaskScheduler).enqueueStagingTask(any(LogicalFile.class), anyString());
+        doCallRealMethod().when(transferTaskScheduler).enqueueStagingTask(any(LogicalFile.class), anyString(), anyString());
         doNothing().when(transferTaskScheduler).updateLogicalFileAndSwallowException(any(LogicalFile.class));
+        return transferTaskScheduler;
+    }
+
+
+    @Test (expectedExceptions = SchedulerException.class)
+    public void testEnqueueStagingTaskHandlesSchedulerException() throws SchedulerException, NotificationException {
+        TransferTaskScheduler transferTaskScheduler = getMockTransferTaskScheduler();
         when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString())).thenReturn(null);
 
         LogicalFile file = getMockLogicalFile();
         transferTaskScheduler.enqueueStagingTask(file, SYSTEM_OWNER);
-        assertEquals(file.getStatus(), STAGING_FAILED.name());
+        verify(file, times(1)).setStatus(STAGING_FAILED.name());
     }
 
     @Test (expectedExceptions = SchedulerException.class)
-    public void testEnqueueStagingTaskHandlesIOException() throws SchedulerException{
-        TransferTaskScheduler transferTaskScheduler = mock(TransferTaskScheduler.class);
-        doCallRealMethod().when(transferTaskScheduler).enqueueStagingTask(any(LogicalFile.class), anyString());
-        doNothing().when(transferTaskScheduler).updateLogicalFileAndSwallowException(any(LogicalFile.class));
+    public void testEnqueueStagingTaskHandlesIOException() throws SchedulerException, NotificationException{
+        TransferTaskScheduler transferTaskScheduler = getMockTransferTaskScheduler();
         when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString())).thenThrow(IOException.class);
 
         LogicalFile file = getMockLogicalFile();
         transferTaskScheduler.enqueueStagingTask(file, SYSTEM_OWNER);
-        assertEquals(file.getStatus(), STAGING_FAILED.name());
+        verify(file, times(1)).setStatus(STAGING_FAILED.name());
     }
 
     @Test (expectedExceptions = SchedulerException.class)
-    public void testEnqueueStagingTaskHandlesNullResponseFromClient() throws SchedulerException {
-        TransferTaskScheduler transferTaskScheduler = mock(TransferTaskScheduler.class);
-        doCallRealMethod().when(transferTaskScheduler).enqueueStagingTask(any(LogicalFile.class), anyString());
-        doNothing().when(transferTaskScheduler).updateLogicalFileAndSwallowException(any(LogicalFile.class));
+    public void testEnqueueStagingTaskHandlesNullResponseFromClient() throws SchedulerException, NotificationException {
+        TransferTaskScheduler transferTaskScheduler = getMockTransferTaskScheduler();
         when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString())).thenReturn(null);
 
         LogicalFile file = getMockLogicalFile();
         transferTaskScheduler.enqueueStagingTask(file, SYSTEM_OWNER);
-        assertEquals(file.getStatus(), STAGING_FAILED.name());
+        verify(file, times(1)).setStatus(STAGING_FAILED.name());
+    }
+
+    @Test (expectedExceptions = NotificationException.class)
+    public void testEnqueueStagingTaskHandlesNotificationException() throws NotificationException, SchedulerException {
+        TransferTaskScheduler transferTaskScheduler = getMockTransferTaskScheduler();
+        when(transferTaskScheduler.createNotification(any(LogicalFile.class))).thenThrow(NotificationException.class);
+        when((transferTaskScheduler.parseTransferResponse(any(JsonNode.class)))).thenCallRealMethod();
+
+        LogicalFile file = getMockLogicalFile();
+        JsonNode jsonTransferTask = getTransferTask(file, STAGING_QUEUED.name());
+        when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString(), anyString())).thenReturn(jsonTransferTask);
+
+        transferTaskScheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+        verify(file, times(1)).setTransferUuid(jsonTransferTask.get("uuid").asText());
+    }
+
+    @Test
+    public void testEnqueueStagingTaskCreatesNotification() throws NotificationException, SchedulerException {
+        TransferTaskScheduler transferTaskScheduler = getMockTransferTaskScheduler();
+        when(transferTaskScheduler.createNotification(any(LogicalFile.class))).thenReturn(mock(Notification.class));
+        when((transferTaskScheduler.parseTransferResponse(any(JsonNode.class)))).thenCallRealMethod();
+
+        LogicalFile file = getMockLogicalFile();
+        JsonNode jsonTransferTask = getTransferTask(file, STAGING_QUEUED.name());
+        when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString(), anyString())).thenReturn(jsonTransferTask);
+
+        transferTaskScheduler.enqueueStagingTask(file, SYSTEM_OWNER);
+        verify(transferTaskScheduler, times(1)).createNotification(file);
     }
 
 }

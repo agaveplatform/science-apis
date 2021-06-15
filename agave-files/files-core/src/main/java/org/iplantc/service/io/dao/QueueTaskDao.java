@@ -18,6 +18,7 @@ import org.iplantc.service.io.model.QueueTask;
 import org.iplantc.service.io.model.StagingTask;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.io.queue.TransferTaskScheduler;
+import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.SchedulerException;
@@ -209,7 +210,7 @@ public class QueueTaskDao
 	 * @deprecated 
 	 * @see TransferTaskScheduler#enqueueStagingTask(LogicalFile, String)
 	 */
-	public void enqueueStagingTask(LogicalFile file, String username) throws SchedulerException {
+	public void enqueueStagingTask(LogicalFile file, String username) throws SchedulerException, NotificationException {
 		TransferTaskScheduler scheduler = new TransferTaskScheduler();
 		scheduler.enqueueStagingTask(file, username);
 	}

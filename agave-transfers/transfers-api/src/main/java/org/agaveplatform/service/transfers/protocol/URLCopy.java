@@ -1385,6 +1385,8 @@ public class URLCopy extends AbstractNatsListener {
             getMessageClient().push(eventName, body.toString());
         } catch (IOException | MessagingException | InterruptedException e) {
             log.debug("Error with _doPublishEvent:  {}", e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

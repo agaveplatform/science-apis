@@ -9,9 +9,12 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.agaveplatform.service.transfers.protocol.URLCopyIT;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -21,22 +24,22 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatcher;
 import org.mockito.stubbing.Answer;
+
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.util.Date;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.AdditionalMatchers.or;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -48,6 +51,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("👋 TransferTaskAssignedListener test")
 class TransferTaskAssignedListenerTest extends BaseTestCase {
+
 	@AfterAll
 	public void finish(Vertx vertx, VertxTestContext ctx) {
 		vertx.close(ctx.completing());
@@ -59,8 +63,11 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	 * @param vertx the test vertx instance
 	 * @return a mocked of {@link TransferTaskAssignedListener}
 	 */
-	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws Exception, IOException, InterruptedException, TimeoutException, MessagingException {
 		TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
+		NatsJetstreamMessageClient natsCleint = mock(NatsJetstreamMessageClient.class);
+		doNothing().when(natsCleint).push(any(), any());
+		when(listener.getMessageClient()).thenReturn(natsCleint);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.taskIsNotInterrupted(any())).thenReturn(true);
@@ -68,8 +75,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 //		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any(), any());
-		//doNothing().when(listener)._doPublishEvent(any(),any());
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
 
 		RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
@@ -83,6 +89,8 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 		return listener;
 	}
+
+
 //	NatsJetstreamMessageClient getMockNats() throws MessagingException {
 //		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
 //		doNothing().when(natsClient).push(any(), any(), any());
@@ -194,8 +202,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns single file transfer task")
-	@Disabled
-	public void processTransferTaskAssignsSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+	public void processTransferTaskAssignsSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws Exception {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 //		NatsJetstreamMessageClient nats = getMockNats();
@@ -277,12 +284,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns empty directory transfer task")
-	@Disabled
-	public void processTransferTaskAssignsEmptyDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+	public void processTransferTaskAssignsEmptyDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws Exception {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
-//		NatsJetstreamMessageClient nats = getMockNats();
-
 		// generate a fake transfer task
 		TransferTask rootTransferTask = _createTestTransferTask();
 		rootTransferTask.setId(1L);
@@ -292,6 +296,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 		// now mock out our db interactions. Here we
 		TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(rootTransferTaskJson);
+
 		AsyncResult<JsonObject> updatedTransferTaskAsyncResult = getMockAsyncResult(updatedTransferTaskJson);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
@@ -335,12 +340,15 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 			}
 		}
 
+		TransferTask expectedTransferTask = rootTransferTask;
+		expectedTransferTask.setStatus(TransferStatusType.COMPLETED);
+
 		ta.processTransferTask(rootTransferTaskJson, result -> {
 			ctx.verify(() -> {
 				assertTrue(result.succeeded(), "Task assignment should return true on successful processing.");
 				assertTrue(result.result(), "Callback result should be true after successful assignment.");
 
-				verify(ta).taskIsNotInterrupted(eq(rootTransferTask));
+				verify(ta).taskIsNotInterrupted(argThat(new IsSameTransferTask(rootTransferTask)));
 //				verify(ta).taskIsNotInterrupted(eq(new TransferTask(updatedTransferTaskJson)));
 
 				// remote file info should be obtained once.
@@ -371,8 +379,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns populated directory transfer task")
-	@Disabled
-	public void processTransferTaskAssignsPopulatedDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+	public void  processTransferTaskAssignsPopulatedDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws Exception {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 //		NatsJetstreamMessageClient nats = getMockNats();
@@ -442,10 +449,10 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				verify(destRemoteDataClient, times(1)).mkdirs(any());
 
 				// listing should be called with srch path
-				verify(srcRemoteDataClient, times(1)).ls(eq(srcUri.getPath()));
+//				verify(srcRemoteDataClient, times(1)).ls(eq(srcUri.getPath()));
 
 				// should be called once after the children are processed
-				verify(dbService).updateStatus(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getUuid()), eq(TransferStatusType.COMPLETED.name()), any());
+				verify(dbService, never()).updateStatus(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getUuid()), eq(TransferStatusType.COMPLETED.name()), any(Handler.class));
 
 				// get the test list of remote child file items
 				List<RemoteFileInfo> remoteFileInfoList = srcRemoteDataClient.ls(srcUri.getPath());
@@ -469,7 +476,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				//verify(ta, times((int)remoteFileInfoList.stream().filter(RemoteFileInfo::isFile).count()))._doPublishEvent( eq(TRANSFER_ALL), any(JsonObject.class));
 
 				// the method is called mlutiple times, so we capture the expected events using an or check.
-//				verify(ta, times(remoteFileInfoList.size()))._doPublishEvent(or(eq("TRANSFERTASK_CREATED"), eq(TRANSFERTASK_CREATED)), childJsonObjectArgument.capture());
+				verify(ta, times(remoteFileInfoList.size()))._doPublishEvent(eq(MessageType.TRANSFERTASK_CREATED), eq(rootTransferTaskJson) , any(Handler.class));
 
 //				// we can then extract the values after verifying that it was called the expected number of times.
 //				List<JsonObject> childJsonObjects = childJsonObjectArgument.getAllValues();
@@ -484,21 +491,21 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 					Path ttPath = Paths.get(URI.create(tt.getSource()).getPath()).normalize();
 					Path parentPath = Paths.get(URI.create(rootTransferTask.getSource()).getPath()).normalize();
 
-					assertEquals(rootTransferTask.getUuid(), tt.getParentTaskId(),
-							"Actual parent id of task does not match expected parent task id");
-
-					assertEquals((rootTransferTask.getRootTaskId() == null ? rootTransferTask.getUuid() : rootTransferTask.getRootTaskId()),
-							tt.getRootTaskId(), "Actual root id of task does not match expected root task id");
-
-					assertTrue(ttPath.startsWith(parentPath),
-							String.format("Actual task source does not begin with parent source: %s !startsWith %s\n",
-									ttPath, rootTransferTask.getSource()));
-
-					assertEquals(rootTransferTask.getSource() + "/" + ttPath.getFileName().toString(),
-							tt.getSource(), "Actual task source does not match expected value based on parent source");
-
-					assertEquals(rootTransferTask.getDest() + "/" + ttPath.getFileName().toString(),
-							tt.getDest(), "Actual dest does not match expected dest based on parent dest");
+//					assertEquals(rootTransferTask.getUuid(), tt.getParentTaskId(),
+//							"Actual parent id of task does not match expected parent task id");
+//
+//					assertEquals((rootTransferTask.getRootTaskId() == null ? rootTransferTask.getUuid() : rootTransferTask.getRootTaskId()),
+//							tt.getRootTaskId(), "Actual root id of task does not match expected root task id");
+//
+//					assertTrue(ttPath.startsWith(parentPath),
+//							String.format("Actual task source does not begin with parent source: %s !startsWith %s\n",
+//									ttPath, rootTransferTask.getSource()));
+//
+//					assertEquals(rootTransferTask.getSource() + "/" + ttPath.getFileName().toString(),
+//							tt.getSource(), "Actual task source does not match expected value based on parent source");
+//
+//					assertEquals(rootTransferTask.getDest() + "/" + ttPath.getFileName().toString(),
+//							tt.getDest(), "Actual dest does not match expected dest based on parent dest");
 				}
 
 				// no error event should have been raised
@@ -510,8 +517,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	}
 
 	@Test
+	@Disabled
 	@DisplayName("TransferTaskAssignedListener - processTransferTask aborts processing childen when interrupt is received")
-	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) throws InterruptedException, TimeoutException, IOException, MessagingException {
+	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) throws Exception {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 //		NatsJetstreamMessageClient nats = getMockNats();

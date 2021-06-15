@@ -1,6 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.*;
 @Disabled
 class TransferTaskInteruptEventListenerTest extends BaseTestCase {
 	private static final Logger logger = LoggerFactory.getLogger(TransferTaskInteruptEventListenerTest.class);
+
 
 	protected InteruptEventListener getMockInteruptEventListenerInstance(Vertx vertx) throws IOException, InterruptedException, MessagingException {
 		InteruptEventListener listener = mock(InteruptEventListener.class );

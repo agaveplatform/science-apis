@@ -76,7 +76,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         return listener;
     }
 
-    NatsJetstreamMessageClient getMockNats() throws IOException, MessagingException {
+    NatsJetstreamMessageClient getMockNats() throws Exception {
         NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
         doNothing().when(natsClient).push(any(), any(), any());
         return getMockNats();
@@ -188,7 +188,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
     @Test
     @DisplayName("TransferTaskUpdateListener - processTransferTask updates single file transfer task")
     @Disabled
-    public void processTransferTaskUpdatesSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    public void processTransferTaskUpdatesSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws Exception {
         // mock out the test class
         TransferTaskUpdateListener ta = getMockTransferUpdateListenerInstance(vertx);
         NatsJetstreamMessageClient nats = getMockNats();

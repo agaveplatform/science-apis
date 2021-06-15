@@ -43,6 +43,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
     private TransferTaskDatabaseService dbService;
     private static RequestSpecification requestSpecification;
 
+
     /**
      * Async creates {@code count} transfer tasks by calling {@link #addTransferTask()} using a {@link CompositeFuture}.
      * The saved tasks are returned as a {@link JsonArray} to the callback once complete

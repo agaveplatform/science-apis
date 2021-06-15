@@ -299,14 +299,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                                     childSource,
                                                                     childDest);
 
-                                                            _doPublishEvent(childMessageType, childResult.result(), taResp -> {
-                                                                if (taResp.succeeded()) {
-                                                                    promise.complete();
-                                                                }
-                                                                else {
-                                                                    promise.fail(taResp.cause());
-                                                                }
-                                                            });
+                                                            _doPublishEvent(childMessageType, childResult.result(), handler);
                                                         }
                                                         // we couldn't create a new task and none previously existed for this child, so we must
                                                         // fail the transfer for this transfertask. The decision about whether to delete the entire
@@ -330,7 +323,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                     // interrupt happened while processing children. skip the rest.
                                                     // TODO: How do we know it wasn't a pause?
                                                     log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
-                                                    _doPublishEvent(TRANSFERTASK_CANCELED_ACK, body, null);
+                                                    _doPublishEvent(TRANSFERTASK_CANCELED_ACK, body, handler);
                                                     // this will break the stream processing and exit the loop without completing the
                                                     // remaining RemoteFileItem in the listing.
                                                     ongoing.setFalse();

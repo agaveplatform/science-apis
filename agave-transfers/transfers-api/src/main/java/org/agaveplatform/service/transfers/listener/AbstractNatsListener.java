@@ -278,7 +278,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
             if (handler != null) {
                 handler.handle(Future.succeededFuture(true));
             }
-        } catch (IOException|InterruptedException|MessagingException e) {
+        } catch (Exception e) {
             log.error("Error with _doPublishEvent:  {}", e.getMessage());
             if (handler != null) {
                 handler.handle(Future.failedFuture(e));

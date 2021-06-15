@@ -63,7 +63,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
 
         try {
             // broadcast subscription so each message gets to every verticle to cancel the task where ever it may be
-            subscribeToSubjectGroup(TRANSFERTASK_CANCELED_SYNC, this::handleCanceledSyncMessage);
+            subscribeToSubject(TRANSFERTASK_CANCELED_SYNC, this::handleCanceledSyncMessage);
         } catch (Exception e) {
             logger.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
         }

@@ -71,43 +71,15 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
             //group subscription so each message only processed by this vertical type once
             subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
         } catch (Exception e) {
-            logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
+            logger.error("TRANSFERTASK_DELETED - Exception {}", e.getMessage());
         }
 
-//
-//        //Connection nc = _connect();
-//        Dispatcher d = getConnection().createDispatcher((msg) -> {});
-//        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//        Subscription s = d.subscribe(getEventChannel(), msg -> {
-//            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//            JsonObject body = new JsonObject(response) ;
-//            String uuid = body.getString("uuid");
-//            String source = body.getString("source");
-//            String dest = body.getString("dest");
-//
-//            logger.info("Transfer task {} cancel detected.", uuid);
-//            this.processDeletedRequest(body, result -> {
-//                //result should be true
-//            });
-//        });
-//        d.subscribe(getEventChannel());
-//        getConnection().flush(Duration.ofMillis(500));
-//
-//
-//        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
-//        s = d.subscribe(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
-//            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//            JsonObject body = new JsonObject(response) ;
-//            String uuid = body.getString("uuid");
-//
-//            logger.info("Transfer task {} ackowledged cancellation", uuid);
-//            this.processDeletedAck(body, result -> {});
-//        });
-//        d.subscribe(MessageType.TRANSFERTASK_DELETED_ACK);
-//        getConnection().flush(Duration.ofMillis(500));
-//
+        try {
+            //group subscription so each message only processed by this vertical type once
+            subscribeToSubject(MessageType.TRANSFERTASK_DELETED_ACK, this::handleMessageDeleteAck);
+        } catch (Exception e) {
+            logger.error("TRANSFERTASK_DELETED_ACK - Exception {}", e.getMessage());
+        }
 
     }
 
@@ -118,7 +90,26 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
             String source = body.getString("source");
             String dest = body.getString("dest");
             logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+            this.processDeletedRequest(body, result -> {
+                //result should be true
+            });
+        } catch (DecodeException e) {
+            logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            logger.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+        }
+    }
 
+    protected void handleMessageDeleteAck(Message message) {
+        try {
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+            logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+            this.processDeletedAck(body, result -> {
+                //result should be true
+            });
         } catch (DecodeException e) {
             logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
@@ -209,8 +200,6 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
             }
         });
     }
-
-
 
 
     /**
@@ -314,9 +303,6 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
         });
     }
 
-
-
-
     /**
      * Checks on the status of the parent of the task that received the {@link MessageType#TRANSFERTASK_CANCELED_ACK}
      * event. If not currently active or, if active and all its children are in a non-active state, a
@@ -363,9 +349,6 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
             }
         });
     }
-
-
-
 
     /**
      * Handles processing of parent task to see if any other children are active. If not, we create a new

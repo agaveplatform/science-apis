@@ -41,6 +41,7 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({ JDBCClient.class })
 class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
+
 //	private static final Logger log = LoggerFactory.getLogger(TransferFailureHandlerTest.class);
 
 	protected TransferTaskErrorFailureHandler getMockTransferFailureHandlerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
@@ -56,7 +57,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).processBody(any(), any());
 		return listener;
 	}
-	NatsJetstreamMessageClient getMockNats() throws MessagingException, IOException {
+	NatsJetstreamMessageClient getMockNats() throws Exception {
 		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
 		doNothing().when(natsClient).push(any(), any(), any());
 		return getMockNats();

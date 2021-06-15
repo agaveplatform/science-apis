@@ -34,8 +34,9 @@ import static org.mockito.Mockito.*;
 @DisplayName("Transfers completed task listener integration tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({ JDBCClient.class })
-@Disabled
+//@Disabled
 class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
+
 //    private static final Logger log = LoggerFactory.getLogger(TransferCompleteTaskListenerTest.class);
 
     @AfterAll
@@ -56,7 +57,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
         return listener;
     }
-    NatsJetstreamMessageClient getMockNats() throws MessagingException, IOException {
+    NatsJetstreamMessageClient getMockNats() throws Exception {
         NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
         doNothing().when(natsClient).push(any(), any(), any());
         return getMockNats();
@@ -65,7 +66,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcessEventWithNoParent")
-    public void testProcessEventWithNoParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    public void testProcessEventWithNoParent(Vertx vertx, VertxTestContext ctx) throws Exception {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -148,7 +149,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcessEventWithInactiveParent")
-    public void testProcessEventWithInactiveParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    public void testProcessEventWithInactiveParent(Vertx vertx, VertxTestContext ctx) throws Exception {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -234,7 +235,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcessEventWithActiveParent")
-    public void testProcessEventWithActiveParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    public void testProcessEventWithActiveParent(Vertx vertx, VertxTestContext ctx) throws Exception {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -311,7 +312,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcess creates parent error event when parent processing fails")
-    public void testProcessEventCreatesParentErrorEventWhenParentProcessingFails(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    public void testProcessEventCreatesParentErrorEventWhenParentProcessingFails(Vertx vertx, VertxTestContext ctx) throws Exception {
         // Set up our transfertask for testings
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -395,7 +396,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Test the ProcessParentEvent with a Status Completed that Reports False")
-    public void testProcessParentEventStatusCompletedReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    public void testProcessParentEventStatusCompletedReportsFalse(Vertx vertx, VertxTestContext ctx) throws Exception {
             // Set up our transfertask for testing
             TransferTask parentTask = _createTestTransferTask();
             parentTask.setStatus(TransferStatusType.COMPLETED);
@@ -486,7 +487,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Test the ProcessParentEvent with a status of Cancelled that reports false")
-    public void testProcessParentEventStatusCancelledReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    public void testProcessParentEventStatusCancelledReportsFalse(Vertx vertx, VertxTestContext ctx) throws Exception {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.CANCELLED);
@@ -576,7 +577,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Test ProcessParentEvent with a status of Failed but reports a False")
-    public void testProcessParentEventStatusFailedReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    public void testProcessParentEventStatusFailedReportsFalse(Vertx vertx, VertxTestContext ctx) throws Exception {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.FAILED);
@@ -666,7 +667,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcessParentEventFoundActive")
-    public void testProcessParentEventFoundActive(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    public void testProcessParentEventFoundActive(Vertx vertx, VertxTestContext ctx) throws Exception {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.TRANSFERRING);

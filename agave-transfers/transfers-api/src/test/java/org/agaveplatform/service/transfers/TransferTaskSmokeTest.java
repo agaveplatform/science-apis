@@ -52,6 +52,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 	private TransferTaskDatabaseService dbService;
 	List<String> messages = new ArrayList<String>();
 
+
 	TransferTaskErrorListener getMockErrListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskErrorListener listener = spy(new TransferTaskErrorListener(vertx));
 		when(listener.getEventChannel()).thenCallRealMethod();

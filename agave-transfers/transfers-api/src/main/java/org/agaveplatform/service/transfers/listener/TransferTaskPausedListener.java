@@ -62,8 +62,16 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 			//group subscription so each message only processed by this vertical type once
 			subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
 		} catch (Exception e) {
-			logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
+			logger.error("TRANSFERTASK_PAUSED - Exception {}", e.getMessage());
 		}
+
+		try {
+			//group subscription so each message only processed by this vertical type once
+			subscribeToSubject(TRANSFERTASK_PAUSED_ACK, this::handlePausedAckMessage);
+		} catch (Exception e) {
+			logger.error("TRANSFERTASK_PAUSED_SYNC - Exception {}", e.getMessage());
+		}
+
 	}
 
 	protected void handleMessage(Message message) {
@@ -81,6 +89,21 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 		}
 	}
 
+
+	protected void handlePausedAckMessage(Message message) {
+		try {
+			JsonObject body = new JsonObject(message.getMessage());
+			String uuid = body.getString("uuid");
+			String source = body.getString("source");
+			String dest = body.getString("dest");
+			logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+
+		} catch (DecodeException e) {
+			logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+		} catch (Throwable t) {
+			logger.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
+		}
+	}
 	/**
 	 * Handles processing of paused events, updating the transfer task status and checking for active siblings
 	 * before sending the parent paused ack event as well.

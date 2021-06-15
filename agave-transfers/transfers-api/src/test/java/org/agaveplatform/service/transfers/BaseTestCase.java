@@ -24,6 +24,7 @@ import org.iplantc.service.common.Settings;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.mockito.ArgumentMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +79,29 @@ public abstract class BaseTestCase {
     protected JsonObject config;
     protected int port = 32331;
     protected AgaveJWTAuthProviderImpl jwtAuth;
+
+    public class IsSameTransferTask extends ArgumentMatcher<TransferTask> {
+        TransferTask expectedTransferTask;
+
+        public IsSameTransferTask(TransferTask expectedTransferTask) {
+            this.expectedTransferTask = expectedTransferTask;
+        }
+        /**
+         * Returns whether this matcher accepts the given argument.
+         * <p>
+         * The method should <b>never</b> assert if the argument doesn't match. It
+         * should only return false.
+         *
+         * @param actualTransferTask the argument
+         * @return whether this matcher accepts the given argument.
+         */
+
+        @Override
+        public boolean matches(Object actualTransferTask) {
+            if (!(actualTransferTask instanceof TransferTask)) return false;
+            return actualTransferTask.equals(expectedTransferTask);
+        }
+    }
 
     protected TransferTask _createTestTransferTask() {
         return new TransferTask(TENANT_ID, TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, null, null);

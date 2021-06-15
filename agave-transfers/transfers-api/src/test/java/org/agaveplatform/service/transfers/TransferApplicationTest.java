@@ -35,6 +35,7 @@ class TransferApplicationTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferApplicationTest.class);
 	private TransferTaskDatabaseService dbService;
 
+
 	@Override
 	public int getPort() {
 		return 38085;

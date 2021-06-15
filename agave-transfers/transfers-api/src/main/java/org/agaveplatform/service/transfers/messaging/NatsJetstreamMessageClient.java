@@ -249,7 +249,7 @@ public class NatsJetstreamMessageClient {
      * @param body  the message content to persist
      * @throws MessagingException if communication with Nats fails
      */
-    public void push(String subject, String body) throws IOException, MessagingException {
+    public void push(String subject, String body) throws IOException, MessagingException, Exception {
         // create a typical NATS message
         io.nats.client.Message natsMessage = NatsMessage.builder()
                 .subject(subject)
@@ -289,6 +289,8 @@ public class NatsJetstreamMessageClient {
                 }
             } catch (JetStreamApiException e) {
                 throw new MessagingException(e.getMessage(), e);
+            } catch (Exception e){
+                throw new Exception(e.getMessage(), e);
             }
         }
     }
@@ -302,7 +304,7 @@ public class NatsJetstreamMessageClient {
      * @throws MessagingException if communication with the subject fails
      * @throws IOException when unable to connect to the NATS server
      */
-    public void push(String subject, String body, int secondsToDelay) throws IOException, MessagingException {
+    public void push(String subject, String body, int secondsToDelay) throws IOException, MessagingException, Exception {
         log.debug("Delayed messages are not supported by NATS JetStream. Message will be added immediately");
         push(subject, body);
     }
@@ -316,7 +318,7 @@ public class NatsJetstreamMessageClient {
      * @throws MessagingException if communication with the NATS server fails
      * @throws IOException when unable to connect to the NATS server
      */
-    public void reject(String subject, Object messageId, String message) throws IOException, MessagingException {
+    public void reject(String subject, Object messageId, String message) throws IOException, MessagingException, Exception {
         log.info("Message rejection is not supported. The same message will instead be pushed back to the stream.");
         delete(messageId);
         push(subject, message);

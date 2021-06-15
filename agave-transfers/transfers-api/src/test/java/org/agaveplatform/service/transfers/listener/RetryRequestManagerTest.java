@@ -65,7 +65,7 @@ public class RetryRequestManagerTest extends BaseTestCase {
         when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
         return listener;
     }
-    NatsJetstreamMessageClient getMockNats() throws MessagingException, IOException {
+    NatsJetstreamMessageClient getMockNats() throws Exception {
         NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
         doNothing().when(natsClient).push(any(), any(), any());
         return getMockNats();

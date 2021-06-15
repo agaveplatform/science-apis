@@ -1082,6 +1082,9 @@ public class FileManagementResource extends AbstractFileResource
 		    						fi.write(cachedFile);
 
 									// TODO: pass over to the transfers-api so the connection can be returned
+									logicalFile.setSourceUri(cachedFile.toURI().toString());
+									new TransferTaskScheduler().enqueueStagingTask(logicalFile, username);
+
 									FileUploadServletContextListener.scheduleUploadTask(new UploadRunnable(logicalFile, cachedFile, (StringUtils.isEmpty(owner) ? username : owner), username));
 
 		    						log.debug("File upload of " + cachedFile.length() + " bytes received from " + getAuthenticatedUsername());

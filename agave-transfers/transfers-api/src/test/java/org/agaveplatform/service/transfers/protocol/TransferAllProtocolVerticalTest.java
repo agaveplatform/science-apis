@@ -60,7 +60,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		return listener;
 	}
 
-	URLCopy getMockUrlCopyInstance(RemoteDataClient sourceClient, RemoteDataClient destClient) throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
+	URLCopy getMockUrlCopyInstance(RemoteDataClient sourceClient, RemoteDataClient destClient) throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException, InterruptedException {
 		URLCopy urlCopy = Mockito.mock(URLCopy.class);
 		doCallRealMethod().when(urlCopy).copy(any());
 
@@ -91,7 +91,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 	@Test
 	@DisplayName("Test the processCopyRequest")
 	public void testProcessCopyRequest (Vertx vertx, VertxTestContext ctx) throws SystemUnknownException, AgaveNamespaceException, RemoteCredentialException,
-			PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
+			PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException, InterruptedException {
 
 		// set up the parameters
 		TransferTaskImpl legacyTransferTask = _createTestTransferTaskIPC();
@@ -184,7 +184,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 	@Test
 	@DisplayName("Test the processCopyRequest exception handling")
 	public void testProcessCopyRequestThrowsRemoteDataException(Vertx vertx, VertxTestContext ctx) throws SystemUnknownException, AgaveNamespaceException,
-			RemoteCredentialException, PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
+			RemoteCredentialException, PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException, InterruptedException {
 		// set up the parameters
 		TransferTaskImpl legacyTransferTask = _createTestTransferTaskIPC();
 		TransferTask transferTask = _createTestTransferTask();

@@ -3,20 +3,15 @@
  */
 package org.iplantc.service.common.uuid;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-
 import org.apache.commons.io.FilenameUtils;
 import org.iplantc.service.common.exceptions.TenantException;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.uuid.UUIDEntityLookup;
-import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.io.uuid.AbstractUUIDEntityLookupTest;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
+import org.iplantc.service.io.uuid.AbstractUUIDEntityLookupTest;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
@@ -31,12 +26,15 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
 /**
  * @author dooley
  *
  */
 @Test(groups={"integration"})
-public class LogicalFileUUIDEntityLookupTest extends AbstractUUIDEntityLookupTest<LogicalFile> {
+public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupTest<LogicalFile> {
 	
 	@BeforeClass
 	@Override
@@ -174,8 +172,8 @@ public class LogicalFileUUIDEntityLookupTest extends AbstractUUIDEntityLookupTes
 			Assert.fail("Failed to create test storage system with null home directory", e);
 		}
 		finally {
-			try { dao.remove(nullHomeSystem); } catch (Exception ignored){};
-			
+			try { dao.remove(nullHomeSystem); } catch (Exception ignored){}
+
 		}
 	}
 	
@@ -211,8 +209,8 @@ public class LogicalFileUUIDEntityLookupTest extends AbstractUUIDEntityLookupTes
 			Assert.fail("Failed to create test storage system with empty home directory", e);
 		}
 		finally {
-			try { dao.remove(emtpyHomeSystem); } catch (Exception ignored){};
-			
+			try { dao.remove(emtpyHomeSystem); } catch (Exception ignored){}
+
 		}
 	}
 }

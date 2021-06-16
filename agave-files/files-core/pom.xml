@@ -65,12 +65,6 @@
 		</dependency>
         <dependency>
             <groupId>org.agaveplatform</groupId>
-            <artifactId>transfers-api</artifactId>
-            <version>${project.version}</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.agaveplatform</groupId>
             <artifactId>common-core</artifactId>
             <version>2.2.27</version>
 			<classifier>tests</classifier>

@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.io;
 
-import java.io.FileReader;
-
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.auth.VerifierFactory;
 import org.iplantc.service.common.persistence.HibernateUtil;
@@ -12,25 +10,9 @@ import org.iplantc.service.common.persistence.JndiSetup;
 import org.iplantc.service.common.representation.AgaveErrorRepresentation;
 import org.iplantc.service.common.representation.AgaveRepresentation;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
-import org.iplantc.service.common.restlet.resource.QuartzUtilityResource;
-import org.iplantc.service.io.resources.FileHistoryResource;
-import org.iplantc.service.io.resources.FileIndexingResource;
-import org.iplantc.service.io.resources.FileListingResource;
-import org.iplantc.service.io.resources.FileManagementResource;
-import org.iplantc.service.io.resources.FilePermissionResource;
-import org.iplantc.service.io.resources.FilesDocumentationResource;
-import org.iplantc.service.io.resources.PublicFileDownloadResource;
-import org.iplantc.service.io.resources.QuartzResource;
-import org.restlet.Application;
-import org.restlet.Component;
-import org.restlet.Request;
-import org.restlet.Response;
-import org.restlet.Restlet;
-import org.restlet.data.ChallengeScheme;
-import org.restlet.data.CharacterSet;
-import org.restlet.data.MediaType;
-import org.restlet.data.Protocol;
-import org.restlet.data.Status;
+import org.iplantc.service.io.resources.*;
+import org.restlet.*;
+import org.restlet.data.*;
 import org.restlet.representation.Representation;
 import org.restlet.resource.Resource;
 import org.restlet.resource.ResourceException;
@@ -41,6 +23,8 @@ import org.restlet.security.ChallengeAuthenticator;
 import org.restlet.security.Verifier;
 import org.restlet.service.MetadataService;
 import org.restlet.service.StatusService;
+
+import java.io.FileReader;
 
 /**
  * @author dooley
@@ -103,41 +87,15 @@ public class FilesApplication extends Application
     					return new AgaveErrorRepresentation(message);
     				}
     			} finally {
-    				try { HibernateUtil.closeSession(); } catch(Exception e) {}
+    				try { HibernateUtil.closeSession(); } catch(Exception ignored) {}
     			}
     		}
-    		
-//    			if (throwable == null) {
-//    		        return resource.getStatus();
-//    		    }
-//    		    else if (throwable instanceof ResourceException) {
-//    		        return ((ResourceException)throwable).getStatus();
-//    		    } else {
-//    		    	return getStatus(throwable, resource);
-//    		    }
-    		
-
-//			/* (non-Javadoc)
-//			 * @see org.restlet.service.StatusService#toStatus(java.lang.Throwable, org.restlet.resource.Resource)
-//			 */
-//			@Override
-//			public Status toStatus(Throwable throwable, Resource resource) {
-//				// TODO Auto-generated method stub
-//				return super.toStatus(throwable, resource);
-//			}
-    		
     	});
     	
     	MetadataService metadataService = new MetadataService();
     	metadataService.setDefaultCharacterSet(CharacterSet.UTF_8);
     	metadataService.setDefaultMediaType(MediaType.APPLICATION_JSON);
     	setMetadataService(metadataService);
-    	
-        //CorsService corsService = new CorsService();
-        //corsService.setAllowedCredentials(true);
-        //corsService.setAllowingAllRequestedHeaders(true);
-        //corsService.setSkippingResourceForCorsOptions(true);
-        //getServices().add(corsService);
     }
 
 	@Override
@@ -147,18 +105,11 @@ public class FilesApplication extends Application
     	router.setDefaultMatchingMode(Template.MODE_STARTS_WITH);
     	
     	// Define the router for the static usage page
-//    	router.attach("/", FilesDocumentationResource.class);
     	router.attach("/usage", FilesDocumentationResource.class);
-    	router.attach("/workers/{quartzaction}", QuartzUtilityResource.class);
-    	
-    	
-        secureEndpoint(router, "/quartz", QuartzResource.class);
-        secureEndpoint(router, "/quartz/", QuartzResource.class);
         
     	// Define authenticated I/O routes
         if (!Settings.SLAVE_MODE) {
 	        router.attach("/download/{username}/system/{systemId}/", PublicFileDownloadResource.class);
-//	        router.attach("/download/{systemId}/", PublicFileDownloadResource.class);
         
 	        secureEndpoint(router,"/index/system/{systemId}", FileIndexingResource.class); // DONE index(POST) a file, get index
     		secureEndpoint(router,"/index/system/{systemId}/", FileIndexingResource.class); // DONE index(POST) a file, get index
@@ -181,7 +132,6 @@ public class FilesApplication extends Application
             secureEndpoint(router,"/history/", FileHistoryResource.class); // DONE get(GET) to list upload files for user
             secureEndpoint(router,"/pems", FilePermissionResource.class); // DONE get(GET) to list upload files for user
 	        secureEndpoint(router,"/pems/", FilePermissionResource.class); // DONE get(GET) to list upload files for user
-        
         }   
     	    
 	    return router;
@@ -194,9 +144,7 @@ public class FilesApplication extends Application
   		
 		ChallengeAuthenticator apiGuard = new ChallengeAuthenticator(getContext(),
   				 ChallengeScheme.HTTP_BASIC, "The Agave Platform");
-  		
-  		
-		
+
         apiGuard.setVerifier(verifier);
         
 		apiGuard.setNext(targetResource);
@@ -213,8 +161,6 @@ public class FilesApplication extends Application
         component.getServers().add(Protocol.HTTP, 8080);
         component.getDefaultHost().attach("/files", new FilesApplication());
         component.start();
-        
-//       launchServer(component);
     }
 	
 }

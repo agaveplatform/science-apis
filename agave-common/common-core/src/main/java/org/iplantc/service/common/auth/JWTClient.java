@@ -33,7 +33,6 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -62,8 +61,7 @@ public class JWTClient
 	}
 			
 	private static InputStream getTenantPublicKeyInputStream(String tenantId) 
-	throws IOException, FileNotFoundException
-	{	
+	throws IOException {
 		HTTPSClient client = null;
 		try {
 			String publicKeyUrl = getTenantPublicKeyUrl(tenantId);
@@ -291,11 +289,13 @@ public class JWTClient
 		try 
 		{
 			JSONObject claims = getCurrentJWSObject();
-			if (claims.containsKey("tenantId") || !StringUtils.isEmpty((String)claims.get("tenantId"))) {
+			if (claims == null || claims.isEmpty()) {
+				return null;
+			}
+			else if (claims.containsKey("tenantId") || !StringUtils.isEmpty((String)claims.get("tenantId"))) {
 				return (String)claims.get("tenantId");
 			}
-			else
-			{
+			else {
 				String subscriber = (String)claims.get("http://wso2.org/claims/subscriber");
 				if (StringUtils.countMatches(subscriber, "@") > 0) {
 					return subscriber.substring(subscriber.lastIndexOf("@") + 1);
@@ -303,7 +303,8 @@ public class JWTClient
 					return (String)claims.get("http://wso2.org/claims/enduserTenantId");
 				}
 			}
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			return null;
 		}
 	}
@@ -375,7 +376,7 @@ public class JWTClient
 			
 			String roles = (String)claims.get("http://wso2.org/claims/role");
 			if (!StringUtils.isEmpty(roles)) {
-				for(String role: Arrays.asList(StringUtils.split(roles, ","))) {
+				for(String role: StringUtils.split(roles, ",")) {
 					if (StringUtils.endsWith(role, "-services-admin") || StringUtils.endsWith(role, "-super-admin")) {
 						if (role.contains("/")) {
 							role = role.substring(role.lastIndexOf("/") + 1);
@@ -400,7 +401,7 @@ public class JWTClient
 
 			String roles = (String)claims.get("http://wso2.org/claims/role");
 			if (!StringUtils.isEmpty(roles)) {
-				for(String role: Arrays.asList(StringUtils.split(roles, ","))) {
+				for(String role: StringUtils.split(roles, ",")) {
 					if (StringUtils.endsWith(role, "world_admin") ) {
 						return true;
 					}
@@ -420,7 +421,7 @@ public class JWTClient
 			
 			String roles = (String)claims.get("http://wso2.org/claims/role");
 			if (!StringUtils.isEmpty(roles)) {
-				for(String role: Arrays.asList(StringUtils.split(roles, ","))) {
+				for(String role: StringUtils.split(roles, ",")) {
 					if (StringUtils.endsWith(role, "-super-admin")) {
 						if (role.contains("/")) {
 							role = role.substring(role.lastIndexOf("/") + 1);

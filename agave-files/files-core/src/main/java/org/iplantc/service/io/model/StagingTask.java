@@ -1,39 +1,28 @@
 /**
- * 
+ *
  */
 package org.iplantc.service.io.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-import javax.persistence.Version;
-
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.transfer.model.TransferTask;
+
+import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Represents a persistent record of a file transfer. For recursive transfers,
  * the source should be recursively listed and a task created for each file/folder.
- * 
- * @author dooley
  *
+ * @author dooley
+ * @deprecated
+ * @see TransferTask instead
  */
+@Deprecated
 @Entity
 @Table(name = "staging_tasks")
 public class StagingTask implements QueueTask {
-	
+
 	private Long id;
 	private LogicalFile logicalFile;
 	private StagingTaskStatus status = StagingTaskStatus.STAGING_QUEUED;
@@ -41,13 +30,13 @@ public class StagingTask implements QueueTask {
 	private long totalBytes = 0;
 	private long bytesTransferred = 0;
 	private String owner;
-	private Date created = new Date();	
+	private Date created = new Date();
 	private Date lastUpdated = new Date();
 	private Integer version = 0;
-	
+
 
 	public StagingTask() {}
-	
+
 	public StagingTask(LogicalFile file, String owner) {
 		setLogicalFile(file);
 		this.setStatus(StagingTaskStatus.STAGING_QUEUED);
@@ -73,8 +62,8 @@ public class StagingTask implements QueueTask {
 
 	@Override
 	@ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "logicalFileId", referencedColumnName = "id")
-    public LogicalFile getLogicalFile()
+	@JoinColumn(name = "logicalFileId", referencedColumnName = "id")
+	public LogicalFile getLogicalFile()
 	{
 		return logicalFile;
 	}
@@ -96,7 +85,7 @@ public class StagingTask implements QueueTask {
 	{
 		return status;
 	}
-	
+
 	@Override
 	@Transient
 	public String getStatusAsString()
@@ -141,7 +130,7 @@ public class StagingTask implements QueueTask {
 	{
 		this.lastUpdated = lastUpdated;
 	}
-	
+
 	/**
 	 * @param retryCount the retryCount to set
 	 */
@@ -153,7 +142,7 @@ public class StagingTask implements QueueTask {
 	/**
 	 * @return the retryCount
 	 */
-	
+
 	public int getRetryCount() {
 		return retryCount;
 	}
@@ -191,16 +180,16 @@ public class StagingTask implements QueueTask {
 	{
 		this.bytesTransferred = bytesTransferred;
 	}
-	
+
 	/**
 	 * @return the version
 	 */
 	@Version
-    @Column(name="OPTLOCK")
-    public Integer getVersion() {
+	@Column(name="OPTLOCK")
+	public Integer getVersion() {
 		return version;
 	}
-	
+
 	/**
 	 * @param version the current version
 	 */
@@ -208,22 +197,22 @@ public class StagingTask implements QueueTask {
 		this.version = version;
 	}
 
-    /* (non-Javadoc)
-     * @see org.iplantc.service.io.model.QueueTask#getOwner()
-     */
-    @Override
-    @Column(name = "owner", nullable = false, length = 32)
-    public String getOwner() {
-        return owner;
-    }
+	/* (non-Javadoc)
+	 * @see org.iplantc.service.io.model.QueueTask#getOwner()
+	 */
+	@Override
+	@Column(name = "owner", nullable = false, length = 32)
+	public String getOwner() {
+		return owner;
+	}
 
-    /* (non-Javadoc)
-     * @see org.iplantc.service.io.model.QueueTask#setOwner(java.lang.String)
-     */
-    @Override
-    public void setOwner(String owner) {
-        this.owner = owner;
-    }
+	/* (non-Javadoc)
+	 * @see org.iplantc.service.io.model.QueueTask#setOwner(java.lang.String)
+	 */
+	@Override
+	public void setOwner(String owner) {
+		this.owner = owner;
+	}
 
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.io.model.QueueTask#equals(java.lang.Object)
@@ -232,13 +221,13 @@ public class StagingTask implements QueueTask {
 	public boolean equals(Object o) {
 		if (o instanceof StagingTask) {
 			StagingTask task = (StagingTask)o;
-			return (task.id.equals(id) && 
-					task.logicalFile.equals(logicalFile) && 
-					StringUtils.equals(task.owner,owner)); 
+			return (task.id.equals(id) &&
+					task.logicalFile.equals(logicalFile) &&
+					StringUtils.equals(task.owner,owner));
 		}
 		return false;
 	}
-	
-	
-	
+
+
+
 }

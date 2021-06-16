@@ -1,5 +1,14 @@
 package org.iplantc.service.common;
 
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.log4j.Logger;
+import org.iplantc.service.common.util.IPAddressValidator;
+import org.iplantc.service.common.util.OSValidator;
+import org.joda.time.DateTimeZone;
+
+import javax.net.ssl.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,27 +20,7 @@ import java.net.UnknownHostException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.TimeZone;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.X509TrustManager;
-
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
-import org.apache.log4j.Logger;
-import org.iplantc.service.common.util.IPAddressValidator;
-import org.iplantc.service.common.util.OSValidator;
-import org.joda.time.DateTimeZone;
+import java.util.*;
 
 
 public class Settings 
@@ -235,7 +224,7 @@ public class Settings
         AUTH_SOURCE = props.getProperty("iplant.auth.source");
 
         try {
-            VERIFY_JWT_SIGNATURE = Boolean.valueOf((String) props.getProperty("iplant.verify.jwt.signature", "no"));
+            VERIFY_JWT_SIGNATURE = Boolean.valueOf(props.getProperty("iplant.verify.jwt.signature", "no"));
         } catch (Exception e) {
             log.error("Failure loading setting iplant.verify.jwt.signature", e);
             VERIFY_JWT_SIGNATURE = false;
@@ -277,7 +266,7 @@ public class Settings
         TACC_MYPROXY_SERVER = props.getProperty("iplant.myproxy.server");
 
         try {
-            TACC_MYPROXY_PORT = Integer.valueOf((String) props.getProperty("iplant.myproxy.port", "7512"));
+            TACC_MYPROXY_PORT = Integer.valueOf(props.getProperty("iplant.myproxy.port", "7512"));
         } catch (Exception e) {
             log.error("Failure loading setting iplant.myproxy.port - continuing using default value.", e);
             TACC_MYPROXY_PORT = 7512;
@@ -302,7 +291,7 @@ public class Settings
         IPLANT_ROLES_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.roles.service", "https://sandbox.agaveplatform.org/roles/v2");
         IPLANT_TAGS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.tags.service", "https://sandbox.agaveplatform.org/tags/v2");
         IPLANT_TENANTS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.tenants.service", "https://agaveplatform.org/tenants/");
-        IPLANT_TRANSFER_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.transfer.service", "https://sandbox.agaveplatform.org/transfers/v2");
+        IPLANT_TRANSFER_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.transfer.service", "https://transfers/api/transfers");
         IPLANT_REACTOR_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.reactors.service", "https://sandbox.agaveplatform.org/reactors/v2");
         IPLANT_REPOSITORY_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.repositories.service", "https://sandbox.agaveplatform.org/repositories/v2");
         IPLANT_ABACO_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.abaco.service", "https://sandbox.agaveplatform.org/abaco/v2");
@@ -312,21 +301,21 @@ public class Settings
         NOTIFICATION_RETRY_QUEUE = props.getProperty("iplant.notification.service.retry.queue", "retry." + NOTIFICATION_QUEUE);
         NOTIFICATION_RETRY_TOPIC = props.getProperty("iplant.notification.service.retry.topic", "retry." + NOTIFICATION_TOPIC);
 
-        METADATA_DB_COLLECTION = (String) props.getProperty("iplant.metadata.db.collection", "metadata");
-        METADATA_DB_SCHEMATA_COLLECTION = (String) props.getProperty("iplant.metadata.schemata.db.collection", "schemata");
-        METADATA_DB_SCHEME = (String) props.getProperty("iplant.metadata.db.scheme", "api");
-        METADATA_DB_HOST = (String) props.getProperty("iplant.metadata.db.host", "mongodb");
-        METADATA_DB_PORT = Integer.parseInt((String) props.getProperty("iplant.metadata.db.port", "27017"));
-        METADATA_DB_USER = (String) props.getProperty("iplant.metadata.db.user", "agaveuser");
-        METADATA_DB_PWD = (String) props.getProperty("iplant.metadata.db.pwd", "password");
+        METADATA_DB_COLLECTION = props.getProperty("iplant.metadata.db.collection", "metadata");
+        METADATA_DB_SCHEMATA_COLLECTION = props.getProperty("iplant.metadata.schemata.db.collection", "schemata");
+        METADATA_DB_SCHEME = props.getProperty("iplant.metadata.db.scheme", "api");
+        METADATA_DB_HOST = props.getProperty("iplant.metadata.db.host", "mongodb");
+        METADATA_DB_PORT = Integer.parseInt(props.getProperty("iplant.metadata.db.port", "27017"));
+        METADATA_DB_USER = props.getProperty("iplant.metadata.db.user", "agaveuser");
+        METADATA_DB_PWD = props.getProperty("iplant.metadata.db.pwd", "password");
 
-        FAILED_NOTIFICATION_DB_SCHEME = (String) props.getProperty("iplant.notification.failed.db.scheme", "api");
-        FAILED_NOTIFICATION_DB_HOST = (String) props.getProperty("iplant.notification.failed.db.host", "mongodb");
-        FAILED_NOTIFICATION_DB_PORT = org.apache.commons.lang.math.NumberUtils.toInt((String) props.getProperty("iplant.notification.failed.db.port", "27017"), 27017);
-        FAILED_NOTIFICATION_DB_USER = (String) props.getProperty("iplant.notification.failed.db.user", "agaveuser");
-        FAILED_NOTIFICATION_DB_PWD = (String) props.getProperty("iplant.notification.failed.db.pwd", "password");
-        FAILED_NOTIFICATION_COLLECTION_SIZE = org.apache.commons.lang.math.NumberUtils.toInt((String) props.getProperty("iplant.notification.failed.db.max.queue.size"), 1048576);
-        FAILED_NOTIFICATION_COLLECTION_LIMIT = org.apache.commons.lang.math.NumberUtils.toInt((String) props.getProperty("iplant.notification.failed.db.max.queue.limit"), 1000);
+        FAILED_NOTIFICATION_DB_SCHEME = props.getProperty("iplant.notification.failed.db.scheme", "api");
+        FAILED_NOTIFICATION_DB_HOST = props.getProperty("iplant.notification.failed.db.host", "mongodb");
+        FAILED_NOTIFICATION_DB_PORT = org.apache.commons.lang.math.NumberUtils.toInt(props.getProperty("iplant.notification.failed.db.port", "27017"), 27017);
+        FAILED_NOTIFICATION_DB_USER = props.getProperty("iplant.notification.failed.db.user", "agaveuser");
+        FAILED_NOTIFICATION_DB_PWD = props.getProperty("iplant.notification.failed.db.pwd", "password");
+        FAILED_NOTIFICATION_COLLECTION_SIZE = org.apache.commons.lang.math.NumberUtils.toInt(props.getProperty("iplant.notification.failed.db.max.queue.size"), 1048576);
+        FAILED_NOTIFICATION_COLLECTION_LIMIT = org.apache.commons.lang.math.NumberUtils.toInt(props.getProperty("iplant.notification.failed.db.max.queue.limit"), 1000);
 
         MESSAGING_SERVICE_PROVIDER = props.getProperty("iplant.messaging.provider");
         MESSAGING_SERVICE_USERNAME = props.getProperty("iplant.messaging.username");
@@ -369,13 +358,13 @@ public class Settings
         USAGETRIGGERS_CHECK_TOPIC = props.getProperty("iplant.usagetriggers.service.topic", "check.prod.usagetriggers.topic");
 
         
-        try {DEFAULT_PAGE_SIZE = NumberUtils.toInt((String) props.getProperty("iplant.default.page.size", "100"), 100);}
+        try {DEFAULT_PAGE_SIZE = NumberUtils.toInt(props.getProperty("iplant.default.page.size", "100"), 100);}
         	catch (Exception e) {
         		log.error("Failure loading setting iplant.default.page.size", e);
         		DEFAULT_PAGE_SIZE = 100;
         	}
         
-        try {MAX_PAGE_SIZE = NumberUtils.toInt((String) props.getProperty("iplant.max.page.size", "100"), 100);}
+        try {MAX_PAGE_SIZE = NumberUtils.toInt(props.getProperty("iplant.max.page.size", "100"), 100);}
     	catch (Exception e) {
     		log.error("Failure loading setting iplant.max.page.size", e);
     		DEFAULT_PAGE_SIZE = 100;
@@ -492,7 +481,7 @@ public class Settings
                 props.load(stream);
                 
                 List<String> userIds = new ArrayList<String>();
-                for (String userId: StringUtils.split((String)props.getProperty("iplant.dedicated.user.id", ""), ",")) {
+                for (String userId: StringUtils.split(props.getProperty("iplant.dedicated.user.id", ""), ",")) {
                     userId = StringUtils.trimToNull(userId);
                     if (userId != null) {
                         userIds.add(userId);
@@ -533,7 +522,7 @@ public class Settings
                 props.load(stream);
                 
                 List<String> groupIds = new ArrayList<String>();
-                for (String groupId: StringUtils.split((String)props.getProperty("iplant.dedicated.user.group", ""), ",")) {
+                for (String groupId: StringUtils.split(props.getProperty("iplant.dedicated.user.group", ""), ",")) {
                     groupId = StringUtils.trimToNull(groupId);
                     if (groupId != null) {
                         groupIds.add(groupId);
@@ -577,7 +566,7 @@ public class Settings
                 props.load(stream);
                 
                 List<String> systemIds = new ArrayList<String>();
-                for (String systemId: StringUtils.split((String)props.getProperty("iplant.dedicated.system.id", ""), ",")) {
+                for (String systemId: StringUtils.split(props.getProperty("iplant.dedicated.system.id", ""), ",")) {
                     systemId = StringUtils.trimToNull(systemId);
                     if (systemId != null) {
                         systemIds.add(systemId);

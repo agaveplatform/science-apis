@@ -116,6 +116,32 @@ public class UploadJob implements InterruptableJob
 				    transferTask = urlCopy.copyRange(cachedFile, 0, new File(cachedFile).length(), agavePath, rangeIndex, transferTask);
 				} else {
 				    transferTask = urlCopy.copy(cachedFile, agavePath, transferTask);
+
+//					try {
+//						String strUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) +
+//								"api/transfers/";
+////                      String strUrl = buildUuidValidationURL(uuid);
+//						HttpClient httpClient = HttpClientBuilder.create().build();
+//						HttpPost getRequest = new HttpPost(strUrl);
+//						List<NameValuePair> params = new ArrayList<>();
+//						params.add(new BasicNameValuePair("src", cachedFile));
+//						params.add(new BasicNameValuePair("dest", agavePath));
+//
+//
+//						HttpResponse httpResponse = httpClient.execute(getRequest);
+//
+//						if (httpResponse.getStatusLine().getStatusCode() == 200) {
+//							HttpEntity httpEntity = httpResponse.getEntity();
+////                          return EntityUtils.toString(httpEntity);
+//						}
+//						//              } catch (URISyntaxException e) {
+//						//                throw new MetadataException("Invalid URI syntax ", e);
+//						//              } catch (TenantException e) {
+//						//                throw new MetadataException("Unable to retrieve valid tenant information ", e);
+//					} catch (Exception e) {
+//						throw new JobExecutionException("Unable to send transfer request for job.");
+//					}
+
 				}
 	    		
 	    		if (logicalFile.getOwner() != null && remoteDataClient.isPermissionMirroringRequired()) {
@@ -136,20 +162,20 @@ public class UploadJob implements InterruptableJob
 	    		
 	    		log.info("Completed staging file " + logicalFile.getAgaveRelativePathFromAbsolutePath() + " for user " + owner);
 	            
-                    // file will be untouched after staging, so just mark as completed
-                    // update the file task
-	                logicalFile.setStatus(StagingTaskStatus.STAGING_COMPLETED.name());
-                    //Agave will treat all files as "raw". The functionality to transform (encode) files has been decommissioned.
-                    logicalFile.setNativeFormat("raw");
-	                
-	                logicalFile.addContentEvent(new FileEvent(FileEventType.STAGING_COMPLETED,
-	                        "Your scheduled transfer of " + uploadSource +
-	                        " completed staging. You can access the raw file on " + logicalFile.getSystem().getName() + " at " + 
-	                        logicalFile.getPath() + " or via the API at " + 
-	                        logicalFile.getPublicLink() + ".",
-	                        createdBy));
-	                
-	                LogicalFileDao.persist(logicalFile);
+				// file will be untouched after staging, so just mark as completed
+				// update the file task
+				logicalFile.setStatus(StagingTaskStatus.STAGING_COMPLETED.name());
+				//Agave will treat all files as "raw". The functionality to transform (encode) files has been decommissioned.
+				logicalFile.setNativeFormat("raw");
+
+				logicalFile.addContentEvent(new FileEvent(FileEventType.STAGING_COMPLETED,
+						"Your scheduled transfer of " + uploadSource +
+						" completed staging. You can access the raw file on " + logicalFile.getSystem().getName() + " at " +
+						logicalFile.getPath() + " or via the API at " +
+						logicalFile.getPublicLink() + ".",
+						createdBy));
+
+				LogicalFileDao.persist(logicalFile);
 			}
 			catch (ClosedByInterruptException e) {
 				if (logicalFile != null) {

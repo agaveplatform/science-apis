@@ -3,11 +3,15 @@
  */
 package org.iplantc.service.io.resources;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.io.dao.FileEventDao;
 import org.iplantc.service.io.dao.LogicalFileDao;
@@ -32,10 +36,6 @@ import org.restlet.representation.Representation;
 import org.restlet.resource.Get;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 /**
  * The JobManageResource is the job management interface for users. Through the
  * actions bound to this class, users can obtain individual job
@@ -56,7 +56,7 @@ public class FileHistoryResource extends AbstractFileResource {
 	private String systemId;
 	private RemoteSystem remoteSystem;
 	private RemoteDataClient remoteDataClient;
-	
+
 	@Override
 	public void doInit()
 	{
@@ -216,12 +216,18 @@ public class FileHistoryResource extends AbstractFileResource {
 	        							jsonEvent.put("progress", (String) null);
 	        						}
 	        					}
+
+	                    		String strTransferUrl = TenancyHelper.resolveURLToCurrentTenant(org.iplantc.service.common.Settings.IPLANT_TRANSFER_SERVICE)
+										+ "api/transfers/" + logicalFile.getTransferUuid();
+
 	        					jsonEvent
 	        						.put("status", event.getStatus())
 	        						.put("created", new DateTime(event.getCreated()).toString())
 	        						.put("createdBy", event.getCreatedBy())
-	        						.put("description", event.getDescription());
-	//        					    .put("_links", jsonLinks);
+	        						.put("description", event.getDescription())
+	        					    .putObject("_links")
+										.putObject("transferTask")
+											.put("href", strTransferUrl);
 	                            
 	        					history.add(jsonEvent);
 	        				}

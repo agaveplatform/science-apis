@@ -153,22 +153,6 @@ public class HTTPSClient {
 		return content;
 	}
 
-	public static void main(String[] args)
-	{
-
-		HTTPSClient httpsTest = new HTTPSClient(
-				"https://info.teragrid.org:8444/web-apps/csv/profile-v1/", "",
-				"");
-		try
-		{
-			System.out.println(httpsTest.getText());
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-		}
-	}
-
 	public Map<String, List<String>> getHeaderResponse() throws Exception
 	{
 		try

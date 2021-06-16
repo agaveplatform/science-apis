@@ -25,11 +25,11 @@ import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.util.HTMLizer;
 import org.iplantc.service.io.dao.LogicalFileDao;
-import org.iplantc.service.io.dao.QueueTaskDao;
 import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.io.queue.TransferTaskScheduler;
 import org.iplantc.service.notification.util.EmailMessage;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
@@ -59,7 +59,7 @@ import java.io.IOException;
  */
 public class PublishAction extends AbstractWorkerAction<Software> {
     
-    private static Logger log = Logger.getLogger(PublishAction.class);
+    private static final Logger log = Logger.getLogger(PublishAction.class);
     private Software publishedSoftware;
     private String publishingUsername;
     private String publishedSoftwareName;
@@ -362,7 +362,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
     {
         // resolve the path to the folder for public apps on the public default storage system
         // note that this may change over time, but it's saved with the app, so that's fine.
-        String remotePublicAppsFolder = publishedSoftwareStorageSystem.getStorageConfig().getPublicAppsDir();;
+        String remotePublicAppsFolder = publishedSoftwareStorageSystem.getStorageConfig().getPublicAppsDir();
         if (StringUtils.isEmpty(remotePublicAppsFolder)) {
             remotePublicAppsFolder = Settings.PUBLIC_APPS_DEFAULT_DIRECTORY;
         }
@@ -612,9 +612,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
                     LogicalFileDao.persist(logicalFile);
                     
                     // add the logical file to the staging queue
-                    QueueTaskDao.enqueueStagingTask(logicalFile, getPublishingUsername());
-        
-                    LogicalFileDao.updateTransferStatus(logicalFile, StagingTaskStatus.STAGING_QUEUED, "xxx");
+                    new TransferTaskScheduler().enqueueStagingTask(logicalFile, getPublishingUsername());
                 }
             }
             

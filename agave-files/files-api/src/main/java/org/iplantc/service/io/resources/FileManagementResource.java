@@ -1080,7 +1080,7 @@ public class FileManagementResource extends AbstractFileResource
 		    						fi.write(cachedFile);
 
 									logicalFile.setSourceUri(cachedFile.toURI().toString());
-									new TransferTaskScheduler().enqueueStagingTask(logicalFile, username);
+									new TransferTaskScheduler().enqueueStagingTaskWithNotification(logicalFile, username);
 
 		    						log.debug("File upload of " + cachedFile.length() + " bytes received from " + getAuthenticatedUsername());
 

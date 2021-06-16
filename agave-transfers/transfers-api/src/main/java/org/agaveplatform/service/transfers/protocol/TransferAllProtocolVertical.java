@@ -268,7 +268,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 									log.info("Initiating worker transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 
 //									resultingTransferTask =
-									processCopyRequest(finalSrcClient, finalDestClient, tt, handler);
+									processCopyRequest(finalSrcClient, finalDestClient, tt, (Handler<AsyncResult<Boolean>>) handler);
 
 //									promise.complete();
 								} catch (Exception e) {
@@ -341,6 +341,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 	 * @param srcClient the remote data client to the source of the transfer task
 	 * @param destClient the remote data client to the destination of the transfer task
 	 * @param transferTask the transfer task to update with progress of the transfer.
+	 * @param handler
 	 * @return the completed transfer task.
 	 * @throws RemoteDataException when a connection cannot be made to the {@link RemoteSystem}
 	 * @throws IOException if unable to connect to the remote host.

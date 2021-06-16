@@ -516,7 +516,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	}
 
 	@Test
-	@Disabled
+	//@Disabled
 	@DisplayName("TransferTaskAssignedListener - processTransferTask aborts processing childen when interrupt is received")
 	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) throws Exception {
 		// mock out the test class
@@ -584,7 +584,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 			ctx.verify(() -> {
 				assertTrue(result.succeeded(), "Task assignment handler should have succeeded on interrupt during processing.");
 
-				assertFalse(result.result(), "Callback handler result should be true after successful assignment.");
+				assertTrue(result.result(), "Callback handler result should be true after successful assignment.");
 
 				// remote file info should be obtained once.
 				verify(srcRemoteDataClient, times(1)).getFileInfo(eq(srcUri.getPath()));
@@ -627,7 +627,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - taskIsNotInterrupted")
-	@Disabled
+	//@Disabled
 	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());

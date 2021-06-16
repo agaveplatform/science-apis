@@ -21,12 +21,11 @@ import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANS
 public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     private static final Logger logger = LoggerFactory.getLogger(AbstractTransferTaskListener.class);
 
-    String eventChannel;
-    final public ConcurrentHashSet<String> cancelledTasks = new ConcurrentHashSet<>();
-    final public ConcurrentHashSet<String> pausedTasks = new ConcurrentHashSet<>();
+    protected ConcurrentHashSet<String> cancelledTasks = new ConcurrentHashSet<>();
+    protected ConcurrentHashSet<String> pausedTasks = new ConcurrentHashSet<>();
+
     private RetryRequestManager retryRequestManager;
-
-
+    protected String eventChannel;
     public AbstractTransferTaskListener() {
         super();
     }
@@ -116,41 +115,20 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
         _doPublishEvent(TRANSFERTASK_ERROR, json, handler);
     }
 
-//    /**
-//     * Wrapper method for all message processing verticles. This will catch and swallow all {@link Throwable} exceptions
-//     * and ensure we log and have visibility into errors not caught by the standard processing task.
-//     *
-//     * @param messageHandler the message body handler
-//     * @return a boolean future indicating success of the processing task
-//     */
-//    protected void processMessage(Future<Boolean> messageHandler) {
-//        try {
-//            messageHandler.setHandler(reply -> {
-//                if (reply.succeeded()) {
-//                    logger.info("Completed processing {} message for {}", getEventChannel());
-//                } else {
-//                    logger.error("Failed to process " + getEventChannel() + " message for " );
-//                }
-//            });
-//        } catch(Throwable t) {
-//            logger.error("Failed to process " + getEventChannel() + " message for " );
-//        }
-//    }
-//
-//    /**
-//     * Concrete implementation of the message handler. We can
-//     * @param body
-//     * @return handler a f
-//     */
-//    protected abstract Future<Boolean> _doProcessMessage(JsonObject body);
-
     /**
      * Pushes a new {@link TransferTask} uuid onto the threadsafe set of cancelled tasks
      * @param uuid the cancelled task uuid
      */
     public synchronized void addCancelledTask(String uuid) {
         getCancelledTasks().add(uuid);
-        getCancelledTasks().contains(uuid);
+    }
+
+    /**
+     * Check for the existence of a uuid in the cancelled task set
+     * @param uuid then
+     */
+    public synchronized boolean checkCancelledTask(String uuid) {
+        return getCancelledTasks().contains(uuid);
     }
 
     /**
@@ -163,6 +141,14 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     }
 
     /**
+     * Gets the set of currently cancelled tasks cancelled confirmation
+     * @return set of cancelled tasks
+     */
+    public void setCancelledTasks(ConcurrentHashSet<String> cancelledTasks) {
+        this.cancelledTasks = cancelledTasks;
+    }
+
+    /**
      * Pushes a new {@link TransferTask} uuid onto the threadsafe set of cancelled tasks
      * @param uuid the cancelled task uuid
      */
@@ -171,11 +157,19 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     }
 
     /**
-    * Check for the existence of a uuid in the paused task
+    * Check for the existence of a uuid in the paused task set
      * @param uuid then
     */
     public synchronized boolean checkPausedTask(String uuid) {
        return getPausedTasks().contains(uuid);
+    }
+
+    /**
+     * Gets the set of currently paused tasks pending confirmation
+     * @return set of paused tasks
+     */
+    public void setPausedTasks(ConcurrentHashSet<String> pausedTasks) {
+        this.pausedTasks = pausedTasks;
     }
 
     /**
@@ -186,49 +180,6 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     public synchronized boolean removePausedTask(String uuid) {
         return getPausedTasks().remove(uuid);
     }
-
-
-//    /**
-//     * Sets the state of the process interupt flag
-//     * @param state string value "add" or "remove"
-//     * @param body Json object
-//     */
-//    public void processInterrupt(String state, JsonObject body) {
-//        try {
-//            String uuid = body.getString("uuid");
-//            if (state.equalsIgnoreCase("add")) {
-//                interruptedTasks.add(uuid);
-//            } else if (state.equalsIgnoreCase("remove")){
-//                interruptedTasks.remove(uuid);
-//            }
-//        } catch (Exception e){
-//            logger.error(e.getMessage());
-//        }
-//    }
-
-//    /**
-//     * Checks whether the transfer task or any of its children exist in the list of
-//     * interrupted tasks.
-//     *
-//     * @param transferTask the current task being checked from the running task
-//     * @return true if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #checkTaskInterrupted(TransferTask)} list
-//     */
-//    public void checkTaskInterrupted2(TransferTask transferTask )throws InterruptableTransferTaskException {
-//
-//        if (this.interruptedTasks.contains(transferTask.getUuid()) ||
-//                this.interruptedTasks.contains(transferTask.getParentTaskId()) ||
-//                this.interruptedTasks.contains(transferTask.getRootTaskId())) {
-//            String msg = "Transfer was Canceled or Paused";
-//            logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
-//            JsonObject json = new JsonObject()
-//                    .put("message", msg);
-//            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-//
-//            // tell everyone else that you killed this task
-//            throw new InterruptableTransferTaskException(
-//                    String.format("Transfer task %s interrupted due to cancel event", transferTask.getUuid()));
-//        }
-//    }
 
     /**
      * Checks whether the {@code transferTask} has been interrupted by looking for the transfer task or any of its
@@ -312,12 +263,25 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     }
 
     /**
-     * Checks for a supported schema in the URI.
+     * Checks for a supported schema in the URI. Note that this check allows for "file" uri schema to pass so that we
+     * may handle the procssing of cached files.
      * @param uri the uri to check
      * @return true if supported, false otherwise
      * @see RemoteDataClientFactory#isSchemeSupported(URI);
      */
     protected boolean uriSchemeIsNotSupported(URI uri) {
-        return ! RemoteDataClientFactory.isSchemeSupported(uri);
+        // null url or schema are not supported
+        if (uri == null || uri.getScheme() == null) {
+            return true;
+        }
+        // local file uri are supported
+        else if (uri.getScheme().equalsIgnoreCase("file")) {
+            return false;
+        }
+        // otherwise, defer to the factory uri schema check
+        else {
+            return ! RemoteDataClientFactory.isSchemeSupported(uri);
+        }
     }
 }
+

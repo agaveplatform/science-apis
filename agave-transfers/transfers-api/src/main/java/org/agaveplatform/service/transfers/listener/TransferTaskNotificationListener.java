@@ -2,14 +2,9 @@ package org.agaveplatform.service.transfers.listener;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Options;
-import io.nats.client.Subscription;
 import io.vertx.core.Vertx;
-import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.notification.managers.NotificationManager;
@@ -19,10 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.concurrent.TimeoutException;
+import java.util.List;
 
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public class TransferTaskNotificationListener extends AbstractNatsListener {
 	private static final Logger logger = LoggerFactory.getLogger(TransferTaskNotificationListener.class);
@@ -47,12 +41,16 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 		return EVENT_CHANNEL;
 	}
 
-//    public Connection getConnection(){return nc;}
-
-
 	@Override
-	public void start() throws IOException, InterruptedException, TimeoutException {
-		//EventBus bus = vertx.eventBus();
+	public void start() {
+
+        List<String> notificationEvents = List.of(
+                TRANSFERTASK_CREATED,
+                TRANSFERTASK_UPDATED,
+                TRANSFERTASK_FINISHED,
+                TRANSFERTASK_FAILED,
+                TRANSFERTASK_PAUSED_COMPLETED,
+                TRANSFERTASK_CANCELED_COMPLETED);
 
 
         try {
@@ -189,15 +187,16 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 //        d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR);
 //        getConnection().flush(Duration.ofMillis(500));
 
+
     }
 
     protected void handleMessage(Message message) {
         try {
-            JsonObject body = new JsonObject(message.getMessage());
-            String uuid = body.getString("uuid");
-            String source = body.getString("source");
-            String dest = body.getString("dest");
-            logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+            JsonObject notificationMessageBody = new JsonObject(message.getMessage());
+            String uuid = notificationMessageBody.getString("uuid");
+            String source = notificationMessageBody.getString("source");
+            String dest = notificationMessageBody.getString("dest");
+            sentToLegacyMessageQueue(notificationMessageBody);
 
         } catch (DecodeException e) {
             logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
@@ -206,7 +205,8 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
         }
     }
     /**
-     * Process message to {@link NotificationMessageBody} for compatibility with legacy notification queue
+     * Process the {@link JsonObject} we recieve from the {@link EventBus} to a {@link NotificationMessageBody} for \
+     * compatibility with our legacy message queue.
      *
      * @param messageType {@link MessageType} for the Transfer Task notification event
      * @param body        {@link JsonObject} of the Transfer Task
@@ -255,21 +255,13 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
      * @param body the message body to send
      * @return true if a message was written
      */
-    protected boolean notificationEventProcess(JsonObject body) {
-        WorkerExecutor executor = getVertx().createSharedWorkerExecutor("send-notification-task-worker-pool");
-        executor.executeBlocking(promise -> {
-            logger.info("Sending legacy notification message for transfer task {}", body.getString("uuid"));
-            logger.debug("tenantId = {}", body.getString("tenant_id"));
+    protected boolean sentToLegacyMessageQueue(JsonObject body) {
+        logger.info("Sending legacy notification message for transfer task {}", body.getString("uuid"));
+        logger.debug("tenantId = {}", body.getString("tenant_id"));
+        org.iplantc.service.common.Settings.NOTIFICATION_QUEUE = org.iplantc.service.common.Settings.FILES_STAGING_QUEUE;
+        org.iplantc.service.common.Settings.NOTIFICATION_TOPIC = org.iplantc.service.common.Settings.FILES_STAGING_TOPIC;
 
-            int x = NotificationManager.process(body.getString("uuid"), body.encode(), body.getString("owner")) ;
-            if (x == 0) {
-                promise.complete();
-            } else {
-                promise.fail("Message failed for " + body );
-            }
-        }, res -> {
-        });
-        return true;
+        return NotificationManager.process(body.getString("uuid"), body.encode(), body.getString("owner")) > 0;
     }
 
 }

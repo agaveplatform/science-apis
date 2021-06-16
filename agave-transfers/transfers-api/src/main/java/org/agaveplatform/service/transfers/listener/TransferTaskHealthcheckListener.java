@@ -109,6 +109,7 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 		String uuid = body.getString("uuid");
 		String tenantId = (body.getString("tenant_id"));
 
+
 		getDbService().allChildrenCancelledOrCompleted(tenantId, uuid, reply -> {
 			logger.trace("got into getDbService().allChildrenCancelledOrCompleted");
 			if (reply.succeeded()) {

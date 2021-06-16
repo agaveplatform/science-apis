@@ -14,8 +14,12 @@ import java.util.Objects;
 
 
 /**
- * Container class to hold records of current and scheduled data transfers. TransferTasks may represent a file item representing single or multiple operations. If a directory/collection is represented by the {@link #source} field, then all subsequently created {@link TransferTask} created will reference its {@link #uuid} field in their {@link #parentTaskId}. The original parent {@link TransferTask} from which all child tasks are spawned will have a null {@link #rootTaskId}. All children will reference the original parent {@link #uuid} in their {@link #rootTaskId}.
- *
+ * Container class to hold records of current and scheduled transfers.
+ * Transfers are fine-grained entities and can be reused throughout
+ * the api by different services needing to move data. Ideally they will
+ * be executed by a pool of transfer worker processes, but it is conceivable
+ * that a syncronous transfer may occur, in which case the parent process
+ * should upInstant the task themself.
  *
  * @author dooley
  *
@@ -567,13 +571,12 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		TransferTask that = (TransferTask) o;
-		return Objects.equals(id, that.id) &&
-				Objects.equals(source, that.source) &&
-				Objects.equals(dest, that.dest) &&
-				Objects.equals(owner, that.owner) &&
-				status == that.status &&
-				Objects.equals(tenantId, that.tenantId) &&
-				Objects.equals(uuid, that.uuid);
+		return Objects.equals(getSource(), that.getSource()) &&
+				Objects.equals(getDest(), that.getDest()) &&
+				Objects.equals(getOwner(), that.getOwner()) &&
+				getStatus() == that.getStatus() &&
+				Objects.equals(getTenantId(), that.getTenantId()) &&
+				Objects.equals(getUuid(), that.getUuid());
 	}
 
 	@Override

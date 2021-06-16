@@ -21,7 +21,7 @@ import java.util.concurrent.TimeoutException;
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 
 public class TransferTaskUpdateListener extends AbstractNatsListener {
-    private final static Logger logger = LoggerFactory.getLogger(org.agaveplatform.service.transfers.listener.TransferTaskUpdateListener.class);
+    private final static Logger logger = LoggerFactory.getLogger(TransferTaskUpdateListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_UPDATED;
 
     private TransferTaskDatabaseService dbService;

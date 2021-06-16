@@ -174,9 +174,6 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                             String msg = String.format("Unable to update the status of transfer task %s to %s prior " +
                                             "to sending %s event. No sync event will be sent.",
                                     uuid, CANCELING_WAITING.name(), TRANSFERTASK_CANCELED_SYNC);
-
-                            logger.debug(msg);
-
                             doHandleError(updateReply.cause(), msg, body, resultHandler);
                         }
                     });
@@ -194,13 +191,10 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
             } else {
                 // failure
                 String msg = "Unable to verify the current status of transfer task " + uuid + ". " + getByIdReply.cause();
-                logger.debug(msg);
                 doHandleError(getByIdReply.cause(), msg, body, resultHandler);
-
             }
         });
     }
-
 
     /**
      * Processes the {@link MessageType#TRANSFERTASK_CANCELED_ACK} event for a {@link TransferTask} marshalled to

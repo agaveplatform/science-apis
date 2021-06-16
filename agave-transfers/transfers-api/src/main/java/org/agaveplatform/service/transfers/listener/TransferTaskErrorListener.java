@@ -106,7 +106,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 							// check to see if the task was canceled so we don't retry an interrupted task
 							if (taskIsNotInterrupted(tt)) {
 								// see if the error in the event is recoverable or not
-								if (getRecoverableExceptionsClassNames().contains(cause)) {
+								if (cause != null && getRecoverableExceptionsClassNames().contains(cause)) {
 									// now check its status
 									if (tt.getStatus().isActive()) {
 										// check the retry count on the transfer task. if it has not yet tapped out, examine the error to see if

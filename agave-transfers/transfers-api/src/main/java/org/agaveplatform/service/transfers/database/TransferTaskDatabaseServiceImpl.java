@@ -63,7 +63,24 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     });
   }
 
-//  getTransferTaskTree
+  /**
+   * Tests db existence and accessibility
+   *
+   * @param resultHandler the handler to resolve with boolean result of db check
+   **/
+  @Override
+  public TransferTaskDatabaseService ping(Handler<AsyncResult<Boolean>> resultHandler) {
+   dbClient.query(sqlQueries.get(SqlQuery.PING), res -> {
+      if (res.succeeded()) {
+        resultHandler.handle(Future.succeededFuture(true));
+      } else {
+        LOGGER.error("Failed to ping the database.", res.cause());
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      }
+    });
+    return this;
+  }
+
   /**
    * Retrieve tree of parent and children {@link TransferTask}
    *

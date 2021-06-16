@@ -5,18 +5,15 @@ package org.agaveplatform.service.transfers.protocol;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
-import org.agaveplatform.service.transfers.listener.AbstractNatsListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.globus.ftp.GridFTPSession;
-import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.transfer.*;
 import org.iplantc.service.transfer.exceptions.RangeValidationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -47,19 +44,16 @@ import static org.agaveplatform.service.transfers.enumerations.TransferTaskEvent
  * @author dooley
  *
  */
-public class URLCopy extends AbstractNatsListener {
+public class URLCopy{
     private static final Logger log = LoggerFactory.getLogger(URLCopy.class);
-
     private final RetryRequestManager retryRequestManager;
     private RemoteDataClient sourceClient;
     private RemoteDataClient destClient;
 
     private final Vertx vertx;
     private final AtomicBoolean killed = new AtomicBoolean(false);
-    private TransferTaskDatabaseService dbService;
 
-    public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient, Vertx vertx, RetryRequestManager retryRequestManager) throws IOException, InterruptedException {
-        super();
+    public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient, Vertx vertx, RetryRequestManager retryRequestManager) {
         this.sourceClient = sourceClient;
         this.destClient = destClient;
         this.vertx = vertx;
@@ -88,24 +82,33 @@ public class URLCopy extends AbstractNatsListener {
     }
 
     /**
-     * @return the killed
+     * @return the atomic killed variable
+     */
+    protected synchronized AtomicBoolean getKilled() {
+        return this.killed;
+    }
+
+
+    /**
+     * @return the killed boolean value
      */
     public synchronized boolean isKilled() {
-        return this.killed.get();
+        return getKilled().get();
     }
 
     /**
-     * @param killed the killed to set
+     * @param shouldBeKilled the killed to set
      */
-    public synchronized void setKilled(boolean killed) {
-        this.killed.set(killed);
-        if ((sourceClient instanceof GridFTP) && (destClient instanceof GridFTP)) {
+    public synchronized void setKilled(boolean shouldBeKilled) {
+        getKilled().set(shouldBeKilled);
+
+        if ((getSourceClient() instanceof GridFTP) && (getDestClient() instanceof GridFTP) && !shouldBeKilled) {
             try {
-                ((GridFTP) sourceClient).abort();
+                ((GridFTP) getSourceClient()).abort();
             } catch (Exception ignored) {}
 
             try {
-                ((GridFTP) destClient).abort();
+                ((GridFTP) getDestClient()).abort();
             } catch (Exception ignored) {}
         }
     }
@@ -116,9 +119,9 @@ public class URLCopy extends AbstractNatsListener {
      * @param listener the {@link RemoteTransferListener} observing the transfer
      * @throws ClosedByInterruptException if the transfer has been transferred
      */
-    protected void checkCancelled(RemoteTransferListener listener) throws ClosedByInterruptException {
+    protected void checkCancelled(RemoteTransferListener listener) throws InterruptedException {
         if (isKilled() || listener.isCancelled()) {
-            throw new ClosedByInterruptException();
+            throw new InterruptedException();
         }
     }
 
@@ -129,14 +132,15 @@ public class URLCopy extends AbstractNatsListener {
      * protocol, file size, and locality of the data. Progress is written to the transfer task
      * via a {@link RemoteTransferListenerImpl}
      *
-     * @param transferTask the task holding the copy information
+     * @param transferTask the transferTask to copy
+     * @return the updated transferTask
      * @throws RemoteDataException
      * @throws IOException
      * @throws TransferException
-     * @throws ClosedByInterruptException
+     * @throws InterruptedException
      */
     public TransferTask copy(TransferTask transferTask)
-            throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, ClosedByInterruptException {
+            throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, InterruptedException {
         return copy(transferTask, null);
     }
 
@@ -152,10 +156,10 @@ public class URLCopy extends AbstractNatsListener {
      * @throws RemoteDataException
      * @throws IOException
      * @throws TransferException
-     * @throws ClosedByInterruptException
+     * @throws InterruptedException
      */
     public TransferTask copy(TransferTask transferTask, List<String> exclusions)
-            throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, ClosedByInterruptException {
+            throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, InterruptedException {
         log.debug("UrlCopy.copy method. {}", transferTask.getUuid());
         if (transferTask == null) {
             throw new TransferException("TransferTask cannot be null. Please provide"
@@ -290,10 +294,10 @@ public class URLCopy extends AbstractNatsListener {
      * @param aggregateTransferTask the top level TransferTask tracking the aggregate data movement
      * @return the updated {@code aggregatedTransferTask} after processing
      * @throws RemoteDataException if an error occurred attempting the transfer
-     * @throws ClosedByInterruptException if the transfer was interrupted
+     * @throws InterruptedException if the transfer was interrupted
      */
     protected TransferTask relayTransfer(String srcPath, String destPath, TransferTask aggregateTransferTask)
-            throws RemoteDataException, ClosedByInterruptException {
+            throws RemoteDataException, InterruptedException {
         File tmpFile = null;
         File tempDir = null;
         TransferTask srcChildTransferTask = null;
@@ -302,8 +306,8 @@ public class URLCopy extends AbstractNatsListener {
         RemoteTransferListener destChildRemoteTransferListener = null;
 
         try {
-            if (sourceClient instanceof Local) {
-                tmpFile = new File(sourceClient.resolvePath(srcPath));
+            if (getSourceClient() instanceof Local) {
+                tmpFile = new File(getSourceClient().resolvePath(srcPath));
                 tempDir = tmpFile.getParentFile();
 
                 log.debug(String.format(
@@ -311,15 +315,16 @@ public class URLCopy extends AbstractNatsListener {
                         aggregateTransferTask.getUuid(),
                         aggregateTransferTask.getSource(),
                         "file://" + tmpFile.getPath(),
-                        getProtocolForClass(destClient.getClass()),
+                        getProtocolForClass(getDestClient().getClass()),
                         "local"));
-            } else {
+            }
+            else {
                 tempDir = new File(org.iplantc.service.common.Settings.TEMP_DIRECTORY,
                         DigestUtils.md5Hex(srcPath) + "-" + System
                                 .currentTimeMillis() + ".relay.tmp");
 
-                if (destClient instanceof Local) {
-                    tmpFile = new File(destClient.resolvePath(destPath));
+                if (getDestClient() instanceof Local) {
+                    tmpFile = new File(getDestClient().resolvePath(destPath));
                     tempDir = tmpFile.getParentFile();
                 } else {
                     tempDir.mkdirs();
@@ -330,15 +335,15 @@ public class URLCopy extends AbstractNatsListener {
                         "Beginning first leg of relay transfer for task %s. %s to %s . Protocol: %s => %s",
                         aggregateTransferTask.getUuid(),
                         aggregateTransferTask.getSource(),
-                        "file://" + tmpFile.getPath(),
-                        getProtocolForClass(sourceClient.getClass()),
+                        tmpFile.toURI(),
+                        getProtocolForClass(getSourceClient().getClass()),
                         "local"));
                 try {
                     // we create a subtask local to this method to track each end of the relay transfer.
                     //
                     srcChildTransferTask = new TransferTask(
                             aggregateTransferTask.getSource(),
-                            "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
+                            tmpFile.toURI().toString(),
                             aggregateTransferTask.getOwner(),
                             aggregateTransferTask.getUuid(),
                             aggregateTransferTask.getRootTaskId());
@@ -350,7 +355,7 @@ public class URLCopy extends AbstractNatsListener {
                             getRemoteUnaryTransferListenerForTransferTask(srcChildTransferTask);
 
                     // perform the get
-                    sourceClient.get(srcPath, tmpFile.getPath(), srcChildRemoteTransferListener);
+                    getSourceClient().get(srcPath, tmpFile.getPath(), srcChildRemoteTransferListener);
 
                     srcChildTransferTask = (TransferTask)srcChildRemoteTransferListener.getTransferTask();
                     aggregateTransferTask.setStartTime(srcChildTransferTask.getStartTime());
@@ -378,26 +383,24 @@ public class URLCopy extends AbstractNatsListener {
                             aggregateTransferTask.getUuid(),
                             aggregateTransferTask.getSource(),
                             "file://" + tmpFile.getPath(),
-                            getProtocolForClass(sourceClient.getClass()),
+                            getProtocolForClass(getSourceClient().getClass()),
                             "local"), e);
                     throw e;
-                }
-                catch (ClosedByInterruptException e){
+                } catch (InterruptedException e){
                     log.debug(String.format(
                             "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
                             aggregateTransferTask.getUuid(),
                             aggregateTransferTask.getSource(),
                             aggregateTransferTask.getDest(),
-                            getProtocolForClass(sourceClient.getClass()),
-                            getProtocolForClass(destClient.getClass())), e);
+                            getProtocolForClass(getSourceClient().getClass()),
+                            getProtocolForClass(getDestClient().getClass())), e);
 
                     srcChildRemoteTransferListener.cancel();
                     srcChildTransferTask = (TransferTask)srcChildRemoteTransferListener.getTransferTask();
                     aggregateTransferTask = updateAggregateTaskFromChildTask(aggregateTransferTask, srcChildTransferTask);
                     setKilled(true);
                     throw e;
-                }
-                catch (Throwable e) {
+                } catch (Throwable e) {
                     try {
                         aggregateTransferTask.setStatus(TransferStatusType.FAILED);
                         aggregateTransferTask.setEndTime(Instant.now());
@@ -410,25 +413,25 @@ public class URLCopy extends AbstractNatsListener {
                             aggregateTransferTask.getUuid(),
                             aggregateTransferTask.getSource(),
                             "file://" + tmpFile.getPath(),
-                            getProtocolForClass(sourceClient.getClass()),
+                            getProtocolForClass(getSourceClient().getClass()),
                             "local"), e);
                     // stuff happens, what are you going to do.
-                    throw new RemoteDataException("Transfer failed from " + sourceClient.getUriForPath(srcPath), e);
+                    throw new RemoteDataException("Transfer failed from " + getSourceClient().getUriForPath(srcPath), e);
                 }
             }
 
-            if (!((sourceClient instanceof Local) && (destClient instanceof Local))) {
+            if (!((getSourceClient() instanceof Local) && (getDestClient() instanceof Local))) {
                 try {
                     log.debug(String.format(
                             "Beginning second leg of relay transfer for task %s. %s to %s . Protocol: %s => %s",
                             aggregateTransferTask.getUuid(),
-                            "file://" + tmpFile.getPath(),
+                            tmpFile.toURI(),
                             aggregateTransferTask.getDest(),
                             "local",
-                            getProtocolForClass(destClient.getClass())));
+                            getProtocolForClass(getDestClient().getClass())));
 
                     destChildTransferTask = new TransferTask(
-                            "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
+                            tmpFile.toURI().toString(),
                             aggregateTransferTask.getDest(),
                             aggregateTransferTask.getOwner(),
                             aggregateTransferTask.getParentTaskId(),
@@ -439,7 +442,7 @@ public class URLCopy extends AbstractNatsListener {
                     destChildRemoteTransferListener =
                             getRemoteUnaryTransferListenerForTransferTask(destChildTransferTask);
 
-                    destClient.put(tmpFile.getPath(), destPath, destChildRemoteTransferListener);
+                    getDestClient().put(tmpFile.getPath(), destPath, destChildRemoteTransferListener);
 
                     if (!isKilled()) {
                         destChildTransferTask = (TransferTask)destChildRemoteTransferListener.getTransferTask();
@@ -450,8 +453,7 @@ public class URLCopy extends AbstractNatsListener {
                     }
 
                     checkCancelled(destChildRemoteTransferListener);
-                }
-                catch (RemoteDataException e) {
+                } catch (RemoteDataException e) {
                     try {
                         destChildTransferTask.setStatus(TransferStatusType.FAILED);
                         destChildTransferTask.setEndTime(Instant.now());
@@ -465,25 +467,23 @@ public class URLCopy extends AbstractNatsListener {
                             "file://" + tmpFile.getPath(),
                             aggregateTransferTask.getDest(),
                             "local",
-                            getProtocolForClass(destClient.getClass())), e);
+                            getProtocolForClass(getDestClient().getClass())), e);
                     throw e;
-                }
-                catch (ClosedByInterruptException e){
+                } catch (InterruptedException e){
                     log.debug(String.format(
                             "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
                             aggregateTransferTask.getUuid(),
                             aggregateTransferTask.getSource(),
                             aggregateTransferTask.getDest(),
-                            getProtocolForClass(sourceClient.getClass()),
-                            getProtocolForClass(destClient.getClass())), e);
+                            getProtocolForClass(getSourceClient().getClass()),
+                            getProtocolForClass(getDestClient().getClass())), e);
 
                     destChildRemoteTransferListener.cancel();
                     destChildTransferTask = (TransferTask)destChildRemoteTransferListener.getTransferTask();
                     aggregateTransferTask = updateAggregateTaskFromChildTask(aggregateTransferTask, destChildTransferTask);
+                    setKilled(true);
                     throw e;
-
-            }
-                catch (Throwable e) {
+            } catch (Throwable e) {
                     // fail the destination transfer task
                     try {
                         aggregateTransferTask.setStatus(TransferStatusType.FAILED);
@@ -498,22 +498,21 @@ public class URLCopy extends AbstractNatsListener {
                             "file://" + tmpFile.getPath(),
                             aggregateTransferTask.getDest(),
                             "local",
-                            getProtocolForClass(destClient.getClass())));
-                    throw new RemoteDataException("Transfer failed to " + sourceClient.getUriForPath(srcPath) +
-                            " using " + destClient.getClass().getSimpleName(), e);
+                            getProtocolForClass(getDestClient().getClass())));
+                    throw new RemoteDataException("Transfer failed to " + getSourceClient().getUriForPath(srcPath) +
+                            " using " + getDestClient().getClass().getSimpleName(), e);
                 }
-            }
-            else {
+            } else {
                 log.debug(String.format(
                         "Skipping second leg of relay transfer for task %s. %s to %s. Protocol: %s => %s",
                         aggregateTransferTask.getUuid(),
                         "file://" + tmpFile.getPath(),
                         aggregateTransferTask.getDest(),
                         "local",
-                        getProtocolForClass(destClient.getClass())));
+                        getProtocolForClass(getDestClient().getClass())));
 
                 destChildTransferTask = new TransferTask(
-                        "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
+                        tmpFile.toURI().toString(),
                         aggregateTransferTask.getDest(),
                         aggregateTransferTask.getOwner(),
                         aggregateTransferTask.getParentTaskId(),
@@ -524,7 +523,6 @@ public class URLCopy extends AbstractNatsListener {
 
                 destChildRemoteTransferListener =
                         getRemoteTransferListenerForTransferTask(destChildTransferTask);
-
 
                 long tmpFileLength = tmpFile.length();
 
@@ -541,13 +539,28 @@ public class URLCopy extends AbstractNatsListener {
                 //transfer updates are handled through the listener
             }
         }
-        catch (ClosedByInterruptException e) {
+        catch (InterruptedException e) {
+            log.debug(String.format(
+                    "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
+                    aggregateTransferTask.getUuid(),
+                    aggregateTransferTask.getSource(),
+                    aggregateTransferTask.getDest(),
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())), e);
             killCopyTask();
             throw e;
         }
         catch (RemoteDataException e) {
-            aggregateTransferTask.setEndTime(Instant.now());
-            aggregateTransferTask.setStatus(TransferStatusType.FAILED);
+//            try {
+                aggregateTransferTask.setEndTime(Instant.now());
+                aggregateTransferTask.setStatus(TransferStatusType.FAILED);
+//            } catch (TransferException e1) {
+//                log.error("Failed to update parent transfer task "
+//                        + aggregateTransferTask.getUuid() + " status to FAILED", e1);
+//            }
+
+//			checkCancelled(remoteTransferListener);
+
             throw e;
         }
         catch (Exception e) {
@@ -558,16 +571,15 @@ public class URLCopy extends AbstractNatsListener {
                     getDefaultErrorMessage(
                             srcPath,
                             aggregateTransferTask), e);
-        }
-        finally {
+        } finally {
             log.info(String.format(
                     "Total of %s bytes transferred in task %s . Protocol %s => %s",
                     aggregateTransferTask.getBytesTransferred(),
                     aggregateTransferTask.getUuid(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())));
 
-            if (sourceClient instanceof Local) {
+            if (getSourceClient() instanceof Local) {
                 log.info("Skipping deleting relay cache file " + tempDir.getPath() + " as source originated from this host.");
             } else {
                 log.info("Deleting relay cache file " + tempDir.getPath());
@@ -627,10 +639,10 @@ public class URLCopy extends AbstractNatsListener {
      * @return the updated {@code aggregatedTransferTask} after processing
      * @throws RemoteDataException if an error occurred attempting the transfer
      * @throws IOException if unable to open a stream
-     * @throws ClosedByInterruptException if the transfer was interrupted
+     * @throws InterruptedException if the transfer was interrupted
      */
     protected TransferTask streamingTransfer(String srcPath, String destPath, RemoteStreamingTransferListenerImpl listener)
-            throws RemoteDataException, IOException, ClosedByInterruptException {
+            throws RemoteDataException, IOException, InterruptedException {
         // The "b" in the variable names means "buffered".
         RemoteInputStream<?> in = null;
         InputStream bis = null;
@@ -644,17 +656,17 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())));
 
-            long totalSize = sourceClient.length(srcPath);
+            long totalSize = getSourceClient().length(srcPath);
 
             // Buffer the input stream only if it's not already buffered.
             try {
-                in = getInputStream(sourceClient, srcPath);
+                in = getInputStream(getSourceClient(), srcPath);
             } catch (Exception e) {
-                log.error("Unable to get input stream for " + sourceClient.getUsername() +
-                        " on host " + sourceClient.getHost() + " for path " + srcPath + ".");
+                log.error("Unable to get input stream for " + getSourceClient().getUsername() +
+                        " on host " + getSourceClient().getHost() + " for path " + srcPath + ".");
                 throw e;
             }
             if (in.isBuffered()) bis = in;
@@ -664,10 +676,10 @@ public class URLCopy extends AbstractNatsListener {
 
             // Buffer the output stream only if it's not already buffered.
             try {
-                out = getOutputStream(destClient, destPath);
+                out = getOutputStream(getDestClient(), destPath);
             } catch (Exception e) {
-                log.error("Unable to get output stream for " + destClient.getUsername() +
-                        " on host " + destClient.getHost() + " for path " + destPath + ".");
+                log.error("Unable to get output stream for " + getDestClient().getUsername() +
+                        " on host " + getDestClient().getHost() + " for path " + destPath + ".");
                 throw e;
             }
             if (out.isBuffered()) bos = out;
@@ -677,7 +689,7 @@ public class URLCopy extends AbstractNatsListener {
 
             int length = 0;
             long callbackTime = System.currentTimeMillis();
-            int bufferSize = Math.min(sourceClient.getMaxBufferSize(), destClient.getMaxBufferSize());
+            int bufferSize = Math.min(getSourceClient().getMaxBufferSize(), getDestClient().getMaxBufferSize());
             byte[] b = new byte[bufferSize];
 
             listener.started(totalSize, srcPath);
@@ -714,28 +726,25 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())));
 
             return (TransferTask)listener.getTransferTask();
 
         }
-        catch (ClosedByInterruptException e) {
+        catch (InterruptedException e) {
             log.debug(String.format(
                     "Aborted streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(destClient.getClass()),
-                    getProtocolForClass(destClient.getClass())), e);
+                    getProtocolForClass(getDestClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())), e);
 
             log.info("Transfer task " + listener.getTransferTask().getUuid() + " killed by worker shutdown.");
-            setKilled(true);
 
             listener.progressed(bytesSoFar);
             listener.cancel();
-
-            Thread.currentThread().interrupt();
 
             throw e;
         }
@@ -745,8 +754,8 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())), e);
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())), e);
 
             // transfer failed due to connectivity issue
             listener.failed();
@@ -759,8 +768,8 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())), e);
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())), e);
 
             // stuff happens, what are you going to do.
             listener.failed();
@@ -773,8 +782,8 @@ public class URLCopy extends AbstractNatsListener {
                         "Total of %s bytes transferred in task %s . Protocol %s => %s",
                         listener.getTransferTask().getBytesTransferred(),
                         listener.getTransferTask().getUuid(),
-                        getProtocolForClass(sourceClient.getClass()),
-                        getProtocolForClass(destClient.getClass())));
+                        getProtocolForClass(getSourceClient().getClass()),
+                        getProtocolForClass(getDestClient().getClass())));
             }
 
             try { if (bis != null) bis.close(); } catch (Throwable ignored) {}
@@ -798,11 +807,11 @@ public class URLCopy extends AbstractNatsListener {
      * @throws RemoteDataException
      * @throws IOException
      * @throws TransferException
-     * @throws ClosedByInterruptException
+     * @throws InterruptedException
      */
     public TransferTask copyRange(String srcPath, long srcRangeOffset, long srcRangeSize,
                                   String destPath, long destRangeOffset, TransferTask transferTask)
-            throws RemoteDataException, IOException, TransferException, ClosedByInterruptException {
+            throws RemoteDataException, IOException, TransferException, InterruptedException {
         if (transferTask == null) {
             throw new TransferException("TransferTask cannot be null. Please provide"
                     + "a valid transfer task to track this operation.");
@@ -813,7 +822,7 @@ public class URLCopy extends AbstractNatsListener {
 
         try {
             // if we are transferring a directory
-            if (sourceClient.isDirectory(srcPath)) {
+            if (getSourceClient().isDirectory(srcPath)) {
                 throw new TransferException("Range transfers are not supported on directories");
             } else {
 
@@ -824,15 +833,9 @@ public class URLCopy extends AbstractNatsListener {
                     // skip current directory and parent to avoid infinite loops and
                     // full file system copies.
                 }
-//                else if (sourceClient.isThirdPartyTransferSupported() &&
-//                        destClient.isThirdPartyTransferSupported() &&
-//                        sourceClient.getClass().equals(destClient.getClass()))
-//                {
-//                    dothirdPartyTransfer(srcPath, srcRangeOffset, srcRangeSize, destPath, destRangeOffset, listener);
-//                }
                 else {
-                    RangeValidator sourceRangeValidator = new RangeValidator(srcRangeOffset, srcRangeSize, sourceClient.length(srcPath));
-                    RangeValidator destRangeValidator = new RangeValidator(destRangeOffset, Range.SIZE_MAX, sourceClient.length(srcPath));
+                    RangeValidator sourceRangeValidator = new RangeValidator(srcRangeOffset, srcRangeSize, getSourceClient().length(srcPath));
+                    RangeValidator destRangeValidator = new RangeValidator(destRangeOffset, Range.SIZE_MAX, getSourceClient().length(srcPath));
 
                     try {
                         long absoluteSourceIndex = sourceRangeValidator.getAbsoluteIndex();
@@ -848,12 +851,12 @@ public class URLCopy extends AbstractNatsListener {
             }
         } finally {
             try {
-                if (destClient.isPermissionMirroringRequired()) {
-                    destClient.setOwnerPermission(destClient.getUsername(), destPath, true);
-                    destClient.setOwnerPermission(transferTask.getOwner(), destPath, true);
+                if (getDestClient().isPermissionMirroringRequired()) {
+                    getDestClient().setOwnerPermission(getDestClient().getUsername(), destPath, true);
+                    getDestClient().setOwnerPermission(transferTask.getOwner(), destPath, true);
                 }
             } catch (Exception e) {
-                log.error("Failed to set permissions on " + destClient.getHost() + " for user " + transferTask.getOwner(), e);
+                log.error("Failed to set permissions on " + getDestClient().getHost() + " for user " + transferTask.getOwner(), e);
             }
         }
     }
@@ -871,11 +874,11 @@ public class URLCopy extends AbstractNatsListener {
      * @return the updated {@code aggregatedTransferTask} after processing
      * @throws RemoteDataException if an error occurred attempting the transfer
      * @throws IOException if unable to open a stream
-     * @throws ClosedByInterruptException if the transfer was interrupted
+     * @throws InterruptedException if the transfer was interrupted
      */
     protected TransferTask proxyRangeTransfer(String srcPath, long srcRangeOffset, long srcRangeSize,
                                       String destPath, long destRangeOffset, RemoteTransferListenerImpl listener)
-            throws RemoteDataException, IOException, ClosedByInterruptException {
+            throws RemoteDataException, IOException, InterruptedException {
 
         if (listener == null) {
             throw new RemoteDataException("Transfer listener cannot be null");
@@ -898,27 +901,27 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())));
 
             listener.getTransferTask().setStatusString(STREAM_COPY_STARTED.name());
             _doPublishEvent(MessageType.TRANSFER_STREAMING, ((TransferTask)listener.getTransferTask()).toJson());
 
-            if (sourceClient.isDirectory(srcPath)) {
+            if (getSourceClient().isDirectory(srcPath)) {
                 throw new RemoteDataException("Cannot perform range query on directories");
             }
 
             long totalSize = srcRangeSize;
             if (totalSize == Range.SIZE_MAX) {
-                totalSize = sourceClient.length(srcPath) - srcRangeOffset;
+                totalSize = getSourceClient().length(srcPath) - srcRangeOffset;
             }
 
             // Buffer the input stream only if it's not already buffered.
             try {
-                in = getInputStream(sourceClient, srcPath);
+                in = getInputStream(getSourceClient(), srcPath);
             } catch (Exception e) {
-                log.error("Unable to get input stream for " + sourceClient.getUsername() +
-                        " on host " + sourceClient.getHost() + " for path " + srcPath + ".");
+                log.error("Unable to get input stream for " + getSourceClient().getUsername() +
+                        " on host " + getSourceClient().getHost() + " for path " + srcPath + ".");
                 throw e;
             }
             in.skip(srcRangeOffset);
@@ -927,10 +930,10 @@ public class URLCopy extends AbstractNatsListener {
 
             // Buffer the original input stream only if it's not already buffered.
             try {
-                originalIn = getInputStream(destClient, destPath);
+                originalIn = getInputStream(getDestClient(), destPath);
             } catch (Exception e) {
-                log.error("Unable to get input stream for " + destClient.getUsername() +
-                        " on host " + destClient.getHost() + " for path " + destPath + ".");
+                log.error("Unable to get input stream for " + getDestClient().getUsername() +
+                        " on host " + getDestClient().getHost() + " for path " + destPath + ".");
                 throw e;
             }
             if (originalIn.isBuffered()) originalBis = originalIn;
@@ -939,10 +942,10 @@ public class URLCopy extends AbstractNatsListener {
             // Buffer the output stream only if it's not already buffered.
             String tmpFilename = destPath + ".tmp-" + System.currentTimeMillis();
             try {
-                out = getOutputStream(destClient, tmpFilename);
+                out = getOutputStream(getDestClient(), tmpFilename);
             } catch (Exception e) {
-                log.error("Unable to get output stream for " + destClient.getUsername() +
-                        " on host " + destClient.getHost() + " for path " + tmpFilename + ".");
+                log.error("Unable to get output stream for " + getDestClient().getUsername() +
+                        " on host " + getDestClient().getHost() + " for path " + tmpFilename + ".");
                 throw e;
             }
 
@@ -955,7 +958,7 @@ public class URLCopy extends AbstractNatsListener {
             long remainingOffset = destRangeOffset;
 
             long callbackTime = System.currentTimeMillis();
-            int bufferSize = sourceClient.getMaxBufferSize();
+            int bufferSize = getSourceClient().getMaxBufferSize();
             byte[] newBytes = new byte[bufferSize];
             byte[] originalBytes = new byte[bufferSize];
 
@@ -1089,28 +1092,28 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())));
 
 
 
             return (TransferTask)listener.getTransferTask();
         }
-        catch (ClosedByInterruptException e) {
+        catch (InterruptedException e) {
             log.debug(String.format(
                     "Aborted streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(destClient.getClass()),
-                    getProtocolForClass(destClient.getClass())), e);
+                    getProtocolForClass(getDestClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())), e);
 
             log.info("Transfer task " + listener.getTransferTask().getUuid() + " killed by worker shutdown.");
             setKilled(true);
 
             listener.progressed(bytesSoFar);
             listener.cancel();
-            Thread.currentThread().interrupt();
+            //Thread.currentThread().interrupt();
             throw e;
         }
         catch (RemoteDataException | IOException e) {
@@ -1119,8 +1122,8 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())), e);
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())), e);
 
             // transfer failed due to connectivity issue
             listener.failed();
@@ -1133,8 +1136,8 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())), e);
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())), e);
 
             // stuff happens, what are you going to do.
             listener.failed();
@@ -1148,8 +1151,8 @@ public class URLCopy extends AbstractNatsListener {
                         "Total of %s bytes transferred in task %s . Protocol %s => %s",
                         listener.getTransferTask().getBytesTransferred(),
                         listener.getTransferTask().getUuid(),
-                        getProtocolForClass(sourceClient.getClass()),
-                        getProtocolForClass(destClient.getClass())));
+                        getProtocolForClass(getSourceClient().getClass()),
+                        getProtocolForClass(getDestClient().getClass())));
             }
 
             try {
@@ -1239,35 +1242,36 @@ public class URLCopy extends AbstractNatsListener {
      * @return the updated {@code aggregatedTransferTask} after processing
      * @throws RemoteDataException if an error occurred attempting the transfer
      * @throws IOException if unable to open a stream
-     * @throws ClosedByInterruptException if the transfer was interrupted
+     * @throws InterruptedException if the transfer was interrupted
      */
-    protected TransferTask dothirdPartyTransfer(String srcPath, String destPath, RemoteTransferListenerImpl listener) throws RemoteDataException, IOException {
+    protected TransferTask dothirdPartyTransfer(String srcPath, String destPath, RemoteTransferListenerImpl listener) throws RemoteDataException, IOException, InterruptedException{
         try {
             log.debug(String.format(
                     "Beginning third party transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())));
 
-            ((GridFTP) destClient).setProtectionBufferSize(16384);
-            ((GridFTP) destClient).setType(GridFTPSession.TYPE_IMAGE);
-            ((GridFTP) destClient).setMode(GridFTPSession.MODE_EBLOCK);
-            ((GridFTP) destClient).setTCPBufferSize(destClient.getMaxBufferSize());
+            ((GridFTP) getDestClient()).setProtectionBufferSize(16384);
+            ((GridFTP) getDestClient()).setType(GridFTPSession.TYPE_IMAGE);
+            ((GridFTP) getDestClient()).setMode(GridFTPSession.MODE_EBLOCK);
+            ((GridFTP) getDestClient()).setTCPBufferSize(getDestClient().getMaxBufferSize());
 
-            ((GridFTP) sourceClient).setProtectionBufferSize(16384);
-            ((GridFTP) sourceClient).setType(GridFTPSession.TYPE_IMAGE);
-            ((GridFTP) sourceClient).setMode(GridFTPSession.MODE_EBLOCK);
-            ((GridFTP) sourceClient).setTCPBufferSize(sourceClient.getMaxBufferSize());
+            ((GridFTP) getSourceClient()).setProtectionBufferSize(16384);
+            ((GridFTP) getSourceClient()).setType(GridFTPSession.TYPE_IMAGE);
+            ((GridFTP) getSourceClient()).setMode(GridFTPSession.MODE_EBLOCK);
+            ((GridFTP) getSourceClient()).setTCPBufferSize(getSourceClient().getMaxBufferSize());
 
-//	        log.info("Enabling striped transfer.");
-            ((GridFTP) sourceClient).setStripedActive(((GridFTP) destClient).setStripedPassive());
+	        log.debug("Starting third-party striped gridftp transfer.");
+	        // no way to gracefully interrupt this if the copy operation is cancelled. The
+            ((GridFTP) getSourceClient()).setStripedActive(((GridFTP) getDestClient()).setStripedPassive());
 
 //	        if (task != null)
 //	        {
 //	            try {
-//	          	   task.setTotalSize(sourceClient.length(srcPath));
+//	          	   task.setTotalSize(getSourceClient().length(srcPath));
 //	            } catch (Exception e) {}
 //
 //	            task.setBytesTransferred(0);
@@ -1277,15 +1281,15 @@ public class URLCopy extends AbstractNatsListener {
 //	            TransferTaskDao.persist(task);
 //	        }
 
-            if (sourceClient.getHost().equals(destClient.getHost())) {
-                ((GridFTP) sourceClient).extendedTransfer(srcPath,
-                        (GridFTP) destClient,
-                        destClient.resolvePath(destPath),
+            if (getSourceClient().getHost().equals(getDestClient().getHost())) {
+                ((GridFTP) getSourceClient()).extendedTransfer(srcPath,
+                        (GridFTP) getDestClient(),
+                        getDestClient().resolvePath(destPath),
                         listener);
             } else {
-                ((GridFTP) sourceClient).extendedTransfer(srcPath,
-                        (GridFTP) destClient,
-                        destClient.resolvePath(destPath),
+                ((GridFTP) getSourceClient()).extendedTransfer(srcPath,
+                        (GridFTP) getDestClient(),
+                        getDestClient().resolvePath(destPath),
                         listener);
             }
 
@@ -1294,8 +1298,8 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())));
 
             return (TransferTask)listener.getTransferTask();
         }
@@ -1305,21 +1309,13 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())));
 
-            log.info("Transfer task " + listener.getTransferTask().getUuid() + " killed by worker shutdown.");
+            log.info("Transfer task " + listener.getTransferTask().getUuid() + " killed by external request.");
             setKilled(true);
 
-            try {
-                ((GridFTP) sourceClient).abort();
-            } catch (Exception ignored) {
-            }
-            try {
-                ((GridFTP) destClient).abort();
-            } catch (Exception ignored) {
-            }
-            Thread.currentThread().interrupt();
+            //Thread.currentThread().interrupt();
             throw e;
         }
         catch (IOException e) {
@@ -1328,8 +1324,8 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())));
 
             // transfer failed due to connectivity issue
             listener.failed();
@@ -1342,8 +1338,8 @@ public class URLCopy extends AbstractNatsListener {
                     listener.getTransferTask().getUuid(),
                     listener.getTransferTask().getSource(),
                     listener.getTransferTask().getDest(),
-                    getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(getSourceClient().getClass()),
+                    getProtocolForClass(getDestClient().getClass())));
 
             // stuff happens, what are you going to do.
             listener.failed();
@@ -1357,8 +1353,8 @@ public class URLCopy extends AbstractNatsListener {
                         "Total of %s bytes transferred in task %s . Protocol %s => %s",
                         listener.getTransferTask().getBytesTransferred(),
                         listener.getTransferTask().getUuid(),
-                        getProtocolForClass(sourceClient.getClass()),
-                        getProtocolForClass(destClient.getClass())));
+                        getProtocolForClass(getSourceClient().getClass()),
+                        getProtocolForClass(getDestClient().getClass())));
             }
         }
     }
@@ -1367,7 +1363,7 @@ public class URLCopy extends AbstractNatsListener {
      * Returns a {@link RetryRequestManager} to ensure messages are retried before failure.
      * @return a retry request manager.
      */
-    public RetryRequestManager getRetryRequestManager() {
+    protected RetryRequestManager getRetryRequestManager() {
         return retryRequestManager;
     }
 
@@ -1380,14 +1376,8 @@ public class URLCopy extends AbstractNatsListener {
      * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
     public void _doPublishEvent(String eventName, JsonObject body) {
-        log.info(this.getClass().getName() + ": _doPublishEvent({}, {})", eventName, body);
-        try {
-            getMessageClient().push(eventName, body.toString());
-        } catch (IOException | MessagingException | InterruptedException e) {
-            log.debug("Error with _doPublishEvent:  {}", e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        log.debug("_doPublishEvent({}, {})", eventName, body);
+        getRetryRequestManager().request(eventName, body, 2);
     }
 
 
@@ -1413,7 +1403,7 @@ public class URLCopy extends AbstractNatsListener {
      * Kill the current thread for TransferTaskCancel event
      */
     public void killCopyTask(){
-        Thread.currentThread().interrupt();
+        //Thread.currentThread().interrupt();
         setKilled(true);
     }
 }

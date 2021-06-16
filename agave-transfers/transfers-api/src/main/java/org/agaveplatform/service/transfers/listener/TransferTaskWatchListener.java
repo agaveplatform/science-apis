@@ -7,7 +7,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
 
 
 public class TransferTaskWatchListener extends AbstractNatsListener {
@@ -24,7 +25,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 	private TransferTaskDatabaseService dbService;
 	protected List<String>  parentList = new ArrayList<>();
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_HEALTHCHECK;
+	protected static final String EVENT_CHANNEL = TRANSFERTASK_HEALTHCHECK;
 
 	public TransferTaskWatchListener() throws IOException, InterruptedException {
 		super();
@@ -85,7 +86,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 						try {
 							log.debug("Scheduling health check on transfer task {}",
 									((JsonObject)jsonResult).getString("uuid"));
-							//_doPublishEvent(TRANSFERTASK_HEALTHCHECK_PARENT, ((JsonObject)jsonResult));
+							_doPublishEvent(TRANSFERTASK_HEALTHCHECK_PARENT, ((JsonObject)jsonResult), null);
 						} catch (Throwable t) {
 							log.error("Failed to schedule health check for transfer task {}", jsonResult);
 						}
@@ -123,7 +124,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 						try {
 							log.debug("Scheduling health check on transfer task {}",
 									((JsonObject)jsonResult).getString("uuid"));
-							//_doPublishEvent(TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonResult));
+							_doPublishEvent(TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonResult), null);
 						} catch (Throwable t) {
 								log.error("Failed to schedule health check for transfer task {}", jsonResult);
 							}

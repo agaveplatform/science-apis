@@ -1,5 +1,6 @@
 package org.agaveplatform.service.transfers.resources;
 
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
@@ -8,6 +9,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
+import io.vertx.ext.healthchecks.HealthCheckHandler;
+import io.vertx.ext.healthchecks.Status;
 import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -24,22 +27,12 @@ import org.agaveplatform.service.transfers.model.TransferUpdate;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.agaveplatform.service.transfers.util.ServiceUtils;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.exceptions.AgaveNamespaceException;
-import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.systems.exceptions.RemoteCredentialException;
-import org.iplantc.service.systems.exceptions.SystemUnknownException;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteDataClientFactory;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
@@ -91,13 +84,13 @@ public class TransferAPIVertical extends AbstractNatsListener {
         TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
 
         // set the config from the main vertical
-
-        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, TRANSFERTASK_DB_QUEUE); // <1>
+        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         // define our routes
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
+
 
         // Bind "/" to our hello message - so we are still compatible.
         router.route("/").handler(routingContext -> {
@@ -109,16 +102,15 @@ public class TransferAPIVertical extends AbstractNatsListener {
                     .end(message.encodePrettily());
         });
 
-        router.route("/healthz").handler(routingContext -> {
-            HttpServerResponse response = routingContext.response();
-            response.end("ok");
-        });
-
         // create a jwt auth provider and apply it as the first handler for all routes
         if (config().getBoolean(CONFIG_TRANSFERTASK_JWT_AUTH)) {
             router.route("/api/transfers*").handler(new AgaveJWTAuthHandlerImpl(getAuthProvider()));
         }
 
+        // add health check handler
+        router.get("/health").handler(initHealthCheckHandler());
+
+        // generate a client jwt if enabled at startup
         router.get("/api/client").handler(routingContext -> {
             jwtAuth = getAuthProvider() ;
             HttpServerResponse response = routingContext.response();
@@ -132,48 +124,18 @@ public class TransferAPIVertical extends AbstractNatsListener {
 
         // define the service routes
         router.get("/api/transfers").handler(this::getAll);
+        router.post("/api/transfers").handler(this::addOne);
+        router.delete("/api/transfers").handler(this::deleteAll);
+
         router.get("/api/transfers/:uuid").handler(this::getOne);
-
-        router.delete("/api/transfers/deleteAll").handler(this::deleteAll);
+        router.put("/api/transfers/:uuid").handler(this::updateOne);
         router.delete("/api/transfers/:uuid").handler(this::deleteOne);
-        // Accept post of a TransferTask, validates the request, and inserts into the db.
-        router.post("/api/transfers")
-                // Mount validation handler to ensure the posted json is valid prior to adding
-//                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
-                // Mount primary handler
-                .handler(this::addOne);
 
-        router.put("/api/transfers/:uuid")
-                // Mount validation handler to ensure the posted json is valid prior to adding
-//                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferUpdate.class)))
-                // Mount primary handler
-                .handler(this::updateOne);
-
-        // Accept post of a cancel TransferTask, validates the request, and updates the db.
-        router.post("/api/transfers/:uuid/cancel")
-                // Mount primary handler
-                .handler(this::cancelOne);
+        router.post("/api/transfers/:uuid/cancel").handler(this::cancelOne);
 
         // Accept post of a cancel TransferTask, validates the request, and inserts into the db.
         router.post("/api/transfers/cancel")
-                // Mount validation handler to ensure the posted json is valid prior to adding
-//                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
-                // Mount primary handler
                 .handler(this::cancelAll);
-
-//        Route cancelRoute = router.put("/api/cancelone");
-//        cancelRoute.failureHandler(failureRoutingContext -> {
-//            log.debug("error occurred {}, {}", failureRoutingContext.response().getStatusCode(), failureRoutingContext.response().getStatusMessage());
-//
-//            log.debug("failure url path params{}", failureRoutingContext.pathParams());
-//            log.debug("failure url query params{}", failureRoutingContext.queryParams());
-//            log.debug("failure body {}", failureRoutingContext.getBodyAsString());
-//
-//            int statusCode = failureRoutingContext.statusCode();
-//            HttpServerResponse response = failureRoutingContext.response();
-//            response.setStatusCode(statusCode).end("Sorry! Not today");
-//        });
-
 
         router.errorHandler(500, ctx -> ctx.response()
             .putHeader("content-type", "application/json")
@@ -199,9 +161,40 @@ public class TransferAPIVertical extends AbstractNatsListener {
             });
     }
 
+    /**
+     * Creates a {@link HealthCheckHandler} and registers checks for db and message queue health.
+     * @return the registered health check handler
+     */
+    private Handler<RoutingContext> initHealthCheckHandler() {
+        // Register health checks for db and queue. If the endpoints are down, the health check won't respond anyway
+        HealthCheckHandler healthCheckHandler = HealthCheckHandler.create(vertx);
+
+        // db check
+        healthCheckHandler.register("db-check", 2000, dbCheckPromise -> {
+            dbService.ping(resp -> {
+                if (resp.succeeded()) {
+                    dbCheckPromise.complete(Status.OK());
+                } else {
+                    dbCheckPromise.complete(Status.KO());
+                }
+            });
+        });
+
+        // message queue check
+        healthCheckHandler.register("queue-check", 2000, dbCheckPromise -> {
+            // put call to nats health check here
+            dbCheckPromise.complete(Status.OK());
+//            if (natsClient.isAlive()) {
+//                dbCheckPromise.complete(Status.OK());
+//            } else {
+//                dbCheckPromise.complete(Status.KO());
+//            };
+        });
+
+        return healthCheckHandler;
+    }
 
     // ---- HTTP Actions ----
-
     /**
      * Fetches all {@link TransferTask} from the db. Results are added to the routing context.
      * If the user does not have admin privileges, then the call is delegated to {@link #getAllForUser(RoutingContext)}
@@ -812,19 +805,6 @@ public class TransferAPIVertical extends AbstractNatsListener {
         }
     }
 
-
-    // --------- Helper methods for events --------------
-
-    /**
-     * Publishes a message to the named event channel.
-     * @param event the event channel to which the message will be published
-     * @param message the message to publish
-     */
-//    public void _doPublishEvent(String event, Object message) {
-//        log.debug("Publishing {} event: {}", event, message);
-//        getVertx().eventBus().publish(event, message);
-//    }
-
     // --------- Getters and Setters --------------
 
     /**
@@ -869,7 +849,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
      *
      * @param vertx the current instance of vertx
      */
-    public void setVertx(Vertx vertx) {
+    protected void setVertx(Vertx vertx) {
         this.vertx = vertx;
     }
 
@@ -916,14 +896,21 @@ public class TransferAPIVertical extends AbstractNatsListener {
         }
     }
 
+    /**
+     * Gets the current db service proxy
+     * @return proxy instance of {@link TransferTaskDatabaseService}
+     */
     public TransferTaskDatabaseService getDbService() {
         return dbService;
     }
 
+    /**
+     * Sets the {@link TransferTaskDatabaseService} to use
+     * @param dbService the dbService to set
+     */
     public void setDbService(TransferTaskDatabaseService dbService) {
         this.dbService = dbService;
     }
-
 
     /**
      * Generates a JWT token to authenticate to the service. Token is signed using the
@@ -978,42 +965,6 @@ public class TransferAPIVertical extends AbstractNatsListener {
     protected String makeTestJwt(String username) {
         System.out.println("username = " + username);
         return makeTestJwt(username, "");
-    }
-
-    /**
-     * Returns shortname for package containing a {@link RemoteDataClient}. This
-     * allows us to determine the protocol used by that client quickly for logging
-     * purposes. For example S3JCloud => s3, MaverickSFTP => sftp.
-     *
-     * @param clientClass class for which to get the protocol
-     * @return data protocol shortname used by a client.
-     */
-    private Object getProtocolForClass(Class<? extends RemoteDataClient> clientClass) {
-        String fullName = clientClass.getName();
-        String[] tokens = fullName.split("\\.");
-        return tokens[tokens.length - 2];
-    }
-
-    /**
-     * Parses the hostname out of a URI. This is used to extract systemId info from
-     * the TransferTask.rootTask.source and TransferTask.rootTask.dest fields and
-     * create the child source and dest values.
-     *
-     * @param serializedUri the URL containing a valid URI. This may just be a hostname
-     * @return the hostname of the provided URI.
-     */
-    private String getSystemId(String serializedUri) {
-        try {
-            return URI.create(serializedUri).getHost();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-
-    protected RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
-        TenancyHelper.setCurrentTenantId(tenantId);
-        return new RemoteDataClientFactory().getInstance(username, null, target);
     }
 
 }

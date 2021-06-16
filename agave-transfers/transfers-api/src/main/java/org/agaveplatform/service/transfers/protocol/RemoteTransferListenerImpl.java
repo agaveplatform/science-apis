@@ -96,10 +96,8 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
     public synchronized void setTransferTask(TransferTask transferTask) {
         try {
             _doPublishEvent(TRANSFERTASK_UPDATED, ((org.agaveplatform.service.transfers.model.TransferTask)transferTask).toJson());
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        } catch (InterruptedException|IOException e) {
+            log.error("Failed to publish transfer updated event", e);
         }
         this.transferTask = transferTask;
     }

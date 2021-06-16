@@ -202,7 +202,6 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 			}
 			else {
 				String message = String.format("Failed to set status of transfertask %s to paused. error: %s", uuid, reply.cause());
-				logger.debug(message);
 				doHandleError(reply.cause(), message, body, handler);
 			}
 		});
@@ -289,14 +288,12 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 					} else {
 						String message = String.format("Unable to update status of transfer task %s to PAUSED. %s",
 								uuid, updateReply.cause().getMessage());
-						logger.debug(message);
 						doHandleError(updateReply.cause(), message, body, handler);
 					}
 				});
 			} else {
 				String message = String.format("Unable to lookup child tasks for transfer task %s while processing a pause event. %s",
 						uuid, reply.cause().getMessage());
-				logger.debug(message);
 				doHandleError(reply.cause(), message, body, handler);
 			}
 		});
@@ -381,6 +378,9 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 	public void setDbService(TransferTaskDatabaseService dbService) {
 		this.dbService = dbService;
 	}
+
+	public void processInterrupt(JsonObject body, io.vertx.core.Handler<io.vertx.core.AsyncResult<Boolean>> handler) {}
+
 }
 
 

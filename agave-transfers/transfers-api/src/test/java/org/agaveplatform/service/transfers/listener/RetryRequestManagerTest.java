@@ -12,7 +12,6 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.iplantc.service.common.exceptions.MessagingException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
@@ -46,7 +45,7 @@ public class RetryRequestManagerTest extends BaseTestCase {
      * @param vertx the test vertx instance
      * @return a mocked of {@link TransferTaskAssignedListener}
      */
-    protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException, MessagingException {
+    protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) {
         TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
         when(listener.getVertx()).thenReturn(vertx);

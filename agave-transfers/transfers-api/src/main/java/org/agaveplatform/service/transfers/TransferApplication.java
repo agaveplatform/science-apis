@@ -180,7 +180,7 @@ public class TransferApplication {
 
                             DeploymentOptions notificationWorkerOptions = new DeploymentOptions()
                                     .setWorkerPoolName("notification-task-worker-pool")
-                                    .setWorkerPoolSize(5)
+                                    .setWorkerPoolSize(2)
                                     .setInstances(1)
                                     .setConfig(config)
                                     .setWorker(true)

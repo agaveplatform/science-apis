@@ -11,7 +11,6 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.RemoteSystemAO;
-import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.systems.exceptions.SystemRoleException;
@@ -229,17 +228,14 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             URI srcUri;
             URI destUri;
             try {
+                log.info("got into TransferTaskCreatedListener.processEvent");
                 srcUri = URI.create(source);
-            } catch (Exception e) {
-                throw new RemoteDataSyntaxException(String.format("Unable to parse source uri %s for transfer task %s: %s",
-                        source, uuid, e.getMessage()));
-            }
-
-            try {
                 destUri = URI.create(dest);
             } catch (Exception e) {
-                throw new RemoteDataSyntaxException(String.format("Unable to parse dest uri %s for transfer task %s: %s",
-                        source, uuid, e.getMessage()));
+                String msg = String.format("Unable to parse source uri %s for transfer task %s: %s",
+                        source, uuid, e.getMessage());
+                log.error(msg);
+                throw new RemoteDataSyntaxException(msg, e);
             }
 
             // ensure we can make the transfer based on protocol
@@ -264,11 +260,14 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             }
 
             if (uriSchemeIsNotSupported(destUri)) {
+                log.info("uri is not supported. {}", destUri);
                 throw new RemoteDataSyntaxException(String.format("Unknown destination schema %s for the transfer task %s",
                         destUri.getScheme(), uuid));
             } else {
+                log.info("uri is supported. {}", destUri);
+                SystemDao systemDao = new SystemDao();
                 if (destUri.getScheme().equalsIgnoreCase("agave")) {
-                    // TODO: ensure user has access to the system. We may need to look up file permissions here as well.
+                    // TODO: ensure user has access to the system. We may need to look up file permissions her as well.
                     //  though it's a lot easier to say this is an internal service and permissions will be checked and
                     //  invalidated from another process and propagated here via events.
                     if (!userHasMinimumRoleOnSystem(tenantId, username, destUri.getHost(), RoleType.USER)) {
@@ -293,33 +292,31 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                             String owner = updateResult.result().getString("owner");
                             String host = srcUri.getHost();
                             String subject = createPushMessageSubject(tenantId, owner, host, TRANSFERTASK_ASSIGNED);
-                            Handler<AsyncResult<Boolean>> handle = null;
-                            _doPublishEvent(subject, updateResult.result(), handle);
+//                            Handler<AsyncResult<Boolean>> handle = null;
+                            _doPublishEvent(subject, updateResult.result(), handler);
 
                         } catch (Exception e) {
                             log.debug(e.getMessage());
+                            handler.handle(Future.failedFuture(e));
                         }
-                        handler.handle(Future.succeededFuture(true));
                     } else {
                         // update failed
                         String msg = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
                                 uuid, updateResult.cause().getMessage());
-                        try {
-                            doHandleError(updateResult.cause(), msg, body, handler);
-                        } catch (Exception e) {
-                            log.error("Error with TTCreatedLisntener in the processEvent method. {}", e.getMessage());
-                        }
+                        doHandleError(updateResult.cause(), msg, body, handler);
                     }
                 });
             } else {
                 log.info("Skipping processing of child file items for transfer tasks in TransferTaskCreatedListener {} due to interrupt event.", uuid);
                 String subject = createPushMessageSubject(tenantId, username, srcUri.getHost(), TRANSFERTASK_CANCELED_ACK);
-                getMessageClient().push(subject, createdTransferTask.toString());
-                handler.handle(Future.succeededFuture(false));
+                _doPublishEvent(subject, createdTransferTask.toJson(), resp -> {
+                    handler.handle(Future.succeededFuture(false));
+                });
+
             }
         } catch (Exception e) {
             log.error("Error with TransferTaskCreatedListener {}", e.getMessage());
-            try { doHandleError(e, e.getMessage(), body, handler); } catch (Exception ignored){}
+            doHandleError(e, e.getMessage(), body, handler);
         }
     }
 

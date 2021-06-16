@@ -345,7 +345,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 	 * @throws RemoteDataException when a connection cannot be made to the {@link RemoteSystem}
 	 * @throws IOException if unable to connect to the remote host.
 	 */
-	protected void processCopyRequest(RemoteDataClient srcClient, RemoteDataClient destClient, TransferTask transferTask, Handler<AsyncResult<Boolean>> handler) {
+	protected void processCopyRequest(RemoteDataClient srcClient, RemoteDataClient destClient, TransferTask transferTask, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
 //			throws RemoteDataException, IOException {
 		log.debug("Got into TransferAllProtocolVertical.processCopyRequest ");
 
@@ -452,7 +452,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 	 * @param destClient the remote data client to the destination of the transfer task
 	 * @return an instance of a {@link URLCopy} initialized to perform the transfer task.
 	 */
-	protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient){
+	protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient) throws IOException, InterruptedException {
 		return new URLCopy(srcClient, destClient, getVertx(), getRetryRequestManager());
 	}
 

@@ -1375,7 +1375,7 @@ public class URLCopy{
      * @param eventName the name of the event. This doubles as the address in the request invocation.
      * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
-    public void _doPublishEvent(String eventName, JsonObject body) {
+    public void _doPublishEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
         log.debug("_doPublishEvent({}, {})", eventName, body);
         getRetryRequestManager().request(eventName, body, 2);
     }

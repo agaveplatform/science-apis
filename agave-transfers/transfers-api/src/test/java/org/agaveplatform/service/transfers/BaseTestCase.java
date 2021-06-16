@@ -86,6 +86,7 @@ public abstract class BaseTestCase {
         public IsSameTransferTask(TransferTask expectedTransferTask) {
             this.expectedTransferTask = expectedTransferTask;
         }
+
         /**
          * Returns whether this matcher accepts the given argument.
          * <p>

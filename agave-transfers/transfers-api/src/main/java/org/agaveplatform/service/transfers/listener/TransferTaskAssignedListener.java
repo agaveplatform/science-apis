@@ -314,9 +314,9 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                             String message = String.format("Error creating new child file transfer task for %s: %s -> %s. %s",
                                                                     uuid, childSource, childDest, childResult.cause().getMessage());
 
-                                                           f doHandleFailure(childResult.cause(), message, body, taResp -> {
+                                                           doHandleFailure(childResult.cause(), message, body, taResp -> {
                                                                 promise.fail(childResult.cause());
-                                                            })
+                                                            });
                                                         }
                                                     });
                                                 } else {

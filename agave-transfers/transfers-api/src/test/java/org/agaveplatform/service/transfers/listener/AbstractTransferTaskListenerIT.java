@@ -52,7 +52,7 @@ class AbstractTransferTaskListenerIT {
         doCallRealMethod().when(tc).addCancelledTask(any());
         doCallRealMethod().when(tc).removeCancelledTask(any());
         when(tc.taskIsNotInterrupted(any())).thenCallRealMethod();
-        doNothing().when(tc)._doPublishEvent(any(), any());
+        doNothing().when(tc)._doPublishEvent(any(), any(), any());
 
         // this object is expected to be sent when an interrupte is detected.
         JsonObject cancelledMessage = new JsonObject().put("message", "Transfer was Canceled or Paused");

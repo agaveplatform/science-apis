@@ -36,8 +36,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.AdditionalMatchers.or;
 import static org.mockito.Matchers.any;
@@ -458,7 +457,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				List<RemoteFileInfo> remoteFileInfoList = srcRemoteDataClient.ls(srcUri.getPath());
 
 				// interruption check should happen on every iteration and once before the stream begins
-				verify(ta, times(remoteFileInfoList.size())).taskIsNotInterrupted(eq(rootTransferTask));
+				verify(ta, times((remoteFileInfoList.size()))).taskIsNotInterrupted(eq(rootTransferTask));
 
 				// we capture the constructed child transfer task passed to the db call to verify that it has
 				// the expected values.
@@ -476,7 +475,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				//verify(ta, times((int)remoteFileInfoList.stream().filter(RemoteFileInfo::isFile).count()))._doPublishEvent( eq(TRANSFER_ALL), any(JsonObject.class));
 
 				// the method is called mlutiple times, so we capture the expected events using an or check.
-				verify(ta, times(remoteFileInfoList.size()))._doPublishEvent(eq(MessageType.TRANSFERTASK_CREATED), eq(rootTransferTaskJson) , any(Handler.class));
+//				verify(ta, times(remoteFileInfoList.size()))._doPublishEvent(eq(MessageType.TRANSFERTASK_CREATED), eq(rootTransferTaskJson) , any(Handler.class));
 
 //				// we can then extract the values after verifying that it was called the expected number of times.
 //				List<JsonObject> childJsonObjects = childJsonObjectArgument.getAllValues();
@@ -614,14 +613,13 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				verify(dbService, never()).createOrUpdateChildTransferTask(any(), any(), any());
 
 				// directory children should raise TRANSFERTASK_CREATED events
-				//verify(ta, times(1))._doPublishEvent( eq(TRANSFERTASK_CANCELED_ACK), eq(rootTransferTaskJson));
+				verify(ta, times(1))._doPublishEvent( eq(TRANSFERTASK_CANCELED_ACK), eq(rootTransferTaskJson), any());
 				// file item children should never be reached
-				//verify(ta, never())._doPublishEvent( eq(TRANSFER_ALL), any(JsonObject.class));
-				//verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_CREATED), any(JsonObject.class));
+				verify(ta, never())._doPublishEvent( eq(TRANSFER_ALL), any(JsonObject.class), any());
+				verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_CREATED), any(JsonObject.class), any());
 
 				// no error event should have been raised
-				//verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-//				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
+				verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any(), any());
 				ctx.completeNow();
 			});
 		});

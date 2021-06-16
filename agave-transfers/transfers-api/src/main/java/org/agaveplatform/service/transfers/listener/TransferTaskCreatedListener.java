@@ -227,15 +227,20 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 
         try {
             URI srcUri;
-            URI destUri;
             try {
-                log.info("got into TransferTaskCreatedListener.processEvent");
                 srcUri = URI.create(source);
-                destUri = URI.create(dest);
             } catch (Exception e) {
                 String msg = String.format("Unable to parse source uri %s for transfer task %s: %s",
                         source, uuid, e.getMessage());
-                log.error(msg);
+                throw new RemoteDataSyntaxException(msg, e);
+            }
+
+            URI destUri;
+            try {
+                destUri = URI.create(dest);
+            } catch (Exception e) {
+                String msg = String.format("Unable to parse dest uri %s for transfer task %s: %s",
+                        source, uuid, e.getMessage());
                 throw new RemoteDataSyntaxException(msg, e);
             }
 

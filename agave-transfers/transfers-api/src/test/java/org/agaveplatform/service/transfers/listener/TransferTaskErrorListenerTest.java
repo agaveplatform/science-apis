@@ -8,6 +8,7 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -40,21 +41,28 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		vertx.close(ctx.completing());
 	}
 
-	protected TransferTaskErrorListener getMockTransferErrorListenerInstance(Vertx vertx) throws IOException, InterruptedException, MessagingException {
+	protected TransferTaskErrorListener getMockTransferErrorListenerInstance(Vertx vertx) {
 		TransferTaskErrorListener listener = mock(TransferTaskErrorListener.class );
-		when(listener.config()).thenReturn(config);
-		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ERROR);
-		when(listener.getVertx()).thenReturn(vertx);
-		when(listener.config()).thenReturn(config);
-		when(listener.getRecoverableExceptionsClassNames()).thenCallRealMethod();
-		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		when(listener.taskIsNotInterrupted(any())).thenReturn(true);
-		when(listener.getRecoverableExceptionsClassNames()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any(), any());
-		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
-		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
-		doCallRealMethod().when(listener).processError(any(), any());
-		doCallRealMethod().when(listener).processBody(any(), any());
+		try {
+			when(listener.config()).thenReturn(config);
+			when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ERROR);
+			when(listener.getVertx()).thenReturn(vertx);
+			when(listener.config()).thenReturn(config);
+			when(listener.getRecoverableExceptionsClassNames()).thenCallRealMethod();
+			when(listener.taskIsNotInterrupted(any())).thenReturn(true);
+			when(listener.getRecoverableExceptionsClassNames()).thenCallRealMethod();
+			when(listener.getRetryRequestManager()).thenCallRealMethod();
+
+			NatsJetstreamMessageClient natsCleint = mock(NatsJetstreamMessageClient.class);
+			doNothing().when(natsCleint).push(any(), any());
+			when(listener.getMessageClient()).thenReturn(natsCleint);
+
+			doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
+			doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+			doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
+			doCallRealMethod().when(listener).processError(any(), any());
+			doCallRealMethod().when(listener).processBody(any(), any());
+		} catch (Exception ignored){}
 
 		return listener;
 	}

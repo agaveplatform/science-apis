@@ -2,22 +2,9 @@ package org.iplantc.service.systems.dao;
 
 // Generated Feb 1, 2013 6:15:53 PM by Hibernate Tools 3.4.0.CR1
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.hibernate.CacheMode;
-import org.hibernate.Criteria;
-import org.hibernate.HibernateException;
-import org.hibernate.ObjectNotFoundException;
-import org.hibernate.Query;
-import org.hibernate.Session;
+import org.hibernate.*;
 import org.hibernate.criterion.Restrictions;
 import org.hibernate.transform.AliasToEntityMapResultTransformer;
 import org.hibernate.transform.DistinctRootEntityResultTransformer;
@@ -33,17 +20,15 @@ import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.metadata.util.ServiceUtils;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.manager.SystemManager;
-import org.iplantc.service.systems.model.AuthConfig;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.RemoteConfig;
-import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemRole;
+import org.iplantc.service.systems.model.*;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.systems.search.SystemSearchFilter;
 import org.iplantc.service.systems.search.SystemSearchResult;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
+
+import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * Home object for domain model class RemoteSystem.
@@ -315,6 +300,95 @@ public class SystemDao extends AbstractDao {
             try {
                 HibernateUtil.commitTransaction();
             } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    public RemoteSystem findBySystemIdAndTenant(String systemId, String tenantId) {
+        if (StringUtils.isEmpty(systemId)) {
+            return null;
+        }
+        else
+        {
+            String hql = "SELECT sys FROM RemoteSystem AS sys "
+                    + "WHERE sys.available = :available "
+                    + "	AND sys.systemId = :systemId "
+                    + " AND sys.tenantId = :tenantId "
+                    + "ORDER BY sys.name DESC";
+
+            try {
+                Session session = getSession();
+                session.clear();
+                Query query = session.createQuery(hql)
+                        .setBoolean("available", true)
+                        .setString("systemId", systemId)
+                        .setString("tenantId", tenantId);
+
+
+                RemoteSystem system = (RemoteSystem) query
+                        .setResultTransformer(DistinctRootEntityResultTransformer.INSTANCE)
+                        .setMaxResults(1)
+                        .uniqueResult();
+
+                session.flush();
+
+                return system;
+            } catch (HibernateException ex) {
+                throw ex;
+            } finally {
+                try {
+                    HibernateUtil.commitTransaction();
+                } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    public RemoteSystem findUserSystemBySystemIdAndTenant(String username, String systemId, String tenantId) {
+        if (StringUtils.isEmpty(systemId)) {
+            return null;
+        }
+        else
+        {
+            if (ServiceUtils.isAdmin(username)) {
+                return findBySystemIdAndTenant(systemId, tenantId);
+            }
+            else
+            {
+                String hql = "SELECT sys FROM RemoteSystem AS sys "
+                        + "left JOIN sys.roles AS r "
+                        + "WHERE sys.available = :available "
+                        + "	AND sys.systemId = :systemId "
+                        + "	AND ( sys.owner = :pemUser "
+                        + "		OR (r.username = :pemUser AND r.role != 'NONE') "
+                        + "		OR sys.publiclyAvailable = :publiclyAvailable ) ";
+
+                hql += "ORDER BY sys.name DESC";
+
+                try {
+                    Session session = getSession();
+                    session.clear();
+                    Query query = session.createQuery(hql)
+                            .setBoolean("available", true)
+                            .setBoolean("publiclyAvailable", true)
+                            .setString("pemUser", username)
+                            .setString("systemId", systemId);
+
+
+                    RemoteSystem system = (RemoteSystem) query
+                            .setResultTransformer(DistinctRootEntityResultTransformer.INSTANCE)
+                            .setMaxResults(1)
+                            .uniqueResult();
+
+                    session.flush();
+
+                    return system;
+                } catch (HibernateException ex) {
+                    throw ex;
+                } finally {
+                    try {
+                        HibernateUtil.commitTransaction();
+                    } catch (Throwable ignored) {}
+                }
             }
         }
     }
@@ -1218,20 +1292,20 @@ public class SystemDao extends AbstractDao {
                     query.setDate(searchTerm.getSafeSearchField(), (java.util.Date)searchCriteria.get(searchTerm));
 
                     q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
-                            "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+                            "'" + searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)) + "'");
                 }
                 else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Integer.class) {
                     query.setInteger(searchTerm.getSafeSearchField(), (Integer)searchCriteria.get(searchTerm));
 
                     q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
-                            "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+                            "'" + searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)) + "'");
                 }
                 else 
                 {
                     query.setParameter(searchTerm.getSafeSearchField(), 
                             searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)));
                     q = StringUtils.replace(q, ":" + searchTerm.getSafeSearchField(), 
-                            Pattern.quote("'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'"));
+                            Pattern.quote("'" + searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)) + "'"));
                 }
             }
 

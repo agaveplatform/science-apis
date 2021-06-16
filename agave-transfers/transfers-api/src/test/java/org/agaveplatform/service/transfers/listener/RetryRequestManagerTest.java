@@ -45,7 +45,7 @@ public class RetryRequestManagerTest extends BaseTestCase {
      * @param vertx the test vertx instance
      * @return a mocked of {@link TransferTaskAssignedListener}
      */
-    protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) {
+    protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException {
         TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
         when(listener.getVertx()).thenReturn(vertx);

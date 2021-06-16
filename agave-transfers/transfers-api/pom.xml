@@ -139,13 +139,72 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>${maven-failsafe-plugin.version}</version>
+            </plugin>
+
+            <!-- Docker build of the flyway migration image -->
+            <plugin>
+                <groupId>com.spotify</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <version>${docker-maven-plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>javax.activation</groupId>
+                        <artifactId>javax.activation-api</artifactId>
+                        <version>1.2.0</version>
+                        <scope>compile</scope>
+                    </dependency>
+                </dependencies>
                 <configuration>
-                    <argLine>
-                        --illegal-access=permit --add-modules=java.xml.bind -Dlogback.configurationFile=target/test-classes/logback-test.xml
-                    </argLine>
-                    <skipTests>${skip.integration.tests}</skipTests>
-                    <systemPropertyVariables/>
+                    <!-- Standard build will build an image without the prefix so we don't
+                        force conventions on folks. -->
+                    <imageName>${project.artifactId}</imageName>
+                    <dockerDirectory>${basedir}/target/docker</dockerDirectory>
+                    <skipDocker>${skip.docker.build}</skipDocker>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>build-container</id>
+                        <!-- Generic docker build of API -->
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+
+                        <configuration>
+                            <useGitCommitId>false</useGitCommitId>
+                            <imageTags>
+                                <tag>${buildNumber}</tag>
+                                <tag>${project.version}</tag>
+                            </imageTags>
+                            <forceTags>true</forceTags>
+                            <resources>
+                                <resource>
+                                    <targetPath>/</targetPath>
+                                    <directory>${basedir}/target/classes</directory>
+                                    <includes>
+                                        <include>Dockerfile</include>
+                                        <include>db-queries.yml</include>
+                                        <includes>config.json</includes>
+                                    </includes>
+                                </resource>
+                                <resource>
+                                    <targetPath>/</targetPath>
+                                    <directory>${basedir}/target</directory>
+                                    <includes>
+                                        <include>${project.artifactId}-${project.version}.jar</include>
+                                    </includes>
+                                </resource>
+                                <resource>
+                                    <targetPath>/${project.artifactId}-${project.version}.lib</targetPath>
+                                    <directory>${basedir}/target/${project.artifactId}-${project.version}.lib</directory>
+                                    <includes>
+                                        <include>**</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>
@@ -230,6 +289,11 @@
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>
+            <artifactId>vertx-health-check</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
             <artifactId>vertx-service-proxy</artifactId>
             <version>${vertx.version}</version>
         </dependency>
@@ -250,11 +314,14 @@
             <artifactId>vertx-tcp-eventbus-bridge</artifactId>
             <version>${vertx.version}</version>
         </dependency>
-        <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-health-check</artifactId>
-            <version>${vertx.version}</version>
-        </dependency>
+
+        <!-- Persistence dependencies -->
+<!--        <dependency>-->
+<!--            <groupId>org.hsqldb</groupId>-->
+<!--            <artifactId>hsqldb</artifactId>-->
+<!--            <version>2.4.0</version>-->
+<!--        </dependency>-->
+
         <!-- mysql jdbc driver -->
         <dependency>
             <groupId>mysql</groupId>

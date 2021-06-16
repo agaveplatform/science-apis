@@ -39,6 +39,7 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 	public void start() {
 
         List<String> notificationEvents = List.of(
+                getDefaultEventChannel(),
                 TRANSFERTASK_CREATED,
                 TRANSFERTASK_UPDATED,
                 TRANSFERTASK_FINISHED,
@@ -62,6 +63,8 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
         msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
 
         JsonObject body = msg.body();
+        logger.debug("Starting processing of notification {}", body);
+
         JsonObject notificationMessageBody = processForNotificationMessageBody(msg.address(), body);
         sentToLegacyMessageQueue(notificationMessageBody);
     }
@@ -78,9 +81,7 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
     protected JsonObject processForNotificationMessageBody(String messageType, JsonObject body) {
         try {
             String uuid = body.getString("uuid");
-            String tenantId = body.getString("tenant_id");
 
-            logger.debug("tenantId = {}", tenantId);
             if (uuid == null) {
                 logger.error("Transfer task uuid cannot be null.");
             } else {
@@ -120,7 +121,6 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
      */
     protected boolean sentToLegacyMessageQueue(JsonObject body) {
         logger.info("Sending legacy notification message for transfer task {}", body.getString("uuid"));
-        logger.debug("tenantId = {}", body.getString("tenant_id"));
         org.iplantc.service.common.Settings.NOTIFICATION_QUEUE = org.iplantc.service.common.Settings.FILES_STAGING_QUEUE;
         org.iplantc.service.common.Settings.NOTIFICATION_TOPIC = org.iplantc.service.common.Settings.FILES_STAGING_TOPIC;
 

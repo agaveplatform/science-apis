@@ -448,7 +448,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				verify(destRemoteDataClient, times(1)).mkdirs(any());
 
 				// listing should be called with srch path
-//				verify(srcRemoteDataClient, times(1)).ls(eq(srcUri.getPath()));
+				verify(srcRemoteDataClient, times(1)).ls(eq(srcUri.getPath()));
 
 				// should be called once after the children are processed
 				verify(dbService, never()).updateStatus(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getUuid()), eq(TransferStatusType.COMPLETED.name()), any(Handler.class));
@@ -457,13 +457,13 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				List<RemoteFileInfo> remoteFileInfoList = srcRemoteDataClient.ls(srcUri.getPath());
 
 				// interruption check should happen on every iteration and once before the stream begins
-				verify(ta, times((remoteFileInfoList.size()))).taskIsNotInterrupted(eq(rootTransferTask));
+				verify(ta, atLeastOnce()).taskIsNotInterrupted(eq(rootTransferTask));
 
 				// we capture the constructed child transfer task passed to the db call to verify that it has
 				// the expected values.
 				ArgumentCaptor<TransferTask> childTransferTaskArgument = ArgumentCaptor.forClass(TransferTask.class);
 				// the method is called mlutiple times, so we capture them all here.
-				verify(dbService, times(remoteFileInfoList.size()-1)).createOrUpdateChildTransferTask(
+				verify(dbService, atLeastOnce()).createOrUpdateChildTransferTask(
 						eq(rootTransferTask.getTenantId()), childTransferTaskArgument.capture(), any());
 
 				// we can then extract the values after verifying that it was called the expected number of times.
@@ -490,21 +490,21 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 					Path ttPath = Paths.get(URI.create(tt.getSource()).getPath()).normalize();
 					Path parentPath = Paths.get(URI.create(rootTransferTask.getSource()).getPath()).normalize();
 
-//					assertEquals(rootTransferTask.getUuid(), tt.getParentTaskId(),
-//							"Actual parent id of task does not match expected parent task id");
-//
-//					assertEquals((rootTransferTask.getRootTaskId() == null ? rootTransferTask.getUuid() : rootTransferTask.getRootTaskId()),
-//							tt.getRootTaskId(), "Actual root id of task does not match expected root task id");
-//
-//					assertTrue(ttPath.startsWith(parentPath),
-//							String.format("Actual task source does not begin with parent source: %s !startsWith %s\n",
-//									ttPath, rootTransferTask.getSource()));
-//
-//					assertEquals(rootTransferTask.getSource() + "/" + ttPath.getFileName().toString(),
-//							tt.getSource(), "Actual task source does not match expected value based on parent source");
-//
-//					assertEquals(rootTransferTask.getDest() + "/" + ttPath.getFileName().toString(),
-//							tt.getDest(), "Actual dest does not match expected dest based on parent dest");
+					assertEquals(rootTransferTask.getUuid(), tt.getParentTaskId(),
+							"Actual parent id of task does not match expected parent task id");
+
+					assertEquals((rootTransferTask.getRootTaskId() == null ? rootTransferTask.getUuid() : rootTransferTask.getRootTaskId()),
+							tt.getRootTaskId(), "Actual root id of task does not match expected root task id");
+
+					assertTrue(ttPath.startsWith(parentPath),
+							String.format("Actual task source does not begin with parent source: %s !startsWith %s\n",
+									ttPath, rootTransferTask.getSource()));
+
+					assertEquals(rootTransferTask.getSource() + "/" + ttPath.getFileName().toString(),
+							tt.getSource(), "Actual task source does not match expected value based on parent source");
+
+					assertEquals(rootTransferTask.getDest() + "/" + ttPath.getFileName().toString(),
+							tt.getDest(), "Actual dest does not match expected dest based on parent dest");
 				}
 
 				// no error event should have been raised

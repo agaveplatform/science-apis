@@ -5,7 +5,6 @@ package org.agaveplatform.service.transfers.protocol;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
@@ -23,6 +22,7 @@ import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.gridftp.GridFTP;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.Range;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
@@ -45,15 +45,13 @@ import static org.agaveplatform.service.transfers.enumerations.TransferTaskEvent
  *
  */
 public class URLCopy{
-    //private static Logger log = Logger.getLogger(URLCopy.class);
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(URLCopy.class);
+    private static final Logger log = LoggerFactory.getLogger(URLCopy.class);
     private final RetryRequestManager retryRequestManager;
     private final RemoteDataClient sourceClient;
     private final RemoteDataClient destClient;
 
     private final Vertx vertx;
     private final AtomicBoolean killed = new AtomicBoolean(false);
-    private TransferTaskDatabaseService dbService;
 
     public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient, Vertx vertx, RetryRequestManager retryRequestManager) {
         this.sourceClient = sourceClient;
@@ -84,26 +82,36 @@ public class URLCopy{
     }
 
     /**
-     * @return the killed
+     * @return the atomic killed variable
+     */
+    protected synchronized AtomicBoolean getKilled() {
+        return this.killed;
+    }
+
+
+    /**
+     * @return the killed boolean value
      */
     public synchronized boolean isKilled() {
-        return this.killed.get();
+        return getKilled().get();
     }
 
     /**
-     * @param killed the killed to set
+     * @param shouldBeKilled the killed to set
      */
-    public synchronized void setKilled(boolean killed) {
-        this.killed.set(killed);
-        if ((getSourceClient() instanceof GridFTP) && (getDestClient() instanceof GridFTP)) {
+    public synchronized void setKilled(boolean shouldBeKilled) {
+        getKilled().set(shouldBeKilled);
+
+        if ((getSourceClient() instanceof GridFTP) && (getDestClient() instanceof GridFTP) && !shouldBeKilled) {
             try {
                 ((GridFTP) getSourceClient()).abort();
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
+
             try {
                 ((GridFTP) getDestClient()).abort();
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
+
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -111,13 +119,12 @@ public class URLCopy{
      * Threadsafe check for killed copy command either through the
      * thread being explicitly killed or the transfertask status
      * being set to cancelled.
-     * @param listener
-     * @throws ClosedByInterruptException
+     * @param listener the listener to check for interruptions
+     * @throws InterruptedException when this instance has been externally interrupted
      */
-    protected void checkCancelled(RemoteTransferListener listener)
-            throws ClosedByInterruptException {
+    protected void checkCancelled(RemoteTransferListener listener) throws InterruptedException {
         if (isKilled() || listener.isCancelled()) {
-            throw new ClosedByInterruptException();
+            throw new InterruptedException();
         }
     }
 
@@ -128,16 +135,15 @@ public class URLCopy{
      * protocol, file size, and locality of the data. Progress is written to the transfer task
      * via a {@link RemoteTransferListenerImpl}
      *
-     * @param
-     * @param
-     * @param transferTask
+     * @param transferTask the transferTask to copy
+     * @return the updated transferTask
      * @throws RemoteDataException
      * @throws IOException
      * @throws TransferException
-     * @throws ClosedByInterruptException
+     * @throws InterruptedException
      */
     public TransferTask copy(TransferTask transferTask)
-            throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, ClosedByInterruptException {
+            throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, InterruptedException {
         return copy(transferTask, null);
     }
 
@@ -153,10 +159,10 @@ public class URLCopy{
      * @throws RemoteDataException
      * @throws IOException
      * @throws TransferException
-     * @throws ClosedByInterruptException
+     * @throws InterruptedException
      */
     public TransferTask copy(TransferTask transferTask, List<String> exclusions)
-            throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, ClosedByInterruptException {
+            throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, InterruptedException {
         log.debug("UrlCopy.copy method. {}", transferTask.getUuid());
         if (transferTask == null) {
             throw new TransferException("TransferTask cannot be null. Please provide"
@@ -198,37 +204,30 @@ public class URLCopy{
             }
             // otherwise, we're doing the heavy lifting ourselves
             else {
+                double srcFileLength = getSourceClient().length(srcPath);
+                long availableBytes = new File("/").getUsableSpace();
 
-//                try {
-                    double srcFileLength = getSourceClient().length(srcPath);
-                    long availableBytes = new File("/").getUsableSpace();
-
-                    // we have a choice of using a relay or streaming transfer. For relay transfers,
-                    // we have to ensure the host has available disk space to do the inital get
-                    // and cache the file on disk. Streaming transfer does not
-                    if (Settings.ALLOW_RELAY_TRANSFERS
-                            && srcFileLength < (Settings.MAX_RELAY_TRANSFER_SIZE * Math.pow(2, 30))) {
-                        if (availableBytes > (srcFileLength + (5 * Math.pow(2, 30)))) {
-                            log.debug("Local disk has " + availableBytes + " unused bytes  prior to "
-                                    + "relay transfer of " + srcFileLength + " bytes for transfer task "
-                                    + transferTask.getUuid() + ". Relay transfer will be allowed.");
-                            transferTask = relayTransfer(srcPath, destPath, transferTask);
-                        } else {
-                            log.debug("Local disk has insufficient space (" + availableBytes +
-                                    " < " + srcFileLength + ") for relay transfer of transfer task "
-                                    + transferTask.getUuid() + ". Switching to streaming transfer instead.");
-                            transferTask = streamingTransfer(srcPath, destPath, getRemoteStreamingTransferListenerForTransferTask(transferTask));
-                        }
-                    }
-                    // only streaming transfers are supported at this point, so carry on with those.
-                    else {
+                // we have a choice of using a relay or streaming transfer. For relay transfers,
+                // we have to ensure the host has available disk space to do the inital get
+                // and cache the file on disk. Streaming transfer does not
+                if (Settings.ALLOW_RELAY_TRANSFERS
+                        && srcFileLength < (Settings.MAX_RELAY_TRANSFER_SIZE * Math.pow(2, 30))) {
+                    if (availableBytes > (srcFileLength + (5 * Math.pow(2, 30)))) {
+                        log.debug("Local disk has " + availableBytes + " unused bytes  prior to "
+                                + "relay transfer of " + srcFileLength + " bytes for transfer task "
+                                + transferTask.getUuid() + ". Relay transfer will be allowed.");
+                        transferTask = relayTransfer(srcPath, destPath, transferTask);
+                    } else {
+                        log.debug("Local disk has insufficient space (" + availableBytes +
+                                " < " + srcFileLength + ") for relay transfer of transfer task "
+                                + transferTask.getUuid() + ". Switching to streaming transfer instead.");
                         transferTask = streamingTransfer(srcPath, destPath, getRemoteStreamingTransferListenerForTransferTask(transferTask));
                     }
-//                } catch (ClosedByInterruptException e) {
-//                    throw e;
-//                } catch (Throwable e) {
-//                    throw e;
-//                }
+                }
+                // only streaming transfers are supported at this point, so carry on with those.
+                else {
+                    transferTask = streamingTransfer(srcPath, destPath, getRemoteStreamingTransferListenerForTransferTask(transferTask));
+                }
             }
 
             return transferTask;
@@ -270,10 +269,10 @@ public class URLCopy{
      * @param aggregateTransferTask the top level TransferTask tracking the aggregate data movement
      * @return the updated {@code aggregatedTransferTask} after processing
      * @throws RemoteDataException if an error occurred attempting the transfer
-     * @throws ClosedByInterruptException if the transfer was interrupted
+     * @throws InterruptedException if the transfer was interrupted
      */
     protected TransferTask relayTransfer(String srcPath, String destPath, TransferTask aggregateTransferTask)
-            throws RemoteDataException, ClosedByInterruptException {
+            throws RemoteDataException, InterruptedException {
         File tmpFile = null;
         File tempDir = null;
         TransferTask srcChildTransferTask = null;
@@ -361,7 +360,7 @@ public class URLCopy{
                             getProtocolForClass(getSourceClient().getClass()),
                             "local"), e);
                     throw e;
-                } catch (ClosedByInterruptException e){
+                } catch (InterruptedException e){
                     log.debug(String.format(
                             "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
                             aggregateTransferTask.getUuid(),
@@ -444,7 +443,7 @@ public class URLCopy{
                             "local",
                             getProtocolForClass(getDestClient().getClass())), e);
                     throw e;
-                } catch (ClosedByInterruptException e){
+                } catch (InterruptedException e){
                     log.debug(String.format(
                             "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
                             aggregateTransferTask.getUuid(),
@@ -514,7 +513,7 @@ public class URLCopy{
                 //transfer updates are handled through the listener
             }
         }
-        catch (ClosedByInterruptException e) {
+        catch (InterruptedException e) {
             log.debug(String.format(
                     "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
                     aggregateTransferTask.getUuid(),
@@ -613,10 +612,10 @@ public class URLCopy{
      * @return the updated {@code aggregatedTransferTask} after processing
      * @throws RemoteDataException if an error occurred attempting the transfer
      * @throws IOException if unable to open a stream
-     * @throws ClosedByInterruptException if the transfer was interrupted
+     * @throws InterruptedException if the transfer was interrupted
      */
     protected TransferTask streamingTransfer(String srcPath, String destPath, RemoteStreamingTransferListenerImpl listener)
-            throws RemoteDataException, IOException, ClosedByInterruptException {
+            throws RemoteDataException, IOException, InterruptedException {
         // The "b" in the variable names means "buffered".
         RemoteInputStream<?> in = null;
         InputStream bis = null;
@@ -706,7 +705,7 @@ public class URLCopy{
             return (TransferTask)listener.getTransferTask();
 
         }
-        catch (ClosedByInterruptException e) {
+        catch (InterruptedException e) {
             log.debug(String.format(
                     "Aborted streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -716,12 +715,9 @@ public class URLCopy{
                     getProtocolForClass(getDestClient().getClass())), e);
 
             log.info("Transfer task " + listener.getTransferTask().getUuid() + " killed by worker shutdown.");
-            setKilled(true);
 
             listener.progressed(bytesSoFar);
             listener.cancel();
-
-            Thread.currentThread().interrupt();
 
             throw e;
         }
@@ -784,11 +780,11 @@ public class URLCopy{
      * @throws RemoteDataException
      * @throws IOException
      * @throws TransferException
-     * @throws ClosedByInterruptException
+     * @throws InterruptedException
      */
     public TransferTask copyRange(String srcPath, long srcRangeOffset, long srcRangeSize,
                                   String destPath, long destRangeOffset, TransferTask transferTask)
-            throws RemoteDataException, IOException, TransferException, ClosedByInterruptException {
+            throws RemoteDataException, IOException, TransferException, InterruptedException {
         if (transferTask == null) {
             throw new TransferException("TransferTask cannot be null. Please provide"
                     + "a valid transfer task to track this operation.");
@@ -851,11 +847,11 @@ public class URLCopy{
      * @return the updated {@code aggregatedTransferTask} after processing
      * @throws RemoteDataException if an error occurred attempting the transfer
      * @throws IOException if unable to open a stream
-     * @throws ClosedByInterruptException if the transfer was interrupted
+     * @throws InterruptedException if the transfer was interrupted
      */
     protected TransferTask proxyRangeTransfer(String srcPath, long srcRangeOffset, long srcRangeSize,
                                       String destPath, long destRangeOffset, RemoteTransferListenerImpl listener)
-            throws RemoteDataException, IOException, ClosedByInterruptException {
+            throws RemoteDataException, IOException, InterruptedException {
 
         if (listener == null) {
             throw new RemoteDataException("Transfer listener cannot be null");
@@ -1076,7 +1072,7 @@ public class URLCopy{
 
             return (TransferTask)listener.getTransferTask();
         }
-        catch (ClosedByInterruptException e) {
+        catch (InterruptedException e) {
             log.debug(String.format(
                     "Aborted streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -1090,7 +1086,7 @@ public class URLCopy{
 
             listener.progressed(bytesSoFar);
             listener.cancel();
-            Thread.currentThread().interrupt();
+            //Thread.currentThread().interrupt();
             throw e;
         }
         catch (RemoteDataException | IOException e) {
@@ -1219,9 +1215,9 @@ public class URLCopy{
      * @return the updated {@code aggregatedTransferTask} after processing
      * @throws RemoteDataException if an error occurred attempting the transfer
      * @throws IOException if unable to open a stream
-     * @throws ClosedByInterruptException if the transfer was interrupted
+     * @throws InterruptedException if the transfer was interrupted
      */
-    protected TransferTask dothirdPartyTransfer(String srcPath, String destPath, RemoteTransferListenerImpl listener) throws RemoteDataException, IOException {
+    protected TransferTask dothirdPartyTransfer(String srcPath, String destPath, RemoteTransferListenerImpl listener) throws RemoteDataException, IOException, InterruptedException{
         try {
             log.debug(String.format(
                     "Beginning third party transfer for task %s. %s to %s . Protocol: %s => %s",
@@ -1241,7 +1237,8 @@ public class URLCopy{
             ((GridFTP) getSourceClient()).setMode(GridFTPSession.MODE_EBLOCK);
             ((GridFTP) getSourceClient()).setTCPBufferSize(getSourceClient().getMaxBufferSize());
 
-//	        log.info("Enabling striped transfer.");
+	        log.debug("Starting third-party striped gridftp transfer.");
+	        // no way to gracefully interrupt this if the copy operation is cancelled. The
             ((GridFTP) getSourceClient()).setStripedActive(((GridFTP) getDestClient()).setStripedPassive());
 
 //	        if (task != null)
@@ -1288,18 +1285,10 @@ public class URLCopy{
                     getProtocolForClass(getSourceClient().getClass()),
                     getProtocolForClass(getDestClient().getClass())));
 
-            log.info("Transfer task " + listener.getTransferTask().getUuid() + " killed by worker shutdown.");
+            log.info("Transfer task " + listener.getTransferTask().getUuid() + " killed by external request.");
             setKilled(true);
 
-            try {
-                ((GridFTP) getSourceClient()).abort();
-            } catch (Exception ignored) {
-            }
-            try {
-                ((GridFTP) getDestClient()).abort();
-            } catch (Exception ignored) {
-            }
-            Thread.currentThread().interrupt();
+            //Thread.currentThread().interrupt();
             throw e;
         }
         catch (IOException e) {
@@ -1387,7 +1376,7 @@ public class URLCopy{
      * Kill the current thread for TransferTaskCancel event
      */
     public void killCopyTask(){
-        Thread.currentThread().interrupt();
+        //Thread.currentThread().interrupt();
         setKilled(true);
     }
 }

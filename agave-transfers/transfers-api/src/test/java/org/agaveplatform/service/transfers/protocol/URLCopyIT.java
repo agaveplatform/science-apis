@@ -111,7 +111,7 @@ public class URLCopyIT extends BaseTestCase {
         Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
     }
 
-    protected URLCopy getMockURLCopyInstance(Vertx vertx, TransferTask tt) throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
+    protected URLCopy getMockURLCopyInstance(Vertx vertx, TransferTask tt) throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException, InterruptedException {
         URLCopy listener = mock(URLCopy.class);
         doCallRealMethod().when(listener).copy(any(TransferTask.class));
         doCallRealMethod().when(listener).copy(any(TransferTask.class), anyList());

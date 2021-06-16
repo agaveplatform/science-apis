@@ -99,7 +99,7 @@ public class RemoteStreamingTransferListenerImpl extends RemoteTransferListenerI
             //TODO: parameterize the update interval used by each verticle
             if (( currentTime - getLastUpdated()) >= 15000) {
                 double progress = bytesSoFar - getBytesLastCheck();
-                task.setTransferRate(((double)progress / ((double)(currentTime - getLastUpdated()) /  1000.0) ));
+                task.setTransferRate((progress / ((double)(currentTime - getLastUpdated()) /  1000.0) ));
                 task.setLastUpdated(instantCurrentTime);
                 // send an event to notifiy an update listener that this task was updated.
                 setTransferTask(task);
@@ -146,7 +146,7 @@ public class RemoteStreamingTransferListenerImpl extends RemoteTransferListenerI
             log.debug("RemoteTransferListender for " + (task == null ? " anonymous transfer " : task.getUuid()) +
                     " was notified of an interrupt");
         setChanged();
-        Thread.currentThread().interrupt();
+//        Thread.currentThread().interrupt();
     }
 
     /* (non-Javadoc)

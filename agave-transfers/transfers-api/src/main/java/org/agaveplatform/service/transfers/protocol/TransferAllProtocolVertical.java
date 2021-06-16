@@ -234,7 +234,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 				// task was interrupted, so don't attempt a retry
 				log.info("Skipping transfer of transfer tasks {} due to interrupt event.", tt.getUuid());
 				_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
-				handler.handle(Future.succeededFuture(false));
+				handler.handle(Future.failedFuture(new ClosedByInterruptException()));
 			}
 		} catch (RemoteDataException e){
 			log.error("RemoteDataException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
@@ -296,87 +296,90 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		getExecutor().executeBlocking(promise -> {
 
 			ExecutorService executorService = Executors.newSingleThreadExecutor();
-			java.util.concurrent.Future<TransferTask> copyFuture = executorService.submit(new Callable<TransferTask>() {
-				@Override
-				public TransferTask call() throws Exception {
-					try {
-						TransferTask finishedTask = urlCopy.copy(transferTask);
-						_doPublishEvent(MessageType.TRANSFER_COMPLETED, finishedTask.toJson());
-						log.info("Completed copy of {} to {} for transfer task {} with status {}", finishedTask.getSource(),
-								finishedTask.getDest(), finishedTask.getUuid(), finishedTask);
-						return finishedTask;
-					} catch (ClosedByInterruptException e) {
-						// probably need to sync the transfer task since it's changed since the inital call to urlcopy
-						log.debug("Completed interrupt of Transfer Task {}, {}", transferTask.getUuid(), transferTask.toJSON() );
-						_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, transferTask.toJson());
-						throw e;
-					} catch (Exception e) {
-						log.error("Failed to copy Transfer Task {}, {}", transferTask.getUuid(), transferTask.toJSON() );
-						JsonObject json = new JsonObject()
-								.put("cause", e.getClass().getName())
-								.put("message", e.getMessage())
-								.mergeIn(transferTask.toJson());
-						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-						throw e;
-					}
-				}
-			});
-
-			while (!copyFuture.isDone()) {
-				// if the transfer task has been externally interrupted via an incoming message,
-				// cancel the executor.
-				if (taskIsNotInterrupted(transferTask)) {
-					urlCopy.setKilled(true);
-				} else {
-					// check every 2 seconds for completion
-					try {
-						Thread.sleep(2000);
-					} catch (Exception ignored) {
-						// Thread was interrupted externally, so terminate the copy.
-						urlCopy.setKilled(true);
-					}
-				}
-			}
-
+			CallableUrlCopy callableUrlQuery = new CallableUrlCopy(urlCopy, transferTask);
+			java.util.concurrent.Future<TransferTask> copyFuture = executorService.submit(callableUrlQuery);
 			try {
-				// now that the callable is completed, we try to get the response within a 10 second timeout.
-				// if the callable is complete, it will return immediately, if a transfer is hanging that has been
-				// killed, it will be forced to quit after 10 seconds.
-				TransferTask task = copyFuture.get(10, TimeUnit.SECONDS);
-				// if not null, it was successful
-				promise.tryComplete(task != null );
-			} catch (ExecutionException|InterruptedException|TimeoutException e) {
-				// if the callable did not complete, we will get one of the following exceptions. Regardless of
-				// what it is, we fail the promise to ack that the transfer did not complete.
+				int i=-1;
+				while (!copyFuture.isDone()) {
+					i++;
+					log.debug("[{}] URLCopy task is not yet complete.", i);
+					// if the transfer task has been externally interrupted via an incoming message,
+					// cancel the executor.
+					if (taskIsNotInterrupted(transferTask)) {
+						log.debug("[{}] Waiting for interrupt", i);
+						// check every 500 ms for completion
+						Thread.sleep(500);
+					} else {
+						log.debug("[{}] Interrupt found.", i);
+						callableUrlQuery.urlCopy.setKilled(true);
+						copyFuture.cancel(true);
+						break;
+					}
+				}
+
+				if (copyFuture.isCancelled()) {
+					// probably need to sync the transfer task since it's changed since the inital call to urlcopy
+					log.debug("Completed interrupt of Transfer Task {}, {}", transferTask.getUuid(), transferTask.toJSON() );
+					_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, transferTask.toJson());
+
+					promise.fail(new InterruptedException("URLCopy interrupted by external process."));
+				} else {
+					log.debug("URLCopy completed successfully.");
+					TransferTask finishedTask = copyFuture.get();
+					promise.complete(finishedTask != null);
+				}
+			} catch (ExecutionException | InterruptedException e) {
+				log.error("Timeout received executing task. {}", e.getMessage());
 				promise.fail(e);
-			}
-			finally {
+			} catch (Exception e) {
+				log.error("Unexpected exception received from task {}. {}", transferTask.getUuid(), e.getMessage() );
+				promise.fail(e);
+			} finally {
+				log.debug("Shutting down URLCopy executor service.");
 				// ensure we shut down the executor service no matter what
 				executorService.shutdown();
+				if (!executorService.isTerminated()) {
+					log.error("Cancelling non-finished urlcopy operation");
+				}
+				executorService.shutdownNow();
+				log.debug("URLCopy cancellation finished");
 			}
 
 		}, handler);
+
+
 	}
-//
-//	class URLCopyCallable implements Callable<TransferTask> {
-//
-//		private final URLCopy urlCopy;
-//		private final TransferTask transferTask;
-//
-//		public URLCopyCallable(URLCopy urlCopy, TransferTask transferTask) {
-//			this.urlCopy = urlCopy;
-//			this.transferTask = transferTask;
-//		}
-//
-//		@Override
-//		public TransferTask call() throws Exception {
-//			TransferTask finishedTask = urlCopy.copy(transferTask);
-//			_doPublishEvent(MessageType.TRANSFER_COMPLETED, finishedTask.toJson());
-//			return finishedTask;
-//			log.info("Completed copy of {} to {} for transfer task {} with status {}", finishedTask.getSource(),
-//					finishedTask.getDest(), finishedTask.getUuid(), finishedTask);
-//		}
-//	}
+
+	class CallableUrlCopy implements Callable<TransferTask> {
+		URLCopy urlCopy;
+		TransferTask transferTask;
+		CallableUrlCopy(URLCopy urlCopy, TransferTask transferTask) {
+			this.urlCopy = urlCopy;
+			this.transferTask = transferTask;
+		}
+
+		@Override
+		public TransferTask call() throws Exception {
+			try {
+				TransferTask finishedTask = urlCopy.copy(transferTask);
+				_doPublishEvent(MessageType.TRANSFER_COMPLETED, finishedTask.toJson());
+				log.info("Completed copy of {} to {} for transfer task {} with status {}", finishedTask.getSource(),
+						finishedTask.getDest(), finishedTask.getUuid(), finishedTask);
+				return finishedTask;
+			} catch (InterruptedException|ClosedByInterruptException e) {
+				throw e;
+			} catch (Exception e) {
+				log.error("Failed to copy Transfer Task {}, {}", transferTask.getUuid(), transferTask.toJSON() );
+				JsonObject json = new JsonObject()
+						.put("cause", e.getClass().getName())
+						.put("message", e.getMessage())
+						.mergeIn(transferTask.toJson());
+				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+				throw e;
+			}
+		}
+	}
+
 	/**
 	 * Mockable method to instantiate an instance of the {@link URLCopy} using the current {@link #getVertx()} instance
 	 * and method arguments.

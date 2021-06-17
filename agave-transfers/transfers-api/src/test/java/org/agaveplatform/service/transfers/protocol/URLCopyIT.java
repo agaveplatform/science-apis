@@ -8,6 +8,7 @@ import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
+import org.agaveplatform.service.transfers.matchers.IsSameJsonTransferTask;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang.RandomStringUtils;
 import org.iplantc.service.transfer.*;
@@ -43,38 +44,6 @@ public class URLCopyIT extends BaseTestCase {
     protected Long FILE_SIZE = Long.valueOf(32768);
     protected double TRANSFER_RATE = 1.00;
 
-    class IsSameJsonTransferTask extends ArgumentMatcher<JsonObject> {
-        JsonObject expectedJsonTransferTask;
-
-        public IsSameJsonTransferTask(JsonObject expectedJsonTransferTask) {
-            this.expectedJsonTransferTask = expectedJsonTransferTask;
-        }
-
-        /**
-         * Returns whether this matcher accepts the given argument.
-         * <p>
-         * The method should <b>never</b> assert if the argument doesn't match. It
-         * should only return false.
-         *
-         * @param actualJsonTransferTask the argument
-         * @return whether this matcher accepts the given argument.
-         */
-        @Override
-        public boolean matches(Object actualJsonTransferTask) {
-            if (!(actualJsonTransferTask instanceof JsonObject)) return false;
-
-            this.expectedJsonTransferTask.remove("transferRate");
-            ((JsonObject) actualJsonTransferTask).remove("transferRate");
-
-            this.expectedJsonTransferTask.remove("lastUpdated");
-            ((JsonObject) actualJsonTransferTask).remove("lastUpdated");
-
-//            this.expectedJsonTransferTask.remove("endTime");
-//            ((JsonObject) actualJsonTransferTask).remove("endTime");
-
-            return actualJsonTransferTask.equals(this.expectedJsonTransferTask);
-        }
-    }
 
     class IsSameTransferTask extends ArgumentMatcher<TransferTask> {
         TransferTask expectedTransferTask;

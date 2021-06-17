@@ -1,25 +1,29 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.messaging.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
-import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.CANCELED_ERROR;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.COMPLETED;
 
 public class TransferTaskHealthcheckListener extends AbstractNatsListener {
@@ -91,9 +95,25 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 		try {
 			JsonObject body = new JsonObject(message.getMessage());
 			String uuid = body.getString("uuid");
-			String source = body.getString("source");
-			String dest = body.getString("dest");
-			logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+
+			getVertx().<Boolean>executeBlocking(
+					promise -> {
+						processAllChildrenCanceledEvent(body, repl -> {
+							if (repl.succeeded()) {
+								promise.complete(repl.result());
+							} else {
+								promise.fail(repl.cause());
+							}
+						});
+					},
+					resp -> {
+						if (resp.succeeded()) {
+							logger.debug("Finished processing health check for transfer task {}", uuid);
+						} else {
+							logger.debug("Failed  processing health check for transfer task {}", uuid);
+						}
+					});
+
 
 		} catch (DecodeException e) {
 			logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
@@ -102,72 +122,93 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 		}
 	}
 
-    public Future<Boolean> processAllChildrenCanceledEvent(JsonObject body) {
+
+	/**
+	 * Handles processing of root transfer task health check. Children are looked up to find any still active. If found,
+	 * then we leave the task be provided it is not over 30 days old. Expired tasks are killed and retried.  If no
+	 * children are active, then this task is marked as completed and the proper event thrown. The handler will resolve
+	 * true unless a task needs to be killed, or an update fails.
+ 	 * @param body the message body, should be a serialized transfer task
+	 * @return promise with boolean success
+	 */
+    public void processAllChildrenCanceledEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
         logger.trace("Got into TransferTaskHealthcheckListener.processEvent");
-        Promise<Boolean> promise = Promise.promise();
+        TransferTask transferTask = new TransferTask(body);
 
-		String uuid = body.getString("uuid");
-		String tenantId = (body.getString("tenant_id"));
-
-
-		getDbService().allChildrenCancelledOrCompleted(tenantId, uuid, reply -> {
-			logger.trace("got into getDbService().allChildrenCancelledOrCompleted");
+        logger.debug("Checking child status of active transfer task {}", transferTask.getUuid());
+		getDbService().allChildrenCancelledOrCompleted(transferTask.getTenantId(), transferTask.getUuid(), reply -> {
 			if (reply.succeeded()) {
-				logger.info("reply from getDBSerivce.allChildrenCancelledOrCompleted " + reply);
 				if (reply.result()) {
-					getDbService().updateStatus(tenantId, uuid, COMPLETED.name(), updateStatus -> {
-						logger.trace("Got into getDBService.updateStatus(complete) ");
+					logger.info("Transfer task {} has no active child tasks. Updating to {}.", transferTask.getUuid(), COMPLETED.name());
+					getDbService().updateStatus(transferTask.getTenantId(), transferTask.getUuid(), COMPLETED.name(), updateStatus -> {
 						if (updateStatus.succeeded()) {
-							logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);
-							//parentList.remove(uuid);
-							_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result(), promise);
+							logger.debug("Transfer task {} updated to {}", transferTask.getUuid(), COMPLETED.name());
+							_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result(), handler);
 						} else {
-							logger.error("[{}] Task {} completed, but unable to update status: {}",
-									tenantId, uuid, reply.cause());
+							logger.debug("Transfer task {} found completed, but was unable to update its final status to {}.", transferTask.getUuid(), COMPLETED.name());
 							JsonObject json = new JsonObject()
 									.put("cause", updateStatus.cause().getClass().getName())
 									.put("message", updateStatus.cause().getMessage())
 									.mergeIn(body);
 							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
-								promise.handle(Future.failedFuture(updateStatus.cause()));
+								handler.handle(Future.failedFuture(updateStatus.cause()));
 							});
 						}
 					});
-				} else {
-					logger.info("allChildrenCancelledOrCompleted succeeded but the result is returns false.");
-					logger.info("[{}] Transfer task {} is still active", tenantId, uuid);
-					getDbService().updateStatus(tenantId, uuid, CANCELED_ERROR.name(), updateStatus -> {
-						logger.trace("Got into getDBService.updateStatus(ERROR)");
-						if (updateStatus.succeeded()){
-							logger.info("[{}] Transfer task {} updated to CANCELED_ERROR.", tenantId, uuid);
-							//_doPublishEvent(MessageType.TRANSFERTASK_ERROR, updateStatus.result());
-							//promise.handle(Future.succeededFuture(Boolean.TRUE));
-						}else{
-							logger.error("[{}] Task {} completed, but unable to update status to CANCELED_ERROR: {}",
-									tenantId, uuid, reply.cause());
-							JsonObject json = new JsonObject()
-									.put("cause", updateStatus.cause().getClass().getName())
-									.put("message", updateStatus.cause().getMessage())
-									.mergeIn(body);
-							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, promise);
+				}
+				else {
+					logger.info("Transfer task {} still has active child tasks.", transferTask.getUuid());
+					// we should check for a timeout here and retry if the task has stalled for too long.
+					// individual copy times may handle this for us, though, as any URLCopy#copy() operation
+					// that takes too long to complete will timeout, fail, and be retried.
+					Instant now = Instant.now();
+					// over a month without an update, restart it
+					if (transferTask.getLastUpdated().plus(30, ChronoUnit.DAYS).isBefore(now)) {
+						logger.info("Transfer task {} has not been updated in over 1 month. The task will be errored and retried.", transferTask.getUuid());
+						getDbService().updateStatus(transferTask.getTenantId(), transferTask.getUuid(), TRANSFERTASK_ERROR, updateStatus -> {
+							if (updateStatus.succeeded()) {
+								logger.debug("Transfer task {} updated to {}.", transferTask.getUuid(), TRANSFERTASK_ERROR);
+								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, updateStatus.result(), handler);
+							} else {
+								logger.debug("Failed to update transfer task {} to {}.", transferTask.getUuid(), TRANSFERTASK_ERROR);
+								JsonObject json = new JsonObject()
+										.put("cause", updateStatus.cause().getClass().getName())
+										.put("message", updateStatus.cause().getMessage())
+										.mergeIn(body);
+								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, publishEventResp -> {
+									handler.handle(Future.failedFuture(updateStatus.cause()));
+								});
+							}
+						});
+					}
+					// over a day, log and move on
+					else {
+						if (transferTask.getLastUpdated().plus(1, ChronoUnit.DAYS).isBefore(now)) {
+							logger.info("Transfer task {} has not been updated in over 1 day. Consider restarting the task.", transferTask.getUuid());
 						}
-					});
+						// over an hour, log and move on
+						else if (transferTask.getLastUpdated().plus(60, ChronoUnit.MINUTES).isBefore(now)) {
+							logger.info("Transfer task {} has not been updated in over 60 minutes. Consider restarting the task.", transferTask.getUuid());
+						}
+						//
+						else {
+							logger.info("Transfer task {} has been running less than 60 minutes. No reason to be concerned at this point.", transferTask.getUuid());
+						}
+						// succeeded on tasks that are still valid
+						handler.handle(Future.succeededFuture(true));
+					}
 				}
 			} else {
-				logger.error("[{}] Failed to check child status of transfer task {}. Task remains active: {}",
-						tenantId, uuid, reply.cause().getMessage());
-				JsonObject json = new JsonObject()
-						.put("cause", reply.cause().getClass().getName())
-						.put("message", reply.cause().getMessage())
-						.mergeIn(body);
+				logger.error("Failed to check child status of transfer task {}. Task remains active: {}",
+						transferTask.getUuid(), reply.cause().getMessage());
+//				JsonObject json = new JsonObject()
+//						.put("cause", reply.cause().getClass().getName())
+//						.put("message", reply.cause().getMessage())
+//						.mergeIn(body);
 
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
-					promise.handle(Future.failedFuture(reply.cause()));
-				});
+				handler.handle(Future.failedFuture(reply.cause()));
 			}
 		});
-
-        return promise.future();
     }
 
 

@@ -9,12 +9,11 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
+import org.agaveplatform.service.transfers.matchers.IsSameTransferTask;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.agaveplatform.service.transfers.protocol.URLCopyIT;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -24,21 +23,20 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatcher;
 import org.mockito.stubbing.Answer;
-
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.util.*;
-import java.util.concurrent.TimeoutException;
+import java.util.Date;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.AdditionalMatchers.or;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -62,7 +60,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	 * @param vertx the test vertx instance
 	 * @return a mocked of {@link TransferTaskAssignedListener}
 	 */
-	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws Exception, IOException, InterruptedException, TimeoutException, MessagingException {
+	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws Exception {
 		TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
 		NatsJetstreamMessageClient natsCleint = mock(NatsJetstreamMessageClient.class);
 		doNothing().when(natsCleint).push(any(), any());

@@ -200,10 +200,13 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 		try {
 			JsonObject body = new JsonObject(message.getMessage());
 			String uuid = body.getString("uuid");
-			String source = body.getString("source");
-			String dest = body.getString("dest");
-			log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-
+			processEvent(body, resp -> {
+				if (resp.succeeded()) {
+					log.debug("Completed processing {} event for transfer task {}", EVENT_CHANNEL, uuid);
+				} else {
+					log.error("Unable to process {} event for transfer task {}: {}", EVENT_CHANNEL, uuid, resp.cause());
+				}
+			});
 		} catch (DecodeException e) {
 			log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
 		} catch (Throwable t) {
@@ -268,7 +271,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 									log.info("Initiating worker transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 
 //									resultingTransferTask =
-									processCopyRequest(finalSrcClient, finalDestClient, tt, (Handler<AsyncResult<Boolean>>) handler);
+									processCopyRequest(finalSrcClient, finalDestClient, tt, handler);
 
 //									promise.complete();
 								} catch (Exception e) {

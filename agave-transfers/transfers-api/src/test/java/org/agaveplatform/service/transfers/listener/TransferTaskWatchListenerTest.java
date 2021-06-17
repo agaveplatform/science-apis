@@ -9,15 +9,12 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.iplantc.service.common.exceptions.MessagingException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
-
-import java.io.IOException;
-import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,7 +28,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("Transfers Watch Listener Test")
 class TransferTaskWatchListenerTest extends BaseTestCase {
 
-	TransferTaskWatchListener getMockListenerInstance(Vertx vertx) throws IOException, MessagingException, InterruptedException {
+	TransferTaskWatchListener getMockListenerInstance(Vertx vertx) throws Exception {
 		TransferTaskWatchListener listener = Mockito.mock(TransferTaskWatchListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -42,17 +39,17 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod ();
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
+
+		NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
+		doNothing().when(natsClient).push(any(), any());
+		when(listener.getMessageClient()).thenReturn(natsClient);
+
 		return listener;
 	}
-//	NatsJetstreamMessageClient getMockNats() throws MessagingException {
-//		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
-//		doNothing().when(natsClient).push(any(), any(), any());
-//		return getMockNats();
-//	}
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with no active transfer tasks")
-	public void processEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+	public void processEvent(Vertx vertx, VertxTestContext ctx) throws Exception {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
@@ -91,7 +88,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with a single active transfer tasks")
-	public void processEventHandlesASingleActiveTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+	public void processEventHandlesASingleActiveTask(Vertx vertx, VertxTestContext ctx) throws Exception {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
@@ -135,7 +132,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with multiple active transfer tasks")
-	public void processEventHandlesMultipleActiveTasks(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+	public void processEventHandlesMultipleActiveTasks(Vertx vertx, VertxTestContext ctx) throws Exception {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);

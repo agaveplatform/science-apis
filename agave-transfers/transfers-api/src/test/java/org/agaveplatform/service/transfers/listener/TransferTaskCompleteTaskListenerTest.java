@@ -14,18 +14,14 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 
-import java.io.IOException;
 import java.time.Instant;
-import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.mockito.Mockito.*;
@@ -46,7 +42,6 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     protected TransferTaskCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) throws Exception {
         TransferTaskCompleteTaskListener listener = mock(TransferTaskCompleteTaskListener.class );
-        NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
         when(listener.config()).thenReturn(config);
         when(listener.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
         when(listener.getVertx()).thenReturn(vertx);
@@ -56,13 +51,12 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         //doNothing().when(listener)._doPublishEvent( any(), any());
         doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
         doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
-        doNothing().when(natsClient).push(any(), any());
-        return listener;
-    }
-    NatsJetstreamMessageClient getMockNats() throws Exception {
+
         NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
-        doNothing().when(natsClient).push(any(), any(), any());
-        return getMockNats();
+        doNothing().when(natsClient).push(any(), any());
+        when(listener.getMessageClient()).thenReturn(natsClient);
+
+        return listener;
     }
 
 
@@ -79,8 +73,6 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener transferTaskCompleteTaskListener = getMockTransferCompleteListenerInstance(vertx);
-        //NatsJetstreamMessageClient nats = getMockNats();
-        NatsJetstreamMessageClient natsClient = getMockNats();
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -130,16 +122,12 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            //verify(transferTaskCompleteTaskListener)._doPublishEvent(eq(TRANSFERTASK_FINISHED), eq(json));
-            verify(natsClient).push(any(), any(), any());
             // make sure the parent was not processed when none existed for the transfer task
             verify(transferTaskCompleteTaskListener, never()).processParentEvent(any(), any(), any());
 
             // make sure no error event is ever thrown
             //verify(transferTaskCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-            verify(natsClient,times(1)).push(any(), any(), any());
             //verify(transferTaskCompleteTaskListener, never())._doPublishEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
-            verify(natsClient,times(1)).push(any(), any(), any());
 
             Assertions.assertFalse(result.result(),
                     "TransferTask response should be true indicating the task completed successfully.");
@@ -172,7 +160,6 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
-        NatsJetstreamMessageClient natsClient = getMockNats();
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -250,7 +237,6 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
-        NatsJetstreamMessageClient natsClient = getMockNats();
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -327,7 +313,6 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
-        NatsJetstreamMessageClient natsClient = getMockNats();
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -504,7 +489,6 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
-        NatsJetstreamMessageClient natsClient = getMockNats();
 
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
@@ -593,7 +577,6 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
-        NatsJetstreamMessageClient natsClient = getMockNats();
 
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
@@ -683,7 +666,6 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
-        NatsJetstreamMessageClient natsClient = getMockNats();
         
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());

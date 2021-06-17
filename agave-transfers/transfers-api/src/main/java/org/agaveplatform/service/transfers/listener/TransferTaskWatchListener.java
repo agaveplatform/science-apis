@@ -1,12 +1,9 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.nats.client.Connection;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +20,6 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 	private final static Logger log = LoggerFactory.getLogger(TransferTaskWatchListener.class);
 
 	private TransferTaskDatabaseService dbService;
-	protected List<String>  parentList = new ArrayList<>();
 
 	protected static final String EVENT_CHANNEL = TRANSFERTASK_HEALTHCHECK;
 
@@ -36,11 +32,10 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 	public TransferTaskWatchListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
 	}
-	public Connection nc;
+
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
 	}
-//	public Connection getConnection(){return nc;}
 
 	@Override
 	public void start() {
@@ -53,7 +48,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 		int healthParentTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK_PARENT_MILLIS, 600000);
 
 		getVertx().setPeriodic( healthTimer, resp -> {
-			processEvent(batchResp -> {
+			processRootTaskEvent(batchResp -> {
 				if (batchResp.succeeded()) {
 					log.trace("Periodic transfer task watch starting");
 				} else {
@@ -62,19 +57,26 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 			});
 		});
 
-
-		getVertx().setPeriodic(healthParentTimer, resp -> {
-			processParentEvent(batchResp -> {
-				if (batchResp.succeeded()) {
-					log.trace("Periodic transfer task watch starting");
-				} else {
-					log.error("Failed to execute the periodic transfer watch task. {}", batchResp.cause().getMessage(), batchResp.cause());
-				}
-			});
-		});
+		// Disabling because the query cannot work and this seems to be an expensive, redundant operation
+//		getVertx().setPeriodic(healthParentTimer, resp -> {
+//			processParentEvent(batchResp -> {
+//				if (batchResp.succeeded()) {
+//					log.trace("Periodic transfer task watch starting");
+//				} else {
+//					log.error("Failed to execute the periodic transfer watch task. {}", batchResp.cause().getMessage(), batchResp.cause());
+//				}
+//			});
+//		});
 
 	}
 
+	/**
+	 * Searches the db for all non-root directory transfer tasks and creates a {@link MessageType#TRANSFERTASK_HEALTHCHECK_PARENT}
+	 * event to check and cleanup. The handler is resolved with the result of creating events for all the transfer
+	 * tasks discovered. False if any fail. A failed delivery does not mean no tasks were processed, just that not all
+	 * were created.
+	 * @param handler the result handler
+	 */
 	public void processParentEvent(Handler<AsyncResult<Boolean>> handler) {
 		log.trace("Got into TransferTaskWatchListener.processParentEvent ");
 		try {
@@ -82,16 +84,34 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 			getDbService().getAllParentsCanceledOrCompleted(reply -> {
 				if (reply.succeeded()) {
 					log.debug("Found {} active transfer tasks", reply.result().size());
-					reply.result().stream().forEach(jsonResult -> {
-						try {
-							log.debug("Scheduling health check on transfer task {}",
-									((JsonObject)jsonResult).getString("uuid"));
-							_doPublishEvent(TRANSFERTASK_HEALTHCHECK_PARENT, ((JsonObject)jsonResult), null);
-						} catch (Throwable t) {
-							log.error("Failed to schedule health check for transfer task {}", jsonResult);
+
+					List<Future> activeTaskFutures = new ArrayList<>();
+					// iterate over the results from the db, adding the publishing of each to a list of Futures that
+					// we can resolve as a compositefuture and retain individual results.
+					reply.result().stream().forEach(jsonTask -> {
+						Promise<Boolean> promise = Promise.promise();
+						_doPublishEvent(TRANSFERTASK_HEALTHCHECK_PARENT, ((JsonObject)jsonTask), publishEventResp -> {
+							if (publishEventResp.failed()) {
+								log.error("Failed to schedule health check for transfer task {}", ((JsonObject)jsonTask).getString("uuid"));
+								promise.fail(publishEventResp.cause());
+							} else {
+								log.debug("Scheduled health check for transfer task {}",
+										((JsonObject)jsonTask).getString("uuid"));
+								promise.complete(publishEventResp.result());
+							}
+						});
+						activeTaskFutures.add(promise.future());
+					});
+
+					// this gets the collective result of all the futures and passes the overall result to the
+					// handler.
+					CompositeFuture.all(activeTaskFutures).onComplete(watchTasks -> {
+						if (watchTasks.succeeded()) {
+							handler.handle(Future.succeededFuture(Boolean.TRUE));
+						} else {
+							handler.handle(Future.failedFuture(watchTasks.cause()));
 						}
 					});
-					handler.handle(Future.succeededFuture(Boolean.TRUE));
 				} else {
 					log.error("Unable to retrieve list of active transfer tasks: {}", reply.cause().getMessage());
 					handler.handle(Future.failedFuture(reply.cause()));
@@ -113,23 +133,42 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 	 * Handles generation of health check events for each active transfer task every 10 seconds.
 	 * Result to handler is boolean result of the batch scheduling operation.
 	 */
-	public void processEvent(Handler<AsyncResult<Boolean>> handler) {
+	public void processRootTaskEvent(Handler<AsyncResult<Boolean>> handler) {
 		log.trace("Got into TransferTaskWatchListener.processEvent ");
 		try {
 			log.trace("Looking up active transfer tasks...");
 			getDbService().getActiveRootTaskIds(reply -> {
 				if (reply.succeeded()) {
 					log.debug("Found {} active transfer tasks", reply.result().size());
-					reply.result().stream().forEach(jsonResult -> {
-						try {
-							log.debug("Scheduling health check on transfer task {}",
-									((JsonObject)jsonResult).getString("uuid"));
-							_doPublishEvent(TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonResult), null);
-						} catch (Throwable t) {
-								log.error("Failed to schedule health check for transfer task {}", jsonResult);
+
+					List<Future> activeTaskFutures = new ArrayList<>();
+					// iterate over the results from the db, adding the publishing of each to a list of Futures that
+					// we can resolve as a compositefuture and retain individual results.
+					reply.result().stream().forEach(jsonTask -> {
+						Promise<Boolean> promise = Promise.promise();
+						_doPublishEvent(TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonTask), publishEventResp -> {
+							if (publishEventResp.failed()) {
+								log.error("Failed to schedule health check for transfer task {}", ((JsonObject)jsonTask).getString("uuid"));
+								promise.fail(publishEventResp.cause());
+							} else {
+								log.debug("Scheduled health check for transfer task {}",
+										((JsonObject)jsonTask).getString("uuid"));
+								promise.complete(publishEventResp.result());
 							}
 						});
-					handler.handle(Future.succeededFuture(Boolean.TRUE));
+						activeTaskFutures.add(promise.future());
+					});
+
+					// this gets the collective result of all the futures and passes the overall result to the
+					// handler.
+					CompositeFuture.all(activeTaskFutures).onComplete(watchTasks -> {
+						if (watchTasks.succeeded()) {
+							handler.handle(Future.succeededFuture(Boolean.TRUE));
+						} else {
+							handler.handle(Future.failedFuture(watchTasks.cause()));
+						}
+					});
+
 				} else {
 					log.error("Unable to retrieve list of active transfer tasks: {}", reply.cause().getMessage());
 					handler.handle(Future.failedFuture(reply.cause()));
@@ -137,7 +176,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 			});
 		} catch (Exception e) {
 			if (e.toString().contains("no null address accepted")){
-				log.info("Error with TransferTaskWatchListener processEvent  error ={} }", e.toString());
+				log.info("Error with TransferTaskWatchListener processEvent  error {} }", e.toString());
 				handler.handle(Future.succeededFuture(Boolean.TRUE));
 			}else
 				{
@@ -147,7 +186,6 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 		}
 	}
 
-
 	public TransferTaskDatabaseService getDbService() {
 		return dbService;
 	}
@@ -155,7 +193,6 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 	public void setDbService(TransferTaskDatabaseService dbService) {
 		this.dbService = dbService;
 	}
-
 
 	public void processInterrupt(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
 

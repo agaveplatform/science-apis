@@ -82,17 +82,16 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
   /**
-   * Retrieve tree of parent and children {@link TransferTask}
+   * Retrieve the first level tree of parent and children for a given {@link TransferTask} uuid and tenantId.
    *
    * @param tenantId the tenant of root {@link TransferTask}
    * @param uuid the id of root {@link TransferTask}
    * @param resultHandler the handler to resolve with {@link JsonArray} of parent and children {@link TransferTask}
+   * @deprecated
    **/
   @Override
   public TransferTaskDatabaseService getTransferTaskTree(String tenantId, String uuid, Handler<AsyncResult<JsonArray>> resultHandler) {
     JsonArray data = new JsonArray()
-            .add(uuid)
-            .add(tenantId)
             .add(uuid)
             .add(tenantId);
 

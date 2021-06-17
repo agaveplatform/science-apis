@@ -23,6 +23,17 @@ import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.C
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.CANCELED_ERROR;
 
+/**
+ * Listens for parent {@link TransferTask} {@link MessageType#TRANSFERTASK_HEALTHCHECK_PARENT} events and
+ * deals with timeouts and empty directories that have not been updated to completed.
+ * TODO: This does not currently doing what we want it to do. There is no way to detect empty directory vs file
+ *      transfertasks via database query, so the {@link TransferTaskWatchListener#processParentEvent(Handler)}
+ *      method would degrade to sending every active non-root transfer task to this listener. We need a better
+ *      way to detect broken and timed out transfertasks and restore them. That is likely the job of our state
+ *      machine, and not a zombie task. This should probably only detect transfer tasks that have been running
+ *      far too long and try to pause and resume those if possible.
+ */
+@Deprecated
 public class TransferTaskHealthcheckParentListener extends AbstractNatsListener {
     private final static Logger logger = LoggerFactory.getLogger(TransferTaskHealthcheckParentListener.class);
 
@@ -99,10 +110,23 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
         try {
             JsonObject body = new JsonObject(message.getMessage());
             String uuid = body.getString("uuid");
-            String source = body.getString("source");
-            String dest = body.getString("dest");
-            logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-
+            getVertx().<Boolean>executeBlocking(
+                promise -> {
+                    processChildrenActiveAndExceedTimeEvent(body, repl -> {
+                        if (repl.succeeded()) {
+                            promise.complete(repl.result());
+                        } else {
+                            promise.fail(repl.cause());
+                        }
+                    });
+                },
+                resp -> {
+                    if (resp.succeeded()) {
+                        logger.debug("Finished processing health check for transfer task {}", uuid);
+                    } else {
+                        logger.debug("Failed  processing health check for transfer task {}", uuid);
+                    }
+                });
         } catch (DecodeException e) {
             logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
@@ -132,19 +156,19 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
             getDbService().updateById(id, CANCELED_ERROR.name(), updateStatus -> {
                 logger.trace("Got into getDBService.updateStatus(complete) ");
                 if (updateStatus.succeeded()) {
-                    TransferTask transferTask = new TransferTask(updateStatus.result());
-                    logger.info("[{}] Transfer task {} updated to completed.", transferTask.getTenantId(), transferTask.getUuid());
+                    JsonObject updatedJson = updateStatus.result();
+                    logger.info("Transfer task {} updated to completed.", updatedJson.getString("uuid"));
                     //parentList.remove(uuid);
-                    _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result(), handler);
+                    _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updatedJson, handler);
                 } else {
-                    logger.error("[{}] Task completed, but unable to update status: {}",
+                    logger.error("Task completed, but unable to update status: {}",
                             id, updateStatus.cause());
                     JsonObject json = new JsonObject()
                             .put("cause", updateStatus.cause().getClass().getName())
                             .put("message", updateStatus.cause().getMessage())
                             .mergeIn(body);
                     _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
-                        // TODO: why is this a positive response?
+                        // TODO: why is this a positive response?3
                         handler.handle(Future.succeededFuture(true));
                     });
                 }

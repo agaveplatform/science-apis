@@ -11,7 +11,10 @@ import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.Settings;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.io.IOException;
@@ -32,8 +35,8 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
 
     private TransferTaskDatabaseService service;
-    private int LIMIT = Settings.MAX_PAGE_SIZE;
-    private int OFFSET = 0;
+    private final int LIMIT = Settings.MAX_PAGE_SIZE;
+    private final int OFFSET = 0;
 
     @BeforeAll
     @Override
@@ -361,29 +364,27 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
 
     @Test
     @DisplayName("TransferTaskDatabaseVerticle - getTransferTaskTree should return tree of parent and children tasks")
-    @Disabled
+//    @Disabled
     public void getTransferTaskTreeTest(Vertx vertx, VertxTestContext context) {
         service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
             initTestTransferTaskTree(testTreeReply -> {
                 if (testTreeReply.succeeded()) {
-                    TransferTask rootTask = testTreeReply.result().get(0);
+                    TransferTask parentTask = testTreeReply.result().get(1);
 
-                    service.getTransferTaskTree(rootTask.getTenantId(), rootTask.getUuid(), reply -> {
+                    service.getTransferTaskTree(parentTask.getTenantId(), parentTask.getUuid(), reply -> {
                         context.verify(() -> {
                             assertTrue(reply.succeeded(), "getTransferTaskTree should have succeeded for valid file");
                             assertNotNull(reply.result(), "getTransferTaskTree should return Array JsonObject " +
                                     "representing transfer task tree record.");
-                            assertEquals(testTreeReply.result().size(), reply.result().size(), "JsonObject Array size " +
-                                    "should equal the transfer tasks added");
+                            assertEquals(reply.result().size(), 2, "Only the first level children of the " +
+                                    "test parent task should equal the transfer tasks added");
 
-                            testTreeReply.result().forEach(testTreeTask -> {
+                            reply.result().forEach(queryResponse -> {
+                                TransferTask queryResponseTask = new TransferTask((JsonObject) queryResponse);
                                 AtomicBoolean match = new AtomicBoolean(false);
-                                reply.result().forEach(item -> {
+                                testTreeReply.result().forEach(testTask -> {
                                     if (!match.get()) {
-                                        TransferTask task = new TransferTask((JsonObject) item);
-                                        if (task.getUuid().equals(testTreeTask.getUuid())) {
-                                            assertEquals(task, testTreeTask, "Task retrieved should match the test " +
-                                                    "transfer task added");
+                                        if (queryResponseTask.getUuid().equals(testTask.getUuid())) {
                                             match.set(true);
                                         }
                                     }
@@ -414,8 +415,8 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
         ArrayList<TransferTask> transferTaskList = new ArrayList<>();
         for (TransferStatusType status : TransferStatusType.values()) {
             final TransferTask rootTransferTask = _createTestTransferTask();
-            rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
-            rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+            rootTransferTask.setSource("agave://source/" + UUID.randomUUID());
+            rootTransferTask.setDest("agave://dest/" + UUID.randomUUID());
             rootTransferTask.setStatus(status);
             transferTaskList.add(rootTransferTask);
         }
@@ -547,14 +548,14 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
         service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
             for (TransferStatusType status : TransferStatusType.values()) {
                 final TransferTask testUserTransferTask = _createTestTransferTask();
-                testUserTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
-                testUserTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+                testUserTransferTask.setSource("agave://source/" + UUID.randomUUID());
+                testUserTransferTask.setDest("agave://dest/" + UUID.randomUUID());
                 testUserTransferTask.setStatus(status);
                 testUserTransferTask.setOwner(TEST_USERNAME);
 
                 final TransferTask testOtherUserTransferTask = _createTestTransferTask();
-                testOtherUserTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
-                testOtherUserTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+                testOtherUserTransferTask.setSource("agave://source/" + UUID.randomUUID());
+                testOtherUserTransferTask.setDest("agave://dest/" + UUID.randomUUID());
                 testOtherUserTransferTask.setStatus(status);
                 testOtherUserTransferTask.setOwner(TEST_OTHER_USERNAME);
 
@@ -604,8 +605,8 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
     @DisplayName("TransferTaskDatabaseVerticle - getByUuid should return task with matching id")
     public void getByUuidReturnsMatchingTaskTest(Vertx vertx, VertxTestContext context) {
         final TransferTask rootTransferTask = _createTestTransferTask();
-        rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
-        rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+        rootTransferTask.setSource("agave://source/" + UUID.randomUUID());
+        rootTransferTask.setDest("agave://dest/" + UUID.randomUUID());
         rootTransferTask.setStatus(TransferStatusType.QUEUED);
 
         service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
@@ -637,8 +638,8 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
     public void getByUuidShouldReturnNullIfNotExistTest(Vertx vertx, VertxTestContext context) {
         service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
             final TransferTask rootTransferTask = _createTestTransferTask();
-            rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
-            rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+            rootTransferTask.setSource("agave://source/" + UUID.randomUUID());
+            rootTransferTask.setDest("agave://dest/" + UUID.randomUUID());
             rootTransferTask.setStatus(TransferStatusType.QUEUED);
 
             service.getByUuid(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), getByIdReply -> {
@@ -670,8 +671,8 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
             ArrayList<TransferTask> tasks = new ArrayList<>();
             for (TransferStatusType status : TransferStatusType.values()) {
                 final TransferTask rootTransferTask = _createTestTransferTask();
-                rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
-                rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+                rootTransferTask.setSource("agave://source/" + UUID.randomUUID());
+                rootTransferTask.setDest("agave://dest/" + UUID.randomUUID());
                 rootTransferTask.setStatus(status);
                 tasks.add(rootTransferTask);
             }
@@ -875,8 +876,8 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
      */
     public void initTestTransferTaskTree(Handler<AsyncResult<List<TransferTask>>> handler) {
         final TransferTask rootTransferTask = _createTestTransferTask();
-        rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
-        rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+        rootTransferTask.setSource("agave://source/" + UUID.randomUUID());
+        rootTransferTask.setDest("agave://dest/" + UUID.randomUUID());
         rootTransferTask.setStatus(TransferStatusType.QUEUED);
 
         // create the task
@@ -934,8 +935,8 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
             child.setTenantId(parentTransferTask.getTenantId());
             child.setParentTaskId(parentTransferTask.getUuid());
             child.setRootTaskId(parentTransferTask.getRootTaskId() == null ? parentTransferTask.getUuid() : parentTransferTask.getRootTaskId());
-            child.setSource(parentTransferTask.getSource() + "/" + UUID.randomUUID().toString());
-            child.setDest(parentTransferTask.getDest() + "/" + UUID.randomUUID().toString());
+            child.setSource(parentTransferTask.getSource() + "/" + UUID.randomUUID());
+            child.setDest(parentTransferTask.getDest() + "/" + UUID.randomUUID());
             child.setOwner(parentTransferTask.getOwner());
             child.setStatus(parentTransferTask.getStatus());
         }

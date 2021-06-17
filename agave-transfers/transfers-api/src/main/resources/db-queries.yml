@@ -95,14 +95,13 @@ update-transfertask-status: |
 parents-not-canceled-or-completed: |
   SELECT  `id`
   FROM TransferApiTasks trans1
-  WHERE `tenant_id` = 'agave.dev'
   AND `root_task` is not null
-  AND `status` not IN ('COMPLETED','CANCELLED', 'CANCELED_ERROR','FAILED')
-  AND ( select count(`id`) as  active_child_count
+  AND `status` not IN ('COMPLETED', 'CANCELLED', 'PAUSED', 'CANCELED_ERROR','FAILED')
+  AND ( select count(`id`) as active_child_count
           from TransferApiTasks
-          where `tenant_id` = 'agave.dev'
+          where `tenant_id` = trans1.tenant_id?
             and  `parent_task` = trans1.parent_task
-            AND `status` NOT IN ('COMPLETED','CANCELLED', 'CANCELED_ERROR','FAILED')
+            AND `status` NOT IN ('COMPLETED', 'CANCELLED', 'CANCELED_ERROR', 'PAUSED', 'FAILED')
   ) = 0
 cancel_transfertask_by_id: |
   UPDATE TransferApiTasks
@@ -117,7 +116,7 @@ all-transfertask-children-active: |
     FROM TransferApiTasks
     WHERE `tenant_id` = ? AND `parent_task` = ? AND `status` NOT IN ('COMPLETED','CANCELLED', 'CANCELED_ERROR','FAILED')
 all-active-root-transfertask-ids: |
-  SELECT distinct `uuid`, `tenant_id`
+  SELECT distinct `uuid`, `tenant_id`, `last_updated`
   FROM TransferApiTasks
   WHERE `root_task` is NULL AND `parent_task` is NULL AND `status` NOT IN ('COMPLETED','CANCELLED','CANCELED_ERROR','FAILED')
 single-not-canceled-or-completed: |
@@ -132,18 +131,12 @@ set-transfertask-cancelled-where-not-completed: |
   UPDATE TransferApiTasks
   SET status = 'CANCELLED', last_updated = NOW()
   WHERE `tenant_id` = ? AND `uuid` = ? AND status not in ('COMPLETED', 'CANCELLED','CANCELED_ERROR','FAILED')
-get_transfertask_tree: |
+get-transfertask-tree: |
   SELECT *
   FROM TransferApiTasks
-  WHERE parent_task = (SELECT parent_task from TransferApiTasks where `uuid` = ? )
+  WHERE `parent_task` = ?
     AND status NOT IN ('COMPLETED', 'CANCELLED','CANCELED_ERROR','FAILED')
     AND `tenant_id` = ?
-  UNION
-  SELECT *
-  FROM TransferApiTasks
-  WHERE `uuid` = ?
-  AND `root_task` IS NULL
-  AND `tenant_id` = ?
 find_transfertask_by_root_task_id_src_dest: |
   SELECT *
   FROM TransferApiTasks

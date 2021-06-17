@@ -9,7 +9,6 @@ import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.messaging.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,19 +132,21 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 	 */
     public void processAllChildrenCanceledEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
         logger.trace("Got into TransferTaskHealthcheckListener.processEvent");
-        TransferTask transferTask = new TransferTask(body);
+        String uuid = body.getString("uuid");
+        String tenantId = body.getString("tenant_id");
+        Instant lastUpdated = body.getInstant("last_updated");
 
-        logger.debug("Checking child status of active transfer task {}", transferTask.getUuid());
-		getDbService().allChildrenCancelledOrCompleted(transferTask.getTenantId(), transferTask.getUuid(), reply -> {
+        logger.debug("Checking child status of active transfer task {}", uuid);
+		getDbService().allChildrenCancelledOrCompleted(tenantId, uuid, reply -> {
 			if (reply.succeeded()) {
 				if (reply.result()) {
-					logger.info("Transfer task {} has no active child tasks. Updating to {}.", transferTask.getUuid(), COMPLETED.name());
-					getDbService().updateStatus(transferTask.getTenantId(), transferTask.getUuid(), COMPLETED.name(), updateStatus -> {
+					logger.info("Transfer task {} has no active child tasks. Updating to {}.", uuid, COMPLETED.name());
+					getDbService().updateStatus(tenantId, uuid, COMPLETED.name(), updateStatus -> {
 						if (updateStatus.succeeded()) {
-							logger.debug("Transfer task {} updated to {}", transferTask.getUuid(), COMPLETED.name());
+							logger.debug("Transfer task {} updated to {}", uuid, COMPLETED.name());
 							_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result(), handler);
 						} else {
-							logger.debug("Transfer task {} found completed, but was unable to update its final status to {}.", transferTask.getUuid(), COMPLETED.name());
+							logger.debug("Transfer task {} found completed, but was unable to update its final status to {}.", uuid, COMPLETED.name());
 							JsonObject json = new JsonObject()
 									.put("cause", updateStatus.cause().getClass().getName())
 									.put("message", updateStatus.cause().getMessage())
@@ -157,20 +158,20 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 					});
 				}
 				else {
-					logger.info("Transfer task {} still has active child tasks.", transferTask.getUuid());
+					logger.info("Transfer task {} still has active child tasks.", uuid);
 					// we should check for a timeout here and retry if the task has stalled for too long.
 					// individual copy times may handle this for us, though, as any URLCopy#copy() operation
 					// that takes too long to complete will timeout, fail, and be retried.
 					Instant now = Instant.now();
 					// over a month without an update, restart it
-					if (transferTask.getLastUpdated().plus(30, ChronoUnit.DAYS).isBefore(now)) {
-						logger.info("Transfer task {} has not been updated in over 1 month. The task will be errored and retried.", transferTask.getUuid());
-						getDbService().updateStatus(transferTask.getTenantId(), transferTask.getUuid(), TRANSFERTASK_ERROR, updateStatus -> {
+					if (lastUpdated.plus(30, ChronoUnit.DAYS).isBefore(now)) {
+						logger.info("Transfer task {} has not been updated in over 1 month. The task will be errored and retried.", uuid);
+						getDbService().updateStatus(tenantId, uuid, TRANSFERTASK_ERROR, updateStatus -> {
 							if (updateStatus.succeeded()) {
-								logger.debug("Transfer task {} updated to {}.", transferTask.getUuid(), TRANSFERTASK_ERROR);
+								logger.debug("Transfer task {} updated to {}.", uuid, TRANSFERTASK_ERROR);
 								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, updateStatus.result(), handler);
 							} else {
-								logger.debug("Failed to update transfer task {} to {}.", transferTask.getUuid(), TRANSFERTASK_ERROR);
+								logger.debug("Failed to update transfer task {} to {}.", uuid, TRANSFERTASK_ERROR);
 								JsonObject json = new JsonObject()
 										.put("cause", updateStatus.cause().getClass().getName())
 										.put("message", updateStatus.cause().getMessage())
@@ -183,16 +184,16 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 					}
 					// over a day, log and move on
 					else {
-						if (transferTask.getLastUpdated().plus(1, ChronoUnit.DAYS).isBefore(now)) {
-							logger.info("Transfer task {} has not been updated in over 1 day. Consider restarting the task.", transferTask.getUuid());
+						if (lastUpdated.plus(1, ChronoUnit.DAYS).isBefore(now)) {
+							logger.info("Transfer task {} has not been updated in over 1 day. Consider restarting the task.", uuid);
 						}
 						// over an hour, log and move on
-						else if (transferTask.getLastUpdated().plus(60, ChronoUnit.MINUTES).isBefore(now)) {
-							logger.info("Transfer task {} has not been updated in over 60 minutes. Consider restarting the task.", transferTask.getUuid());
+						else if (lastUpdated.plus(60, ChronoUnit.MINUTES).isBefore(now)) {
+							logger.info("Transfer task {} has not been updated in over 60 minutes. Consider restarting the task.", uuid);
 						}
 						//
 						else {
-							logger.info("Transfer task {} has been running less than 60 minutes. No reason to be concerned at this point.", transferTask.getUuid());
+							logger.info("Transfer task {} has been running less than 60 minutes. No reason to be concerned at this point.", uuid);
 						}
 						// succeeded on tasks that are still valid
 						handler.handle(Future.succeededFuture(true));
@@ -200,17 +201,12 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 				}
 			} else {
 				logger.error("Failed to check child status of transfer task {}. Task remains active: {}",
-						transferTask.getUuid(), reply.cause().getMessage());
-//				JsonObject json = new JsonObject()
-//						.put("cause", reply.cause().getClass().getName())
-//						.put("message", reply.cause().getMessage())
-//						.mergeIn(body);
+						uuid, reply.cause().getMessage());
 
 				handler.handle(Future.failedFuture(reply.cause()));
 			}
 		});
     }
-
 
     public TransferTaskDatabaseService getDbService() {
         return dbService;

@@ -216,15 +216,15 @@ public class TransferApplication {
                                             log.error("TransferHealthcheckListener Deployment failed ! {}", res12.result());
                                         }
                                     });
-                            // Deploy the TransferHealthParentcheckListener vertical
-                            vertx.deployVerticle(TransferTaskHealthcheckParentListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferHealthcheckListener",
-                                    localOptions, res22 -> {
-                                        if (res22.succeeded()) {
-                                            log.info("TransferHealthcheckParentListener Deployment id is " + res22.result());
-                                        } else {
-                                            log.error("TransferHealthcheckParentListener Deployment failed ! {}", res22.result());
-                                        }
-                                    });
+//                            // Deploy the TransferHealthParentcheckListener vertical
+//                            vertx.deployVerticle(TransferTaskHealthcheckParentListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferHealthcheckListener",
+//                                    localOptions, res22 -> {
+//                                        if (res22.succeeded()) {
+//                                            log.info("TransferHealthcheckParentListener Deployment id is " + res22.result());
+//                                        } else {
+//                                            log.error("TransferHealthcheckParentListener Deployment failed ! {}", res22.result());
+//                                        }
+//                                    });
                             // Deploy the TransferWatchListener vertical
                             vertx.deployVerticle(TransferTaskWatchListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferWatchListener",
                                     localOptions, res13 -> {

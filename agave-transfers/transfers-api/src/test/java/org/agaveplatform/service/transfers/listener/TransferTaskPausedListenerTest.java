@@ -11,9 +11,10 @@ import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.exception.TransferException;
+import org.agaveplatform.service.transfers.matchers.IsSameJsonTransferTask;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -43,21 +44,25 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 //@Disabled
 class TransferTaskPausedListenerTest extends BaseTestCase {
-	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) throws Exception {
 		TransferTaskPausedListener listener = Mockito.mock(TransferTaskPausedListener.class);
 		when(listener.getEventChannel()).thenReturn(MessageType.TRANSFERTASK_PAUSED);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
 		//doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).processPauseRequest(any(), any());
-		doCallRealMethod().when(listener).processParentEvent(any(),any(),any());
-		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
-		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
+		doCallRealMethod().when(listener).processParentEvent(any(), any(), any());
+		doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
+		doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
+
+		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+		doNothing().when(natsClient).push(any(), any(), anyInt());
+		when(listener.getMessageClient()).thenReturn(natsClient);
 		return listener;
 	}
 
-	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws Exception {
 		TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -66,24 +71,14 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
-		doNothing().when(listener)._doPublishEvent(any(), any(), any());
-		//doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
-		try {
-			doCallRealMethod().when(listener).start();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (TimeoutException e) {
-			e.printStackTrace();
-		}
-		return listener;
-	}
-	NatsJetstreamMessageClient getMockNats() throws Exception {
+
 		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
-		doNothing().when(natsClient).push(any(), any(), any());
-		return getMockNats();
+		doNothing().when(natsClient).push(any(), any(), anyInt());
+		when(listener.getMessageClient()).thenReturn(natsClient);
+		doCallRealMethod().when(listener).start();
+		return listener;
 	}
 
 	/**
@@ -175,15 +170,57 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		return remoteFileInfo;
 	}
 
+	/**
+	 * Scaffolds the listener with basic db and instance mocks.
+	 * @param vertx
+	 * @param transferTask
+	 * @param isAllChildrenCancelledOrCompleted
+	 * @return
+	 * @throws Exception
+	 */
+	private TransferTaskPausedListener initProcessParentEventTest(Vertx vertx, TransferTask transferTask, boolean isAllChildrenCancelledOrCompleted) throws Exception {
+
+		// mock out the db service so we can can isolate method logic rather than db
+		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+
+		AsyncResult<JsonObject> getByUuidAsyncResult = getMockAsyncResult(transferTask.toJson());
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(getByUuidAsyncResult);
+			return null;
+		}).when(dbService).getByUuid(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
+
+		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(isAllChildrenCancelledOrCompleted);
+
+		// mock the handler passed into updateStatus
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
+			return null;
+		}).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
+
+		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
+
+		// mock the dbService getter in our mocked vertical so we don't need to use powermock
+		when(listener.getDbService()).thenReturn(dbService);
+
+		// call the real method under testing
+		doCallRealMethod().when(listener).processParentEvent(any(), any(), any());
+
+		return listener;
+	}
+
 	@AfterAll
 	public void finish(Vertx vertx, VertxTestContext ctx) {
 		vertx.close(ctx.completing());
 	}
 
 	@Test
-	@DisplayName("Transfer Task Paused Listener - task uuid != root/parent uuid")
-	@Disabled
-	public void processPauseRequestTest(Vertx vertx, VertxTestContext ctx) throws Exception {
+	@DisplayName("Transfer Task Paused Listener fails for non-root transfer task")
+	//@Disabled
+	public void processPauseRequestFailsWhenNonRootTask(Vertx vertx, VertxTestContext ctx) throws Exception {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -196,7 +233,6 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		transferTask.setParentTaskId(parentTask.getUuid());
 
 		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
 		//doAnswer((Answer )).when(listener.getTransferTask(anyString(), anyString(), any()));
 
 		// mock out the db service so we can can isolate method logic rather than db
@@ -206,20 +242,97 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		when(listener.getDbService()).thenReturn(dbService);
 
 		JsonObject expectedgetByIdAck = transferTask.toJson();
-		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
+		AsyncResult<JsonObject> getByUuidAsyncResult = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateGetById);
+			handler.handle(getByUuidAsyncResult);
 			return null;
 		}).when(dbService).getByUuid(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
-		JsonObject expectedUdpatedJsonObject = transferTask.toJson()
+		JsonObject expectedUpdatedJsonObject = transferTask.toJson()
 				.put("status", TransferStatusType.PAUSED.name())
 				.put("endTime", Instant.now());
 
-		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
+		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUpdatedJsonObject);
+
+		// mock the handler passed into updateStatus
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
+			return null;
+		}).when(dbService).updateStatus(any(), any(), any(), any());
+
+
+		// mock a successful outcome with a puased result from processPauseRequest indicating the child has no active parents
+		AsyncResult<Boolean> processPauseRequest = getMockAsyncResult(Boolean.FALSE);
+
+		// mock the handler passed into processParentEvent
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(processPauseRequest);
+			return null;
+		}).when(listener).processParentEvent(any(), any(), any());
+
+		// now we run the actual test using our test transfer task data
+		listener.processPauseRequest(transferTask.toJson(), ctx.failing( pauseException -> ctx.verify(() -> {
+			assertTrue(pauseException instanceof TransferException, "Pausing non-root task should resolve TransferException");
+
+			// make sure the parent was not processed when none existed for the transfer task
+			verify(listener, never()).processParentEvent(any(), any(), any());
+			verify(dbService, never()).update(any(), any(), any(), any());
+
+			// make sure no error event is ever thrown
+			//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
+			verify(listener)._doPublishEvent(eq(TRANSFERTASK_ERROR),any(), any());
+
+			ctx.completeNow();
+		})));
+	}
+
+	@Test
+	@DisplayName("Transfer Task Paused Listener updates task to PAUSED_WAITING when it has no parent/root uuid")
+	//@Disabled
+	public void processPauseRequestWithParent(Vertx vertx, VertxTestContext ctx) throws Exception {
+
+		// Set up our transfertask for testing
+		TransferTask transferTask = _createTestTransferTask();
+		transferTask.setStatus(TransferStatusType.TRANSFERRING);
+		transferTask.setStartTime(Instant.now());
+		transferTask.setEndTime(Instant.now());
+		transferTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
+//		parentTask.setRootTaskId(parentTask.getUuid());
+//		parentTask.setParentTaskId(parentTask.getUuid());
+
+		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
+
+		//doAnswer((Answer )).when(listener.getTransferTask(anyString(), anyString(), any()));
+//		when(listener.getTransferTask(eq(parentTask.getParentTaskId()), eq(parentTask.getUuid()), any() ) ).thenReturn(parentTask);
+
+		// mock out the db service so we can can isolate method logic rather than db
+		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+
+		// mock the dbService getter in our mocked vertical so we don't need to use powermock
+		when(listener.getDbService()).thenReturn(dbService);
+
+		JsonObject expectedGetByUUIDJson = transferTask.toJson();
+		AsyncResult<JsonObject> expectedGetByUuid = getMockAsyncResult(expectedGetByUUIDJson);
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(expectedGetByUuid);
+			return null;
+		}).when(dbService).getByUuid(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
+
+		// mock a successful outcome with updated json transfer task result from updateStatus
+		JsonObject expectedUpdatedJsonObject = transferTask.toJson()
+				.put("status", TransferStatusType.PAUSED.name())
+				.put("endTime", Instant.now());
+
+		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUpdatedJsonObject);
 
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
@@ -245,121 +358,18 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		listener.processPauseRequest(transferTask.toJson(), result -> {
 			ctx.verify(() -> {
 				assertTrue(result.succeeded(), "Call to processPauseRequest should succeed for active task");
-				assertTrue(result.result(), "Response from processPauseRequest should be true when task is active root task");
-
-				// verify the db service was called to update the task status
-//				verify(dbService).updateStatus(eq(transferTask.getTenantId()),
-//						eq(transferTask.getUuid()), eq(TransferStatusType.PAUSED.name()), any());
-
-				// verify that the completed event was created. this should always be throws
-				// if the updateStatus result succeeds.
-				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_PAUSED), eq(transferTask.toJson()));
-
-				// make sure the parent was not processed when none existed for the transfer task
-				verify(listener, never()).processParentEvent(any(), any(), any());
-
-				// make sure no error event is ever thrown
-				//verify(listener)._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
-				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 				assertTrue(result.result(),
 						"TransferTask response should be true indicating the task completed successfully.");
 
-				assertTrue(result.succeeded(), "TransferTask update should have succeeded");
-
-				ctx.completeNow();
-			});
-		});
-	}
-
-	@Test
-	@DisplayName("Transfer Task Paused Listener with parent that is active, no parent/root uuid")
-	@Disabled
-	public void processPauseRequestWithParent(Vertx vertx, VertxTestContext ctx) throws Exception {
-
-		// Set up our transfertask for testing
-		TransferTask parentTask = _createTestTransferTask();
-		parentTask.setStatus(TransferStatusType.TRANSFERRING);
-		parentTask.setStartTime(Instant.now());
-		parentTask.setEndTime(Instant.now());
-		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
-//		parentTask.setRootTaskId(parentTask.getUuid());
-//		parentTask.setParentTaskId(parentTask.getUuid());
-
-		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
-
-		//doAnswer((Answer )).when(listener.getTransferTask(anyString(), anyString(), any()));
-//		when(listener.getTransferTask(eq(parentTask.getParentTaskId()), eq(parentTask.getUuid()), any() ) ).thenReturn(parentTask);
-
-		// mock out the db service so we can can isolate method logic rather than db
-		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-
-		// mock the dbService getter in our mocked vertical so we don't need to use powermock
-		when(listener.getDbService()).thenReturn(dbService);
-
-		JsonObject expectedgetByIdAck = parentTask.toJson();
-		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
-		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateGetById);
-			return null;
-		}).when(dbService).getByUuid(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), anyObject() );
-
-		// mock a successful outcome with updated json transfer task result from updateStatus
-		JsonObject expectedUdpatedJsonObject = parentTask.toJson()
-				.put("status", TransferStatusType.PAUSED.name())
-				.put("endTime", Instant.now());
-
-		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
-
-		// mock the handler passed into updateStatus
-		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
-			handler.handle(updateStatusHandler);
-			return null;
-		}).when(dbService).updateStatus(any(), any(), any(), any());
-
-
-		// mock a successful outcome with a puased result from processPauseRequest indicating the child has no active parents
-		AsyncResult<Boolean> processPauseRequest = getMockAsyncResult(Boolean.FALSE);
-
-		// mock the handler passed into processParentEvent
-		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(processPauseRequest);
-			return null;
-		}).when(listener).processParentEvent(any(), any(), any());
-
-		// now we run the actual test using our test transfer task data
-		listener.processPauseRequest(parentTask.toJson(), result -> {
-			ctx.verify(() -> {
-				assertTrue(result.succeeded(), "Call to processPauseRequest should succeed for active task");
-				assertTrue(result.result(), "Response from processPauseRequest should be true when task is an active root task");
-
 				// verify the db service was called to update the task status
-				verify(dbService).updateStatus(eq(parentTask.getTenantId()),
-						eq(parentTask.getUuid()), eq(TransferStatusType.PAUSE_WAITING.name()), any());
-
-				// verify that the completed event was created. this should always be throws
-				// if the updateStatus result succeeds.
-				//verify(listener)._doPublishEvent(eq(TRANSFERTASK_PAUSED_SYNC), eq(parentTask.toJson()));
+				verify(dbService).updateStatus(eq(transferTask.getTenantId()),
+						eq(transferTask.getUuid()), eq(TransferStatusType.PAUSE_WAITING.name()), any());
 
 				// make sure the parent was processed at least one time
-				// TODO: why is this at least once? Do we know how many times it should be called?
-				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
+				verify(listener).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
-				Assertions.assertTrue(result.result(),
-									"TransferTask response should be true indicating the task completed successfully.");
-
-				assertTrue(result.succeeded(), "TransferTask update should have succeeded");
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR),any(), any());
 
 				ctx.completeNow();
 			});
@@ -368,7 +378,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Paused Listener with no parent that is active - processPauseRequest")
-	@Disabled
+	//@Disabled
 	public void processPauseRequestWithNoParentPaused(Vertx vertx, VertxTestContext ctx) throws Exception {
 
 		// Set up our transfertask for testing
@@ -381,7 +391,6 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 //		parentTask.setParentTaskId(parentTask.getUuid());
 
 		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
 
 		//doAnswer((Answer )).when(listener.getTransferTask(anyString(), anyString(), any()));
 //		when(listener.getTransferTask(eq(parentTask.getParentTaskId()), eq(parentTask.getUuid()), any() ) ).thenReturn(parentTask);
@@ -392,21 +401,20 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
 
-		JsonObject expectedgetByIdAck = parentTask.toJson();
-		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
+		JsonObject getByUuidJson = parentTask.toJson();
+		AsyncResult<JsonObject> getByUuidAsyncResult = getMockAsyncResult(getByUuidJson);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateGetById);
+			handler.handle(getByUuidAsyncResult);
 			return null;
 		}).when(dbService).getByUuid(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), anyObject() );
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
-		JsonObject expectedUdpatedJsonObject = parentTask.toJson()
+		JsonObject expectedUpdatedJsonObject = parentTask.toJson()
 				.put("status", TransferStatusType.PAUSED.name())
 				.put("endTime", Instant.now());
-
-		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
+		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUpdatedJsonObject);
 
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
@@ -441,7 +449,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				// verify that the completed event was created. this should always be throws
 				// if the updateStatus result succeeds.
 				//verify(listener)._doPublishEvent(eq(TRANSFERTASK_PAUSED_SYNC), any());
-				verify(nats, times(1)).push(any(),eq(TRANSFERTASK_PAUSED_SYNC),any());
+				verify(listener)._doPublishEvent(eq(TRANSFERTASK_PAUSED_SYNC),any(), any());
 
 				// make sure the parent was processed at least one time
 				// TODO: why is this at least once? Do we know how many times it should be called?
@@ -449,7 +457,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 				// make sure no error event is ever thrown
 				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR),any(), any());
 				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				Assertions.assertTrue(result.result(),
@@ -463,9 +471,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	}
 
 	@Test
-	@DisplayName("Transfer Task Paused Listener with parent = child that is active - processPauseRequest")
-	@Disabled
-	public void processPauseRequestWithParentSamePaused(Vertx vertx, VertxTestContext ctx) throws Exception {
+	@DisplayName("TransferTask Paused Listener fails when transfer task has its own uuid as its parent or root")
+	//@Disabled
+	public void processPauseRequestFailsWhenUUIDMatchesOwnParentOrRoot(Vertx vertx, VertxTestContext ctx) throws Exception {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -477,10 +485,6 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		parentTask.setParentTaskId(parentTask.getUuid());
 
 		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
-
-		//doAnswer((Answer )).when(listener.getTransferTask(anyString(), anyString(), any()));
-//		when(listener.getTransferTask(eq(parentTask.getParentTaskId()), eq(parentTask.getUuid()), any() ) ).thenReturn(parentTask);
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -488,30 +492,29 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
 
-		JsonObject expectedgetByIdAck = parentTask.toJson();
-		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
+		JsonObject getByUuidJson = parentTask.toJson();
+		AsyncResult<JsonObject> getByUuidAsyncResult = getMockAsyncResult(getByUuidJson);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateGetById);
+			handler.handle(getByUuidAsyncResult);
 			return null;
 		}).when(dbService).getByUuid(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), anyObject() );
 
+
 		// mock a successful outcome with updated json transfer task result from updateStatus
-		JsonObject expectedUdpatedJsonObject = parentTask.toJson()
+		JsonObject expectedUpdatedJsonObject = parentTask.toJson()
 				//.put("status", TransferStatusType.PAUSED.name())
 				.put("endTime", Instant.now());
 
-		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
-
 		// mock the handler passed into updateStatus
+		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUpdatedJsonObject);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
 			handler.handle(updateStatusHandler);
 			return null;
 		}).when(dbService).updateStatus(any(), any(), any(), any());
-
 
 		// mock a successful outcome with a puased result from processPauseRequest indicating the child has no active parents
 		AsyncResult<Boolean> processPauseRequest = getMockAsyncResult(Boolean.FALSE);
@@ -525,10 +528,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		}).when(listener).processParentEvent(any(), any(), any());
 
 		// now we run the actual test using our test transfer task data
-		listener.processPauseRequest(parentTask.toJson(), result -> {
-			ctx.verify(() -> {
-				assertTrue(result.succeeded(), "Call to processPauseRequest should succeed for active task");
-				assertTrue(result.result(), "Response from processPauseRequest should be true when task is not active and there is no root task");
+		listener.processPauseRequest(parentTask.toJson(), ctx.failing(pauseException -> ctx.verify(() -> {
+				assertTrue(pauseException instanceof TransferException,
+						"Task should fail and resolve TransferException when parent or root is same as own uuid");
 
 				// verify the db service was called to update the task status
 //				verify(dbService).updateStatus(eq(parentTask.getTenantId()),
@@ -537,104 +539,23 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				// verify that the completed event was created. this should always be throws
 				// if the updateStatus result succeeds.
 				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PAUSED), eq(parentTask.toJson()));
-				verify(nats, never()).push(any(),any());
+				verify(listener)._doPublishEvent(eq(TRANSFERTASK_ERROR), any(), any());
 
 				// make sure the parent was processed at least one time
-				// TODO: why is this at least once? Do we know how many times it should be called?
 				verify(listener, never()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
 //				verify(listener, times(1))._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 //				verify(listener, times(1))._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
-				Assertions.assertTrue(result.result(),
-						"TransferTask response should be true indicating the task completed successfully.");
-
-				assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
 				ctx.completeNow();
-			});
-		});
-	}
-
-	@Test
-	@DisplayName("TransferTask Paused Listener with parent=child that is active - processParentEvent")
-	@Disabled
-	public void processPauseRequestProcessParentPaused(Vertx vertx, VertxTestContext ctx) throws Exception {
-
-		// Set up our transfertask for testing
-		TransferTask parentTask = _createTestTransferTask();
-		parentTask.setStatus(TransferStatusType.TRANSFERRING);
-		parentTask.setStartTime(Instant.now());
-		parentTask.setEndTime(Instant.now());
-		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
-		parentTask.setParentTaskId(parentTask.getUuid());
-		parentTask.setRootTaskId(parentTask.getUuid());
-
-		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
-
-		//doAnswer((Answer )).when(listener.getTransferTask(anyString(), anyString(), any()));
-//		when(listener.getTransferTask(eq(parentTask.getParentTaskId()), eq(parentTask.getUuid()), any() ) ).thenReturn(parentTask);
-
-		// mock out the db service so we can can isolate method logic rather than db
-		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-
-		// mock the dbService getter in our mocked vertical so we don't need to use powermock
-		when(listener.getDbService()).thenReturn(dbService);
-
-		JsonObject expectedgetByIdAck = parentTask.toJson();
-		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
-		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateGetById);
-			return null;
-		}).when(dbService).getByUuid(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), anyObject() );
-
-
-
-		// mock a successful outcome with updated json transfer task result from updateStatus
-		JsonObject expectedUdpatedJsonObject = parentTask.toJson()
-				//.put("status", TransferStatusType.PAUSED.name())
-				.put("endTime", Instant.now());
-
-		AsyncResult<Boolean> updateStatusHandler = getMockAsyncResult(Boolean.TRUE);
-
-		// mock the handler passed into updateStatus
-		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateStatusHandler);
-			return null;
-		}).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
-
-
-
-		doCallRealMethod().when(listener).processParentEvent(any(), any(), any());
-
-		// now we run the actual test using our test transfer task data
-		listener.processParentEvent(parentTask.getTenantId(), parentTask.getUuid(), result -> {
-			ctx.verify(() -> {
-				assertTrue(result.succeeded(), "Call to processPauseRequest should succeed for active task");
-				assertFalse(result.result(), "Response from processPauseRequest should be true when task is not active and there is no root task");
-
-				// make sure the parent was processed at least one time
-				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
-
-				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-				verify(nats, never()).push(any(),any(),any());
-				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-
-				ctx.completeNow();
-			});
-		});
+			})));
 	}
 
 	@Test
 	@DisplayName("TransferTask Paused Listener with child and parent task that is active - processParentEvent")
-	@Disabled
+	//@Disabled
 	public void processPauseRequestProcessNotParentPaused(Vertx vertx, VertxTestContext ctx) throws Exception {
 
 		// Set up our transfertask for testing
@@ -649,7 +570,6 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		childTask.setRootTaskId(parentTask.getRootTaskId());
 
 		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -657,17 +577,17 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
 
-		JsonObject expectedgetByIdAck = childTask.toJson();
-		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
+		JsonObject getByUuidJson = childTask.toJson();
+		AsyncResult<JsonObject> getByUuidAsyncResult = getMockAsyncResult(getByUuidJson);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateGetById);
+			handler.handle(getByUuidAsyncResult);
 			return null;
 		}).when(dbService).getByUuid(eq(childTask.getTenantId()), eq(childTask.getUuid()), anyObject() );
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
-		JsonObject expectedUdpatedJsonObject = childTask.toJson()
+		JsonObject expectedUpdatedJsonObject = childTask.toJson()
 				//.put("status", TransferStatusType.PAUSED.name())
 				.put("endTime", Instant.now());
 
@@ -698,150 +618,148 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		});
 	}
 
+	@Override
+	protected TransferTask _createTestTransferTask() {
+		TransferTask transferTask = super._createTestTransferTask();
+		transferTask.setStatus(TransferStatusType.TRANSFERRING);
+		transferTask.setStartTime(Instant.now());
+		transferTask.setEndTime(Instant.now());
+		transferTask.setSource(TRANSFER_SRC);
+
+		return transferTask;
+	}
+
+
 	@Test
-	@DisplayName("TransferTask Paused Listener with parent task that is active - processParentEvent")
-	@Disabled
-	public void processParentEventParentPaused(Vertx vertx, VertxTestContext ctx) throws Exception {
+//	@DisplayName("Processing Inactive parent task raises TRANSFERTASK_PAUSED_ACK and resolves false")
+	//@Disabled
+	public void processParentEventInactiveTaskRaisesAckAndResolvesFalse(Vertx vertx, VertxTestContext ctx) throws Exception {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
-		TransferTask childTask = _createTestTransferTask();
+		parentTask.setStatus(TransferStatusType.COMPLETED);
 
-		childTask.setStatus(TransferStatusType.TRANSFERRING);
-		childTask.setStartTime(Instant.now());
-		childTask.setEndTime(Instant.now());
-		childTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
-
-
-		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
-
-		// mock out the db service so we can can isolate method logic rather than db
-		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-
-		// mock the dbService getter in our mocked vertical so we don't need to use powermock
-		when(listener.getDbService()).thenReturn(dbService);
-
-		JsonObject expectedgetByIdAck = childTask.toJson();
-		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
-		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateGetById);
-			return null;
-		}).when(dbService).getByUuid(eq(childTask.getTenantId()), eq(childTask.getUuid()), anyObject() );
-
-		// mock a successful outcome with updated json transfer task result from updateStatus
-		JsonObject expectedUdpatedJsonObject = childTask.toJson()
-				//.put("status", TransferStatusType.PAUSED.name())
-				.put("endTime", Instant.now());
-
-		AsyncResult<Boolean> updateStatusHandler = getMockAsyncResult(Boolean.TRUE);
-
-		// mock the handler passed into updateStatus
-		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateStatusHandler);
-			return null;
-		}).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
-
-		doCallRealMethod().when(listener).processParentEvent(any(), any(), any());
+		TransferTaskPausedListener listener = initProcessParentEventTest(vertx, parentTask, true);
 
 		// now we run the actual test using our test transfer task data
-		listener.processParentEvent(childTask.getTenantId(), childTask.getUuid(), result -> {
-			ctx.verify(() -> {
-				assertTrue(result.succeeded(), "Call to processParentEvent should succeed for active task");
-				assertTrue(result.result(), "Response from processPauseRequest should be false when task is a child aka leaf task");
+		listener.processParentEvent(parentTask.getTenantId(), parentTask.getUuid(), ctx.succeeding(result ->
+				ctx.verify(() -> {
+//				assertTrue(ex instanceof TransferException, "processParentEvent should resolve failure with " +
+//						"a transfer exception when the transfertask uuid is the same as the root or parent uuid.");
 
-				// make sure the parent was processed at least one time
-				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
+					assertFalse(result, "Inactive transfer task should immediately ack and resolve false");
+					// make sure no error event is ever thrown
+					verify(listener)._doPublishEvent(eq(TRANSFERTASK_PAUSED_ACK), any(), any());
 
-				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-				verify(nats, never()).push(any(),any(),any());
-
-				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-
-				//verify(listener, atLeastOnce())._doPublishEvent(eq(TRANSFERTASK_PAUSED), any());
-
-				ctx.completeNow();
-			});
-		});
+					ctx.completeNow();
+				})));
 	}
 
 	@Test
-	@DisplayName("TransferTask Paused Listener with parent and check TaskAssigned - processParentEvent")
-	@Disabled
+//	@DisplayName("Processing active parent task with active children resolves false and raises no event")
+	public void processParentEventActiveTaskActiveChildrenResolvesFalse(Vertx vertx, VertxTestContext ctx) throws Exception {
+
+		// Set up our transfertask for testing
+		TransferTask transferTask = _createTestTransferTask();
+
+		// Scaffold test and have the child search return false, indicating some children are still active.
+		TransferTaskPausedListener listener = initProcessParentEventTest(vertx, transferTask, false);
+
+		// now we run the actual test using our test transfer task data
+		listener.processParentEvent(transferTask.getTenantId(), transferTask.getUuid(), ctx.succeeding(result ->
+			ctx.verify(() -> {
+				assertFalse(result, "Response from processParentEvent should be false when parent has active children");
+
+				verify(listener, never())._doPublishEvent(any(), any(), any());
+
+				ctx.completeNow();
+			})));
+	}
+
+	@Test
+//	@DisplayName("Processing active parent task with no active children resolves true and raises a TRANSFERTASK_PAUSED_ACK event")
+	public void processParentEventActiveTaskNoActiveChildrenRaisesEventResolvesTrue(Vertx vertx, VertxTestContext ctx) throws Exception {
+
+		// Set up our transfertask for testing
+		TransferTask transferTask = _createTestTransferTask();
+
+		// Scaffold test and have the child search return false, indicating some children are still active.
+		TransferTaskPausedListener listener = initProcessParentEventTest(vertx, transferTask, true);
+
+		// now we run the actual test using our test transfer task data
+		listener.processParentEvent(transferTask.getTenantId(), transferTask.getUuid(), ctx.succeeding(result ->
+				ctx.verify(() -> {
+					assertTrue(result, "Response from processParentEvent should be true when parent has no active children");
+
+					verify(listener)._doPublishEvent(eq(TRANSFERTASK_PAUSED_ACK), any(), any());
+
+					ctx.completeNow();
+				})));
+	}
+
+
+	@Test
+	@DisplayName("TransferTask Paused Listener ")
+	//@Disabled
 	public void processParentEvent2ParentPaused(Vertx vertx, VertxTestContext ctx) throws Exception {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
-		TransferTask childTask = _createTestTransferTask();
+		parentTask.setStatus(TransferStatusType.TRANSFERRING);
+		parentTask.setStartTime(Instant.now());
+		parentTask.setEndTime(Instant.now());
+		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
+		TransferTask childTask = _createTestTransferTask();
 		childTask.setStatus(TransferStatusType.TRANSFERRING);
 		childTask.setStartTime(Instant.now());
 		childTask.setEndTime(Instant.now());
-		childTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
+		childTask.setSource(TRANSFER_SRC);
 
 
 		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
-
-		// mock out the TransferTaskAssinged class
-		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
-		// mock the dbService getter in our mocked vertical so we don't need to use powermock
-		when(listener.getDbService()).thenReturn(dbService);
-
-
-		JsonObject expectedgetByIdAck = childTask.toJson();
-		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
+		JsonObject expectedParentTaskJson = parentTask.toJson();
+		AsyncResult<JsonObject> parentGetById = getMockAsyncResult(expectedParentTaskJson);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateGetById);
+			handler.handle(parentGetById);
 			return null;
-		}).when(dbService).getByUuid(eq(childTask.getTenantId()), eq(childTask.getUuid()), anyObject() );
+		}).when(dbService).getByUuid(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), anyObject() );
 
-		// mock a successful outcome with updated json transfer task result from updateStatus
-		JsonObject expectedUdpatedJsonObject = childTask.toJson()
-				//.put("status", TransferStatusType.PAUSED.name())
-				.put("endTime", Instant.now());
-
-		AsyncResult<Boolean> updateStatusHandler = getMockAsyncResult(Boolean.TRUE);
-
-		// mock the handler passed into updateStatus
+		// mock the handler passed into allChildrenCancelledOrCompleted
+		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
 			@SuppressWarnings("unchecked")
 			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateStatusHandler);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
 			return null;
 		}).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
+
+		// mock the dbService getter in our mocked vertical so we don't need to use powermock
+		when(listener.getDbService()).thenReturn(dbService);
 
 		doCallRealMethod().when(listener).processParentEvent(any(), any(), any());
 
 		// now we run the actual test using our test transfer task data
-		listener.processParentEvent(childTask.getTenantId(), childTask.getUuid(), result -> {
+		listener.processParentEvent(parentTask.getTenantId(), parentTask.getUuid(), result -> {
 			ctx.verify(() -> {
-				assertTrue(result.succeeded(), "Call to processParentEvent should succeed for active task");
-				assertTrue(result.result(), "Response from processPauseRequest should be false when task is a child aka leaf task");
+				assertTrue(result.succeeded(), "Call to processParentEvent should succeed for active parent task");
+				assertTrue(result.result(), "Response from processParentEvent should be true when task is a parent with all children inactive");
 
 				// make sure the parent was processed at least one time
-				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
+				verify(listener, never()).processPauseRequest(any(), any());
 
 				// make sure no error event is ever thrown
-				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-				verify(nats, never()).push(any(),any(),any());
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any(), any());
 
-				//verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				// parent task should have paused event thrown on it
+				verify(listener)._doPublishEvent(eq(TRANSFERTASK_PAUSED), argThat(new IsSameJsonTransferTask(parentTask.toJson())), any());
 
-				//verify(listener, atLeastOnce())._doPublishEvent(eq(TRANSFERTASK_PAUSED), any());
-
-				//verify(ta);
 				ctx.completeNow();
 			});
 		});
@@ -850,13 +768,12 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Paused Listener smoke test with Assigned Vertical and checking Paused Vertical")
-	@Disabled
+	//@Disabled
 	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) throws Exception {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 		// mock of the Paused Listener
 		TransferTaskPausedListener tp = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
 
 		// generate a fake transfer task
 		TransferTask rootTransferTask = _createTestTransferTask();
@@ -887,10 +804,8 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 			return null;
 		}).when(dbService).updateStatus(any(), any(), any(), any(Handler.class));
 
-
 		// assign the mock db service to the test listener
 		when(ta.getDbService()).thenReturn(dbService);
-
 
 		// get mock remote data clients to mock the remote src system interactions
 		URI srcUri = URI.create(rootTransferTask.getSource());
@@ -940,11 +855,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 		try {
 			ta.start();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		} catch (TimeoutException e) {
+		} catch (IOException | TimeoutException | InterruptedException e) {
 			e.printStackTrace();
 		}
 		vertx.eventBus().send(TRANSFERTASK_PAUSED_SYNC, rootTransferTaskJson);

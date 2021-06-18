@@ -66,7 +66,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 
         try {
             // broadcast subscription so each message gets to every verticle to cancel the task where ever it may be
-            subscribeToSubjectGroup(TRANSFERTASK_CANCELED_SYNC, this::handleCanceledSyncMessage);
+            subscribeToSubjectGroup(TRANSFERTASK_CANCELED_SYNC, this::handleCanceledAckMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
         }
@@ -135,7 +135,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
      * Wrapper to process canceled message body and call {@link #processEvent(JsonObject, Handler)} to handle the cancelation of the message.
      * @param message
      */
-    protected void handleCanceledSyncMessage(Message message) {
+    protected void handleCanceledAckMessage(Message message) {
         try {
             JsonObject body = new JsonObject(message.getMessage());
             String uuid = body.getString("uuid");

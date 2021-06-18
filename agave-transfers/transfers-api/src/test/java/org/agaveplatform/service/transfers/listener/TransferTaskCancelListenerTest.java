@@ -54,7 +54,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CANCELED_ACK);
 		when(listener.getVertx()).thenReturn(vertx);
 		doNothing().when(listener)._doPublishEvent(any(), any(), any());
-		doNothing().when(listener).handleCanceledSyncMessage(any());
+		doNothing().when(listener).handleCanceledAckMessage(any());
 		doNothing().when(listener).handleMessage(any());
 		return listener;
 	}
@@ -417,7 +417,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 		doCallRealMethod().when(ttc).processCancelAck( eq(transferTask.toJson()),any());
 		doCallRealMethod().when(ttc).handleMessage(any());
-		doCallRealMethod().when(ttc).handleCanceledSyncMessage(any());
+		doCallRealMethod().when(ttc).handleCanceledAckMessage(any());
 
 		// mock a successful outcome with updated json transfer task result from getById
 		JsonObject expectedgetByIdAck = transferTask.toJson()
@@ -522,7 +522,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 		doCallRealMethod().when(ttc).processCancelAck( eq(transferTask.toJson()),any());
 		doCallRealMethod().when(ttc).handleMessage(any());
-		doCallRealMethod().when(ttc).handleCanceledSyncMessage(any());
+		doCallRealMethod().when(ttc).handleCanceledAckMessage(any());
 
 		// mock a successful outcome with updated json transfer task result from getById
 		JsonObject expectedgetByIdAck = transferTask.toJson()

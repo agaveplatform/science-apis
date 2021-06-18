@@ -20,8 +20,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_SYNC;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferTaskCancelListener extends AbstractNatsListener {
@@ -45,9 +44,6 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
         return EVENT_CHANNEL;
     }
 
-//    public Connection getConnection(){return nc;}
-
-
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
         // init our db connection from the pool
@@ -63,27 +59,25 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
 
         try {
             // broadcast subscription so each message gets to every verticle to cancel the task where ever it may be
-            subscribeToSubject(TRANSFERTASK_CANCELED_SYNC, this::handleCanceledSyncMessage);
+            subscribeToSubject(TRANSFERTASK_CANCELED_ACK, this::handleCanceledAckMessage);
         } catch (Exception e) {
-            logger.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
+            logger.error("TRANSFERTASK_CANCELED_ACK - Exception {}", e.getMessage());
         }
     }
 
-    protected void handleCanceledSyncMessage(Message message) {
+    protected void handleCanceledAckMessage(Message message) {
         try {
             JsonObject body = new JsonObject(message.getMessage());
             String uuid = body.getString("uuid");
-            String source = body.getString("source");
-            String dest = body.getString("dest");
-            logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-            processCancelAck(body, result -> {
-                if (result.succeeded()){
-                    logger.info("processCancelAck succeeded uuid {}", uuid);
-                }
-                else{
-                    logger.error("processCancelAck failed for uuid {},  {}", uuid, result.cause());
-                }
-            });
+            getVertx().<Boolean>executeBlocking(
+                    promise -> processCancelAck(body, promise),
+                    resp -> {
+                        if (resp.succeeded()) {
+                            logger.debug("Finished processing {} transfer task {}", TRANSFERTASK_CANCELED_ACK, uuid);
+                        } else {
+                            logger.debug("Failed processing {} for transfer task {}", TRANSFERTASK_CANCELED_ACK, uuid);
+                        }
+                    });
         } catch (DecodeException e) {
             logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
@@ -318,7 +312,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                             if (!parentChildCancelledOrCompleteResult.result()) {
                                 resultHandler.handle(Future.succeededFuture(false));
                             } else {
-                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, parentTask.toJson(), ackResp -> {
+                                _doPublishEvent(TRANSFERTASK_CANCELED_ACK, parentTask.toJson(), ackResp -> {
                                     resultHandler.handle(Future.succeededFuture(true));
                                 });
                             }
@@ -329,7 +323,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                     });
                 } else {
                     // the parent is not active. forward the ack anyway, just to ensure all ancestors get the message
-                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, parentTask.toJson(), ackResp -> {
+                    _doPublishEvent(TRANSFERTASK_CANCELED_ACK, parentTask.toJson(), ackResp -> {
                         resultHandler.handle(Future.succeededFuture(false));
                     });
                 }
@@ -338,7 +332,6 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
             }
         });
     }
-
 
     /**
      * Handles processing of parent task to see if any other children are active. If not, we create a new

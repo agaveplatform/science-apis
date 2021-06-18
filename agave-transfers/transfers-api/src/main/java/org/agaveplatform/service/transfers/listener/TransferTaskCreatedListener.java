@@ -106,7 +106,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
         } catch (DecodeException e) {
-            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+            log.error("Unable to parse message 1 {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
             log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
         }
@@ -125,7 +125,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
         } catch (DecodeException e) {
-            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+            log.error("Unable to parse message 2 {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
             log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
         }
@@ -144,7 +144,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
         } catch (DecodeException e) {
-            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+            log.error("Unable to parse message 3 {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
             log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
         }
@@ -163,7 +163,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
         } catch (DecodeException e) {
-            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+            log.error("Unable to parse message 4 {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
             log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
         }
@@ -205,7 +205,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         } catch (InterruptedException|IOException e) {
             log.error(e.getMessage());
         } catch (DecodeException e) {
-            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+            log.error("Unable to parse message 5 {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
             log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
         }
@@ -230,7 +230,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             try {
                 srcUri = URI.create(source);
             } catch (Exception e) {
-                String msg = String.format("Unable to parse source uri %s for transfer task %s: %s",
+                String msg = String.format("Unable to parse 6 source uri %s for transfer task %s: %s",
                         source, uuid, e.getMessage());
                 throw new RemoteDataSyntaxException(msg, e);
             }
@@ -239,7 +239,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             try {
                 destUri = URI.create(dest);
             } catch (Exception e) {
-                String msg = String.format("Unable to parse dest uri %s for transfer task %s: %s",
+                String msg = String.format("Unable to parse 7 dest uri %s for transfer task %s: %s",
                         source, uuid, e.getMessage());
                 throw new RemoteDataSyntaxException(msg, e);
             }
@@ -310,6 +310,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         String msg = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
                                 uuid, updateResult.cause().getMessage());
                         doHandleError(updateResult.cause(), msg, body, handler);
+                        handler.handle(Future.failedFuture(msg));
                     }
                 });
             } else {

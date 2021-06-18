@@ -163,6 +163,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 							_doPublishEvent(TRANSFER_FAILED, json, errorResp -> {
 								handler.handle(Future.succeededFuture(false));
 							});
+							//handler.handle(Future.succeededFuture(false));
 						}
 					} else {
 						log.debug("Skipping retry of transfer task {}. Task has a status of {} and is no longer in an active state.",
@@ -344,6 +345,10 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			String message = String.format("Failing transfer task %s due to invalid source syntax. %s", retryTransferTask.getTenantId(), ex.getMessage());
 			doHandleFailure(ex, message, retryTransferTask.toJson(), errorResp -> {
 				handler.handle(Future.failedFuture(ex.getCause()));
+			});
+		} catch (SystemUnknownException ex){
+			doHandleError(ex, ex.getMessage(), retryTransferTask.toJson(), errorResp -> {
+				handler.handle(Future.failedFuture(ex.getMessage()));
 			});
 		} catch (Exception ex) {
 			doHandleError(ex, ex.getMessage(), retryTransferTask.toJson(), errorResp -> {

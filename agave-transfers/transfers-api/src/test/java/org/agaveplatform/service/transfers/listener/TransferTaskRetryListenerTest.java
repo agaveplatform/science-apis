@@ -9,7 +9,9 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -40,21 +42,25 @@ import static org.mockito.Mockito.*;
 //@Disabled
 class TransferTaskRetryListenerTest extends BaseTestCase {
 
-    protected TransferTaskRetryListener getMockTransferRetryListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    protected TransferTaskRetryListener getMockTransferRetryListenerInstance(Vertx vertx) throws Exception {
         TransferTaskRetryListener listener = mock(TransferTaskRetryListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFER_RETRY);
         when(listener.getVertx()).thenReturn(vertx);
         when(listener.taskIsNotInterrupted(any())).thenReturn(true);
         when(listener.getRetryRequestManager()).thenCallRealMethod();
         when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
-        doNothing().when(listener)._doPublishEvent(any(), any(), any());
-        //doNothing().when(listener)._doPublishEvent(any(), any(), any());
+        doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
         doCallRealMethod().when(listener).processRetryTransferTask(any(), any());
         doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
         doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
         Connection mockConnection = mock(Connection.class);
-        //when(listener._connect(any())).thenReturn(mockConnection);
         when(listener.config()).thenReturn(config);
+        when(listener.getRemoteDataClient(any(), any(), any())).thenReturn(mock(RemoteDataClient.class));
+
+        NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
+        doNothing().when(natsClient).push(any(), any());
+        when(listener.getMessageClient()).thenReturn(natsClient);
+
 
         return listener;
     }
@@ -72,8 +78,8 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Process TransferTaskPublishesProtocolEvent")
-    @Disabled
-    public void processTransferTaskPublishesProtocolEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    //@Disabled
+    public void processTransferTaskPublishesProtocolEvent(Vertx vertx, VertxTestContext ctx) throws Exception {
         //JsonObject body = new JsonObject();
         TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 
@@ -109,8 +115,8 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Process processTransferTaskPublishesChildTasksForDirectory")
-    @Disabled
-    public void processTransferTaskPublishesChildTasksForDirectory(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    //@Disabled
+    public void processTransferTaskPublishesChildTasksForDirectory(Vertx vertx, VertxTestContext ctx) throws Exception {
 
         TransferTask tt = _createTestTransferTask();
 
@@ -129,13 +135,19 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
             return null;
         }).when(ta).processRetry(any(TransferTask.class), any());
 
+        RemoteDataClient srcClient = mock(RemoteDataClient.class);
+        RemoteDataClient destClient = mock(RemoteDataClient.class);
+
+        // allow the first one to succeed since it's not an agave URI
+        when(ta.getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource())))).thenReturn(srcClient);
+            // force the second one to fail since it is an agave URI and can result in a bad syste lookup.
+        when(ta.getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getDest()))))
+            .thenThrow(new SystemUnknownException("THis should be thrown during the test and propagated back as the handler.cause() method."));
+
         ta.processRetryTransferTask(tt.toJson(), resp -> ctx.verify(() -> {
             assertFalse(resp.succeeded(), "processRetry should fail when system is unknown");
-            assertEquals(resp.cause().getClass(), SystemUnknownException.class, "processRetry should propagate SystemUnknownException back to handler when thrown.");
-            verify(ta, times(1)).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource())));
-            verify(ta, times(1)).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getDest())));
-            //verify(ta, times(1))._doPublishEvent(eq(TRANSFERTASK_ERROR), any(JsonObject.class));
-//            verify(nats, times(1)).push(any(), any(), any(JsonObject.class).toString());
+            verify(ta, atLeastOnce())._doPublishEvent(eq(MessageType.TRANSFERTASK_ERROR), any(JsonObject.class), any());
+
             ctx.completeNow();
         }));
 
@@ -144,14 +156,6 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
         JsonObject body = tta.toJson();
 
-        vertx.eventBus().consumer("transfertask.sftp", msg -> {
-            JsonObject bodyRec = (JsonObject) msg.body();
-            assertEquals(tt.getUuid(), bodyRec.getString("uuid"));
-            ctx.completeNow();
-        });
-
-        //TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
-        //ta.processRetryTransferTask(body);
         ta.processRetryTransferTask(body, resp -> {
             if (resp.succeeded()) {
                 System.out.println("Succeeded with the procdessTransferTask in retrying of the event ");
@@ -161,7 +165,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
         });
         String protocolSelected = "http";
 
-        assertEquals(StorageProtocolType.HTTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
+//        assertEquals(StorageProtocolType.HTTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
         ctx.completeNow();
     }
 
@@ -172,6 +176,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
      * @param transferTaskToReturn {@link JsonObject} to return from the {@link TransferTaskDatabaseService#getByUuid(String, String, Handler)} handler
      * @return a mock of the db service with the getById mocked out to return the {@code transferTaskToReturn} as an async result.
      */
+
     private TransferTaskDatabaseService getMockTranserTaskDatabaseService(JsonObject transferTaskToReturn) {
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -199,28 +204,34 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Process processTransferTaskPublishesErrorOnSystemUnavailble")
-    @Disabled
-    public void processTransferTaskPublishesErrorOnSystemUnavailble(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
-
-//        NatsJetstreamMessageClient nats = getMockNats();
-
+    public void processTransferTaskPublishesErrorOnSystemUnavailble(Vertx vertx, VertxTestContext ctx) throws Exception {
         TransferTask tt = _createTestTransferTask();
         tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
         tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
         JsonObject body = tt.toJson();
 
-        vertx.eventBus().consumer("transfertask.error", msg -> {
-            JsonObject bodyRec = (JsonObject) msg.body();
-            assertEquals(tt.getUuid(), bodyRec.getString("uuid"));
-            ctx.completeNow();
-        });
+        // mock out the db service so we can can isolate method logic rather than db
+        TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(tt.toJson());
 
         TransferTaskRetryListener ta = getMockTransferRetryListenerInstance(vertx);
 
-        when(ta.getDbService().update(eq(TENANT_ID), eq(TEST_USERNAME), eq(tt), any())).thenCallRealMethod();
-        when(ta.getDbService().getByUuid(eq(TENANT_ID), eq(TEST_USERNAME), any())).thenCallRealMethod();
+        // mock a successful outcome with updated json transfer task result from getById call to db
+        AsyncResult<JsonObject> getByAnyHandler = getMockAsyncResult(tt.toJson());
+        doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+            @SuppressWarnings("unchecked")
+            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+            handler.handle(getByAnyHandler);
+            return null;
+        }).when(dbService).update(any(), any(), any(), any());
 
+        // mock the handler passed into getById
+        doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+            @SuppressWarnings("unchecked")
+            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+            handler.handle(getByAnyHandler);
+            return null;
+        }).when(dbService).getByUuid(any(), any(), any());
 
         //ta.processRetryTransferTask(body);
         ta.processRetryTransferTask(body, resp -> {
@@ -231,7 +242,6 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
             }
         });
 
-
         String protocolSelected = "http";
         assertEquals(StorageProtocolType.HTTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
         ctx.completeNow();
@@ -239,14 +249,14 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("TransferTaskRetryListenerTest - error event thrown on unknown dest system")
-    @Disabled
-    public void processTransferTaskPublishesErrorOnSystemUnknown(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    //@Disabled
+    public void processTransferTaskPublishesErrorOnSystemUnknown(Vertx vertx, VertxTestContext ctx) throws Exception {
 //        NatsJetstreamMessageClient nats = getMockNats();
         TransferTask tt = _createTestTransferTask();
         tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
         tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
-        RemoteDataClient srcClient = mock(RemoteDataClient.class);
+        //RemoteDataClient srcClient = mock(RemoteDataClient.class);
 
         TransferTaskRetryListener ta = getMockTransferRetryListenerInstance(vertx);
 
@@ -254,7 +264,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
         try {
             // allow the first one to succeed since it's not an agave URI
             when(ta.getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource()))))
-                    .thenReturn(srcClient);
+                    .thenReturn(mock(RemoteDataClient.class));
             // force the second one to fail since it is an agave URI and can result in a bad syste lookup.
             when(ta.getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getDest()))))
                     .thenThrow(new SystemUnknownException("THis should be thrown during the test and propagated back as the handler.cause() method."));
@@ -264,20 +274,17 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
         ta.processRetry(tt, processRetryResult -> ctx.verify(() -> {
             assertFalse(processRetryResult.succeeded(), "processRetry should fail when system is unknown");
-            assertEquals(processRetryResult.cause().getClass(), SystemUnknownException.class, "processRetry should propagate SystemUnknownException back to handler when thrown.");
-            verify(ta, times(1)).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource())));
-            verify(ta, times(1)).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getDest())));
-            //verify(ta, times(1))._doPublishEvent( eq(TRANSFERTASK_ERROR), any(JsonObject.class) );
-//            verify(nats, times(1)).push(any(), any(), any(JsonObject.class).toString());
-//            verify(nats, times(1)).push(any(), any(), any(JsonObject.class).toString());
+            verify(ta, atLeastOnce()).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource())));
+            verify(ta, atLeastOnce()).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getDest())));
+            verify(ta, atLeastOnce())._doPublishEvent( eq(MessageType.TRANSFERTASK_ERROR), any(JsonObject.class), any() );
             ctx.completeNow();
         }));
     }
 
     @Test
     @DisplayName("TransferRetryListenerTest - error event thrown on unknown source system")
-    @Disabled
-    public void processTransferTaskPublishesErrorOnSrcSystemUnknown(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    //@Disabled
+    public void processTransferTaskPublishesErrorOnSrcSystemUnknown(Vertx vertx, VertxTestContext ctx) throws Exception {
 //        NatsJetstreamMessageClient nats = getMockNats();
         TransferTask tt = _createTestTransferTask();
         tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -312,7 +319,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("TransferRetryListener - isTaskInterruptedTest")
-    @Disabled
+   // @Disabled
     void isTaskInterrupted(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
         TransferTask tt = _createTestTransferTask();
         tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -407,7 +414,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("TransferRetryListener - Task failed whem max attempts reached")
-    public void failTaskWhenMaxAttemptsReachedTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
+    public void failTaskWhenMaxAttemptsReachedTest(Vertx vertx, VertxTestContext ctx) throws Exception {
 //        NatsJetstreamMessageClient nats = getMockNats();
 
         TransferTask tt = _createTestTransferTask();

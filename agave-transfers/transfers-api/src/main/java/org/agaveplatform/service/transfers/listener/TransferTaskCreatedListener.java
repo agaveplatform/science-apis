@@ -149,20 +149,25 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
         String dest = body.getString("dest");
         String username = body.getString("owner");
         String tenantId = (body.getString("tenant_id"));
-        String protocol = "";
+
         TransferTask createdTransferTask = new TransferTask(body);
 
         try {
             URI srcUri;
-            URI destUri;
             try {
-                log.info("got into TransferTaskCreatedListener.processEvent");
                 srcUri = URI.create(source);
-                destUri = URI.create(dest);
             } catch (Exception e) {
                 String msg = String.format("Unable to parse source uri %s for transfer task %s: %s",
                         source, uuid, e.getMessage());
-                log.error(msg);
+                throw new RemoteDataSyntaxException(msg, e);
+            }
+
+            URI destUri;
+            try {
+                destUri = URI.create(dest);
+            } catch (Exception e) {
+                String msg = String.format("Unable to parse dest uri %s for transfer task %s: %s",
+                        source, uuid, e.getMessage());
                 throw new RemoteDataSyntaxException(msg, e);
             }
 
@@ -174,7 +179,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             } else {
                 // look up the system to check permissions
                 log.info("got into the look up the system to check permissions");
-                if (srcUri.getScheme().equalsIgnoreCase("agave")) {
+                if (srcUri.getScheme() != null && srcUri.getScheme().equalsIgnoreCase("agave")) {
                     // TODO: ensure user has access to the system. We may need to look up file permissions her as well.
                     //  though it's a lot easier to say this is an internal service and permissions will be checked and
                     //  invalidated from another process and propagated here via events.
@@ -193,8 +198,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                         destUri.getScheme(), uuid));
             } else {
                 log.info("uri is supported. {}", destUri);
-                SystemDao systemDao = new SystemDao();
-                if (destUri.getScheme().equalsIgnoreCase("agave")) {
+                if (destUri.getScheme() != null && destUri.getScheme().equalsIgnoreCase("agave")) {
                     // TODO: ensure user has access to the system. We may need to look up file permissions her as well.
                     //  though it's a lot easier to say this is an internal service and permissions will be checked and
                     //  invalidated from another process and propagated here via events.
@@ -206,20 +210,12 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                 }
             }
 
-            // check for interrupted before proceeding
-            log.info("checking for interrupted before proceeding");
-            log.info(" rootTaskID = {}", createdTransferTask.getRootTaskId() );
-            log.info(" parentTaskID = {}", createdTransferTask.getParentTaskId() );
-
-
-
             // check to be sure that the root task or parent task are not null first
             //if (createdTransferTask.getRootTaskId() != null && createdTransferTask.getParentTaskId() != null) {
-                log.trace("Got past the rootTaskID and parentTaskID");
+
                 // if there are values for root task and parent task then do the following
                 if (taskIsNotInterrupted(createdTransferTask)) {
                     // update dt DB status here
-                    log.info("set status to ASSIGNED");
                     getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateResult -> {
                         if (updateResult.succeeded()) {
                             // continue assigning the task and return
@@ -230,7 +226,6 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                             // update failed
                             String msg = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
                                     uuid, updateResult.cause().getMessage());
-                            log.error(msg);
                             doHandleError(updateResult.cause(), msg, body, handler);
                         }
                     });
@@ -239,11 +234,8 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
                     handler.handle(Future.succeededFuture(false));
                 }
-//            } else {
-//                log.info("Error. Root and parent tasks are null.");
-//            }
         } catch (Exception e) {
-            log.error("Error with TransferTaskCreatedListener {}", e.toString());
+            log.error("Error with TransferTaskCreatedListener {}", e.getMessage());
             doHandleError(e, e.getMessage(), body, handler);
         }
     }

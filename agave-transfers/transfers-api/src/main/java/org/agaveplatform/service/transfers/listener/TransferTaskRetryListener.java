@@ -23,6 +23,7 @@ import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
+import org.iplantc.service.transfer.local.Local;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -412,6 +413,12 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 	 */
 	protected RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
 		TenancyHelper.setCurrentTenantId(tenantId);
-		return new RemoteDataClientFactory().getInstance(username, null, target);
-	}
+
+		// allow for handling transfer of local files cached to the local (shared) file system. This happens during
+		// file uploads and file processing operations between services.
+		if (target.getScheme() == null || target.getScheme().equalsIgnoreCase("file")) {
+			return new Local(null, "/", "/");
+		} else {
+			return new RemoteDataClientFactory().getInstance(username, null, target);
+		}	}
 }

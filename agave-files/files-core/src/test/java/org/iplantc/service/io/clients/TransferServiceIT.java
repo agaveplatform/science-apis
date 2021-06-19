@@ -2,14 +2,15 @@ package org.iplantc.service.io.clients;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.iplantc.service.common.Settings;
 import org.iplantc.service.io.BaseTestCase;
+import org.iplantc.service.io.exceptions.TaskException;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.net.URISyntaxException;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.*;
 
 public class TransferServiceIT extends BaseTestCase {
     String source;
@@ -26,28 +27,36 @@ public class TransferServiceIT extends BaseTestCase {
 
     @Test
     public void sendPost(){
-        TransferService service = new TransferService(SYSTEM_OWNER, TENANT_ID);
-        APIResponse postResponse = service.post(source, dest);
-        assertNotNull(postResponse);
-        transferUuid = postResponse.getResult().get("uuid").asText();
-        assertNotNull(transferUuid, "Response from successful request to transfer service should return valid uuid.");
+        try {
+            TransferService service = new TransferService(SYSTEM_OWNER, TENANT_ID);
+            APIResponse postResponse = service.post(source, dest);
+            assertNotNull(postResponse, "Response from post request should return queued transfer task.");
+            transferUuid = postResponse.getResult().get("uuid").asText();
+            assertNotNull(transferUuid, "Response from successful request to transfer service should return valid uuid.");
 
-        JsonNode jsonResponse = postResponse.getResult();
+            JsonNode jsonResponse = postResponse.getResult();
 
-        assertEquals(jsonResponse.get("source").asText(), source, "Source from transfer api should match source from request");
-        assertEquals(jsonResponse.get("dest").asText(), dest, "Dest from transfer api should match dest from request");
-        assertEquals(jsonResponse.get("tenant_id").asText(), TENANT_ID, "Tenant id from transfer api should match tenant id from request");
+            assertEquals(jsonResponse.get("source").asText(), source, "Source from transfer api should match source from request");
+            assertEquals(jsonResponse.get("dest").asText(), dest, "Dest from transfer api should match dest from request");
+            assertEquals(jsonResponse.get("tenant_id").asText(), TENANT_ID, "Tenant id from transfer api should match tenant id from request");
+        } catch (TaskException e){
+            fail("TransferService should connect and send requests to " + Settings.IPLANT_TRANSFER_SERVICE + " without throwing an exception.");
+        }
     }
 
     @Test (dependsOnMethods = {"sendPost"})
     public void sendGet(){
-        TransferService service = new TransferService(SYSTEM_OWNER, TENANT_ID);
-        APIResponse getResponse = service.get(transferUuid);
-        assertNotNull(getResponse, "Response from successful request from transfer service should return transfer task corresponding to uuid");
+        try {
+            TransferService service = new TransferService(SYSTEM_OWNER, TENANT_ID);
+            APIResponse getResponse = service.get(transferUuid);
+            assertNotNull(getResponse, "Response from successful request from transfer service should return transfer task corresponding to uuid");
 
-        JsonNode jsonResponse = getResponse.getResult();
+            JsonNode jsonResponse = getResponse.getResult();
 
-        assertEquals(jsonResponse.get("source").asText(), source, "Source from transfer api should match source from request");
-        assertEquals(jsonResponse.get("tenant_id").asText(), TENANT_ID, "Tenant id from transfer api should match tenant id from request");
+            assertEquals(jsonResponse.get("source").asText(), source, "Source from transfer api should match source from request");
+            assertEquals(jsonResponse.get("tenant_id").asText(), TENANT_ID, "Tenant id from transfer api should match tenant id from request");
+        } catch (TaskException e){
+            fail("TransferService should connect and send requests to " + Settings.IPLANT_TRANSFER_SERVICE + " without throwing an exception.");
+        }
     }
 }

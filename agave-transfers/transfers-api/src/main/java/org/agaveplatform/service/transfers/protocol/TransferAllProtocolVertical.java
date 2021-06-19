@@ -411,7 +411,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 		// allow for handling transfer of local files cached to the local (shared) file system. This happens during
 		// file uploads and file processing operations between services.
-		if (target.getScheme().equalsIgnoreCase("file")) {
+		if (target.getScheme() == null || target.getScheme().equalsIgnoreCase("file")) {
 			return new Local(null, "/", "/");
 		} else {
 			return new RemoteDataClientFactory().getInstance(username, null, target);

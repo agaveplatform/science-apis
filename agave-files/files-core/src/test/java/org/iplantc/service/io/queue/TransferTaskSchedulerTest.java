@@ -23,7 +23,7 @@ import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
-import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 
 
 public class TransferTaskSchedulerTest extends BaseTestCase {
@@ -49,9 +49,7 @@ public class TransferTaskSchedulerTest extends BaseTestCase {
         when(logicalFile.getUuid()).thenReturn(new AgaveUUID(UUIDType.FILE).toString());
         when(logicalFile.getTenantId()).thenReturn("foo.tenant");
         doCallRealMethod().when(logicalFile).setStatus(anyString());
-        doCallRealMethod().when(logicalFile).setTransferUuid(anyString());
         when(logicalFile.getOwner()).thenReturn(SYSTEM_OWNER);
-        when(logicalFile.getTransferUuid()).thenReturn(new AgaveUUID(UUIDType.TRANSFER).toString());
 
         return logicalFile;
     }
@@ -62,7 +60,6 @@ public class TransferTaskSchedulerTest extends BaseTestCase {
                 .put("dest", file.getPath())
                 .put("owner", file.getOwner())
                 .put("tenantId", file.getTenantId())
-                .put("uuid", file.getTransferUuid())
                 .put("created", String.valueOf(Instant.now()))
                 .put("lastUpdated", String.valueOf(Instant.now()))
                 .put("endTime", String.valueOf(Instant.now()))
@@ -121,12 +118,28 @@ public class TransferTaskSchedulerTest extends BaseTestCase {
         JsonNode jsonTransferTask = getTransferTask(file, STAGING_QUEUED.name());
         when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString(), anyString())).thenReturn(jsonTransferTask);
 
-        transferTaskScheduler.enqueueStagingTaskWithNotification(file, SYSTEM_OWNER);
-        verify(file, times(1)).setTransferUuid(jsonTransferTask.get("uuid").asText());
+        String transferUuid = transferTaskScheduler.enqueueStagingTaskWithNotification(file, SYSTEM_OWNER);
+        assertNotNull(transferUuid, "Successful enqueue of transfer task should return uuid corresponding to transfer.");
+//        verify(file, times(1)).setTransferUuid(jsonTransferTask.get("uuid").asText());
     }
 
     @Test
     public void testEnqueueStagingTaskWithNotificationCreatesNotification() throws NotificationException, SchedulerException {
+        TransferTaskScheduler transferTaskScheduler = getMockTransferTaskScheduler();
+        when(transferTaskScheduler.createNotification(any(LogicalFile.class))).thenReturn(mock(Notification.class));
+        when((transferTaskScheduler.parseTransferResponse(any(JsonNode.class)))).thenCallRealMethod();
+
+        LogicalFile file = getMockLogicalFile();
+        JsonNode jsonTransferTask = getTransferTask(file, STAGING_QUEUED.name());
+        when(transferTaskScheduler.callTransferClient(any(LogicalFile.class), anyString(), anyString())).thenReturn(jsonTransferTask);
+
+        transferTaskScheduler.enqueueStagingTaskWithNotification(file, SYSTEM_OWNER);
+        verify(transferTaskScheduler, times(1)).createNotification(file);
+    }
+
+    @Test
+    public void testEnqueueStagingTaskForFileUpload() throws NotificationException, SchedulerException {
+        //create a file on test system
         TransferTaskScheduler transferTaskScheduler = getMockTransferTaskScheduler();
         when(transferTaskScheduler.createNotification(any(LogicalFile.class))).thenReturn(mock(Notification.class));
         when((transferTaskScheduler.parseTransferResponse(any(JsonNode.class)))).thenCallRealMethod();

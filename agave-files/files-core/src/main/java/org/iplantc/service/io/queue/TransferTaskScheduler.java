@@ -30,8 +30,8 @@ public class TransferTaskScheduler {
      * @param username the user who requested the transfer
      * @throws SchedulerException if unable to submit the request
      */
-    public void enqueueStagingTask(LogicalFile file, String username) throws SchedulerException, NotificationException {
-        enqueueStagingTask(file, username, "");
+    public String enqueueStagingTask(LogicalFile file, String username) throws SchedulerException, NotificationException {
+        return enqueueStagingTask(file, username, "");
     }
 
     /**
@@ -42,7 +42,7 @@ public class TransferTaskScheduler {
      * @param baseUrl  the address of the transfer api
      * @throws SchedulerException if unable to submit the request
      */
-    public void enqueueStagingTask(LogicalFile file, String username, String baseUrl) throws SchedulerException, NotificationException {
+    public String enqueueStagingTask(LogicalFile file, String username, String baseUrl) throws SchedulerException, NotificationException {
         try {
             JsonNode responseBody = callTransferClient(file, username, baseUrl);
 
@@ -52,10 +52,10 @@ public class TransferTaskScheduler {
                 throw new SchedulerException("Error response received when submitting a new transfer request.");
             } else {
                 // this is the value of the "result" field in the response
-                String uuid = parseTransferResponse(responseBody);
+                return parseTransferResponse(responseBody);
 
                 //Add transfer uuid to track in the transfers service
-                file.setTransferUuid(uuid);
+//                file.setTransferUuid(uuid);
             }
         } catch (SchedulerException e) {
             throw e;
@@ -79,10 +79,11 @@ public class TransferTaskScheduler {
      * @throws SchedulerException       if unable to submit the request
      * @throws NotificationException    if unable to create notification
      */
-    public void enqueueStagingTaskWithNotification(LogicalFile file, String username) throws SchedulerException, NotificationException {
-        enqueueStagingTask(file, username, "");
+    public String enqueueStagingTaskWithNotification(LogicalFile file, String username) throws SchedulerException, NotificationException {
+        String transferUuid = enqueueStagingTask(file, username, "");
         try {
             createNotification(file);
+            return transferUuid;
         } catch (NotificationException e){
             log.debug("Unable to create notification event for transfer to " + file.getPath() + ": " + e.getMessage());
             throw e;

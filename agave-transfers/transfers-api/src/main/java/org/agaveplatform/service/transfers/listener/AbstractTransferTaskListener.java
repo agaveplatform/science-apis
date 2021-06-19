@@ -38,6 +38,9 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
         setEventChannel(eventChannel);
     }
 
+    public ConcurrentHashSet<String> getCancelledTasks() {return cancelledTasks;}
+    public ConcurrentHashSet<String> getPausedTasks() {return pausedTasks;}
+
     /**
      * Overriding the parent with a null safe check for the verticle context
      * before continuing. This affords us the luxury of spying on this instance
@@ -138,6 +141,14 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     }
 
     /**
+     * Gets the set of currently cancelled tasks cancelled confirmation
+     * @return set of cancelled tasks
+     */
+    public void setCancelledTasks(ConcurrentHashSet<String> cancelledTasks) {
+        this.cancelledTasks = cancelledTasks;
+    }
+
+    /**
      * Pushes a new {@link TransferTask} uuid onto the threadsafe set of cancelled tasks
      * @param uuid the cancelled task uuid
      */
@@ -151,6 +162,14 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     */
     public synchronized boolean checkPausedTask(String uuid) {
        return getPausedTasks().contains(uuid);
+    }
+
+    /**
+     * Gets the set of currently paused tasks pending confirmation
+     * @return set of paused tasks
+     */
+    public void setPausedTasks(ConcurrentHashSet<String> pausedTasks) {
+        this.pausedTasks = pausedTasks;
     }
 
     /**
@@ -240,41 +259,17 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      */
     protected boolean uriSchemeIsNotSupported(URI uri) {
         // null url or schema are not supported
-        if (uri == null || uri.getScheme() == null) {
+        if (uri == null) {
             return true;
         }
         // local file uri are supported
-        else if (uri.getScheme().equalsIgnoreCase("file")) {
+        else if (uri.getScheme() == null || uri.getScheme().equalsIgnoreCase("file")) {
             return false;
         }
         // otherwise, defer to the factory uri schema check
         else {
             return ! RemoteDataClientFactory.isSchemeSupported(uri);
         }
-    }
-
-    /**
-     * Gets the set of currently cancelled tasks pending confirmation
-     * @return set of cancelled tasks
-     */
-    public ConcurrentHashSet<String> getCancelledTasks() {
-        return cancelledTasks;
-    }
-
-    /**
-     * Gets the set of currently paused tasks pending confirmation
-     * @return set of paused tasks
-     */
-    public ConcurrentHashSet<String> getPausedTasks() {
-        return pausedTasks;
-    }
-
-    public void setCancelledTasks(ConcurrentHashSet<String> cancelledTasks) {
-        this.cancelledTasks = cancelledTasks;
-    }
-
-    public void setPausedTasks(ConcurrentHashSet<String> pausedTasks) {
-        this.pausedTasks = pausedTasks;
     }
 }
 

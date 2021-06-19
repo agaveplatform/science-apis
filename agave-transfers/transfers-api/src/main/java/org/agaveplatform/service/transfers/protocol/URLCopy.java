@@ -191,6 +191,12 @@ public class URLCopy{
             if (getSourceClient().equals(getDestClient())) {
                 listener = getRemoteUnaryTransferListenerForTransferTask(transferTask);
                 // should be able to do a relay transfer here just as easily
+                File destFile = new File(destPath);
+                File parentPath = destFile.getParentFile();
+                if (!parentPath.exists()){
+                    parentPath.mkdirs();
+                }
+
                 getSourceClient().copy(srcPath, destPath, listener);
                 transferTask = (TransferTask)listener.getTransferTask();
             }

@@ -73,7 +73,7 @@ public class LogicalFile {
 	private String nativeFormat = RAW;
 	private String tenantId;		// current api tenant
 	private Date created = new Date();
-	private String transferUuid;
+//	private String transferUuid;
 	
 	private List<FileEvent> events = new ArrayList<FileEvent>();
 	
@@ -533,21 +533,21 @@ public class LogicalFile {
 		return links;
 	}
 
-	/**
-	 * @return the uuid linked to transfer service
-	 */
-	@Column(name = "transfer_uuid", length = 64, unique=true)
-	public String getTransferUuid() {
-		return transferUuid;
-	}
-
-	/**
-	 * @param transferUuid
-	 *            the transfer uuid to set
-	 */
-	public void setTransferUuid(String transferUuid) {
-		this.transferUuid = transferUuid;
-	}
+//	/**
+//	 * @return the uuid linked to transfer service
+//	 */
+//	@Column(name = "transfer_uuid", length = 64, unique=true)
+//	public String getTransferUuid() {
+//		return transferUuid;
+//	}
+//
+//	/**
+//	 * @param transferUuid
+//	 *            the transfer uuid to set
+//	 */
+//	public void setTransferUuid(String transferUuid) {
+//		this.transferUuid = transferUuid;
+//	}
 
 
 	

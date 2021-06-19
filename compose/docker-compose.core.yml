@@ -491,7 +491,9 @@ services:
       - configs/transfers-api.conf
     volumes:
       - ./logs/transfers:/var/log/apache2
-      - ./scratch/transfers:/scratch
+#      - ./scratch/transfers:/scratch
+      - ./scratch/files:/scratch
+
     labels:
       agave.core.service: transfers
       agave.tenant: sandbox

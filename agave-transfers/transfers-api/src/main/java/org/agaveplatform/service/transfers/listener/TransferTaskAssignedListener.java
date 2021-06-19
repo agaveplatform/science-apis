@@ -21,6 +21,7 @@ import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
+import org.iplantc.service.transfer.local.Local;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -146,20 +147,21 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
     }
 
     protected void processTransferTask(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
-        log.trace("Got into TransferTaskAssignedListener.processTransferTask");
-        //Promise<Boolean> promise = Promise.promise();
+        log.debug("Got into TransferTaskAssignedListener.processTransferTask");
+
         String uuid = body.getString("uuid");
         String source = body.getString("source");
         String dest = body.getString("dest");
         String username = body.getString("owner");
         String tenantId = (body.getString("tenant_id"));
-        String protocol = null;
-        TransferTask assignedTransferTask = new TransferTask(body);
-
         RemoteDataClient srcClient = null;
         RemoteDataClient destClient = null;
+        TransferTask assignedTransferTask;
 
         try {
+            assignedTransferTask = new TransferTask(body);
+            log.debug("Body of JsonObject: {}", body);
+
             URI srcUri;
             URI destUri;
             try {
@@ -390,8 +392,11 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                             else {
                                                 String message = String.format("Error updating status of parent transfer task %s to ASSIGNED. %s",
                                                         uuid, updateResult.cause().getMessage());
-                                                // write to error queue. we can retry
-                                                doHandleError(updateResult.cause(), message, body, handler);
+                                                // write to error queue. we can retry.
+                                                // Changed this to false to indicating the assignment failed?
+                                                doHandleError(updateResult.cause(), message, body, dheResp -> {
+                                                    handler.handle(Future.succeededFuture(false));
+                                                });
                                             }
                                         });
                                     } else if (!ongoing.booleanValue()) {
@@ -417,11 +422,11 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         } catch (RemoteDataSyntaxException e) {
             String message = String.format("Failing transfer task %s due to invalid source syntax. %s", uuid, e.getMessage());
             log.error(message);
-            doHandleFailure(e, message, body, handler);
+            try { doHandleFailure(e, message, body, handler); } catch (Exception ignored) {}
         } catch (Throwable e) {
             String message = String.format("Caught a general exception. %s  %s", uuid, e.getMessage());
             log.error(message);
-            doHandleError(e, e.getMessage(), body, handler);
+            try { doHandleFailure(e, message, body, handler); } catch (Exception ignored) {}
         } finally {
             // cleanup the remote data client connections
             try { if (srcClient != null) srcClient.disconnect(); } catch (Exception ignored) {}
@@ -456,7 +461,14 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
      */
     protected RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
         TenancyHelper.setCurrentTenantId(tenantId);
-        return new RemoteDataClientFactory().getInstance(username, null, target);
+
+        // allow for handling transfer of local files cached to the local (shared) file system. This happens during
+        // file uploads and file processing operations between services.
+        if (target.getScheme() == null || target.getScheme().equalsIgnoreCase("file")) {
+            return new Local(null, "/", "/");
+        } else {
+            return new RemoteDataClientFactory().getInstance(username, null, target);
+        }
     }
 
     protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient) {

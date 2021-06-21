@@ -134,7 +134,7 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
         logger.trace("Got into TransferTaskHealthcheckListener.processEvent");
         String uuid = body.getString("uuid");
         String tenantId = body.getString("tenant_id");
-        Instant lastUpdated = body.getInstant("last_updated");
+        Instant lastUpdated = body.getInstant("lastUpdated");
 
         logger.debug("Checking child status of active transfer task {}", uuid);
 		getDbService().allChildrenCancelledOrCompleted(tenantId, uuid, reply -> {
@@ -163,8 +163,10 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 					// individual copy times may handle this for us, though, as any URLCopy#copy() operation
 					// that takes too long to complete will timeout, fail, and be retried.
 					Instant now = Instant.now();
+					Instant lastUpdatedPlus = now;
+					lastUpdatedPlus = lastUpdated.plus(30, ChronoUnit.DAYS);
 					// over a month without an update, restart it
-					if (lastUpdated.plus(30, ChronoUnit.DAYS).isBefore(now)) {
+					if (lastUpdatedPlus.isBefore(now)) {
 						logger.info("Transfer task {} has not been updated in over 1 month. The task will be errored and retried.", uuid);
 						getDbService().updateStatus(tenantId, uuid, TRANSFERTASK_ERROR, updateStatus -> {
 							if (updateStatus.succeeded()) {

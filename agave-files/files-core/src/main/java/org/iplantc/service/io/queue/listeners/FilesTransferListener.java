@@ -2,6 +2,7 @@ package org.iplantc.service.io.queue.listeners;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
@@ -23,6 +24,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 
+import static org.iplantc.service.common.Settings.FILES_STAGING_TOPIC;
 import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.*;
 
 /**
@@ -66,14 +68,17 @@ public class FilesTransferListener implements Runnable {
                     // dynamically register all the status listeners we want to take action on
                     List<StagingTaskStatus> stagingTaskStatuses = List.of(STAGING_COMPLETED, STAGING_FAILED, STAGING, STAGING_QUEUED);
 
-                    Message msg = getMessageClient().pop(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
+                    Message msg = getMessageClient().pop(FILES_STAGING_TOPIC,
                             org.iplantc.service.common.Settings.FILES_STAGING_QUEUE);
                     try {
+                        logger.debug("Messaged received from transfer service ");
                         JsonNode jsonBody = objectMapper.readTree(msg.getMessage());
+
                         processTransferNotification(jsonBody);
                     } catch (MessageProcessingException e) {
                         try {
-                            getMessageClient().reject(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
+                            logger.debug("Unable to process message: " + e.getMessage());
+                            getMessageClient().reject(FILES_STAGING_TOPIC,
                                     org.iplantc.service.common.Settings.FILES_STAGING_QUEUE, msg.getId(), msg.getMessage());
                         } catch (MessagingException e1) {
                             logger.error("Failed to release message back to the queue. This message will timeout and return on its own.");
@@ -113,6 +118,7 @@ public class FilesTransferListener implements Runnable {
                     //                }
                     //            }
                 } catch (MessagingException e) {
+                    logger.debug("Trying to create " + Settings.MESSAGING_SERVICE_PROVIDER + " (common) or " + org.iplantc.service.notification.Settings.MESSAGING_SERVICE_PROVIDER + " (notification)");
                     logger.error("Unable to create messaging client", e);
                 } catch (InterruptedException e) {
                     throw e;
@@ -132,24 +138,38 @@ public class FilesTransferListener implements Runnable {
         }
     }
 
-    public void processTransferNotification(JsonNode jsonBody) throws MessageProcessingException {
-        // Parse data
-        String srcUrl = jsonBody.get("source").textValue();
-        String destUrl = jsonBody.get("dest").textValue();
-        String createdBy = jsonBody.get("owner").textValue();
-        String transferUuid = jsonBody.get("uuid").textValue();
-        String transferStatus = jsonBody.get("status").textValue();
-        String tenantId = jsonBody.get("tenantId").textValue();
 
-        // Retrieve current logical file
+    /**
+     * Process the {@link JsonNode} notification from the transfers service to match the transfer status to the legacy
+     * staging status for a logical file.
+     * @param jsonBody [@link JsonNode} of the notification to process
+     * @throws MessageProcessingException if unknown transfer status or no logical file matching the source of the transfer
+     * @throws IOException if unable to parse notification
+     */
+    public void processTransferNotification(JsonNode jsonBody) throws MessageProcessingException, IOException {
+        logger.debug("Retrieved notification from transfer service " + jsonBody);
+
         try {
+            JsonNode jsonTransferTask = objectMapper.readTree(jsonBody.at("/context/customData").textValue());
+
+            // Parse data
+            String srcUrl = jsonTransferTask.get("source").textValue();
+            String destUrl = jsonTransferTask.get("dest").textValue();
+            String createdBy = jsonTransferTask.get("owner").textValue();
+            String transferUuid = jsonTransferTask.get("uuid").textValue();
+            String transferStatus = jsonBody.at("/context/event").textValue();
+            String tenantId = jsonTransferTask.get("tenant_id").textValue();
+
+            logger.debug("Retrieved transfer " + transferUuid + " with status " + transferStatus + " for transfer from " + srcUrl + " to " + destUrl);
+
+            // Retrieve current logical file
             LogicalFile sourceLogicalFile = lookupLogicalFileByUrl(srcUrl, tenantId);
             if (sourceLogicalFile != null) {
                 // Update logical file
-                if (transferStatus.equals("transfertask.assigned")) {
+                if (transferStatus.equals("transfertask.created")){
+                    updateTransferStatus(sourceLogicalFile, STAGING, createdBy);
+                } else if (transferStatus.equals("transfertask.assigned")) {
                     updateTransferStatus(sourceLogicalFile, STAGING_QUEUED, createdBy);
-                } else if (transferStatus.equals("transfertask.staging")) {
-                    updateTransferStatus(sourceLogicalFile, StagingTaskStatus.STAGING, createdBy);
                 } else if (transferStatus.equals("transfertask.completed")) {
                     updateTransferStatus(sourceLogicalFile, StagingTaskStatus.STAGING_COMPLETED, createdBy);
                 } else if (transferStatus.equals("transfertask.failed")) {
@@ -164,9 +184,10 @@ public class FilesTransferListener implements Runnable {
                     throw new MessageProcessingException("Unable to process notification due to unknown status " + transferStatus);
                 }
             } else {
+                logger.debug("Unable to find logical file for source " + srcUrl + " with tenant " + tenantId);
                 throw new MessageProcessingException("No existing file found matching transfer " + transferUuid);
             }
-        } catch (MessageProcessingException e) {
+        } catch (MessageProcessingException | IOException e) {
             throw e;
         } catch (Exception e) {
             throw new MessageProcessingException("Unable to update transfer status", e);

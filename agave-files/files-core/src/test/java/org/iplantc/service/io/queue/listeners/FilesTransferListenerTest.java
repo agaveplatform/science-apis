@@ -1,7 +1,9 @@
 package org.iplantc.service.io.queue.listeners;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonObject;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
@@ -13,6 +15,8 @@ import org.iplantc.service.io.exceptions.LogicalFileException;
 import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
+import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.testng.annotations.AfterClass;
@@ -20,6 +24,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
 import java.util.UUID;
@@ -32,7 +37,6 @@ import static org.testng.Assert.fail;
 
 @Test(groups = {"integration"})
 public class FilesTransferListenerTest extends BaseTestCase {
-    private final SystemDao systemDao = new SystemDao();
     private String destPath;
     private URI httpUri;
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -75,14 +79,25 @@ public class FilesTransferListenerTest extends BaseTestCase {
                 .put("source", file.getSourceUri())
                 .put("dest", file.getPath())
                 .put("owner", file.getOwner())
-                .put("tenantId", file.getTenantId())
-                .put("uuid", file.getTransferUuid())
+                .put("tenant_id", file.getTenantId())
+                .put("uuid", new AgaveUUID(UUIDType.TRANSFER).toString())
                 .put("created", String.valueOf(Instant.now()))
                 .put("lastUpdated", String.valueOf(Instant.now()))
                 .put("endTime", String.valueOf(Instant.now()))
                 .putNull("parentTask")
                 .putNull("rootTask")
                 .put("status", status);
+    }
+
+    private JsonNode getNotification(JsonNode transferTask, String messageType) throws IOException {
+        NotificationMessageContext messageBodyContext = new NotificationMessageContext(
+                messageType, transferTask.toString(), transferTask.get("uuid").asText());
+
+        NotificationMessageBody messageBody = new NotificationMessageBody(
+                transferTask.get("uuid").asText(), transferTask.get("owner").asText(), transferTask.get("tenant_id").asText(),
+                messageBodyContext);
+
+        return objectMapper.readTree(messageBody.toJSON());
     }
 
     @Test
@@ -133,7 +148,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).processTransferNotification(any());
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(null);
 
-        listener.processTransferNotification(getTransferTask(logicalFile, "transfertask.created"));
+        listener.processTransferNotification(getNotification(getTransferTask(logicalFile, "transfertask.created"), "transfertask.created"));
     }
 
     @Test(expectedExceptions = MessageProcessingException.class, expectedExceptionsMessageRegExp = "Unable to update transfer status*")
@@ -148,7 +163,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
         when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).
                 thenThrow(LogicalFileException.class);
 
-        listener.processTransferNotification(getTransferTask(logicalFile, "transfer.completed"));
+        listener.processTransferNotification(getNotification(getTransferTask(logicalFile, "transfer.completed"), "transfer.completed"));
     }
 
 
@@ -156,7 +171,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
     private Object[][] executeProcessTransferNotificationProvider() {
         return new Object[][]{
                 {"transfertask.assigned", STAGING_QUEUED},
-                {"transfertask.staging", STAGING},
+                {"transfertask.created", STAGING},
                 {"transfertask.completed", STAGING_COMPLETED},
                 {"transfertask.failed", STAGING_FAILED}
         };
@@ -174,9 +189,9 @@ public class FilesTransferListenerTest extends BaseTestCase {
             doNothing().when(listener).updateTransferStatus(any(LogicalFile.class), any(StagingTaskStatus.class), anyString());
             when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenReturn(logicalFile);
 
-            JsonNode json = getTransferTask(logicalFile, transferStatus);
+            JsonNode jsonNotification = getNotification(getTransferTask(logicalFile, transferStatus), transferStatus);
 
-            listener.processTransferNotification(json);
+            listener.processTransferNotification(jsonNotification);
             verify(listener, times(1)).updateTransferStatus(logicalFile, stagingStatus, logicalFile.getOwner());
 
         } catch (Exception e) {
@@ -196,12 +211,12 @@ public class FilesTransferListenerTest extends BaseTestCase {
             doNothing().when(listener).updateTransferStatus(any(LogicalFile.class), any(StagingTaskStatus.class), anyString());
             when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenReturn(logicalFile);
 
-            JsonNode json = getTransferTask(logicalFile, "transfer.completed");
-            listener.processTransferNotification(json);
+            JsonNode jsonNotification = getNotification(getTransferTask(logicalFile, "transfer.completed"), "transfer.completed");
+            listener.processTransferNotification(jsonNotification);
             verify(listener, times(1)).
                     updateTransferStatus(logicalFile, STAGING_COMPLETED, logicalFile.getOwner());
             verify(listener, times(1)).
-                    updateDestinationLogicalFile(logicalFile, json.get("dest").textValue(), logicalFile.getOwner());
+                    updateDestinationLogicalFile(logicalFile, logicalFile.getPath(), logicalFile.getOwner());
 
         } catch (Exception e) {
             fail("No exception should be thrown for valid transfer notification", e);
@@ -217,8 +232,8 @@ public class FilesTransferListenerTest extends BaseTestCase {
         when(listener.lookupLogicalFileByUrl(logicalFile.getSourceUri(), logicalFile.getTenantId())).thenReturn(logicalFile);
         doCallRealMethod().when(listener).processTransferNotification(any());
 
-        JsonNode json = getTransferTask(logicalFile, "transfertask.unknown");
-        listener.processTransferNotification(json);
+        JsonNode jsonNotification = getNotification(getTransferTask(logicalFile, "transfertask.unknown"), "transfertask.unknown");
+        listener.processTransferNotification(jsonNotification);
     }
 
 }

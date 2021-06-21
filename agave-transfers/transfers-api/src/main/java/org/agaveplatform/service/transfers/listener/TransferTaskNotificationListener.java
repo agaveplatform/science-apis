@@ -6,7 +6,10 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.iplantc.service.notification.managers.NotificationManager;
+import org.iplantc.service.common.Settings;
+import org.iplantc.service.common.exceptions.MessagingException;
+import org.iplantc.service.common.messaging.MessageClientFactory;
+import org.iplantc.service.common.messaging.MessageQueueClient;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
 import org.slf4j.Logger;
@@ -16,10 +19,10 @@ import java.util.List;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
-
 public class TransferTaskNotificationListener extends AbstractTransferTaskListener {
 	private static final Logger logger = LoggerFactory.getLogger(TransferTaskNotificationListener.class);
 	protected static final String EVENT_CHANNEL = TRANSFERTASK_NOTIFICATION ;
+	private static MessageQueueClient messageClient;
 
 	protected String eventChannel;
 
@@ -35,7 +38,21 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 		return EVENT_CHANNEL;
 	}
 
-	@Override
+    public static void setMessageClient(MessageQueueClient messageQueueClient) {
+        TransferTaskNotificationListener.messageClient = messageQueueClient;
+    }
+
+    /**
+     * Mockable helper method to retrieve {@link MessageQueueClient} to push notifications onto
+     */
+    protected MessageQueueClient getMessageClient() throws MessagingException {
+        if (messageClient == null){
+             messageClient = MessageClientFactory.getMessageClient();
+        }
+        return messageClient;
+    }
+
+    @Override
 	public void start() {
 
         List<String> notificationEvents = List.of(
@@ -71,7 +88,7 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 
 
     /**
-     * Process the {@link JsonObject} we recieve from the {@link EventBus} to a {@link NotificationMessageBody} for \
+     * Process the {@link JsonObject} we receive from the {@link EventBus} to a {@link NotificationMessageBody} for \
      * compatibility with our legacy message queue.
      *
      * @param messageType {@link MessageType} for the Transfer Task notification event
@@ -114,17 +131,22 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
     }
 
     /**
-     * Writes the notification tot he legacy notification queue. Returns if at least one message was written to the queue.
+     * Writes the notification to the legacy notification queue.
      *
      * @param body the message body to send
-     * @return true if a message was written
      */
-    protected boolean sentToLegacyMessageQueue(JsonObject body) {
+    protected void sentToLegacyMessageQueue(JsonObject body) {
         logger.info("Sending legacy notification message for transfer task {}", body.getString("uuid"));
-        org.iplantc.service.common.Settings.NOTIFICATION_QUEUE = org.iplantc.service.common.Settings.FILES_STAGING_QUEUE;
-        org.iplantc.service.common.Settings.NOTIFICATION_TOPIC = org.iplantc.service.common.Settings.FILES_STAGING_TOPIC;
 
-        return NotificationManager.process(body.getString("uuid"), body.encode(), body.getString("owner")) > 0;
+        try {
+            MessageQueueClient queue = getMessageClient();
+            queue.push(Settings.FILES_STAGING_TOPIC, Settings.FILES_STAGING_QUEUE, body.toString());
+        } catch (MessagingException e){
+            logger.error(
+                    "Failed to connect to the messaging queue. Notification " + body + " was not sent", e);
+        } catch (Throwable e){
+            logger.error("Unknown messaging exception occurred. Failed to process notification " + body , e);
+        }
     }
 
 }

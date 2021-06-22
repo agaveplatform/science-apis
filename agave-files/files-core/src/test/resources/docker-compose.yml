@@ -186,6 +186,10 @@ services:
       - 8085:8085
     networks:
       - services
+      - default
+    volumes:
+      - ./transfers:/transfers
+
 
 #  ftp:
 #    image: agaveapi/pure-ftpd:latest

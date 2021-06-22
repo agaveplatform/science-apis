@@ -25,6 +25,7 @@ import java.util.TimeZone;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_PAUSED;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
@@ -79,46 +80,6 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 			logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
 		}
 
-
-//		//EventBus bus = vertx.eventBus();
-//		//Connection nc = _connect();
-//		Dispatcher d = getConnection().createDispatcher((msg) -> {});
-//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
-//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//			JsonObject body = new JsonObject(response) ;
-//			String uuid = body.getString("uuid");
-//			String source = body.getString("source");
-//			String dest = body.getString("dest");
-//
-//			String tenant = body.getString("tenant_id");
-//			TransferTask tt = new TransferTask(body);
-//
-//			logger.info("Transfer task {} completed: {} -> {} and tenant id is {}", uuid, source, dest, tenant);
-//
-//			try {
-//				this.processEvent(body, result -> {
-//					if (result.succeeded()) {
-//						logger.info("Succeeded with the processing transfer completed event for transfer task {}", uuid);
-//					} else {
-//						logger.error("Error with return from complete event {} and body {}", uuid, body);
-//						//error is handled in processEvent
-////						try {
-////							_doPublishEvent(MessageType.TRANSFERTASK, body);
-////						} catch (IOException e) {
-////							logger.debug(e.getMessage());
-////						} catch (InterruptedException e) {
-////							logger.debug(e.getMessage());
-////						}
-//					}
-//				});
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//			}
-//		});
-//		d.subscribe(EVENT_CHANNEL);
-//		getConnection().flush(Duration.ofMillis(500));
 	}
 
 	protected void handleMessage(Message message) {
@@ -128,7 +89,23 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 			String source = body.getString("source");
 			String dest = body.getString("dest");
 			logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-
+			getVertx().<Boolean>executeBlocking(
+					promise -> {
+						try {
+							processEvent(body, promise);
+						} catch (IOException e) {
+							logger.error(e.getCause().toString());
+						} catch (InterruptedException e) {
+							logger.error(e.getCause().toString());
+						}
+					},
+					resp -> {
+						if (resp.succeeded()) {
+							logger.debug("Finished processing {} for transfer task {}", TRANSFERTASK_PAUSED, uuid);
+						} else {
+							logger.debug("Failed  processing {} for transfer task {}", TRANSFERTASK_PAUSED, uuid);
+						}
+					});
 		} catch (DecodeException e) {
 			logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
 		} catch (Throwable t) {
@@ -137,7 +114,7 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 	}
 
 	public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
-		body.put("status", TransferStatusType.COMPLETED);
+		//body.put("status", TransferStatusType.COMPLETED);
 		String tenantId = body.getString("tenant_id");
 		String uuid = body.getString("uuid");
 		String parentTaskId = body.getString("parentTask") == null ? body.getString("parent_task") : body.getString("parentTask");

@@ -304,8 +304,6 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		transferTask.setStartTime(Instant.now());
 		transferTask.setEndTime(Instant.now());
 		transferTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
-//		parentTask.setRootTaskId(parentTask.getUuid());
-//		parentTask.setParentTaskId(parentTask.getUuid());
 
 		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
 

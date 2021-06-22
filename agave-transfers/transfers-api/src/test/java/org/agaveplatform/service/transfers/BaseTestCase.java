@@ -284,6 +284,15 @@ public abstract class BaseTestCase {
         return asyncResult;
     }
 
+    protected AsyncResult<Long> getMockAsyncLongResult(Long result) {
+        AsyncResult<Long> asyncResult = mock(AsyncResult.class);
+        when(asyncResult.result()).thenReturn(result);
+        when(asyncResult.succeeded()).thenReturn(true);
+        when(asyncResult.failed()).thenReturn(false);
+        when(asyncResult.cause()).thenReturn(null);
+
+        return asyncResult;
+    }
     /**
      * Creates a mock {@link AsyncResult<Boolean>} that can be used as a handler controlling
      * failure outcomes and response

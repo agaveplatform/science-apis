@@ -11,6 +11,7 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -47,11 +48,11 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         when(listener.getVertx()).thenReturn(vertx);
         doCallRealMethod().when(listener).processEvent(any(), any());
         when(listener.getRetryRequestManager()).thenCallRealMethod();
-        doNothing().when(listener)._doPublishEvent(any(), any(), any());
+        doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
         //doNothing().when(listener)._doPublishEvent( any(), any());
         doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
         doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
-
+        doCallRealMethod().when(listener).processParentEvent(any(),any(),any());
         NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
         doNothing().when(natsClient).push(any(), any());
         when(listener.getMessageClient()).thenReturn(natsClient);
@@ -77,22 +78,38 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
-
         //###############
-        // mock a successful outcome with updated json transfer task result from updateStatus
-        JsonObject expectedUdpatedJsonObject = transferTask.toJson()
-                .put("status", TransferStatusType.COMPLETED.name())
+//        // mock a successful outcome with updated json transfer task result from updateStatus
+//        JsonObject expectedUdpatedJsonObject = transferTask.toJson()
+//                .put("status", TransferStatusType.COMPLETED.name())
+//                .put("endTime", Instant.now());
+//
+//        AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
+//        // mock the handler passed into updateStatus
+//        doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+//            @SuppressWarnings("unchecked")
+//			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+//			handler.handle(updateStatusHandler);
+//            return null;
+//        }).when(dbService).updateStatus(any(), any(), any(), any());
+//        //#####################
+
+
+
+        // mock a successful outcome with updated json transfer task result from update
+        JsonObject expectedUdpateJsonObject = transferTask.toJson()
+                .put("status", TransferStatusType.TRANSFERRING.name())
                 .put("endTime", Instant.now());
 
-        AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
+        AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpateJsonObject);
+
         // mock the handler passed into updateStatus
         doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
             @SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
-			handler.handle(updateStatusHandler);
+            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+            handler.handle(expectedUpdateStatusHandler);
             return null;
-        }).when(dbService).updateStatus(any(), any(), any(), any());
-        //#####################
+        }).when(dbService).update(any(), any(), any(), any());
 
 
         //#####################
@@ -117,8 +134,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
             // verify the db service was called to update the task status
             // dont' mix and match raw values with mockito matchers. Hence wrapping the
             // values in the eq() method.
-            verify(dbService).updateStatus(eq(transferTask.getTenantId()),
-                    eq(transferTask.getUuid()), eq(TransferStatusType.COMPLETED.name()), any());
+            verify(dbService).update(eq(transferTask.getTenantId()),eq(transferTask.getUuid()), eq(transferTask), any());
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
@@ -129,7 +145,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
             //verify(transferTaskCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
             //verify(transferTaskCompleteTaskListener, never())._doPublishEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 
-            Assertions.assertFalse(result.result(),
+            Assertions.assertTrue(result.result(),
                     "TransferTask response should be true indicating the task completed successfully.");
 
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
@@ -169,15 +185,46 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 .put("status", TransferStatusType.COMPLETED.name())
                 .put("endTime", Instant.now());
 
-        AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
+        AsyncResult<JsonObject> updateHandler = getMockAsyncResult(expectedUdpatedJsonObject);
+        // mock the handler passed into update
+        doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+            @SuppressWarnings("unchecked")
+            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+            handler.handle(updateHandler);
+            return null;
+        }).when(dbService).update(any(), any(), any(), any());
+
+
+//        // mock a successful outcome with updated json transfer task result from updateStatus
+//        JsonObject expectedJsonObject = transferTask.toJson()
+//                .put("status", TransferStatusType.COMPLETED.name())
+//                .put("endTime", Instant.now());
+//        AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedJsonObject);
+//        // mock the handler passed into updateStatus
+//        doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+//            @SuppressWarnings("unchecked")
+//            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+//            handler.handle(updateStatusHandler);
+//            return null;
+//        }).when(dbService).updateStatus(any(), any(), any(), any());
+
+
+        JsonObject expectedUdpateJsonObject = transferTask.toJson()
+                .put("status", TransferStatusType.COMPLETED.name())
+                .put("endTime", Instant.now());
+
+        AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpateJsonObject);
 
         // mock the handler passed into updateStatus
         doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
             @SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
-			handler.handle(updateStatusHandler);
+            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+            handler.handle(expectedUpdateStatusHandler);
             return null;
-        }).when(dbService).updateStatus(any(), any(), any(), any());
+        }).when(dbService).update(any(), any(), any(), any());
+
+
+
 
         // mock a successful outcome with false result from processParentEvent indicating the parent has active children
         AsyncResult<Boolean> processParentEventHandler = getMockAsyncResult(true);
@@ -197,21 +244,18 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         ttc.processEvent(json, result -> ctx.verify(() -> {
 
             // verify the db service was called to update the task status
-            // dont' mix and match raw values with mockito matchers. Hence wrapping the
-            // values in the eq() method.
-            verify(dbService).updateStatus(eq(transferTask.getTenantId()),
-                    eq(transferTask.getUuid()), eq(TransferStatusType.COMPLETED.name()), any());
+            // dont' mix and match raw values with mockito matchers.
+            //Hence wrapping the values in the eq() method.
+            // verify the db service was called to update the task status
+            verify(dbService).update(eq(transferTask.getTenantId()),
+                    eq(transferTask.getUuid()), eq(transferTask), any());
 
-            // verify that the completed event was created. this should always be throws
-            // if the updateStatus result succeeds.
-            verify(ttc)._doPublishEvent(TRANSFERTASK_FINISHED, json, any());
-            //verify(nats,times(1)).push(any(), any(), any());
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any(), any());
-            verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any(), any());
+            verify(ttc, never())._doPublishEvent(eq(MessageType.TRANSFERTASK_ERROR), any(), any());
+            verify(ttc, never())._doPublishEvent(eq(MessageType.TRANSFERTASK_PARENT_ERROR), any(), any());
 
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
@@ -241,19 +285,34 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
-        // mock a successful outcome with updated json transfer task result from updateStatus
-        JsonObject expectedUdpatedJsonObject = transferTask.toJson()
+//        // mock a successful outcome with updated json transfer task result from updateStatus
+//        JsonObject expectedUdpatedJsonObject = transferTask.toJson()
+//                .put("status", TransferStatusType.COMPLETED.name())
+//                .put("endTime", Instant.now());
+//        AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
+//
+//        // mock the handler passed into updateStatus
+//        doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+//            @SuppressWarnings("unchecked")
+//			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+//			handler.handle(updateStatusHandler);
+//            return null;
+//        }).when(dbService).updateStatus(any(), any(), any(), any());
+
+        JsonObject expectedUdpateJsonObject = transferTask.toJson()
                 .put("status", TransferStatusType.COMPLETED.name())
                 .put("endTime", Instant.now());
-        AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
+
+        AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpateJsonObject);
 
         // mock the handler passed into updateStatus
         doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
             @SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
-			handler.handle(updateStatusHandler);
+            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+            handler.handle(expectedUpdateStatusHandler);
             return null;
-        }).when(dbService).updateStatus(any(), any(), any(), any());
+        }).when(dbService).update(any(), any(), any(), any());
+
 
         // mock a successful outcome with false result from processParentEvent indicating the parent has active children
         AsyncResult<Boolean> processParentEventHandler = getMockAsyncResult(Boolean.TRUE);
@@ -270,17 +329,12 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         when(ttc.getDbService()).thenReturn(dbService);
 
         // now we run the actual test using our test transfer task data
-        ttc.processEvent(json, result -> ctx.verify(() -> {
-
+        ttc.processEvent(json, ctx.succeeding(resp -> ctx.verify(() -> {
             // verify the db service was called to update the task status
             // dont' mix and match raw values with mockito matchers. Hence wrapping the
             // values in the eq() method.
-            verify(dbService).updateStatus(eq(transferTask.getTenantId()),
-                    eq(transferTask.getUuid()), eq(TransferStatusType.COMPLETED.name()), any());
-
-            // verify that the completed event was created. this should always be throws
-            // if the updateStatus result succeeds.
-            verify(ttc)._doPublishEvent(eq(TRANSFERTASK_FINISHED), eq(json), any());
+            verify(dbService).update(eq(transferTask.getTenantId()),
+                    eq(transferTask.getUuid()), eq(transferTask), any());
 
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
@@ -289,13 +343,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
             //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
             //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
-            Assertions.assertTrue(result.result(),
+            Assertions.assertTrue(resp,
                     "TransferTask response should be true indicating the task completed successfully.");
 
-            Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
+//            Assertions.assertTrue(resp, "TransferTask update should have succeeded");
 
             ctx.completeNow();
-        }));
+        })));
     }
 
     @Test
@@ -308,8 +362,9 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         transferTask.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
         transferTask.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
+        transferTask.setStatus(TransferStatusType.COMPLETED);
         // get the JsonObject to pass back and forth between verticles
-        JsonObject json = transferTask.toJson();
+        JsonObject jsonTT = transferTask.toJson();
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
@@ -331,6 +386,22 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
             return null;
         }).when(dbService).updateStatus(any(), any(), any(), any());
 
+        JsonObject expectedUdpateJsonObject = transferTask.toJson()
+                .put("status", TransferStatusType.COMPLETED.name())
+                .put("endTime", Instant.now());
+
+        AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpateJsonObject);
+
+        // mock the handler passed into updateStatus
+        doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+            @SuppressWarnings("unchecked")
+            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+            handler.handle(expectedUpdateStatusHandler);
+            return null;
+        }).when(dbService).update(any(), any(), any(), any());
+
+
+
         // mock a successful outcome with false result from processParentEvent indicating the parent has active children
         AsyncResult<Boolean> processParentEventHandler = getBooleanFailureAsyncResult(
                 new Exception("Testing Unknown parent Id"));
@@ -346,34 +417,32 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         // mock the dbService getter in our mocked vertical so we don't need to use powermock
         when(ttc.getDbService()).thenReturn(dbService);
 
+
         // now we run the actual test using our test transfer task data
-        ttc.processEvent(json, result -> ctx.verify(() -> {
+        ttc.processEvent(jsonTT, ctx.succeeding( resp -> { ctx.verify(() -> {
+//                        (transferTask.toJson(), resp -> {
+//                        ctx.verify(() -> {
+                // verify the db service was called to update the task status
+                // dont' mix and match raw values with mockito matchers. Hence wrapping the
+                // values in the eq() method.
+            verify(dbService).update(eq(transferTask.getTenantId()),
+                    eq(transferTask.getUuid()), eq(transferTask), any());
 
-            // verify the db service was called to update the task status
-            // dont' mix and match raw values with mockito matchers. Hence wrapping the
-            // values in the eq() method.
-            verify(dbService).updateStatus(eq(transferTask.getTenantId()),
-                    eq(transferTask.getUuid()), eq(TransferStatusType.COMPLETED.name()), any());
-
-            // verify that the completed event was created. this should always be throws
-            // if the updateStatus result succeeds.
-            verify(ttc)._doPublishEvent(eq(TRANSFERTASK_FINISHED), eq(json), any());
-
-            // make sure the parent was processed
+                // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
-            //verify(ttc)._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+            verify(ttc)._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any(), any());
 
             // make sure no error event is ever thrown
-            //verify(ttc, never())._doPublishEvent( eq(TRANSFERTASK_ERROR), any());
+            verify(ttc, never())._doPublishEvent( eq(TRANSFERTASK_ERROR), any(), any());
 
-            Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
+//                Assertions.assertTrue(resp, "TransferTask update should have succeeded");
 
-            Assertions.assertFalse(result.result(),
-                    "TransferTask response should be false when the parent processing fails.");
+            Assertions.assertFalse(resp,"TransferTask response should be false when the parent processing fails.");
 
 
-            ctx.completeNow();
+                ctx.completeNow();
+            });
         }));
     }
 
@@ -438,7 +507,8 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // now we run the actual test using our test transfer task data
 
-        ttc.processParentEvent(transferTask.getTenantId(), transferTask.getParentTaskId(), result -> {
+        //ttc.processParentEvent(transferTask.getTenantId(), transferTask.getParentTaskId(), result -> {
+        ttc.processParentEvent(transferTask.getTenantId(), transferTask.getParentTaskId(), ctx.succeeding(resp -> {
             processParentEventStartCheckpoint.flag();
             ctx.verify(() -> {
                 // verify the db service was called to update the task status
@@ -452,21 +522,19 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
                 verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any(), any());
                 // make sure no error event is ever thrown
-                //verify(ttc, never())._doPublishEvent( eq(TRANSFERTASK_ERROR), any());
+                verify(ttc, never())._doPublishEvent( eq(TRANSFERTASK_ERROR), any(), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                //verify(ttc, never())._doPublishEvent(eq(TRANSFER_COMPLETED), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFER_COMPLETED), any(), any());
 
-                Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has completed");
-
-                Assertions.assertFalse(result.result(),
+                Assertions.assertFalse(resp,
                         "TransferTask processParentEvent callback result should be false when the parent has completed.");
 
                 processParentEventEndCheckpoint.flag();
 
                 ctx.completeNow();
             });
-        });
+        }));
 
     }
 
@@ -628,10 +696,10 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
                 verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any(), any());
                 // make sure no error event is ever thrown
-                //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any(), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                //verify(ttc, never())._doPublishEvent(eq(TRANSFER_COMPLETED), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFER_COMPLETED), any(), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has failed");
 
@@ -662,7 +730,6 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         transferTask.setEndTime(Instant.now());
         transferTask.setRootTaskId(parentTask.getUuid());
         transferTask.setParentTaskId(parentTask.getUuid());
-
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
@@ -695,6 +762,23 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
             return null;
         }).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
 
+
+
+//        getBytesTransferredForAllChildren
+        // mock a successful response from allChildrenCancelledOrCompleted call to db
+        JsonObject jsonBytesTransfered = new JsonObject();
+        jsonBytesTransfered.put("bytes_transferred", 10L);
+        AsyncResult<JsonObject> getBytesTransferredForAllChildrenHandler = getMockAsyncResult(jsonBytesTransfered);
+
+        // mock the handler passed into allChildrenCancelledOrCompletedHandler
+        doAnswer((Answer<AsyncResult<Long>>) arguments -> {
+            @SuppressWarnings("unchecked")
+            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+            handler.handle(getBytesTransferredForAllChildrenHandler);
+            return null;
+        }).when(dbService).getBytesTransferredForAllChildren(any(), any(), any());
+
+
         // mock the dbService getter in our mocked vertical so we don't need to use powermock
         when(ttc.getDbService()).thenReturn(dbService);
 
@@ -718,10 +802,10 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any(), any());
 
                 // make sure no error event is ever thrown
-                //verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any(), any());
 
                 // new transfer complete event should be created for active parent with no active children
-               // verify(ttc)._doPublishEvent(eq(TRANSFER_COMPLETED), any());
+                verify(ttc)._doPublishEvent(eq(TRANSFER_COMPLETED), any(), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded");
 

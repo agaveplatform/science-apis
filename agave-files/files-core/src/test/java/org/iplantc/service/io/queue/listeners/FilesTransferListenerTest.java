@@ -72,34 +72,6 @@ public class FilesTransferListenerTest extends BaseTestCase {
         return mock(FilesTransferListener.class);
     }
 
-
-    private JsonNode getTransferTask(LogicalFile file, String status) {
-        return objectMapper.createObjectNode()
-                .put("attempts", 1)
-                .put("source", file.getSourceUri())
-                .put("dest", file.getPath())
-                .put("owner", file.getOwner())
-                .put("tenant_id", file.getTenantId())
-                .put("uuid", new AgaveUUID(UUIDType.TRANSFER).toString())
-                .put("created", String.valueOf(Instant.now()))
-                .put("lastUpdated", String.valueOf(Instant.now()))
-                .put("endTime", String.valueOf(Instant.now()))
-                .putNull("parentTask")
-                .putNull("rootTask")
-                .put("status", status);
-    }
-
-    private JsonNode getNotification(JsonNode transferTask, String messageType) throws IOException {
-        NotificationMessageContext messageBodyContext = new NotificationMessageContext(
-                messageType, transferTask.toString(), transferTask.get("uuid").asText());
-
-        NotificationMessageBody messageBody = new NotificationMessageBody(
-                transferTask.get("uuid").asText(), transferTask.get("owner").asText(), transferTask.get("tenant_id").asText(),
-                messageBodyContext);
-
-        return objectMapper.readTree(messageBody.toJSON());
-    }
-
     @Test
     public void runHandlesMessagingException() {
         FilesTransferListener listener = mock(FilesTransferListener.class);

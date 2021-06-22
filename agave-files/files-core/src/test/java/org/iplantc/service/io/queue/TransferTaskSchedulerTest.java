@@ -53,20 +53,6 @@ public class TransferTaskSchedulerTest extends BaseTestCase {
 
         return logicalFile;
     }
-    private JsonNode getTransferTask(LogicalFile file, String status) {
-        return objectMapper.createObjectNode()
-                .put("attempts", 1)
-                .put("source", file.getSourceUri())
-                .put("dest", file.getPath())
-                .put("owner", file.getOwner())
-                .put("tenantId", file.getTenantId())
-                .put("created", String.valueOf(Instant.now()))
-                .put("lastUpdated", String.valueOf(Instant.now()))
-                .put("endTime", String.valueOf(Instant.now()))
-                .putNull("parentTask")
-                .putNull("rootTask")
-                .put("status", status);
-    }
 
     private TransferTaskScheduler getMockTransferTaskScheduler() throws NotificationException, SchedulerException {
         TransferTaskScheduler transferTaskScheduler = mock(TransferTaskScheduler.class);

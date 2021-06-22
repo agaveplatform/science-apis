@@ -88,12 +88,6 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	}
 
 
-//	NatsJetstreamMessageClient getMockNats() throws MessagingException {
-//		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
-//		doNothing().when(natsClient).push(any(), any(), any());
-//		return getMockNats();
-//	}
-
 	/**
 	 * Generates a mock of the vertical under test with the inherited methods stubbed out.
 	 *

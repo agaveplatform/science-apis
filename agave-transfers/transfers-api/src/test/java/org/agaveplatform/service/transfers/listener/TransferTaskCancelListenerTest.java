@@ -33,6 +33,7 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers Task Canceled test")
+@Disabled
 class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	private Object Handler;

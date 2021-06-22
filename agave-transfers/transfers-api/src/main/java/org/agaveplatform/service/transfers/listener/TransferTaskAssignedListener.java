@@ -1,6 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.*;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
@@ -12,6 +13,7 @@ import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
@@ -67,84 +69,61 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         try {
-            subscribeToSubjectGroup(MessageType.TRANSFERTASK_ASSIGNED, message -> {
-                    JsonObject body = new JsonObject(message.getMessage());
-                    String uuid = body.getString("uuid");
-                    String source = body.getString("source");
-                    String dest = body.getString("dest");
-                    log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
+            //group subscription so each message only processed by this vertical type once
+            subscribeToSubjectGroup(MessageType.TRANSFERTASK_ASSIGNED, this::handleMessage);
+        } catch (Exception e) {
+            log.error("TRANSFERTASK_ASSIGNED - Exception {}", e.getMessage());
+        }
 
-                    processTransferTask(body, resp -> {
+        try {
+            //group subscription so each message only processed by this vertical type once
+            subscribeToSubjectGroup(EVENT_CHANNEL, this::handleCanceledSyncMessage);
+        } catch (Exception e) {
+            log.error("TRANSFERTASK_ASSIGNED - Exception {}", e.getMessage());
+        }
+
+        try {
+            //group subscription so each message only processed by this vertical type once
+            subscribeToSubjectGroup(EVENT_CHANNEL, this::handleCanceledCompletedMessage);
+        } catch (Exception e) {
+            log.error("TRANSFERTASK_ASSIGNED - Exception {}", e.getMessage());
+        }
+        try {
+            //group subscription so each message only processed by this vertical type once
+            subscribeToSubjectGroup(EVENT_CHANNEL, this::handlePausedSyncMessage);
+        } catch (Exception e) {
+            log.error("TRANSFERTASK_ASSIGNED - Exception {}", e.getMessage());
+        }
+
+        try {
+            //group subscription so each message only processed by this vertical type once
+            subscribeToSubjectGroup(EVENT_CHANNEL, this::handlePausedCompletedMessage);
+        } catch (Exception e) {
+            log.error("TRANSFERTASK_ASSIGNED - Exception {}", e.getMessage());
+        }
+
+    }
+
+    protected void handleMessage(Message message) {
+        try {
+            JsonObject body = new JsonObject(message.getMessage());
+            String uuid = body.getString("uuid");
+            getVertx().<Boolean>executeBlocking(
+                    promise -> processTransferTask(body, promise),
+                    resp -> {
                         if (resp.succeeded()) {
-                            log.debug("Succeeded with the processTransferTask in the assigning of the event {}", uuid);
-                            // TODO: codify our notification behavior here. Do we rewrap? How do we ensure ordering? Do we just
-                            //   throw it over the fence to Camel and forget about it? Boy, that would make things easier,
-                            //   thought not likely faster.
-                            // TODO: This seems like the correct pattern. Handler sent to the processing function, then
-                            //   only send the notification on success. We can add a failure and error notification to the
-                            //   respective listeners in the same way.
-                            body.put("event", this.getClass().getName());
-                            body.put("type", getEventChannel());
-
-                            _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body, null);
+                            log.debug("Finished processing {} for transfer task {}", TRANSFERTASK_ASSIGNED, uuid);
+                        } else {
+                            log.debug("Failed  processing {} for transfer task {}", TRANSFERTASK_ASSIGNED, uuid);
                         }
                     });
-            });
-
-//            subscribeToSubject(MessageType.TRANSFERTASK_CANCELED_SYNC, message -> {
-//                     //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//                    JsonObject body = new JsonObject(message.getMessage());
-//                    String uuid = body.getString("uuid");
-//                    String source = body.getString("source");
-//                    String dest = body.getString("dest");
-//                    log.debug("response is {}", message);
-//
-//                    log.info("Transfer task {} cancel detected", uuid);
-//                    if (uuid != null) {
-//                        addCancelledTask(uuid);
-//                        checkPausedTask(uuid);
-//                    }
-//            });
-//
-//            subscribeToSubjectGroup(MessageType.TRANSFERTASK_CANCELED_COMPLETED, message -> {
-//                     log.debug("response is {}", message.getMessage());
-//                    JsonObject body = new JsonObject(message.getMessage());
-//
-//                    String uuid = body.getString("uuid");
-//
-//                    log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
-//                    if (uuid != null) {
-//                        removeCancelledTask(uuid);
-//                    }
-//            });
-//
-//            subscribeToSubject(MessageType.TRANSFERTASK_PAUSED_SYNC, message -> {
-//                    log.debug("response is {}", message.getMessage());
-//                    JsonObject body = new JsonObject(message.getMessage());
-//
-//                    String uuid = body.getString("uuid");
-//
-//                    log.info("Transfer task {} paused detected", uuid);
-//                    if (uuid != null) {
-//                        addPausedTask(uuid);
-//                    }
-//            });
-//
-//            subscribeToSubjectGroup(MessageType.TRANSFERTASK_PAUSED_COMPLETED, message -> {
-//                   log.debug("response is {}", message.getMessage());
-//                    JsonObject body = new JsonObject(message.getMessage());
-//
-//                    String uuid = body.getString("uuid");
-//
-//                    log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-//                    if (uuid != null) {
-//                        addPausedTask(uuid);
-//                    }
-//            });
-        } catch (MessagingException e) {
-            log.error("Unable to subscribe to the message subject for push delivery.", e);
+        } catch (DecodeException e) {
+            log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
+        } catch (Throwable t) {
+            log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
         }
     }
+
 
     protected void processTransferTask(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
         log.debug("Got into TransferTaskAssignedListener.processTransferTask");

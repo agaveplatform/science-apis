@@ -43,6 +43,7 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
 @DisplayName("👋 TransferTaskUpdateListenerTest test")
+@Disabled
 class TransferTaskUpdateListenerTest extends BaseTestCase {
 
     @AfterAll

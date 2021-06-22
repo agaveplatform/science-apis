@@ -219,7 +219,7 @@ public class FileHistoryResource extends AbstractFileResource {
 	        					}
 
 	                    		String strTransferUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE)
-										+ "api/transfers/" + logicalFile.getTransferUuid();
+										+ "api/transfers/";
 
 	        					jsonEvent
 	        						.put("status", event.getStatus())

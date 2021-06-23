@@ -1,9 +1,6 @@
 package org.iplantc.service.io.queue.listeners;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.JsonObject;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
@@ -14,11 +11,12 @@ import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.exceptions.LogicalFileException;
 import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
+import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
-import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
-import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -26,12 +24,12 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.net.URI;
-import java.time.Instant;
 import java.util.UUID;
 
 import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.fail;
 
 
@@ -39,7 +37,6 @@ import static org.testng.Assert.fail;
 public class FilesTransferListenerTest extends BaseTestCase {
     private String destPath;
     private URI httpUri;
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeClass
     protected void beforeClass() throws Exception {
@@ -54,10 +51,8 @@ public class FilesTransferListenerTest extends BaseTestCase {
     }
 
     protected LogicalFile getMockLogicalFile(){
-        RemoteSystem system = mock(RemoteSystem.class);
-        when(system.getSystemId()).thenReturn(UUID.randomUUID().toString());
-
         LogicalFile logicalFile = mock(LogicalFile.class);
+        RemoteSystem system = getMockRemoteSystem();
         when(logicalFile.getSystem()).thenReturn(system);
         when(logicalFile.getSourceUri()).thenReturn(httpUri.toString());
         when(logicalFile.getPath()).thenReturn(destPath);
@@ -66,6 +61,18 @@ public class FilesTransferListenerTest extends BaseTestCase {
         when(logicalFile.getStatus()).thenReturn(StagingTaskStatus.STAGING_QUEUED.name());
 
         return logicalFile;
+    }
+
+    protected RemoteSystem getMockRemoteSystem(){
+        RemoteSystem system = mock(RemoteSystem.class);
+        when(system.getSystemId()).thenReturn(UUID.randomUUID().toString());
+        return system;
+    }
+
+    protected RemoteDataClient getMockRemoteDataClient(boolean bolPathDoesExist) throws IOException, RemoteDataException {
+        RemoteDataClient mockClient = mock(RemoteDataClient.class);
+        when(mockClient.doesExist(anyString())).thenReturn(bolPathDoesExist);
+        return mockClient;
     }
 
     private FilesTransferListener getMockFilesTransferListenerInstance() {
@@ -83,6 +90,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
             when(listener.getMessageClient()).thenReturn(client);
             // TODO: verify that the message client was not stopped
             verify(client, never()).stop();
+
             listener.run();
         } catch (Exception e) {
             fail("NO exception should escape the run method", e);
@@ -98,7 +106,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
 
         try {
             LogicalFile logicalFile = getMockLogicalFile();
-            Message msg = new Message(24, getTransferTask(logicalFile, "transfertask.created").toString());
+            Message msg = new Message(24, getNotification(getTransferTask(logicalFile, "CREATED"), "transfertask.created").toString());
             when(client.pop(any(), any())).thenReturn(msg);
             doNothing().when(client).reject(any(), any(), any(), any());
             // TODO: verify that the message client was not stopped
@@ -120,7 +128,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).processTransferNotification(any());
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(null);
 
-        listener.processTransferNotification(getNotification(getTransferTask(logicalFile, "transfertask.created"), "transfertask.created"));
+        listener.processTransferNotification(getNotification(getTransferTask(logicalFile, "CREATED"), "transfertask.created"));
     }
 
     @Test(expectedExceptions = MessageProcessingException.class, expectedExceptionsMessageRegExp = "Unable to update transfer status*")
@@ -135,12 +143,12 @@ public class FilesTransferListenerTest extends BaseTestCase {
         when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).
                 thenThrow(LogicalFileException.class);
 
-        listener.processTransferNotification(getNotification(getTransferTask(logicalFile, "transfer.completed"), "transfer.completed"));
+        listener.processTransferNotification(getNotification(getTransferTask(logicalFile, "COMPLETED"), "transfer.completed"));
     }
 
 
     @DataProvider
-    private Object[][] executeProcessTransferNotificationProvider() {
+    private Object[][] executeProcessTransferNotificationUpdateStatusProvider() {
         return new Object[][]{
                 {"transfertask.assigned", STAGING_QUEUED},
                 {"transfertask.created", STAGING},
@@ -149,7 +157,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
         };
     }
 
-    @Test(dataProvider = "executeProcessTransferNotificationProvider")
+    @Test(dataProvider = "executeProcessTransferNotificationUpdateStatusProvider")
     public void executeProcessTransferNotification(String transferStatus, StagingTaskStatus stagingStatus) {
         FilesTransferListener listener = getMockFilesTransferListenerInstance();
 
@@ -183,7 +191,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
             doNothing().when(listener).updateTransferStatus(any(LogicalFile.class), any(StagingTaskStatus.class), anyString());
             when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenReturn(logicalFile);
 
-            JsonNode jsonNotification = getNotification(getTransferTask(logicalFile, "transfer.completed"), "transfer.completed");
+            JsonNode jsonNotification = getNotification(getTransferTask(logicalFile, "COMPLETED"), "transfer.completed");
             listener.processTransferNotification(jsonNotification);
             verify(listener, times(1)).
                     updateTransferStatus(logicalFile, STAGING_COMPLETED, logicalFile.getOwner());
@@ -196,7 +204,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
     }
 
     @Test (expectedExceptions = MessageProcessingException.class)
-    public void executeProcessTransferNotificationHandlesUnknownTransferStatus() throws Exception {
+    public void executeProcessTransferNotificationHandlesUnknownTransferMessageType() throws Exception {
         FilesTransferListener listener = getMockFilesTransferListenerInstance();
 
         LogicalFile logicalFile = getMockLogicalFile();
@@ -204,8 +212,115 @@ public class FilesTransferListenerTest extends BaseTestCase {
         when(listener.lookupLogicalFileByUrl(logicalFile.getSourceUri(), logicalFile.getTenantId())).thenReturn(logicalFile);
         doCallRealMethod().when(listener).processTransferNotification(any());
 
-        JsonNode jsonNotification = getNotification(getTransferTask(logicalFile, "transfertask.unknown"), "transfertask.unknown");
+        JsonNode jsonNotification = getNotification(getTransferTask(logicalFile, "UNKNOWN"), "transfertask.unknown");
         listener.processTransferNotification(jsonNotification);
+    }
+
+    @DataProvider
+    private Object[][] executeProcessTransferNotificationProvider() {
+        return new Object[][]{
+                {"transfertask.notification"},
+                {"transfertask.updated"}
+        };
+    }
+
+    @Test (dataProvider = "executeProcessTransferNotificationProvider")
+    public void executeProcessTransferNotificationDoesntUpdateForTransferMessageTypesWithoutMatchingLegacyStatus(String transferMessageType) throws LogicalFileException, MessageProcessingException, IOException, RemoteDataException, RemoteCredentialException {
+        FilesTransferListener listener = getMockFilesTransferListenerInstance();
+
+        LogicalFile logicalFile = getMockLogicalFile();
+
+        when(listener.lookupLogicalFileByUrl(logicalFile.getSourceUri(), logicalFile.getTenantId())).thenReturn(logicalFile);
+        doCallRealMethod().when(listener).processTransferNotification(any());
+
+        JsonNode jsonNotification = getNotification(getTransferTask(logicalFile, "CREATED"), transferMessageType);
+        listener.processTransferNotification(jsonNotification);
+
+        verify(listener, never()).updateTransferStatus(any(LogicalFile.class), any(StagingTaskStatus.class), anyString());
+        verify(listener, never()).updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString());
+    }
+
+    @Test
+    public void updateDestinationLogicalFileCreatesLogicalFileIfDoesntExist() throws LogicalFileException, RemoteCredentialException, RemoteDataException, IOException {
+        FilesTransferListener listener = getMockFilesTransferListenerInstance();
+
+        LogicalFile logicalFile = getMockLogicalFile();
+        RemoteSystem mockRemoteSystem = getMockRemoteSystem();
+        RemoteDataClient mockClient = getMockRemoteDataClient(true);
+
+        when(mockRemoteSystem.getRemoteDataClient()).thenReturn(mockClient);
+        when(logicalFile.getSystem()).thenReturn(mockRemoteSystem);
+
+        when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenCallRealMethod();
+        when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(null);
+        when(listener.getSystemById(anyString(), anyString(), anyString())).thenReturn(mockRemoteSystem);
+        doNothing().when(listener).persistLogicalFile(any(LogicalFile.class));
+
+        LogicalFile destFile = listener.updateDestinationLogicalFile(logicalFile, destPath, SYSTEM_OWNER);
+
+        assertEquals(destFile.getStatus(), FileEventType.CREATED.name(), "Newly created dest LogicalFile should have CREATED status.");
+        assertEquals(destFile.getSourceUri(), String.format("agave://%s/%s", logicalFile.getSystem(), logicalFile.getPath()), "Source URI for the new dest LogicalFile should match the source LogicalFile");
+        verify(listener, times(1)).persistLogicalFile(any(LogicalFile.class));
+    }
+
+    @Test
+    public void updateDestinationLogicalFileDoesntCreateLogicalFileIfDestSystemDoesntExistAndPathDoesntExistOnSrcSystem() throws RemoteCredentialException, IOException, LogicalFileException, RemoteDataException {
+        FilesTransferListener listener = getMockFilesTransferListenerInstance();
+
+        LogicalFile logicalFile = getMockLogicalFile();
+        RemoteSystem mockRemoteSystem = getMockRemoteSystem();
+        RemoteDataClient mockClient = getMockRemoteDataClient(false);
+
+        when(mockRemoteSystem.getRemoteDataClient()).thenReturn(mockClient);
+        when(logicalFile.getSystem()).thenReturn(mockRemoteSystem);
+
+        when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenCallRealMethod();
+        when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(null);
+        when(listener.getSystemById(anyString(), anyString(), anyString())).thenReturn(null);
+
+        listener.updateDestinationLogicalFile(logicalFile, destPath, SYSTEM_OWNER);
+
+        verify(listener, never()).persistLogicalFile(any(LogicalFile.class));
+    }
+
+    @Test
+    public void updateDestinationLogicalFileDoesntCreateLogicalFileIfDestSystemDoesntExistButPathDoesExistOnSrcSystem() throws RemoteCredentialException, IOException, LogicalFileException, RemoteDataException {
+        FilesTransferListener listener = getMockFilesTransferListenerInstance();
+
+        LogicalFile logicalFile = getMockLogicalFile();
+        RemoteSystem mockRemoteSystem = getMockRemoteSystem();
+        RemoteDataClient mockClient = getMockRemoteDataClient(true);
+
+        when(mockRemoteSystem.getRemoteDataClient()).thenReturn(mockClient);
+        when(logicalFile.getSystem()).thenReturn(mockRemoteSystem);
+
+        when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenCallRealMethod();
+        when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(null);
+        when(listener.getSystemById(anyString(), anyString(), anyString())).thenReturn(null);
+        doNothing().when(listener).persistLogicalFile(any(LogicalFile.class));
+
+        LogicalFile destFile = listener.updateDestinationLogicalFile(logicalFile, destPath, SYSTEM_OWNER);
+
+        assertEquals(destFile.getStatus(), FileEventType.CREATED.name(), "Newly created dest LogicalFile should have CREATED status.");
+        assertEquals(destFile.getSourceUri(), String.format("agave://%s/%s", logicalFile.getSystem(), logicalFile.getPath()), "Source URI for the new dest LogicalFile should match the source LogicalFile");
+        verify(listener, times(1)).persistLogicalFile(any(LogicalFile.class));
+    }
+
+
+    @Test void updateDestinationLogicalFileUpdatesExistingLogicalFile() throws RemoteCredentialException, IOException, LogicalFileException, RemoteDataException {
+        FilesTransferListener listener = getMockFilesTransferListenerInstance();
+
+        LogicalFile logicalFile = getMockLogicalFile();
+        LogicalFile destLogicalFile = mock(LogicalFile.class);
+        doNothing().when(destLogicalFile).addContentEvent(any(FileEventType.class), anyString());
+
+        when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenCallRealMethod();
+        when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(destLogicalFile );
+        doNothing().when(listener).persistLogicalFile(any(LogicalFile.class));
+
+        listener.updateDestinationLogicalFile(logicalFile, destPath, SYSTEM_OWNER);
+
+        verify(destLogicalFile, times(1)).addContentEvent(FileEventType.OVERWRITTEN, SYSTEM_OWNER);
     }
 
 }

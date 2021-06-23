@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_PAUSED;
 
 public class TransferTaskUpdateListener extends AbstractNatsListener {
     private final static Logger logger = LoggerFactory.getLogger(TransferTaskUpdateListener.class);
@@ -61,40 +62,6 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
             logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
         }
 
-//        //EventBus bus = vertx.eventBus();
-//        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//        //Connection nc = _connect();
-//        Dispatcher d = getConnection().createDispatcher((msg) -> {});
-//        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//        Subscription s = d.subscribe(MessageType.TRANSFERTASK_UPDATED, msg -> {
-//            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//            JsonObject body = new JsonObject(response) ;
-//            String uuid = body.getString("uuid");
-//            String source = body.getString("source");
-//            String dest = body.getString("dest");
-//
-//            //msg.reply(TransferTaskUpdateListener.class.getName() + " received.");
-//            TransferTask tt = new TransferTask(body);
-//
-//            logger.info("Transfer task {} updated: {} -> {}", uuid, source, dest);
-//
-//            this.processEvent(body, result -> {
-//                if (result.succeeded()) {
-//                    logger.info("Succeeded with the processing transfer update event for transfer task {}", uuid);
-//                } else {
-//                    logger.error("Error with return from update event {}", uuid);
-//                    try {
-//                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-//                    } catch (Exception e) {
-//                        logger.debug(e.getMessage());
-//                    }
-//                }
-//            });
-//        });
-//        d.subscribe(MessageType.TRANSFERTASK_UPDATED);
-//        getConnection().flush(Duration.ofMillis(500));
-
     }
 
     protected void handleMessage(Message message) {
@@ -104,7 +71,21 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
             String source = body.getString("source");
             String dest = body.getString("dest");
             logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-
+            getVertx().<Boolean>executeBlocking(
+                    promise -> {
+                        try {
+                            processEvent(body, promise);
+                        } catch (Exception e) {
+                            logger.error(e.getCause().toString());
+                        }
+                    },
+                    resp -> {
+                        if (resp.succeeded()) {
+                            logger.debug("Finished processing {} for transfer task {}", MessageType.TRANSFERTASK_UPDATED, uuid);
+                        } else {
+                            logger.debug("Failed  processing {} for transfer task {}", MessageType.TRANSFERTASK_UPDATED, uuid);
+                        }
+                    });
         } catch (DecodeException e) {
             logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {

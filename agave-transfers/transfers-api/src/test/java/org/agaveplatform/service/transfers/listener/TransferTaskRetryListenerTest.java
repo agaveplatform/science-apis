@@ -29,8 +29,7 @@ import java.util.ArrayList;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_RETRY;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -64,11 +63,6 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
         return listener;
     }
-//    NatsJetstreamMessageClient getMockNats() throws MessagingException {
-//        NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
-//        doNothing().when(natsClient).push(any(), any(), any());
-//        return getMockNats();
-//    }
 
     @AfterAll
     public void finish(Vertx vertx, VertxTestContext ctx) {
@@ -434,17 +428,52 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
         JsonObject jsonTransferTask = tt.toJson();
 
         ta.processRetryTransferTask(jsonTransferTask, isRetried -> {
-            if (isRetried.succeeded()) {
-                ctx.verify(() -> {
-                    //verify(ta, times(1))._doPublishEvent(eq(TRANSFER_FAILED), any());
+            ctx.verify(() -> {
+                //verify(ta, times(1))._doPublishEvent(eq(TRANSFER_FAILED), any());
 //                    verify(nats, times(1)).push(any(), any(), any(JsonObject.class).toString());
-                    assertFalse(isRetried.result(), "TRANSFER_FAILED event should be sent when max attempts is reached.");
-                    ctx.completeNow();
-                });
-            } else {
-                ctx.failNow(isRetried.cause());
-            }
+                assertFalse(isRetried.result(), "TRANSFER_FAILED event should be sent when max attempts is reached.");
+                ctx.completeNow();
+            });
+
         });
     }
 
+
+    //srcUri = URI.create(retryTransferTask.getSource());
+    @Test
+    @DisplayName("TransferRetryListener - Task failed whem UriSchemeIsNotSupported ")
+    public void failUriSchemeIsNotSupportedTest(Vertx vertx, VertxTestContext ctx) throws Exception {
+
+        TransferTask tt = _createTestTransferTask();
+        tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
+        tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
+        RemoteDataClient destClient = mock(RemoteDataClient.class);
+        TransferTaskRetryListener ta = getMockTransferRetryListenerInstance(vertx);
+
+        try {
+            // force the source one to fail since it is an agave URI and can result in a bad system lookup.
+            when(ta.getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource()))))
+                    .thenThrow(new SystemUnknownException("This should be thrown during the test and propagated back as the handler.cause() method."));
+            // allow the dest one to succeed since it's not an agave URI
+            when(ta.getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getDest()))))
+                    .thenReturn(destClient);
+        } catch (Exception e) {
+            ctx.failNow(e);
+        }
+
+        // mock out the db service so we can can isolate method logic rather than db
+        TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(tt.toJson());
+
+        when(ta.getDbService()).thenReturn(dbService);
+
+        when(ta.uriSchemeIsNotSupported(any())).thenReturn(true);
+
+        doCallRealMethod().when(ta).processRetry(any(), any());
+        ta.processRetry(tt, resp -> {
+            ctx.verify(() -> {
+                assertTrue(resp.failed());
+                ctx.completeNow();
+            });
+        });
+    }
 }

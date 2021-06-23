@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
@@ -289,7 +290,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 	//"no null address accepted"
 	@Test
 	@DisplayName("Transfers Watch Listener Test - fails the getActiveRootTaskIds with a single active transfer tasks")
-	@Disabled
+	//@Disabled
 	public void processRootTaskEventFailsWithASingleActiveTask(Vertx vertx, VertxTestContext ctx) throws Exception {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
@@ -305,15 +306,50 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+		when(transferTaskWatchListener.getDbService()).thenReturn(dbService);
 
-		when(transferTaskWatchListener.getDbService()).thenThrow(new Exception("no null address accepted"));
+		when(dbService.getActiveRootTaskIds(any())).thenThrow(new RuntimeException("no null address accepted"));
+
+		transferTaskWatchListener.processRootTaskEvent(resp -> ctx.verify(() -> {
+			assertFalse(resp.failed(),
+					"Should fail a general error from the transfer task should return true");
+
+			// verify a call was made for each active task
+			//verify(transferTaskWatchListener,never())._doPublishEvent(any(), any(), any());
+
+			ctx.completeNow();
+		}));
+	}
+
+    //"Error with TransferTaskWatchListener processEvent"
+	@Test
+	@DisplayName("Transfers Watch Listener Test - fails the getActiveRootTaskIds")
+	//@Disabled
+	public void processRootTaskEventFailsWithAGeneralError(Vertx vertx, VertxTestContext ctx) throws Exception {
+
+		// mock out the verticle we're testing so we can observe that its methods were called as expected
+		TransferTaskWatchListener transferTaskWatchListener = getMockListenerInstance(vertx);
+		doCallRealMethod().when(transferTaskWatchListener).processRootTaskEvent(any());
+
+		JsonArray activeTasks = new JsonArray();
+		TransferTask tt = _createTestTransferTask();
+		activeTasks.add(new JsonObject()
+				.put("uuid", tt.getUuid())
+				.put("tenantId", tt.getTenantId())
+				.put("last_updated", tt.getLastUpdated()));
+
+		// mock out the db service so we can can isolate method logic rather than db
+		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+		when(transferTaskWatchListener.getDbService()).thenReturn(dbService);
+
+		when(dbService.getActiveRootTaskIds(any())).thenThrow(new RuntimeException("Error with TransferTaskWatchListener processEvent"));
 
 		transferTaskWatchListener.processRootTaskEvent(resp -> ctx.verify(() -> {
 			assertTrue(resp.failed(),
-					"Should fail processing of a list of a single transfer task should return true");
+					"Should fail a general error from the transfer task should return true");
 
 			// verify a call was made for each active task
-			verify(transferTaskWatchListener,never())._doPublishEvent(any(), any(), any());
+			//verify(transferTaskWatchListener,never())._doPublishEvent(any(), any(), any());
 
 			ctx.completeNow();
 		}));

@@ -66,21 +66,21 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 
 //	public Connection getConnection(){return nc;}
 
-	public void setConnection() throws IOException, InterruptedException {
-		try {
-			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
-		} catch (IOException e) {
-			//use default URL
-			nc = _connect(Options.DEFAULT_URL);
-		}
-	}
+//	public void setConnection() throws IOException, InterruptedException {
+//		try {
+//			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
+//		} catch (IOException e) {
+//			//use default URL
+//			nc = _connect(Options.DEFAULT_URL);
+//		}
+//	}
 
 	@Override
 	public void start() throws TimeoutException, InterruptedException, IOException {
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
-		setConnection();
+		//setConnection();
 
 		try {
 			//group subscription so each message only processed by this vertical type once
@@ -98,7 +98,21 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			String source = body.getString("source");
 			String dest = body.getString("dest");
 			log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-
+			getVertx().<Boolean>executeBlocking(
+					promise -> {
+						try {
+							processRetryTransferTask(body, promise);
+						} catch (Exception e) {
+							log.error(e.getCause().toString());
+						}
+					},
+					resp -> {
+						if (resp.succeeded()) {
+							log.debug("Finished processing {} for transfer task {}", TRANSFER_RETRY, uuid);
+						} else {
+							log.debug("Failed  processing {} for transfer task {}", TRANSFER_RETRY, uuid);
+						}
+					});
 		} catch (DecodeException e) {
 			log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
 		} catch (Throwable t) {

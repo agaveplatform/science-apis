@@ -56,18 +56,6 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 				}
 			});
 		});
-
-		// Disabling because the query cannot work and this seems to be an expensive, redundant operation
-//		getVertx().setPeriodic(healthParentTimer, resp -> {
-//			processParentEvent(batchResp -> {
-//				if (batchResp.succeeded()) {
-//					log.trace("Periodic transfer task watch starting");
-//				} else {
-//					log.error("Failed to execute the periodic transfer watch task. {}", batchResp.cause().getMessage(), batchResp.cause());
-//				}
-//			});
-//		});
-
 	}
 
 //	/**
@@ -168,13 +156,12 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 							handler.handle(Future.failedFuture(watchTasks.cause()));
 						}
 					});
-
 				} else {
 					log.error("Unable to retrieve list of active transfer tasks: {}", reply.cause().getMessage());
 					handler.handle(Future.failedFuture(reply.cause()));
 				}
 			});
-		} catch (Exception e) {
+		} catch (RuntimeException e) {
 			if (e.toString().contains("no null address accepted")){
 				log.info("Error with TransferTaskWatchListener processEvent  error {} }", e.toString());
 				handler.handle(Future.succeededFuture(Boolean.TRUE));

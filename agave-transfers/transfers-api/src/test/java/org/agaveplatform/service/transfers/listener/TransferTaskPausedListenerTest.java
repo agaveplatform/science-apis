@@ -46,6 +46,7 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 //@Disabled
 class TransferTaskPausedListenerTest extends BaseTestCase {
+
 	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) throws Exception {
 		TransferTaskPausedListener listener = Mockito.mock(TransferTaskPausedListener.class);
 		when(listener.getEventChannel()).thenReturn(MessageType.TRANSFERTASK_PAUSED);

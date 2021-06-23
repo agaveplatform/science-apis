@@ -1,6 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
@@ -136,6 +137,57 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 	}
 
 	@Test
+	@DisplayName("Transfers Watch Listener Test - fails the doPublishEvent(TRANSFERTASK_HEALTHCHECK succeeds with a single active transfer tasks")
+	public void processEventFailsWithASingleActiveTask(Vertx vertx, VertxTestContext ctx) throws Exception {
+
+		// mock out the verticle we're testing so we can observe that its methods were called as expected
+		TransferTaskWatchListener transferTaskWatchListener = getMockListenerInstance(vertx);
+		doCallRealMethod().when(transferTaskWatchListener).processRootTaskEvent(any());
+
+		JsonArray activeTasks = new JsonArray();
+		TransferTask tt = _createTestTransferTask();
+		activeTasks.add(new JsonObject()
+				.put("uuid", tt.getUuid())
+				.put("tenantId", tt.getTenantId())
+				.put("last_updated", tt.getLastUpdated()));
+
+		// mock out the db service so we can can isolate method logic rather than db
+		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+
+		AsyncResult<JsonArray> getActiveRootTaskIdsHandler = getMockAsyncResult(activeTasks);
+
+		// mock the handler passed into updateStatus
+		doAnswer((Answer<AsyncResult<JsonArray>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonArray>> handler = arguments.getArgumentAt(0, Handler.class);
+			handler.handle(getActiveRootTaskIdsHandler);
+			return null;
+		}).when(dbService).getActiveRootTaskIds(any());
+
+		when(transferTaskWatchListener.getDbService()).thenReturn(dbService);
+
+		AsyncResult<Boolean> eventHandler = getBooleanFailureAsyncResult(new Exception("Testing _doPublishEvent failure"));
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(eventHandler);
+			return null;
+		}).when(transferTaskWatchListener)._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(0)), any());
+
+
+		transferTaskWatchListener.processRootTaskEvent(resp -> ctx.verify(() -> {
+			assertTrue(resp.failed(),
+					"Should fail processing of a list of a single transfer task should return true");
+
+			// verify a call was made for each active task
+			verify(transferTaskWatchListener)._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), any(), any());
+
+			ctx.completeNow();
+		}));
+	}
+
+
+	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with multiple active transfer tasks")
 	public void processEventHandlesMultipleActiveTasks(Vertx vertx, VertxTestContext ctx) throws Exception {
 
@@ -178,6 +230,90 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 			for (int i=0; i<10; i++) {
 				verify(transferTaskWatchListener)._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)), any());
 			}
+
+			ctx.completeNow();
+		}));
+	}
+
+	@Test
+	@DisplayName("Transfers Watch Listener Test - fails the getActiveRootTaskIds with a single active transfer tasks")
+	public void getActiveRootTaskIdsFailsWithASingleActiveTask(Vertx vertx, VertxTestContext ctx) throws Exception {
+
+		// mock out the verticle we're testing so we can observe that its methods were called as expected
+		TransferTaskWatchListener transferTaskWatchListener = getMockListenerInstance(vertx);
+		doCallRealMethod().when(transferTaskWatchListener).processRootTaskEvent(any());
+
+		JsonArray activeTasks = new JsonArray();
+		TransferTask tt = _createTestTransferTask();
+		activeTasks.add(new JsonObject()
+				.put("uuid", tt.getUuid())
+				.put("tenantId", tt.getTenantId())
+				.put("last_updated", tt.getLastUpdated()));
+
+		// mock out the db service so we can can isolate method logic rather than db
+		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+
+		AsyncResult<JsonArray> getActiveRootTaskIdsHandler = getMockAsyncResult(activeTasks);
+
+		// mock the handler passed into updateStatus
+		doAnswer((Answer<AsyncResult<JsonArray>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonArray>> handler = arguments.getArgumentAt(0, Handler.class);
+			handler.handle(getActiveRootTaskIdsHandler);
+			return null;
+		}).when(dbService).getActiveRootTaskIds(any());
+
+		when(transferTaskWatchListener.getDbService()).thenReturn(dbService);
+
+		AsyncResult<Boolean> eventHandler = getBooleanFailureAsyncResult(new Exception("Testing getActiveRootTaskIds failure"));
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(0, Handler.class);
+			handler.handle(eventHandler);
+			return null;
+		}).when(dbService).getActiveRootTaskIds(any());
+
+
+		transferTaskWatchListener.processRootTaskEvent(resp -> ctx.verify(() -> {
+			assertTrue(resp.failed(),
+					"Should fail processing of a list of a single transfer task should return true");
+
+			// verify a call was made for each active task
+			verify(transferTaskWatchListener,never())._doPublishEvent(any(), any(), any());
+
+			ctx.completeNow();
+		}));
+	}
+
+
+	//"no null address accepted"
+	@Test
+	@DisplayName("Transfers Watch Listener Test - fails the getActiveRootTaskIds with a single active transfer tasks")
+	@Disabled
+	public void processRootTaskEventFailsWithASingleActiveTask(Vertx vertx, VertxTestContext ctx) throws Exception {
+
+		// mock out the verticle we're testing so we can observe that its methods were called as expected
+		TransferTaskWatchListener transferTaskWatchListener = getMockListenerInstance(vertx);
+		doCallRealMethod().when(transferTaskWatchListener).processRootTaskEvent(any());
+
+		JsonArray activeTasks = new JsonArray();
+		TransferTask tt = _createTestTransferTask();
+		activeTasks.add(new JsonObject()
+				.put("uuid", tt.getUuid())
+				.put("tenantId", tt.getTenantId())
+				.put("last_updated", tt.getLastUpdated()));
+
+		// mock out the db service so we can can isolate method logic rather than db
+		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+
+		when(transferTaskWatchListener.getDbService()).thenThrow(new Exception("no null address accepted"));
+
+		transferTaskWatchListener.processRootTaskEvent(resp -> ctx.verify(() -> {
+			assertTrue(resp.failed(),
+					"Should fail processing of a list of a single transfer task should return true");
+
+			// verify a call was made for each active task
+			verify(transferTaskWatchListener,never())._doPublishEvent(any(), any(), any());
 
 			ctx.completeNow();
 		}));

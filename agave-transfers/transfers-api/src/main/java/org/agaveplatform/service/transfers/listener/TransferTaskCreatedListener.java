@@ -162,6 +162,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             String dest = body.getString("dest");
             log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
+
         } catch (DecodeException e) {
             log.error("Unable to parse message 4 {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
@@ -180,32 +181,44 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             String source = body.getString("source");
             String dest = body.getString("dest");
             log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-
-            processEvent(body, resp -> {
-                if (resp.succeeded()) {
-                    log.debug("Succeeded with the processTransferTask in the assigning of the event {}", uuid);
-                    // TODO: codify our notification behavior here. Do we rewrap? How do we ensure ordering? Do we just
-                    //   throw it over the fence to Camel and forget about it? Boy, that would make things easier,
-                    //   thought not likely faster.
-                    // TODO: This seems like the correct pattern. Handler sent to the processing function, then
-                    //   only send the notification on success. We can add a failure and error notification to the
-                    //   respective listeners in the same way.
-                    body.put("event", this.getClass().getName());
-                    body.put("type", getEventChannel());
-                    try {
-                        Handler<AsyncResult<Boolean>> handle = null;
-                        _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body, handle);
-                    } catch (Exception e) {
-                        log.debug(e.getMessage());
-                    }
-                } else {
-                    log.error(resp.cause().getMessage());
-                }
-            });
-        } catch (InterruptedException|IOException e) {
+            getVertx().<Boolean>executeBlocking(
+                    promise -> {
+                        try {
+                            processEvent(body, promise);
+                        } catch (Exception e) {
+                            log.error(e.getCause().toString());
+                        }
+                    },
+                    resp -> {
+                        if (resp.succeeded()) {
+                            log.debug("Finished processing {} for transfer task {}", TRANSFERTASK_CREATED, uuid);
+                        } else {
+                            log.debug("Failed  processing {} for transfer task {}", TRANSFERTASK_CREATED, uuid);
+                        }
+                    });
+//            processEvent(body, resp -> {
+//                if (resp.succeeded()) {
+//                    log.debug("Succeeded with the processTransferTask in the assigning of the event {}", uuid);
+//                    // TODO: codify our notification behavior here. Do we rewrap? How do we ensure ordering? Do we just
+//                    //   throw it over the fence to Camel and forget about it? Boy, that would make things easier,
+//                    //   thought not likely faster.
+//                    // TODO: This seems like the correct pattern. Handler sent to the processing function, then
+//                    //   only send the notification on success. We can add a failure and error notification to the
+//                    //   respective listeners in the same way.
+//                    body.put("event", this.getClass().getName());
+//                    body.put("type", getEventChannel());
+//                    try {
+//                        Handler<AsyncResult<Boolean>> handle = null;
+//                        _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body, handle);
+//                    } catch (Exception e) {
+//                        log.debug(e.getMessage());
+//                    }
+//                } else {
+//                    log.error(resp.cause().getMessage());
+//                }
+//            });
+        } catch (Exception e) {
             log.error(e.getMessage());
-        } catch (DecodeException e) {
-            log.error("Unable to parse message 5 {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
             log.error("Unknown exception processing message message {} body {}. {}", message.getId(), message.getMessage(), t.getMessage());
         }

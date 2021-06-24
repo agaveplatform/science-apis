@@ -22,8 +22,8 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_SYNC;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_DELETED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_RETRY;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferTaskDeletedListener extends AbstractNatsListener {
@@ -90,9 +90,21 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
             String source = body.getString("source");
             String dest = body.getString("dest");
             logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-            this.processDeletedRequest(body, result -> {
-                //result should be true
-            });
+            getVertx().<Boolean>executeBlocking(
+                    promise -> {
+                        try {
+                            processDeletedRequest(body, promise);
+                        } catch (Exception e) {
+                            logger.error(e.getCause().toString());
+                        }
+                    },
+                    resp -> {
+                        if (resp.succeeded()) {
+                            logger.debug("Finished processing {} for transfer task {}", TRANSFERTASK_DELETED, uuid);
+                        } else {
+                            logger.debug("Failed  processing {} for transfer task {}", TRANSFERTASK_DELETED, uuid);
+                        }
+                    });
         } catch (DecodeException e) {
             logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {
@@ -107,9 +119,21 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
             String source = body.getString("source");
             String dest = body.getString("dest");
             logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-            this.processDeletedAck(body, result -> {
-                //result should be true
-            });
+            getVertx().<Boolean>executeBlocking(
+                    promise -> {
+                        try {
+                            processDeletedRequest(body, promise);
+                        } catch (Exception e) {
+                            logger.error(e.getCause().toString());
+                        }
+                    },
+                    resp -> {
+                        if (resp.succeeded()) {
+                            logger.debug("Finished processing {} for transfer task {}", TRANSFERTASK_DELETED_ACK, uuid);
+                        } else {
+                            logger.debug("Failed  processing {} for transfer task {}", TRANSFERTASK_DELETED_ACK, uuid);
+                        }
+                    });
         } catch (DecodeException e) {
             logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {

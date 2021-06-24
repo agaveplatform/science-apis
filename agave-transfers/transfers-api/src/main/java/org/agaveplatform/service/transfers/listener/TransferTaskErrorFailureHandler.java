@@ -71,19 +71,6 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 			log.error("TRANSFER_ALL - Exception {}", e.getMessage());
 		}
 
-//		//final String err ;
-//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//		//Connection nc = _connect();
-//		Dispatcher d = getConnection().createDispatcher((msg) -> {});
-//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//		Subscription s = d.subscribe(MessageType.TRANSFER_FAILED, msg -> {
-//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//			JsonObject body = new JsonObject(response) ;
-//
-//			log.info("Transfer task {} failed: {}: {}",
-//					body.getString("uuid"), body.getString("cause"), body.getString("message"));
-//
 //			processFailure(body, resp -> {
 //				if (resp.succeeded()) {
 //					log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
@@ -111,7 +98,27 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 			String source = body.getString("source");
 			String dest = body.getString("dest");
 			log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-
+			getVertx().<Boolean>executeBlocking(
+					promise -> {
+						try {
+							processFailure(body, repl -> {
+								if (repl.succeeded()) {
+									promise.complete(repl.result());
+								} else {
+									promise.fail(repl.cause());
+								}
+							});
+						} catch (Exception e) {
+							log.debug(e.getMessage());
+						}
+					},
+					resp -> {
+						if (resp.succeeded()) {
+							log.debug("Finished processing transfer task failure {}", uuid);
+						} else {
+							log.debug("Failed  processing transfer task failure {}", uuid);
+						}
+					});
 		} catch (DecodeException e) {
 			log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
 		} catch (Throwable t) {

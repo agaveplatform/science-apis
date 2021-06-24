@@ -113,7 +113,6 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 						}
 					});
 
-
 		} catch (DecodeException e) {
 			logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
 		} catch (Throwable t) {

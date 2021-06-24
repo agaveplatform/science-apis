@@ -119,7 +119,29 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
             String source = body.getString("source");
             String dest = body.getString("dest");
             log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-
+            getVertx().<Boolean>executeBlocking(
+                promise -> {
+                    try {
+                        processEvent(body, repl -> {
+                            if (repl.succeeded()) {
+                                promise.complete(repl.result());
+                            } else {
+                                promise.fail(repl.cause());
+                            }
+                        });
+                    } catch (IOException e) {
+                        log.debug(e.getMessage());
+                    } catch (InterruptedException e) {
+                        log.debug(e.getMessage());
+                    }
+                },
+                resp -> {
+                    if (resp.succeeded()) {
+                        log.debug("Finished processing health check for transfer task {}", uuid);
+                    } else {
+                        log.debug("Failed  processing health check for transfer task {}", uuid);
+                    }
+                });
         } catch (DecodeException e) {
             log.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {

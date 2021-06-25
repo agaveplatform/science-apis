@@ -25,6 +25,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 
+import static org.iplantc.service.common.Settings.FILES_STAGING_QUEUE;
 import static org.iplantc.service.common.Settings.FILES_STAGING_TOPIC;
 import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.*;
 
@@ -35,7 +36,7 @@ public class FilesTransferListener implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(FilesTransferListener.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static MessageQueueClient messageClient;
-    private final HashMap<StagingTaskStatus, FilesTransferListener.FileTransferMessageQueueListener> queueListeners = new HashMap();
+//    private final HashMap<StagingTaskStatus, FilesTransferListener.FileTransferMessageQueueListener> queueListeners = new HashMap();
 
     public FilesTransferListener() {}
 
@@ -70,22 +71,27 @@ public class FilesTransferListener implements Runnable {
                     List<StagingTaskStatus> stagingTaskStatuses = List.of(STAGING_COMPLETED, STAGING_FAILED, STAGING, STAGING_QUEUED);
 
                     Message msg = getMessageClient().pop(FILES_STAGING_TOPIC,
-                            org.iplantc.service.common.Settings.FILES_STAGING_QUEUE);
+                            FILES_STAGING_QUEUE);
                     try {
                         logger.debug("Messaged received from transfer service ");
                         JsonNode jsonBody = objectMapper.readTree(msg.getMessage());
 
                         processTransferNotification(jsonBody);
+                        logger.debug("Removing message from queue that have completed processing...");
+                        getMessageClient().delete(FILES_STAGING_TOPIC, FILES_STAGING_QUEUE, msg.getId());
                     } catch (MessageProcessingException e) {
                         try {
                             logger.debug("Unable to process message: " + e.getMessage());
                             getMessageClient().reject(FILES_STAGING_TOPIC,
-                                    org.iplantc.service.common.Settings.FILES_STAGING_QUEUE, msg.getId(), msg.getMessage());
+                                    FILES_STAGING_QUEUE, msg.getId(), msg.getMessage());
                         } catch (MessagingException e1) {
                             logger.error("Failed to release message back to the queue. This message will timeout and return on its own.");
                         }
                     } catch (IOException e) {
                         logger.error("Unable to parse message body: {}", e.getMessage());
+                    } catch (Exception e){
+                        logger.error("Unhandled exception was thrown {}", e.getMessage());
+                        throw e;
                     }
 
                     // check for thread interrupt
@@ -275,50 +281,50 @@ public class FilesTransferListener implements Runnable {
         LogicalFileDao.updateTransferStatus(file, stagingTaskStatus, username);
     }
 
-    class FileTransferMessageQueueListener implements MessageQueueListener {
-
-        private StagingTaskStatus messageStatus;
-
-        public FileTransferMessageQueueListener(StagingTaskStatus messageStatus) {
-            this.messageStatus = messageStatus;
-        }
-
-        @Override
-        public void processMessage(String body) throws MessageProcessingException {
-            logger.debug("Received completed notification from transfertask event");
-            try {
-                JsonNode jsonBody = objectMapper.readTree(body);
-                if (jsonBody.get("status").textValue().equalsIgnoreCase(getMessageStatus().name())) {
-                    processTransferNotification(jsonBody);
-                } else {
-                    throw new MessageProcessingException();
-                }
-            } catch (MessageProcessingException e) {
-                throw e;
-            } catch (IOException e) {
-                logger.error("Unable to parse message body: {}", e.getMessage());
-            }
-        }
-
-
-        @Override
-        public void stop() {
-            try {
-                logger.debug("Stopped called on the " + getMessageStatus().name() + " listener." );
-                getMessageClient().stop();
-            } catch (MessagingException e) {
-                logger.error("Failed to stop " + getMessageStatus().name() + " listener:" + e.getMessage());
-            }
-        }
-
-        public StagingTaskStatus getMessageStatus() {
-            return messageStatus;
-        }
-
-        public void setMessageStatus(StagingTaskStatus messageStatus) {
-            this.messageStatus = messageStatus;
-        }
-    }
+//    class FileTransferMessageQueueListener implements MessageQueueListener {
+//
+//        private StagingTaskStatus messageStatus;
+//
+//        public FileTransferMessageQueueListener(StagingTaskStatus messageStatus) {
+//            this.messageStatus = messageStatus;
+//        }
+//
+//        @Override
+//        public void processMessage(String body) throws MessageProcessingException {
+//            logger.debug("Received completed notification from transfertask event");
+//            try {
+//                JsonNode jsonBody = objectMapper.readTree(body);
+//                if (jsonBody.get("status").textValue().equalsIgnoreCase(getMessageStatus().name())) {
+//                    processTransferNotification(jsonBody);
+//                } else {
+//                    throw new MessageProcessingException();
+//                }
+//            } catch (MessageProcessingException e) {
+//                throw e;
+//            } catch (IOException e) {
+//                logger.error("Unable to parse message body: {}", e.getMessage());
+//            }
+//        }
+//
+//
+//        @Override
+//        public void stop() {
+//            try {
+//                logger.debug("Stopped called on the " + getMessageStatus().name() + " listener." );
+//                getMessageClient().stop();
+//            } catch (MessagingException e) {
+//                logger.error("Failed to stop " + getMessageStatus().name() + " listener:" + e.getMessage());
+//            }
+//        }
+//
+//        public StagingTaskStatus getMessageStatus() {
+//            return messageStatus;
+//        }
+//
+//        public void setMessageStatus(StagingTaskStatus messageStatus) {
+//            this.messageStatus = messageStatus;
+//        }
+//    }
 
 
 }

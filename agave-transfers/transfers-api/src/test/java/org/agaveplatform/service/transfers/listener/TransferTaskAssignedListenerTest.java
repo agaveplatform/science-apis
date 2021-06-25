@@ -15,6 +15,7 @@ import org.agaveplatform.service.transfers.matchers.IsSameTransferTask;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
+import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.transfer.RemoteDataClient;
@@ -71,18 +72,12 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
-//		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
-
 		RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
-//		when(mockRetryRequestManager.getVertx()).thenReturn(vertx);
 		doNothing().when(mockRetryRequestManager).request(anyString(),any(JsonObject.class),anyInt());
-
 		when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
-		//Connection connection = listener._connect();
-		//when(listener.getConnection()).thenReturn(connection);
-		//doNothing().when(listener).setConnection();
+		doCallRealMethod().when(listener).handleMessage(any());
 
 		return listener;
 	}
@@ -191,12 +186,30 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		return remoteFileInfo;
 	}
 
+
+	@Test
+	@DisplayName("handleMessage Test")
+	public void processHandleMessageTest(Vertx vertx, VertxTestContext ctx) throws Exception{
+		// mock out the test class
+		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
+		// generate a fake transfer task
+		TransferTask transferTask = _createTestTransferTask();
+		JsonObject transferTaskJson = transferTask.toJson();
+
+		Message msg = new Message(1, transferTask.toString());
+		ta.handleMessage(msg);
+		ctx.verify(() -> {
+			verify(ta, atLeastOnce()).processTransferTask(eq(transferTaskJson), any());
+
+			ctx.completeNow();
+		});
+	}
+
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns single file transfer task")
 	public void processTransferTaskAssignsSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws Exception {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
-//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// generate a fake transfer task
 		TransferTask rootTransferTask = _createTestTransferTask();

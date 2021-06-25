@@ -93,20 +93,20 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
             String dest = body.getString("dest");
             logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
             getVertx().<Boolean>executeBlocking(
-                    promise -> {
-                        try {
-                            processCancelRequest(body, promise);
-                        } catch (Exception e) {
-                            logger.error(e.getCause().toString());
-                        }
-                    },
-                    resp -> {
-                        if (resp.succeeded()) {
-                            logger.debug("Finished processing {} for transfer task {}", TRANSFERTASK_CANCELED, uuid);
-                        } else {
-                            logger.debug("Failed  processing {} for transfer task {}", TRANSFERTASK_CANCELED, uuid);
-                        }
-                    });
+                promise -> {
+                    try {
+                        processCancelRequest(body, promise);
+                    } catch (Exception e) {
+                        logger.error(e.getCause().toString());
+                    }
+                },
+                resp -> {
+                    if (resp.succeeded()) {
+                        logger.debug("Finished processing {} for transfer task {}", TRANSFERTASK_CANCELED, uuid);
+                    } else {
+                        logger.debug("Failed  processing {} for transfer task {}", TRANSFERTASK_CANCELED, uuid);
+                    }
+                });
         } catch (DecodeException e) {
             logger.error("Unable to parse message {} body {}. {}", message.getId(), message.getMessage(), e.getMessage());
         } catch (Throwable t) {

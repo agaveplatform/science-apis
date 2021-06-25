@@ -11,12 +11,24 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
+import org.iplantc.service.common.exceptions.AgaveNamespaceException;
+import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.messaging.Message;
+import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
+import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.RemoteDataClientFactory;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.iplantc.service.transfer.local.Local;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -381,6 +393,17 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 
 	public void processInterrupt(JsonObject body, io.vertx.core.Handler<io.vertx.core.AsyncResult<Boolean>> handler) {}
 
+	protected RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
+		TenancyHelper.setCurrentTenantId(tenantId);
+
+		// allow for handling transfer of local files cached to the local (shared) file system. This happens during
+		// file uploads and file processing operations between services.
+		if (target.getScheme().equalsIgnoreCase("file")) {
+			return new Local(null, "/", "/");
+		} else {
+			return new RemoteDataClientFactory().getInstance(username, null, target);
+		}
+	}
 }
 
 

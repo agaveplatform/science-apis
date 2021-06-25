@@ -15,6 +15,7 @@ import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.matchers.IsSameJsonTransferTask;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -65,8 +66,8 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		return listener;
 	}
 
-	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws Exception {
-		TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
+	protected TransferTaskPausedListener getMockTransferPausedListenerInstance(Vertx vertx) throws Exception {
+		TransferTaskPausedListener listener = mock(TransferTaskPausedListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.taskIsNotInterrupted(any())).thenReturn(true);
@@ -75,12 +76,16 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
-		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
+		doCallRealMethod().when(listener).processPauseRequest(any(JsonObject.class), any());
 		doCallRealMethod().when(listener).start();
 		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
 		doNothing().when(natsClient).push(any(), any(), anyInt());
 		when(listener.getMessageClient()).thenReturn(natsClient);
 		doCallRealMethod().when(listener).start();
+		doCallRealMethod().when(listener).handleMessage(any());
+		doCallRealMethod().when(listener).handlePausedCompletedMessage(any());
+		doCallRealMethod().when(listener).handlePausedSyncMessage(any());
+		doCallRealMethod().when(listener).processPauseAckRequest(any(),any());
 		return listener;
 	}
 
@@ -172,6 +177,43 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		remoteFileInfo.setSize(isDir ? new Random().nextInt(Integer.MAX_VALUE) : 4096);
 
 		return remoteFileInfo;
+	}
+
+	@Test
+	@DisplayName("handleMessage Test")
+	public void processHandleMessageTest(Vertx vertx, VertxTestContext ctx) throws Exception{
+		// mock out the test class
+		TransferTaskPausedListener ta = getMockTransferPausedListenerInstance(vertx);
+		// generate a fake transfer task
+		TransferTask transferTask = _createTestTransferTask();
+		JsonObject transferTaskJson = transferTask.toJson();
+
+		Message msg = new Message(1, transferTask.toString());
+		ta.handleMessage(msg);
+		ctx.verify(() -> {
+			verify(ta, atLeastOnce()).processPauseRequest(eq(transferTaskJson), any());
+
+			ctx.completeNow();
+		});
+	}
+
+
+	@Test
+	@DisplayName("handleMessage Test")
+	public void processHandleAckMessageTest(Vertx vertx, VertxTestContext ctx) throws Exception{
+		// mock out the test class
+		TransferTaskPausedListener ta = getMockTransferPausedListenerInstance(vertx);
+		// generate a fake transfer task
+		TransferTask transferTask = _createTestTransferTask();
+		JsonObject transferTaskJson = transferTask.toJson();
+
+		Message msg = new Message(1, transferTask.toString());
+		ta.handleMessage(msg);
+		ctx.verify(() -> {
+			verify(ta, atLeastOnce()).processPauseAckRequest(eq(transferTaskJson), any());
+
+			ctx.completeNow();
+		});
 	}
 
 	/**
@@ -785,7 +827,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Disabled
 	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) throws Exception {
 		// mock out the test class
-		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
+		TransferTaskPausedListener ta = getMockTransferPausedListenerInstance(vertx);
 		// mock of the Paused Listener
 		TransferTaskPausedListener tp = getMockListenerInstance(vertx);
 
@@ -820,16 +862,15 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 		// assign the mock db service to the test listener
 		when(ta.getDbService()).thenReturn(dbService);
-
-		// get mock remote data clients to mock the remote src system interactions
-		URI srcUri = URI.create(rootTransferTask.getSource());
-		RemoteDataClient srcRemoteDataClient = getMockRemoteDataClient(srcUri.getPath(), true, true);
-
-		// get mock remote data clients to mock the remote dest system interactions
-		URI destUri = URI.create(rootTransferTask.getDest());
-		RemoteDataClient destRemoteDataClient = getMockRemoteDataClient(destUri.getPath(), true, true);
-
 		try {
+			// get mock remote data clients to mock the remote src system interactions
+			URI srcUri = URI.create(rootTransferTask.getSource());
+			RemoteDataClient srcRemoteDataClient = getMockRemoteDataClient(srcUri.getPath(), true, true);
+
+			// get mock remote data clients to mock the remote dest system interactions
+			URI destUri = URI.create(rootTransferTask.getDest());
+			RemoteDataClient destRemoteDataClient = getMockRemoteDataClient(destUri.getPath(), true, true);
+
 			when(ta.getRemoteDataClient(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getOwner()), eq(srcUri))).thenReturn(srcRemoteDataClient);
 			when(ta.getRemoteDataClient(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getOwner()), eq(destUri))).thenReturn(destRemoteDataClient);
 		} catch (Exception e) {

@@ -14,6 +14,7 @@ import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
+import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -55,6 +56,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		doCallRealMethod().when(listener).processBody(any(), any());
+		doCallRealMethod().when(listener).handleMessage(any());
 		return listener;
 	}
 	NatsJetstreamMessageClient getMockNats() throws Exception {
@@ -67,6 +69,25 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 	public void finish(Vertx vertx, VertxTestContext ctx) {
 		vertx.close(ctx.completing());
 	}
+
+	@Test
+	@DisplayName("handleMessage Test")
+	public void processHandleMessageTest(Vertx vertx, VertxTestContext ctx) throws Exception{
+		// mock out the test class
+		TransferTaskErrorFailureHandler ta = getMockTransferFailureHandlerInstance(vertx);
+		// generate a fake transfer task
+		TransferTask transferTask = _createTestTransferTask();
+		JsonObject transferTaskJson = transferTask.toJson();
+
+		Message msg = new Message(1, transferTask.toString());
+		ta.handleMessage(msg);
+		ctx.verify(() -> {
+			verify(ta, atLeastOnce()).processFailure(eq(transferTaskJson), any());
+
+			ctx.completeNow();
+		});
+	}
+
 
 	@Test
 	@DisplayName("TransferFailureHandlerTest - testProcessFailure returns true on successful update")

@@ -13,6 +13,7 @@ import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
+import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.systems.exceptions.SystemRoleException;
@@ -60,6 +61,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 			doCallRealMethod().when(listener).addCancelledTask(anyString());
 			doCallRealMethod().when(listener).addPausedTask(anyString());
 			//doCallRealMethod().when(listener).userHasMinimumRoleOnSystem(any(), any(), anyString(), any());
+			doCallRealMethod().when(listener).handleCreatedMessage(any());
 		} catch (Exception ignored){}
 
 		return listener;
@@ -72,6 +74,23 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		return natsClient;
 	}
 
+	@Test
+	@DisplayName("handleMessage Test")
+	public void processHandleMessageTest(Vertx vertx, VertxTestContext ctx) throws Exception{
+		// mock out the test class
+		TransferTaskCreatedListener ta = getMockListenerInstance(vertx);
+		// generate a fake transfer task
+		TransferTask transferTask = _createTestTransferTask();
+		JsonObject transferTaskJson = transferTask.toJson();
+
+		Message msg = new Message(1, transferTask.toString());
+		ta.handleCreatedMessage(msg);
+		ctx.verify(() -> {
+			verify(ta, atLeastOnce()).processEvent(eq(transferTaskJson), any());
+
+			ctx.completeNow();
+		});
+	}
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment succeeds for valid transfer task")

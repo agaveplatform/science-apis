@@ -76,7 +76,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 //	}
 
 	@Override
-	public void start() throws TimeoutException, InterruptedException, IOException {
+	public void start(){
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
@@ -358,15 +358,15 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 		} catch (RemoteDataSyntaxException ex) {
 			String message = String.format("Failing transfer task %s due to invalid source syntax. %s", retryTransferTask.getTenantId(), ex.getMessage());
 			doHandleFailure(ex, message, retryTransferTask.toJson(), errorResp -> {
-				handler.handle(Future.failedFuture(ex.getCause()));
+				handler.handle(Future.failedFuture(ex));
 			});
 		} catch (SystemUnknownException ex){
 			doHandleError(ex, ex.getMessage(), retryTransferTask.toJson(), errorResp -> {
-				handler.handle(Future.failedFuture(ex.getMessage()));
+				handler.handle(Future.failedFuture(ex));
 			});
 		} catch (Exception ex) {
 			doHandleError(ex, ex.getMessage(), retryTransferTask.toJson(), errorResp -> {
-				handler.handle(Future.failedFuture(ex.getCause()));
+				handler.handle(Future.failedFuture(ex));
 			});
 		}
 		finally {

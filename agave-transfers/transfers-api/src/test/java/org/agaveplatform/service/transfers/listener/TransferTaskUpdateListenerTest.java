@@ -12,7 +12,6 @@ import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.transfer.RemoteDataClient;
@@ -29,7 +28,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_UPDATED;
@@ -57,7 +55,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
      * @param vertx the test vertx instance
      * @return a mocked of {@link TransferTaskUpdateListener}
      */
-    protected TransferTaskUpdateListener getMockTransferUpdateListenerInstance(Vertx vertx) throws IOException, InterruptedException, MessagingException {
+    protected TransferTaskUpdateListener getMockTransferUpdateListenerInstance(Vertx vertx) throws IOException, InterruptedException {
         TransferTaskUpdateListener listener = mock(TransferTaskUpdateListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFERTASK_UPDATED);
         when(listener.getVertx()).thenReturn(vertx);
@@ -65,15 +63,12 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
         doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
         doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
+        doCallRealMethod().when(listener).handleMessage(any());
         doNothing().when(listener)._doPublishEvent(any(), any(), any());
-        //doNothing().when(listener)._doPublishEvent( any(), any());
         doCallRealMethod().when(listener).processEvent(any(JsonObject.class), any());
         RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
         doNothing().when(mockRetryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
         when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
-        //Connection connection = listener._connect();
-        //when(listener.getConnection()).thenReturn(connection);
-        //doNothing().when(listener).setConnection();
         return listener;
     }
 

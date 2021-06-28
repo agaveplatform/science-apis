@@ -62,25 +62,44 @@ public class FilesTransferListener implements Runnable {
     public void run() {
         try {
             while (true) {
+                MessageQueueClient messageQueueClient = null;
+                Message msg = null;
+                try {
+                    if (Thread.currentThread().isInterrupted()) {
+                        throw new InterruptedException();
+                    }
+                    messageQueueClient = getMessageClient();
+                }
+                catch (MessagingException e) {
+                    logger.error("Unable to create messaging client", e);
+                    try {
+                        Thread.sleep(5000);} catch (Exception ignored){}
+                    continue;
+                }
+
                 try {
                     // dynamically register all the status listeners we want to take action on
                     List<StagingTaskStatus> stagingTaskStatuses = List.of(STAGING_COMPLETED, STAGING_FAILED, STAGING, STAGING_QUEUED);
 
-                    Message msg = getMessageClient().pop(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
+                    msg = messageClient.pop(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
                             org.iplantc.service.common.Settings.FILES_STAGING_QUEUE);
                     try {
                         JsonNode jsonBody = objectMapper.readTree(msg.getMessage());
                         processTransferNotification(jsonBody);
-                    } catch (MessageProcessingException e) {
+                        messageClient.delete(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
+                                org.iplantc.service.common.Settings.FILES_STAGING_QUEUE,
+                                msg.getId());
+                    } catch (IOException|MessageProcessingException e) {
+                        logger.error("Unable to parse message body, {}: {}", msg.getMessage(), e.getMessage());
                         try {
-                            getMessageClient().reject(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
+                            messageClient.reject(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
                                     org.iplantc.service.common.Settings.FILES_STAGING_QUEUE, msg.getId(), msg.getMessage());
                         } catch (MessagingException e1) {
                             logger.error("Failed to release message back to the queue. This message will timeout and return on its own.");
+                            throw e1;
                         }
-                    } catch (IOException e) {
-                        logger.error("Unable to parse message body: {}", e.getMessage());
                     }
+
 
                     // check for thread interrupt
                     if (Thread.currentThread().isInterrupted()) {
@@ -113,7 +132,12 @@ public class FilesTransferListener implements Runnable {
                     //                }
                     //            }
                 } catch (MessagingException e) {
-                    logger.error("Unable to create messaging client", e);
+                    logger.error("Failure communicating with message queue", e);
+                    if (messageQueueClient != null) {
+                        messageQueueClient.stop();
+                    }
+                    messageQueueClient = null;
+                    setMessageClient(null);
                 } catch (InterruptedException e) {
                     throw e;
                 } catch (Throwable t) {

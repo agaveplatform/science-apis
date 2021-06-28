@@ -11,6 +11,7 @@ import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.exceptions.LogicalFileException;
 import org.iplantc.service.io.model.LogicalFile;
+import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.StorageSystem;
@@ -292,6 +293,19 @@ public class FilesTransferListenerIT extends BaseTestCase {
                 fail("Exceptions should be swallowed.");
             }
         }
+    }
+
+    @Test
+    public void testUpdateDestinationLogicalFile() throws RemoteCredentialException, MessageProcessingException, LogicalFileException, RemoteDataException, MessagingException, IOException {
+        FilesTransferListener mockListener = getMockFilesTransferListener();
+        when(mockListener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenCallRealMethod();
+
+        LogicalFile expectedDestLogicalFile = new LogicalFile(SYSTEM_OWNER, storageSystem, destPath);
+        expectedDestLogicalFile.setSourceUri(file.getPath());
+        expectedDestLogicalFile.setStatus(FileEventType.CREATED.name());
+        mockListener.updateDestinationLogicalFile(file, destPath, SYSTEM_OWNER);
+        verify(mockListener, times(1)).persistLogicalFile(expectedDestLogicalFile);
+
     }
 
 }

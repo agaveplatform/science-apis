@@ -66,32 +66,44 @@ public class FilesTransferListener implements Runnable {
     public void run() {
         try {
             while (true) {
+                MessageQueueClient messageQueueClient = null;
+                Message msg = null;
+                try {
+                    if (Thread.currentThread().isInterrupted()) {
+                        throw new InterruptedException();
+                    }
+                    messageQueueClient = getMessageClient();
+                }
+                catch (MessagingException e) {
+                    logger.error("Unable to create messaging client", e);
+                    try {
+                        Thread.sleep(5000);} catch (Exception ignored){}
+                    continue;
+                }
+
                 try {
                     // dynamically register all the status listeners we want to take action on
                     List<StagingTaskStatus> stagingTaskStatuses = List.of(STAGING_COMPLETED, STAGING_FAILED, STAGING, STAGING_QUEUED);
 
-                    Message msg = getMessageClient().pop(FILES_STAGING_TOPIC,
-                            FILES_STAGING_QUEUE);
+                    msg = messageClient.pop(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
+                            org.iplantc.service.common.Settings.FILES_STAGING_QUEUE);
                     try {
                         logger.debug("Messaged received from transfer service ");
                         JsonNode jsonBody = objectMapper.readTree(msg.getMessage());
 
                         processTransferNotification(jsonBody);
-                        logger.debug("Removing message from queue that have completed processing...");
-                        getMessageClient().delete(FILES_STAGING_TOPIC, FILES_STAGING_QUEUE, msg.getId());
-                    } catch (MessageProcessingException e) {
+                        messageClient.delete(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
+                                org.iplantc.service.common.Settings.FILES_STAGING_QUEUE,
+                                msg.getId());
+                    } catch (IOException|MessageProcessingException e) {
+                        logger.error("Unable to parse message body, {}: {}", msg.getMessage(), e.getMessage());
                         try {
-                            logger.debug("Unable to process message: " + e.getMessage());
-                            getMessageClient().reject(FILES_STAGING_TOPIC,
-                                    FILES_STAGING_QUEUE, msg.getId(), msg.getMessage());
+                            messageClient.reject(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
+                                    org.iplantc.service.common.Settings.FILES_STAGING_QUEUE, msg.getId(), msg.getMessage());
                         } catch (MessagingException e1) {
                             logger.error("Failed to release message back to the queue. This message will timeout and return on its own.");
+                            throw e1;
                         }
-                    } catch (IOException e) {
-                        logger.error("Unable to parse message body: {}", e.getMessage());
-                    } catch (Exception e){
-                        logger.error("Unhandled exception was thrown {}", e.getMessage());
-                        throw e;
                     }
 
                     // check for thread interrupt
@@ -125,7 +137,12 @@ public class FilesTransferListener implements Runnable {
                     //                }
                     //            }
                 } catch (MessagingException e) {
-                    logger.error("Unable to create messaging client", e);
+                    logger.error("Failure communicating with message queue", e);
+                    if (messageQueueClient != null) {
+                        messageQueueClient.stop();
+                    }
+                    messageQueueClient = null;
+                    setMessageClient(null);
                 } catch (InterruptedException e) {
                     throw e;
                 } catch (Throwable t) {
@@ -193,7 +210,7 @@ public class FilesTransferListener implements Runnable {
                 logger.debug("Unable to find logical file for source " + srcUrl + " with tenant " + tenantId);
                 throw new MessageProcessingException("No existing file found matching transfer " + transferUuid);
             }
-        } catch (MessageProcessingException | IOException e) {
+        } catch (MessageProcessingException e) {
             throw e;
         } catch (Exception e) {
             throw new MessageProcessingException("Unable to update transfer status", e);
@@ -223,7 +240,8 @@ public class FilesTransferListener implements Runnable {
                 logger.debug("No matching system found for the destination of the transfer task. Skipping logical file update and events.");
             } else {
                 destFile = new LogicalFile(username, destSystem, destUri.getPath());
-                destFile.setSourceUri(String.format("agave://%s/%s", sourceLogicalFile.getSystem(), sourceLogicalFile.getPath()));
+                destFile.setSourceUri(sourceLogicalFile.getPath());
+//                destFile.setSourceUri(String.format("agave://%s/%s", sourceLogicalFile.getSystem(), sourceLogicalFile.getPath()));
                 destFile.setStatus(FileEventType.CREATED.name());
 
                 persistLogicalFile(destFile);

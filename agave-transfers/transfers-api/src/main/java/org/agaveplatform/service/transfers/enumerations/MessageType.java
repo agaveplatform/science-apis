@@ -58,7 +58,6 @@ String 	TRANSFERTASK_DB_QUEUE = "transfertask_db_queue";                    // s
     String  TRANSFER_RETRY = "transfer_retry";                                  // subscribe, Explicit
     String  TRANSFER_ALL = "transfer_all";                                      // subscribe, Explicit
     String  TRANSFERTASK_NOTIFICATION = "transfertask_notification";            // subscribe, Explicit
-    //public static final String  UrlCopy = "transfertask.UrlCopy";
     
     static String[] values() {
         return new String[]{

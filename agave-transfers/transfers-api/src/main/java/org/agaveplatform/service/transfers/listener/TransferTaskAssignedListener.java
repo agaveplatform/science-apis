@@ -7,11 +7,11 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.agaveplatform.service.transfers.model.TransferTaskNotificationMessage;
 import org.agaveplatform.service.transfers.protocol.URLCopy;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
-import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -195,7 +195,16 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                             log.info("srcFileInfo is a file.");
                             // but first, we udpate the transfer task status to ASSIGNED
                             assignedTransferTask.setStatus(TransferStatusType.ASSIGNED);
-                            _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson(), handler);
+                            _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson(), publishEventResp -> {
+                                if (publishEventResp.succeeded()) {
+                                    TransferTaskNotificationMessage internalMessage =
+                                            new TransferTaskNotificationMessage(assignedTransferTask, MessageType.TRANSFERTASK_ASSIGNED);
+
+                                    _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, internalMessage.toJson(), handler);
+                                } else {
+                                    handler.handle(Future.succeededFuture(true));
+                                }
+                            });
                         }
                         // the path is a directory, so walk the first level of the directory, spawning new child transfer
                         // tasks for every file item found. folders will be put back on the created queue for further
@@ -217,7 +226,16 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                         assignedTransferTask.setStartTime(Instant.now());
                                         assignedTransferTask.setEndTime(Instant.now());
 
-                                        _doPublishEvent(TRANSFER_COMPLETED, assignedTransferTask.toJson(), handler);
+                                        _doPublishEvent(TRANSFER_COMPLETED, assignedTransferTask.toJson(), publishEventResp -> {
+                                            if (publishEventResp.succeeded()) {
+                                                TransferTaskNotificationMessage internalMessage =
+                                                        new TransferTaskNotificationMessage(assignedTransferTask, MessageType.TRANSFERTASK_ASSIGNED);
+
+                                                _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, internalMessage.toJson(), handler);
+                                            } else {
+                                                handler.handle(Future.succeededFuture(true));
+                                            }
+                                        });
                                     }
                                     // we couldn't update the transfer task value
                                     else {
@@ -341,7 +359,10 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                 log.debug("Updated parent transfer task {} to ASSIGNED after processing all its children.", uuid);
                                                 // write to the completed event channel.
 //                                                _doPublishEvent(TRANSFER_COMPLETED, body);
-                                                handler.handle(Future.succeededFuture(true));
+                                                TransferTaskNotificationMessage internalMessage =
+                                                        new TransferTaskNotificationMessage(assignedTransferTask, MessageType.TRANSFERTASK_ASSIGNED);
+
+                                                _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, internalMessage.toJson(), handler);
                                             }
                                             // we couldn't update the transfer task value
                                             else {
@@ -394,7 +415,6 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             } catch (Exception ignored) {
             }
         }
-//        handler.handle(Future.succeededFuture(true));
     }
 
     public TransferTaskDatabaseService getDbService() {

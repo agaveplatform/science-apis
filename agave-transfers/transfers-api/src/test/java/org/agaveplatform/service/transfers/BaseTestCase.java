@@ -40,15 +40,15 @@ import static org.mockito.Mockito.when;
 public abstract class BaseTestCase {
     private static final Logger log = LoggerFactory.getLogger(BaseTestCase.class);
 
-    public final String TEST_USERNAME = "testuser";
-    public final String TEST_OTHER_USERNAME = "testotheruser";
-    public final String TEST_SHARE_USERNAME = "testshareuser";
-    public final String TEST_ADMIN_USERNAME = "testadminuser";
-    public final String TENANT_ID = "agave.dev";
-    public final String TRANSFER_SRC = "http://httpbin:8000/stream-bytes/32768";
-    public final String TRANSFER_DEST = "agave://sftp/";
-    public final String TEST_USER = "testuser";
-    public final String TEST_JWT_HEADER = "X-JWT-ASSERTION-AGAVE_DEV";
+    public final static String TEST_USERNAME = "testuser";
+    public final static String TEST_OTHER_USERNAME = "testotheruser";
+    public final static String TEST_SHARE_USERNAME = "testshareuser";
+    public final static String TEST_ADMIN_USERNAME = "testadminuser";
+    public final static String TENANT_ID = "agave.dev";
+    public final static String TRANSFER_SRC = "http://httpbin:8000/stream-bytes/32768";
+    public final static String TRANSFER_DEST = "agave://sftp/";
+    public final static String TEST_USER = "testuser";
+    public final static String TEST_JWT_HEADER = "X-JWT-ASSERTION-AGAVE_DEV";
 
     //=====================================================================================================
     // added section to support the TransferApplicationTest

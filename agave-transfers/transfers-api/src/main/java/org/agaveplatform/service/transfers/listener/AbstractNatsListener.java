@@ -27,9 +27,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_FAILED;
-
 public class AbstractNatsListener extends AbstractTransferTaskListener {
     private static final Logger log = LoggerFactory.getLogger(AbstractNatsListener.class);
     /**
@@ -225,42 +222,6 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
             callback.handle(new Message(msg.getSID(), body));
         });
 
-    }
-
-    /**
-     * Convenience method to handles generation of failed transfer messages, raising of failed event, and calling of handler with the
-     * passed exception.
-     * @param throwable the exception that was thrown
-     * @param failureMessage the human readable message to send back
-     * @param originalMessageBody the body of the original message that caused that failed
-     * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
-     */
-    @Override
-    protected void doHandleFailure(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
-        JsonObject json = new JsonObject()
-                .put("cause", throwable.getClass().getName())
-                .put("message", failureMessage)
-                .mergeIn(originalMessageBody);
-
-        _doPublishEvent(TRANSFER_FAILED, json, handler);
-    }
-
-    /**
-     * Convenience method to handles generation of errored out transfer messages, raising of error event, and calling of handler with the
-     * passed exception.
-     * @param throwable the exception that was thrown
-     * @param failureMessage the human readable message to send back
-     * @param originalMessageBody the body of the original message that caused that failed
-     * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
-     */
-    @Override
-    protected void doHandleError(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
-        JsonObject json = new JsonObject()
-                .put("cause", throwable.getClass().getName())
-                .put("message", failureMessage)
-                .mergeIn(originalMessageBody);
-
-        _doPublishEvent(TRANSFERTASK_ERROR, json, handler);
     }
 
     /**

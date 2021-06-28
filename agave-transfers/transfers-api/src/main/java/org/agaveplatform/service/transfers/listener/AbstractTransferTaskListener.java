@@ -99,6 +99,23 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     }
 
     /**
+     * Convenience method to handles generation of failed transfer messages, raising of failed event, and calling of handler with the
+     * passed exception.
+     * @param throwable the exception that was thrown
+     * @param originalMessageBody the body of the original message that caused that failed
+     * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
+     * @see #doHandleFailure(Throwable, String, JsonObject, Handler)
+     */
+    protected void doHandleFailure(Throwable throwable, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
+        JsonObject json = new JsonObject()
+                .put("cause", throwable == null ? null : throwable.getClass().getName())
+                .put("message", throwable == null ? null : throwable.getMessage())
+                .mergeIn(originalMessageBody);
+
+        _doPublishEvent(TRANSFER_FAILED, json, handler);
+    }
+
+    /**
      * Convenience method to handles generation of errored out transfer messages, raising of error event, and calling of handler with the
      * passed exception.
      * @param throwable the exception that was thrown
@@ -108,11 +125,23 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      */
     protected void doHandleError(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
         JsonObject json = new JsonObject()
-                .put("cause", throwable.getClass().getName())
+                .put("cause", throwable == null ? null : throwable.getClass().getName())
                 .put("message", failureMessage)
                 .mergeIn(originalMessageBody);
 
         _doPublishEvent(TRANSFERTASK_ERROR, json, handler);
+    }
+
+    /**
+     * Convenience method to handles generation of errored out transfer messages, raising of error event, and calling of handler with the
+     * passed exception. Defaults to using the {@code Throwable#getMessage()} as the message string.
+     * @param throwable the exception that was thrown
+     * @param originalMessageBody the body of the original message that caused that failed
+     * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
+     * @see #doHandleError(Throwable, String, JsonObject, Handler)
+     */
+    protected void doHandleError(Throwable throwable, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
+        doHandleError(throwable, throwable == null ? null : throwable.getMessage(), originalMessageBody, handler);
     }
 
     /**

@@ -323,7 +323,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 										}
 									}
 									else {
-										// interrupt happened wild processing children. skip the rest.
+										// interrupt happened while processing children. skip the rest.
 										log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", retryTransferTask.getUuid());
 										getDbService().updateStatus(retryTransferTask.getTenantId(), retryTransferTask.getUuid(), org.iplantc.service.transfer.model.enumerations.TransferStatusType.CANCELLED.name(), updateReply -> {
 											if (updateReply.succeeded()) {

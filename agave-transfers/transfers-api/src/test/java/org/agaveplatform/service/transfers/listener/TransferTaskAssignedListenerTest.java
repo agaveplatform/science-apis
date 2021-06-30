@@ -197,7 +197,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		JsonObject transferTaskJson = transferTask.toJson();
 
 		Message msg = new Message(1, transferTask.toString());
+
 		ta.handleMessage(msg);
+		Thread.sleep(3);
 		ctx.verify(() -> {
 			verify(ta, atLeastOnce()).processTransferTask(eq(transferTaskJson), any());
 
@@ -369,13 +371,6 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 				verify(dbService).updateStatus(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getUuid()), eq(TransferStatusType.COMPLETED.name()), any());
 
-//				verify(dbService, times(1)).createOrUpdateChildTransferTask(eq(rootTransferTask.getTenantId()), eq(rootTransferTask), any());
-
-				// TRANSFER_ALL event should have been raised
-				//verify(ta, times(1))._doPublishEvent( eq(TRANSFER_COMPLETED), eq(updatedTransferTaskJson));
-				// no error event should have been raised
-				//verify(ta, never())._doPublishEvent( eq(TRANSFERTASK_ERROR), any());
-//				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 				ctx.completeNow();
 			});
 		});
@@ -521,7 +516,6 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	}
 
 	@Test
-	//@Disabled
 	@DisplayName("TransferTaskAssignedListener - processTransferTask aborts processing childen when interrupt is received")
 	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) throws Exception {
 		// mock out the test class
@@ -632,7 +626,6 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - taskIsNotInterrupted")
-	//@Disabled
 	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());

@@ -218,6 +218,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 		Message msg = new Message(1, transferTask.toString());
 		ta.handleMessage(msg);
+		Thread.sleep(3);
 		ctx.verify(() -> {
 			verify(ta, atLeastOnce()).processCancelRequest(eq(transferTaskJson), any());
 
@@ -227,7 +228,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel request for assigned root task sends syncs and updates status")
-	@Disabled
+	//@Disabled
 	public void processCancelRequestUpdatesAndSendsSyncForActiveRootTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		// Set up our transfertask for testing
 		TransferTask transferTask = _createTestTransferTask();
@@ -271,7 +272,6 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 		// now we run the actual test using our test transfer task data
 		listener.processCancelRequest(transferTask.toJson(), results -> {
-
 			ctx.verify(() -> {
 
 				assertTrue(results.succeeded(), "The call should succeed.");

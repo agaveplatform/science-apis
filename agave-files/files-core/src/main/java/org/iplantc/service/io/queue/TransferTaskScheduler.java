@@ -67,7 +67,7 @@ public class TransferTaskScheduler {
                     "request to the transfers api.", e);
         } finally {
             // save the uuid with the logical file
-            updateLogicalFileAndSwallowException(file);
+//            updateLogicalFileAndSwallowException(file);
         }
     }
 

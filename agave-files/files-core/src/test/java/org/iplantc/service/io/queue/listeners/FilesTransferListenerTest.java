@@ -140,7 +140,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).processTransferNotification(any());
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(logicalFile);
         doNothing().when(listener).updateTransferStatus(any(LogicalFile.class), any(StagingTaskStatus.class), anyString());
-        when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).
+        when(listener.updateDestinationLogicalFile(anyString(), anyString(), anyString())).
                 thenThrow(LogicalFileException.class);
 
         listener.processTransferNotification(getNotification(getTransferTask(logicalFile, "COMPLETED"), "transfer.completed"));
@@ -167,7 +167,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
             when(listener.lookupLogicalFileByUrl(logicalFile.getSourceUri(), logicalFile.getTenantId())).thenReturn(logicalFile);
             doCallRealMethod().when(listener).processTransferNotification(any());
             doNothing().when(listener).updateTransferStatus(any(LogicalFile.class), any(StagingTaskStatus.class), anyString());
-            when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenReturn(logicalFile);
+            when(listener.updateDestinationLogicalFile(anyString(), anyString(), anyString())).thenReturn(logicalFile);
 
             JsonNode jsonNotification = getNotification(getTransferTask(logicalFile, transferStatus), transferStatus);
 
@@ -189,14 +189,14 @@ public class FilesTransferListenerTest extends BaseTestCase {
             when(listener.lookupLogicalFileByUrl(logicalFile.getSourceUri(), logicalFile.getTenantId())).thenReturn(logicalFile);
             doCallRealMethod().when(listener).processTransferNotification(any());
             doNothing().when(listener).updateTransferStatus(any(LogicalFile.class), any(StagingTaskStatus.class), anyString());
-            when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenReturn(logicalFile);
+            when(listener.updateDestinationLogicalFile(anyString(), anyString(), anyString())).thenReturn(logicalFile);
 
             JsonNode jsonNotification = getNotification(getTransferTask(logicalFile, "COMPLETED"), "transfer.completed");
             listener.processTransferNotification(jsonNotification);
             verify(listener, times(1)).
                     updateTransferStatus(logicalFile, STAGING_COMPLETED, logicalFile.getOwner());
             verify(listener, times(1)).
-                    updateDestinationLogicalFile(logicalFile, logicalFile.getPath(), logicalFile.getOwner());
+                    updateDestinationLogicalFile(eq(logicalFile.getPath()), eq(logicalFile.getOwner()), eq(logicalFile.getTenantId()));
 
         } catch (Exception e) {
             fail("No exception should be thrown for valid transfer notification", e);
@@ -237,7 +237,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
         listener.processTransferNotification(jsonNotification);
 
         verify(listener, never()).updateTransferStatus(any(LogicalFile.class), any(StagingTaskStatus.class), anyString());
-        verify(listener, never()).updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString());
+        verify(listener, never()).updateDestinationLogicalFile(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -251,12 +251,12 @@ public class FilesTransferListenerTest extends BaseTestCase {
         when(mockRemoteSystem.getRemoteDataClient()).thenReturn(mockClient);
         when(logicalFile.getSystem()).thenReturn(mockRemoteSystem);
 
-        when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenCallRealMethod();
+        when(listener.updateDestinationLogicalFile(anyString(), anyString(), anyString())).thenCallRealMethod();
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(null);
-        when(listener.getSystemById(anyString(), anyString(), anyString())).thenReturn(mockRemoteSystem);
+        when(listener.getSystemById(anyString(), anyString())).thenReturn(mockRemoteSystem);
         doNothing().when(listener).persistLogicalFile(any(LogicalFile.class));
 
-        LogicalFile destFile = listener.updateDestinationLogicalFile(logicalFile, destPath, SYSTEM_OWNER);
+        LogicalFile destFile = listener.updateDestinationLogicalFile(destPath, SYSTEM_OWNER, logicalFile.getTenantId());
 
         assertEquals(destFile.getStatus(), FileEventType.CREATED.name(), "Newly created dest LogicalFile should have CREATED status.");
         assertEquals(destFile.getSourceUri(), String.format("agave://%s/%s", logicalFile.getSystem(), logicalFile.getPath()), "Source URI for the new dest LogicalFile should match the source LogicalFile");
@@ -274,11 +274,11 @@ public class FilesTransferListenerTest extends BaseTestCase {
         when(mockRemoteSystem.getRemoteDataClient()).thenReturn(mockClient);
         when(logicalFile.getSystem()).thenReturn(mockRemoteSystem);
 
-        when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenCallRealMethod();
+        when(listener.updateDestinationLogicalFile(anyString(), anyString(), anyString())).thenCallRealMethod();
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(null);
-        when(listener.getSystemById(anyString(), anyString(), anyString())).thenReturn(null);
+        when(listener.getSystemById(anyString(), anyString())).thenReturn(null);
 
-        listener.updateDestinationLogicalFile(logicalFile, destPath, SYSTEM_OWNER);
+        listener.updateDestinationLogicalFile(destPath, SYSTEM_OWNER, logicalFile.getTenantId());
 
         verify(listener, never()).persistLogicalFile(any(LogicalFile.class));
     }
@@ -294,12 +294,12 @@ public class FilesTransferListenerTest extends BaseTestCase {
         when(mockRemoteSystem.getRemoteDataClient()).thenReturn(mockClient);
         when(logicalFile.getSystem()).thenReturn(mockRemoteSystem);
 
-        when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenCallRealMethod();
+        when(listener.updateDestinationLogicalFile(anyString(), anyString(), anyString())).thenCallRealMethod();
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(null);
-        when(listener.getSystemById(anyString(), anyString(), anyString())).thenReturn(null);
+        when(listener.getSystemById(anyString(), anyString())).thenReturn(null);
         doNothing().when(listener).persistLogicalFile(any(LogicalFile.class));
 
-        LogicalFile destFile = listener.updateDestinationLogicalFile(logicalFile, destPath, SYSTEM_OWNER);
+        LogicalFile destFile = listener.updateDestinationLogicalFile(destPath, SYSTEM_OWNER, logicalFile.getTenantId());
 
         assertEquals(destFile.getStatus(), FileEventType.CREATED.name(), "Newly created dest LogicalFile should have CREATED status.");
         assertEquals(destFile.getSourceUri(), String.format("agave://%s/%s", logicalFile.getSystem(), logicalFile.getPath()), "Source URI for the new dest LogicalFile should match the source LogicalFile");
@@ -314,11 +314,11 @@ public class FilesTransferListenerTest extends BaseTestCase {
         LogicalFile destLogicalFile = mock(LogicalFile.class);
         doNothing().when(destLogicalFile).addContentEvent(any(FileEventType.class), anyString());
 
-        when(listener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenCallRealMethod();
+        when(listener.updateDestinationLogicalFile(anyString(), anyString(), anyString())).thenCallRealMethod();
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(destLogicalFile );
         doNothing().when(listener).persistLogicalFile(any(LogicalFile.class));
 
-        listener.updateDestinationLogicalFile(logicalFile, destPath, SYSTEM_OWNER);
+        listener.updateDestinationLogicalFile(destPath, SYSTEM_OWNER, logicalFile.getTenantId());
 
         verify(destLogicalFile, times(1)).addContentEvent(FileEventType.OVERWRITTEN, SYSTEM_OWNER);
     }

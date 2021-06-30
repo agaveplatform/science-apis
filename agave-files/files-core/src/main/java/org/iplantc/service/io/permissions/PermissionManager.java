@@ -981,26 +981,26 @@ public class PermissionManager {
 		// default to no permissions for empty users and other tenants
 		if (StringUtils.isEmpty(username) || !StringUtils.equals(logicalFile.getTenantId(), TenancyHelper.getCurrentTenantId())) 
 		{
-			if (log.isDebugEnabled()) st1 = SimpleTimer.start("DifferentTenant");
+			//if (log.isDebugEnabled()) st1 = SimpleTimer.start("DifferentTenant");
 			RemoteFilePermission perms =  new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.NONE, true);
-			if (st1 != null) log.debug(st1.getShortStopMsg());
+			//if (st1 != null) log.debug(st1.getShortStopMsg());
 			return perms;
 
 		}
 		// admins have total control
 		else if (userRole.canAdmin())
 		{
-			if (log.isDebugEnabled()) st1 = SimpleTimer.start("AdminAccess");
+			//if (log.isDebugEnabled()) st1 = SimpleTimer.start("AdminAccess");
 			RemoteFilePermission perms =  new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
-			if (st1 != null) log.debug(st1.getShortStopMsg());
+			//if (st1 != null) log.debug(st1.getShortStopMsg());
 			return perms;
 		}
 		else
 		{
-			if (log.isDebugEnabled()) st1 = SimpleTimer.start("NonAdminAccessSameTenant");
+			//if (log.isDebugEnabled()) st1 = SimpleTimer.start("NonAdminAccessSameTenant");
 			
 			SimpleTimer st2 = null;
-			if (log.isDebugEnabled()) st2 = SimpleTimer.start("getByUsernameAndlogicalFileId");
+			//if (log.isDebugEnabled()) st2 = SimpleTimer.start("getByUsernameAndlogicalFileId");
 			
 			RemoteFilePermission userPem = RemoteFilePermissionDao.getByUsernameAndlogicalFileId(username, logicalFile.getId());
 			RemoteFilePermission publicPem = StringUtils.equals(username, Settings.PUBLIC_USER_USERNAME) ? 
@@ -1014,7 +1014,7 @@ public class PermissionManager {
 			aggregatePermission = RemoteFilePermission.merge(aggregatePermission, worldPem);
 			
 			
-			if (st2 != null) log.debug(st2.getShortStopMsg());
+			//if (st2 != null) log.debug(st2.getShortStopMsg());
 
 			// they must have permission on the system in order to leverage
 			// any RemoteFilePermission set for them
@@ -1023,7 +1023,7 @@ public class PermissionManager {
 				// if they own the file, they have full permission
 				if (StringUtils.equals(logicalFile.getOwner(), username))
 				{
-					if (st1 != null) log.debug(st1.getShortStopMsg());
+					//if (st1 != null) log.debug(st1.getShortStopMsg());
 					return new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
 				}
 				// if they have a RemoteFilePermission set, return that
@@ -1034,12 +1034,12 @@ public class PermissionManager {
 					{
 						RemoteFilePermission guestPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.READ, true);
 						RemoteFilePermission perms = RemoteFilePermission.merge(aggregatePermission, guestPem);
-						if (st1 != null) log.debug(st1.getShortStopMsg());
+						//if (st1 != null) log.debug(st1.getShortStopMsg());
 						return perms;
 					} 
 					else 
 					{
-						if (st1 != null) log.debug(st1.getShortStopMsg());
+						//if (st1 != null) log.debug(st1.getShortStopMsg());
 						return userPem;
 					}
 				}
@@ -1052,13 +1052,13 @@ public class PermissionManager {
 						RemoteFilePermission guestPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.READ, true);
 						
 						RemoteFilePermission perms = RemoteFilePermission.merge(aggregatePermission, guestPem);
-						if (st1 != null) log.debug(st1.getShortStopMsg());
+						//if (st1 != null) log.debug(st1.getShortStopMsg());
 						return perms;
 					}
 					// return the aggregatePermission if it is not null
 					else if (aggregatePermission != null) 
 					{
-						if (st1 != null) log.debug(st1.getShortStopMsg());
+						//if (st1 != null) log.debug(st1.getShortStopMsg());
 						return aggregatePermission;
 					}
 					// otherwise assign role based permissions
@@ -1066,14 +1066,14 @@ public class PermissionManager {
 					{
 						if (logicalFile.getSystem().isPubliclyAvailable()) {
 							if (isUnderUserHomeDirOnPublicSystem(logicalFile.getPath()) || isUserHomeDirOnPublicSystem(logicalFile.getPath())) {
-								if (st1 != null) log.debug(st1.getShortStopMsg());
+								//if (st1 != null) log.debug(st1.getShortStopMsg());
 								return userPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
 							} else {
-								if (st1 != null) log.debug(st1.getShortStopMsg());
+								//if (st1 != null) log.debug(st1.getShortStopMsg());
 								return userPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.NONE, true);
 							}
 						} else {
-							if (st1 != null) log.debug(st1.getShortStopMsg());
+							//if (st1 != null) log.debug(st1.getShortStopMsg());
 							return userPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
 						}
 					}
@@ -1082,13 +1082,13 @@ public class PermissionManager {
 			// if they don't have permission on the system return the aggregate permission including public and world permissions
 			else if (aggregatePermission != null) 
 			{
-				if (st1 != null) log.debug(st1.getShortStopMsg());
+				//if (st1 != null) log.debug(st1.getShortStopMsg());
 				return aggregatePermission;
 			} 
 			// if they don't have permission on the system and there are no 
 			else 
 			{
-				if (st1 != null) log.debug(st1.getShortStopMsg());
+				//if (st1 != null) log.debug(st1.getShortStopMsg());
 				return new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.NONE, true); 
 			}
 		}

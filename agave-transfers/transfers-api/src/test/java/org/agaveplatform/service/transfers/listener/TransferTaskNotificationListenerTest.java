@@ -1,6 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
@@ -25,7 +26,8 @@ import java.util.List;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.iplantc.service.common.Settings.FILES_STAGING_QUEUE;
 import static org.iplantc.service.common.Settings.FILES_STAGING_TOPIC;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -34,8 +36,9 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({JDBCClient.class})
 //@Disabled
-class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
-    private static final Logger log = LoggerFactory.getLogger(TransferTaskTransferTaskNotificationListenerTest.class);
+class TransferTaskNotificationListenerTest extends BaseTestCase {
+    private static final Logger log = LoggerFactory.getLogger(TransferTaskNotificationListenerTest.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final List<String> notificationEvents = List.of(
             TRANSFERTASK_CREATED,
             TRANSFERTASK_UPDATED,
@@ -140,5 +143,4 @@ class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
 
         ctx.completeNow();
     }
-
 }

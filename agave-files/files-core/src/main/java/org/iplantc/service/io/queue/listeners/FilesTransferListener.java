@@ -1,5 +1,6 @@
 package org.iplantc.service.io.queue.listeners;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
@@ -7,26 +8,21 @@ import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.messaging.MessageClientFactory;
 import org.iplantc.service.common.messaging.MessageQueueClient;
-import org.iplantc.service.common.messaging.MessageQueueListener;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.exceptions.LogicalFileException;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.List;
 
-import static org.iplantc.service.common.Settings.FILES_STAGING_QUEUE;
-import static org.iplantc.service.common.Settings.FILES_STAGING_TOPIC;
 import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.*;
 
 /**
@@ -95,8 +91,16 @@ public class FilesTransferListener implements Runnable {
                         messageClient.delete(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
                                 org.iplantc.service.common.Settings.FILES_STAGING_QUEUE,
                                 msg.getId());
+                    } catch (JsonProcessingException e) {
+                        // message cannot be parsed as valid json, so discard.
+                        messageClient.delete(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
+                                org.iplantc.service.common.Settings.FILES_STAGING_QUEUE,
+                                msg.getId());
                     } catch (IOException|MessageProcessingException e) {
                         logger.error("Unable to parse message body, {}: {}", msg.getMessage(), e.getMessage());
+                        messageClient.delete(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
+                                org.iplantc.service.common.Settings.FILES_STAGING_QUEUE,
+                                msg.getId());
                         try {
                             messageClient.reject(org.iplantc.service.common.Settings.FILES_STAGING_TOPIC,
                                     org.iplantc.service.common.Settings.FILES_STAGING_QUEUE, msg.getId(), msg.getMessage());
@@ -181,13 +185,14 @@ public class FilesTransferListener implements Runnable {
             String transferStatus = jsonBody.at("/context/event").textValue();
             String tenantId = jsonTransferTask.get("tenant_id").textValue();
 
-            logger.debug("Retrieved transfer " + transferUuid + " with status " + transferStatus + " for transfer from " + srcUrl + " to " + destUrl);
+            logger.debug("Retrieved transfer " + transferUuid + " with status " + transferStatus +
+                    " for transfer from " + srcUrl + " to " + destUrl);
 
             // Retrieve current logical file
             LogicalFile sourceLogicalFile = lookupLogicalFileByUrl(srcUrl, tenantId);
             if (sourceLogicalFile != null) {
                 // Update logical file
-                if (transferStatus.equals("transfertask.created")){
+                if (transferStatus.equals("transfertask.created")) {
                     updateTransferStatus(sourceLogicalFile, STAGING, createdBy);
                 } else if (transferStatus.equals("transfertask.assigned")) {
                     updateTransferStatus(sourceLogicalFile, STAGING_QUEUED, createdBy);
@@ -198,22 +203,30 @@ public class FilesTransferListener implements Runnable {
                     updateTransferStatus(sourceLogicalFile, StagingTaskStatus.STAGING_COMPLETED, createdBy);
 
                     // now we update the destination if it exists and is warranted
-                    updateDestinationLogicalFile(sourceLogicalFile, destUrl, createdBy);
+                    updateDestinationLogicalFile(destUrl, createdBy, tenantId);
 
-                } else if (List.of("transfertask.notification", "transfertask.updated").contains(transferStatus)){
+                } else if (List.of("transfertask.notification", "transfertask.updated").contains(transferStatus)) {
                     //these known event types don't have an equivalent staging task status
-                }else {
+                } else {
                     logger.error("Failed to process notification due to unknown status " + transferStatus);
                     throw new MessageProcessingException("Unable to process notification due to unknown status " + transferStatus);
                 }
-            } else {
-                logger.debug("Unable to find logical file for source " + srcUrl + " with tenant " + tenantId);
+            }
+            else if (transferStatus.equals("transfer.completed") || transferStatus.equals("transfertask.finished")) {
+                // source was not found, but we can still notify the destination logical file, if it exists, that
+                // it was overwritten
+                updateDestinationLogicalFile(destUrl, createdBy, tenantId);
+            }
+            else {
+                logger.debug("Unable to find logical file for target " + destUrl + " with tenant " + tenantId);
                 throw new MessageProcessingException("No existing file found matching transfer " + transferUuid);
             }
+        } catch (LogicalFileException e) {
+            throw new MessageProcessingException("Unable to find matching logical file for transfer task event", e);
         } catch (MessageProcessingException e) {
             throw e;
         } catch (Exception e) {
-            throw new MessageProcessingException("Unable to update transfer status", e);
+            throw new MessageProcessingException("Unable to update logical file status for transfer task event", e);
         }
     }
 
@@ -221,51 +234,53 @@ public class FilesTransferListener implements Runnable {
      * Mockable method to update destination {@link LogicalFile}. If the destination system does not exist, we skip the
      * logical file creation and event updates. Otherwise, we create or update the logical file and send the appropriate
      * update/overwritten event as appropriate.
-     * @param sourceLogicalFile source logical file of the transfer task
+     *
      * @param dest the destination url from the transfertask message body
      * @param username the owner of the transfertask message
+     * @param tenantId the tenant code of the transfer and logical file
      * @return the updated destination logicalfile
      * @throws LogicalFileException if unable to lookup the logical file
      */
-    protected LogicalFile updateDestinationLogicalFile(LogicalFile sourceLogicalFile, String dest, String username) throws LogicalFileException, RemoteDataException, RemoteCredentialException, IOException {
+    protected LogicalFile updateDestinationLogicalFile(String dest, String username, String tenantId) throws LogicalFileException {
         LogicalFile destFile = null;
-        destFile = lookupLogicalFileByUrl(dest, sourceLogicalFile.getTenantId());
+        destFile = lookupLogicalFileByUrl(dest, tenantId);
         if (destFile != null) {
             destFile.addContentEvent(FileEventType.OVERWRITTEN, username);
             persistLogicalFile(destFile);
-        } else {
-            URI destUri = URI.create(dest);
-            RemoteSystem destSystem = getSystemById(destUri.getHost(), username, sourceLogicalFile.getTenantId());
-            if (destSystem == null && !sourceLogicalFile.getSystem().getRemoteDataClient().doesExist(dest)){
-                logger.debug("No matching system found for the destination of the transfer task. Skipping logical file update and events.");
-            } else {
-                destFile = new LogicalFile(username, destSystem, destUri.getPath());
-                destFile.setSourceUri(sourceLogicalFile.getPath());
-//                destFile.setSourceUri(String.format("agave://%s/%s", sourceLogicalFile.getSystem(), sourceLogicalFile.getPath()));
-                destFile.setStatus(FileEventType.CREATED.name());
-
-                persistLogicalFile(destFile);
-            }
         }
+        // We don't create a new logical file as this may unintentionally reverse a delete operation
+        // also, all we're doing here is relaying any notifications from the transfers service to our notification
+        // system. If we can't find the logical file for a transfer, there is no way the notification would be routed
+        // anyway, so it's best to keep this fast and light by staying simple.
+//        else {
+//            URI destUri = URI.create(dest);
+//            RemoteSystem destSystem = getSystemById(destUri.getHost(), sourceLogicalFile.getTenantId());
+//            if (destSystem == null && !sourceLogicalFile.getSystem().getRemoteDataClient().doesExist(dest)){
+//                logger.debug("No matching system found for the destination of the transfer task. Skipping logical file update and events.");
+//            } else {
+//                destFile = new LogicalFile(username, destSystem, destUri.getPath());
+//                destFile.setSourceUri(sourceLogicalFile.getPath());
+////                destFile.setSourceUri(String.format("agave://%s/%s", sourceLogicalFile.getSystem(), sourceLogicalFile.getPath()));
+//                destFile.setStatus(FileEventType.CREATED.name());
+//
+//                persistLogicalFile(destFile);
+//            }
+//        }
         return destFile;
     }
 
-
     /**
-     * Mockable wrapper to fetch transfer task destination system by id, tenant, and username. The owner of the transfer
-     * task will have already been vetted to make the transfer, so they clearly have access to the destination system.
-     * We simply add that to the query to ensure that we don't run into race conditions on access privileges, and to
-     * speed up the query a bit.
+     * Mockable wrapper to fetch transfer task destination system by id and tenant. This check does not perform permission
+     * check on the user's system access because we are processing events from things already completed. If they had
+     * permission to do them at the time, then they should recieve the confirmation that it was done.
      *
      * @param systemId the {@link RemoteSystem#getSystemId()} to use as the lookup id
-     * @param username the principal who should have access to the system (this is included in the lookup)
      * @param tenantId the tenant in which the systme should reside.
      * @return the matching system or null if no match is found.
      */
-    protected RemoteSystem getSystemById(String systemId, String username, String tenantId) {
-        return new SystemDao().findUserSystemBySystemIdAndTenant(username, systemId, tenantId);
+    protected RemoteSystem getSystemById(String systemId, String tenantId) {
+        return new SystemDao().findBySystemIdAndTenant(systemId, tenantId);
     }
-
 
     /**
      * Mockable helper method to wrap the static call to {@link LogicalFileDao#persist(LogicalFile}}.
@@ -277,13 +292,30 @@ public class FilesTransferListener implements Runnable {
 
     /**
      * Mockable helper method to wrap the static call to  {@link LogicalFileDao#findBySourceUrl(String)}.
-     * @param srcUrl the url for which to lookup the logical file
+     * @param target a serialized URI representing a file item at the source or dest of a transfer
      * @param tenantId the id of the tenant for which to lookup the url
      * @return the logical file for the given url or null if not found
      * @see LogicalFileDao#findBySourceUrl(String)
      */
-    protected LogicalFile lookupLogicalFileByUrl(String srcUrl, String tenantId) throws LogicalFileException {
-        return LogicalFileDao.findBySourceUrlAndTenant(srcUrl, tenantId);
+    protected LogicalFile lookupLogicalFileByUrl(String target, String tenantId) throws LogicalFileException {
+        TenancyHelper.setCurrentTenantId(tenantId);
+
+        URI srcURI = URI.create(target);
+
+        // if the src URI is a local file, then we are handling an event for an internal transfer and do not need
+        // to create a notification as there would be no mechanism for a user to subscribe.
+        if (srcURI.getScheme() == null || srcURI.getScheme().equalsIgnoreCase("file")) {
+            return null;
+        } else {
+            RemoteSystem remoteSystem = getSystemById(srcURI.getHost(), tenantId);
+            if (remoteSystem == null) {
+                logger.debug("No matching system found for the destination of the transfer task. Skipping logical file update and events.");
+                throw new LogicalFileException("Unable to identify remote system from target URL.");
+            }
+
+            return LogicalFileDao.findBySystemAndPath(remoteSystem, srcURI.getPath());
+
+        }
     }
 
     /**
@@ -298,51 +330,5 @@ public class FilesTransferListener implements Runnable {
     protected void updateTransferStatus(LogicalFile file, StagingTaskStatus stagingTaskStatus, String username) {
         LogicalFileDao.updateTransferStatus(file, stagingTaskStatus, username);
     }
-
-//    class FileTransferMessageQueueListener implements MessageQueueListener {
-//
-//        private StagingTaskStatus messageStatus;
-//
-//        public FileTransferMessageQueueListener(StagingTaskStatus messageStatus) {
-//            this.messageStatus = messageStatus;
-//        }
-//
-//        @Override
-//        public void processMessage(String body) throws MessageProcessingException {
-//            logger.debug("Received completed notification from transfertask event");
-//            try {
-//                JsonNode jsonBody = objectMapper.readTree(body);
-//                if (jsonBody.get("status").textValue().equalsIgnoreCase(getMessageStatus().name())) {
-//                    processTransferNotification(jsonBody);
-//                } else {
-//                    throw new MessageProcessingException();
-//                }
-//            } catch (MessageProcessingException e) {
-//                throw e;
-//            } catch (IOException e) {
-//                logger.error("Unable to parse message body: {}", e.getMessage());
-//            }
-//        }
-//
-//
-//        @Override
-//        public void stop() {
-//            try {
-//                logger.debug("Stopped called on the " + getMessageStatus().name() + " listener." );
-//                getMessageClient().stop();
-//            } catch (MessagingException e) {
-//                logger.error("Failed to stop " + getMessageStatus().name() + " listener:" + e.getMessage());
-//            }
-//        }
-//
-//        public StagingTaskStatus getMessageStatus() {
-//            return messageStatus;
-//        }
-//
-//        public void setMessageStatus(StagingTaskStatus messageStatus) {
-//            this.messageStatus = messageStatus;
-//        }
-//    }
-
 
 }

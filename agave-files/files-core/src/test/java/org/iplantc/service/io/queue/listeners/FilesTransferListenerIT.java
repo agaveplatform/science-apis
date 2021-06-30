@@ -17,7 +17,10 @@ import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.mockito.InOrder;
-import org.testng.annotations.*;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.net.URI;
@@ -28,16 +31,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.*;
-import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.STAGING_FAILED;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
-import static org.testng.Assert.*;
+import static org.testng.Assert.fail;
 
 @Test(groups = {"integration"})
 public class FilesTransferListenerIT extends BaseTestCase {
     private StorageSystem storageSystem;
     private LogicalFile file;
-    private LogicalFileDao logicalFileDao = new LogicalFileDao();
+    private final LogicalFileDao logicalFileDao = new LogicalFileDao();
     URI srcURI;
     String destPath;
 
@@ -65,7 +67,7 @@ public class FilesTransferListenerIT extends BaseTestCase {
         clearLogicalFiles();
 
         file = new LogicalFile(SYSTEM_OWNER, storageSystem, srcURI, destPath);
-        logicalFileDao.persist(file);
+        LogicalFileDao.persist(file);
     }
 
     @AfterClass
@@ -200,8 +202,8 @@ public class FilesTransferListenerIT extends BaseTestCase {
         doCallRealMethod().when(mockListener).getMessageClient();
         doCallRealMethod().when(mockListener).processTransferNotification(any(JsonNode.class));
         when(mockListener.lookupLogicalFileByUrl(file.getSourceUri(), file.getTenantId())).thenReturn(file);
-        when(mockListener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenCallRealMethod();
-        when(mockListener.getSystemById(anyString(), anyString(), anyString())).thenReturn(storageSystem);
+        when(mockListener.updateDestinationLogicalFile(anyString(), anyString(), anyString())).thenCallRealMethod();
+        when(mockListener.getSystemById(anyString(), anyString())).thenReturn(storageSystem);
         doNothing().when(mockListener).persistLogicalFile(any(LogicalFile.class));
         doNothing().when(mockListener).updateTransferStatus(any(LogicalFile.class), any(StagingTaskStatus.class), anyString());
 
@@ -230,7 +232,7 @@ public class FilesTransferListenerIT extends BaseTestCase {
                 verifyOrder.verify(mockListener).updateTransferStatus(file, StagingTaskStatus.valueOf(event[1].toString()), SYSTEM_OWNER);
                 if (StagingTaskStatus.valueOf(event[1].toString()).equals(STAGING_COMPLETED.name())) {
                     //updateDestinationLogicalFile should be called for transfer.completed and transfertask.finished)
-                    verify(mockListener, times(2)).updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString());
+                    verify(mockListener, times(2)).updateDestinationLogicalFile(anyString(), anyString(), anyString());
                 }
             }
 
@@ -262,7 +264,7 @@ public class FilesTransferListenerIT extends BaseTestCase {
             executor.awaitTermination(50, TimeUnit.MILLISECONDS);
 
             verify(mockListener, never()).updateTransferStatus(any(LogicalFile.class), any(StagingTaskStatus.class), anyString());
-            verify(mockListener, never()).updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString());
+            verify(mockListener, never()).updateDestinationLogicalFile(anyString(), anyString(), anyString());
 
             executor.shutdown();
         } catch (Exception e) {
@@ -298,12 +300,12 @@ public class FilesTransferListenerIT extends BaseTestCase {
     @Test
     public void testUpdateDestinationLogicalFile() throws RemoteCredentialException, MessageProcessingException, LogicalFileException, RemoteDataException, MessagingException, IOException {
         FilesTransferListener mockListener = getMockFilesTransferListener();
-        when(mockListener.updateDestinationLogicalFile(any(LogicalFile.class), anyString(), anyString())).thenCallRealMethod();
+        when(mockListener.updateDestinationLogicalFile(anyString(), anyString(), anyString())).thenCallRealMethod();
 
         LogicalFile expectedDestLogicalFile = new LogicalFile(SYSTEM_OWNER, storageSystem, destPath);
         expectedDestLogicalFile.setSourceUri(file.getPath());
         expectedDestLogicalFile.setStatus(FileEventType.CREATED.name());
-        mockListener.updateDestinationLogicalFile(file, destPath, SYSTEM_OWNER);
+        mockListener.updateDestinationLogicalFile(destPath, SYSTEM_OWNER, file.getTenantId());
         verify(mockListener, times(1)).persistLogicalFile(expectedDestLogicalFile);
 
     }

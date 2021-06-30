@@ -76,6 +76,7 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 
 		Message msg = new Message(1, transferTask.toString());
 		ta.handleMessage(msg);
+		Thread.sleep(3);
 		ctx.verify(() -> {
 			verify(ta, atLeastOnce()).processAllChildrenCanceledEvent(eq(transferTaskJson), any());
 

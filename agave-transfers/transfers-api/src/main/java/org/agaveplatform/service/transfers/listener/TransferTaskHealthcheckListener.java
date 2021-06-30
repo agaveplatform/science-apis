@@ -64,30 +64,6 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 		} catch (Exception e) {
 			logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
 		}
-
-//		// listen for healthcheck events to determine if a task is complete
-//		// before its transfertask_completed event was received.
-//		//getVertx().eventBus().<JsonObject>consumer(TRANSFERTASK_HEALTHCHECK, msg -> {
-//		//Connection nc = _connect();
-//		Dispatcher d = getConnection().createDispatcher((msg) -> {});
-//		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
-//			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-//			String response = new String(msg.getData(), StandardCharsets.UTF_8);
-//			JsonObject body = new JsonObject(response) ;
-//			String uuid = body.getString("uuid");
-//			String source = body.getString("source");
-//			String dest = body.getString("dest");
-//			//msg.reply(TransferTaskHealthcheckListener.class.getName() + " received.");
-//
-//			logger.info("Performing healthcheck on transfer task {}", uuid);
-//
-//            this.processAllChildrenCanceledEvent(body);
-//
-//		});
-//		d.subscribe(EVENT_CHANNEL);
-//		getConnection().flush(Duration.ofMillis(500));
-
 	}
 
 	protected void handleMessage(Message message) {

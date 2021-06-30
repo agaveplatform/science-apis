@@ -69,11 +69,6 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 		return listener;
 	}
-//	NatsJetstreamMessageClient getMockNats() throws MessagingException {
-//		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
-//		doNothing().when(natsClient).push(any(), any(), any());
-//		return getMockNats();
-//	}
 
 	@Test
 	@DisplayName("handleMessage Test")
@@ -86,6 +81,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 		Message msg = new Message(1, transferTask.toString());
 		ta.handleMessage(msg);
+		Thread.sleep(3);
 		ctx.verify(() -> {
 			verify(ta, atLeastOnce()).processError(eq(transferTaskJson), any());
 
@@ -132,21 +128,6 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			return null;
 		}).when(dbService).getById(eq(tt.getId().toString()), anyObject() );
 
-
-		//		AsyncResult<String> stringResult = getMockStringResult(tt.getParentTaskId());
-//		doAnswer((Answer<AsyncResult<String>>) arguments -> {
-//			Handler<AsyncResult<String>> handler = arguments.getArgumentAt(1, Handler.class);
-//			handler.handle(stringResult);
-//			return null;
-//		}).when(tt.getParentTaskId());
-//
-//		AsyncResult<String> rootStringResult = getMockStringResult(tt.getRootTaskId());
-//		doAnswer((Answer<AsyncResult<String>>) arguments -> {
-//			Handler<AsyncResult<String>> handler = arguments.getArgumentAt(1, Handler.class);
-//			handler.handle(stringResult);
-//			return null;
-//		}).when(tt.getRootTaskId());
-
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(txfrErrorListener.getDbService()).thenReturn(dbService);
 
@@ -155,8 +136,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertTrue(resp.result(), "processError should return false when the body has a recoverable cause and has a status of QUEUED");
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
-			//verify(txfrErrorListener)._doPublishEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())) );
-//			verify(nats, times(1)).push(any(), any(), any());
+
 			ctx.completeNow();
 		}));
 	}
@@ -211,8 +191,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertTrue(resp.result(), "processError should return false when the body has a recoverable cause and has a status of QUEUED");
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
-			//verify(txfrErrorListener)._doPublishEvent( eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
-//			verify(nats, times(1)).push(any(), any(), any());
+
 			ctx.completeNow();
 		}));
 	}
@@ -237,13 +216,6 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
-//		// mock a successful outcome with updated json transfer task result from updateStatus
-//		JsonObject expectedUdpatedJsonObject = tt.toJson()
-//				.put("status", ERROR.name())
-//				.put("endTime", Instant.now());
-//
-//		AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
-
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
@@ -273,9 +245,6 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 
 		txfrErrorListener.processError(body, resp -> ctx.verify(() -> {
-//			JsonObject errorMessageBody = body.copy();
-//			errorMessageBody.remove("cause");
-//			errorMessageBody.remove("message");
 
 			verify(txfrErrorListener, times(1)).taskIsNotInterrupted(eq(tt));
 			assertTrue(resp.succeeded(), "Error handler should succeed when an IOException is received.");
@@ -284,7 +253,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
 			//verify(txfrErrorListener)._doPublishEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
-//			verify(nats, times(1)).push(any(), any(), any());
+
 			ctx.completeNow();
 		}));
 	}
@@ -306,7 +275,6 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
-//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
@@ -347,8 +315,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 					"TransferErrorListener.processError is called for an IOException. It is already in the QUEUE");
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
-			//verify(txfrErrorListener)._doPublishEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
-//			verify(nats, times(1)).push(any(), any(), any());
+
 			ctx.completeNow();
 		}));
 	}
@@ -371,14 +338,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-//		NatsJetstreamMessageClient nats = getMockNats();
 
-//		// mock a successful outcome with updated json transfer task result from updateStatus
-//		JsonObject expectedUdpatedJsonObject = tt.toJson()
-//				.put("status", FAILED.name())
-//				.put("endTime", Instant.now());
-//
-//		AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
@@ -412,8 +372,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = COMPLETED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			//verify(txfrErrorListener, never())._doPublishEvent(any(), any());
-//			verify(nats, never()).push(any(), any(), any());
+
 			ctx.completeNow();
 		}));
 	}
@@ -435,7 +394,6 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		body.put("message", "Error Message");
 
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
-//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
@@ -473,8 +431,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = COMPLETED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			//verify(txfrErrorListener, never())._doPublishEvent(any(), any());
-//			verify(nats, never()).push(any(), any(), any());
+
 			ctx.completeNow();
 		}));
 	}
@@ -497,14 +454,6 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-//		NatsJetstreamMessageClient nats = getMockNats();
-
-//		// mock a successful outcome with updated json transfer task result from updateStatus
-//		JsonObject expectedUdpatedJsonObject = tt.toJson()
-//				.put("status", FAILED.name())
-//				.put("endTime", Instant.now());
-//
-//		AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
 
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
@@ -539,8 +488,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = FAILED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			//verify(txfrErrorListener, never())._doPublishEvent(any(), any());
-//			verify(nats, never()).push(any(), any(), any());
+
 			ctx.completeNow();
 		}));
 	}
@@ -562,7 +510,6 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
-//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
@@ -601,8 +548,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = FAILED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			//verify(txfrErrorListener, never())._doPublishEvent(any(), any());
-//			verify(nats, never()).push(any(), any(), any());
+
 			ctx.completeNow();
 		}));
 	}
@@ -625,7 +571,6 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
-//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
@@ -696,8 +641,6 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			handler.handle(getByIdResult);
 			return null;
 		}).when(dbService).getById(eq(tt.getId().toString()), anyObject() );
-
-
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(txfrErrorListener.getDbService()).thenReturn(dbService);

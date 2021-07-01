@@ -71,26 +71,26 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             log.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
         }
 
-//        try {
-//            // broadcast subscription so each message gets to every verticle to pause the task where ever it may be
-//            subscribeToSubject(TRANSFERTASK_PAUSED_SYNC, this::handlePausedSyncMessage);
-//        } catch (Exception e) {
-//            log.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
-//        }
-//
-//        try {
-//            // broadcast subscription so each message gets to every verticle to remove the task from list of cancelled tasks
-//            subscribeToSubject(TRANSFERTASK_CANCELED_COMPLETED, this::handleCanceledCompletedMessage);
-//        } catch (Exception e) {
-//            log.error("TRANSFERTASK_CANCELED_COMPLETED - Exception {}", e.getMessage());
-//        }
-//
-//        try {
-//            // broadcast subscription so each message gets to every verticle to remove the task from list of paused tasks
-//            subscribeToSubject(TRANSFERTASK_PAUSED_COMPLETED, this::handlePausedCompletedMessage);
-//        } catch (Exception e) {
-//            log.error("TRANSFERTASK_PAUSED_COMPLETED - Exception {}", e.getMessage());
-//        }
+        try {
+            // broadcast subscription so each message gets to every verticle to pause the task where ever it may be
+            subscribeToSubject(TRANSFERTASK_PAUSED_SYNC, this::handlePausedSyncMessage);
+        } catch (Exception e) {
+            log.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
+        }
+
+        try {
+            // broadcast subscription so each message gets to every verticle to remove the task from list of cancelled tasks
+            subscribeToSubject(TRANSFERTASK_CANCELED_COMPLETED, this::handleCanceledCompletedMessage);
+        } catch (Exception e) {
+            log.error("TRANSFERTASK_CANCELED_COMPLETED - Exception {}", e.getMessage());
+        }
+
+        try {
+            // broadcast subscription so each message gets to every verticle to remove the task from list of paused tasks
+            subscribeToSubject(TRANSFERTASK_PAUSED_COMPLETED, this::handlePausedCompletedMessage);
+        } catch (Exception e) {
+            log.error("TRANSFERTASK_PAUSED_COMPLETED - Exception {}", e.getMessage());
+        }
     }
 
     /**

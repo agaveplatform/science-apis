@@ -81,6 +81,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 		Message msg = new Message(1, transferTask.toString());
 		ta.handleMessage(msg);
+		Thread.sleep(3);
 		ctx.verify(() -> {
 			verify(ta, atLeastOnce()).processFailure(eq(transferTaskJson), any());
 

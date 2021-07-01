@@ -85,6 +85,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		Message msg = new Message(1, transferTask.toString());
 		ta.handleCreatedMessage(msg);
+		Thread.sleep(3);
 		ctx.verify(() -> {
 			verify(ta, atLeastOnce()).processEvent(eq(transferTaskJson), any());
 

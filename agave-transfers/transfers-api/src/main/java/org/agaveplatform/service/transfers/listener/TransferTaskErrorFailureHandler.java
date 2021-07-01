@@ -68,27 +68,9 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 			//group subscription so each message only processed by this vertical type once
 			subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
 		} catch (Exception e) {
-			log.error("TRANSFER_ALL - Exception {}", e.getMessage());
+			log.error("TRANSFER_FAILED - Exception {}", e.getMessage());
 		}
 
-//			processFailure(body, resp -> {
-//				if (resp.succeeded()) {
-//					log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
-//					body.put("event", this.getClass().getName());
-//					body.put("type", getEventChannel());
-//					try {
-//						_doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
-//					} catch (Exception e) {
-//						log.debug(e.getMessage());
-//					}
-//				} else {
-//					log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
-//				}
-//			});
-//		});
-//		d.subscribe(MessageType.TRANSFER_FAILED);
-//		getConnection().flush(Duration.ofMillis(500));
-		//d.unsubscribe(EVENT_CHANNEL);
 	}
 
 	protected void handleMessage(Message message) {

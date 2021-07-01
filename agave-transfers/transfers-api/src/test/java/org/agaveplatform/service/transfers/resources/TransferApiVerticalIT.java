@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Transfers API integration tests")
 //@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-//@Disabled
+@Disabled
 public class TransferApiVerticalIT extends BaseTestCase {
 
     private static final Logger log = LoggerFactory.getLogger(TransferApiVerticalIT.class);
@@ -100,7 +100,6 @@ public class TransferApiVerticalIT extends BaseTestCase {
     }
 
     @Test
-    @Disabled
     @DisplayName("List web root says hello")
     void register(Vertx vertx, VertxTestContext ctx) {
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -149,8 +148,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
     @Test
     @DisplayName("Create new transfer task")
-    @Disabled
-    void create(Vertx vertx, VertxTestContext ctx) {
+    void createNewTransferTaskTest(Vertx vertx, VertxTestContext ctx) {
         TransferTask tt = _createTestTransferTask();
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
         Checkpoint dbDeploymentCheckpoint = ctx.checkpoint();
@@ -211,7 +209,6 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
     @Test
     @DisplayName("List transfer tasks by admin")
-    @Disabled
     void getAllForAdmin(Vertx vertx, VertxTestContext ctx) {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -282,7 +279,6 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
     @Test
     @DisplayName("List transfer tasks by user")
-    @Disabled
     void getAllForUser(Vertx vertx, VertxTestContext ctx) {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -368,7 +364,6 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
     @Test
     @DisplayName("Delete transfer task by admin")
-    @Disabled
     void deleteForAdmin(Vertx vertx, VertxTestContext ctx) {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -507,7 +502,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
     @Test
     @DisplayName("Cancel transfer task by admin")
     @Disabled
-    void cancelTaskForAdmin(Vertx vertx, VertxTestContext ctx) {
+    void cancelTaskForAdmin(Vertx vertx, VertxTestContext ctx) throws Exception {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
         Checkpoint dbDeploymentCheckpoint = ctx.checkpoint();
@@ -542,6 +537,8 @@ public class TransferApiVerticalIT extends BaseTestCase {
                             String adminTestUuid = testTransferTasks.getJsonObject(0).getString("uuid");
                             String adminUserToken = this.makeTestJwt(TEST_ADMIN_USERNAME, "Internal/" + TENANT_ID.replace(".", "_") + "-services-admin");
                             SoftAssertions softly = new SoftAssertions();
+
+                            //Thread.sleep(3);
 
                             ctx.verify(() -> {
                                 String response = given()

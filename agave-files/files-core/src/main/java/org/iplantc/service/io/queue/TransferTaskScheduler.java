@@ -139,7 +139,8 @@ public class TransferTaskScheduler {
             transferService = new TransferService(username, file.getTenantId(), baseUrl);
         }
 
-        APIResponse response = transferService.post(file.getSourceUri(), file.getPath());
+        String dest = "agave://" + file.getSystem().getSystemId() + "/" + file.getPath();
+        APIResponse response = transferService.post(file.getSourceUri(), dest);
 
         if (response.isSuccess()) {
             return response.getResult();

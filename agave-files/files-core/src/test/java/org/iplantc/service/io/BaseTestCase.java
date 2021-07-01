@@ -396,7 +396,7 @@ public class BaseTestCase {
         return objectMapper.createObjectNode()
                 .put("attempts", 1)
                 .put("source", file.getSourceUri())
-                .put("dest", file.getPath())
+                .put("dest", "agave://" + file.getSystem() + "/" + file.getPath())
                 .put("owner", file.getOwner())
                 .put("tenant_id", file.getTenantId())
                 .put("uuid", new AgaveUUID(UUIDType.TRANSFER).toString())

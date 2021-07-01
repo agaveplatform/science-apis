@@ -811,7 +811,7 @@ public class FileManagementResource extends AbstractFileResource
 			// if the request contains a body
             if (input != null)
             {	
-                // process multipart form data
+                // multipart instead of json
 	            if (MediaType.MULTIPART_FORM_DATA.equals(input.getMediaType(), true))
 	            {
 	            	// always use utf-8
@@ -871,6 +871,14 @@ public class FileManagementResource extends AbstractFileResource
 						try {
 							// resolve the uri
 							URI uri = new URI(sUri);
+
+							// check permission of url to import so we can reject the request up front if the user
+							// does not have permission to view it.
+							if (! PermissionManager.canUserReadUri(username, null, uri)) {
+								String msg = "User does not have permission to access source url, " + sUri;
+								throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,msg, new PermissionException());
+							}
+
 							if (StringUtils.isEmpty(name)) {
 								// pull the file name from the url
 								name = FilenameUtils.getName(uri.getPath());
@@ -1033,7 +1041,10 @@ public class FileManagementResource extends AbstractFileResource
 
                                     PermissionManager pm = new PermissionManager(system, remoteDataClient, logicalFile, username);
 
-		    						if (logicalFile == null) {
+									File cachedDir = Files.createTempDir();
+									File cachedFile = new File(cachedDir, fileName);
+
+									if (logicalFile == null) {
 		    							if (!pm.canWrite(remoteDataClient.resolvePath(remotePath))) {
 		    								String msg = "User does not have access to modify " + path;
 		    								throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
@@ -1044,7 +1055,7 @@ public class FileManagementResource extends AbstractFileResource
 		    							logicalFile.setSystem(system);
 										logicalFile.setInternalUsername(internalUsername);
 		    							logicalFile.setName(fileName);
-		    							logicalFile.setSourceUri(tmpUrl);
+		    							logicalFile.setSourceUri(cachedFile.toURI().toString());
 		    							logicalFile.setPath(remoteDataClient.resolvePath(remotePath));
 		    							logicalFile.setNativeFormat(format);
 		    							logicalFile.setOwner(StringUtils.isEmpty(owner) ? username : owner);
@@ -1060,7 +1071,7 @@ public class FileManagementResource extends AbstractFileResource
 		    							logicalFile.setSystem(system);
 										logicalFile.setInternalUsername(internalUsername);
 		    							logicalFile.setNativeFormat(format);
-		    							logicalFile.setSourceUri(tmpUrl);
+		    							logicalFile.setSourceUri(cachedFile.toURI().toString());
 		    							logicalFile.setLastUpdated(new DateTime().toDate());
 		    							logicalFile.setStatus(StagingTaskStatus.STAGING_QUEUED);
 		    							LogicalFileDao.persist(logicalFile);
@@ -1070,16 +1081,13 @@ public class FileManagementResource extends AbstractFileResource
 		    						if (StringUtils.isNotEmpty(sNotifications)) {
 		    							notifications = LogicalFileManager.addUploadNotifications(logicalFile, username, sNotifications);
 									}
-									
+
+		    						// Copy the contents of the FileItem to the remoteDataClient location.
+									fi.write(cachedFile);
+
 									logicalFile.addContentEvent(FileEventType.STAGING_QUEUED, username);
 									LogicalFileDao.persist(logicalFile);
 
-                                    // Copy the contents of the FileItem to the remoteDataClient location.
-		    						File cachedDir = Files.createTempDir();
-									File cachedFile = new File(cachedDir, fileName);
-		    						fi.write(cachedFile);
-
-									logicalFile.setSourceUri(cachedFile.toURI().toString());
 									new TransferTaskScheduler().enqueueStagingTaskWithNotification(logicalFile, username);
 
 		    						log.debug("File upload of " + cachedFile.length() + " bytes received from " + getAuthenticatedUsername());
@@ -1110,6 +1118,7 @@ public class FileManagementResource extends AbstractFileResource
 		                }
 					}
 	            }
+	            // url was provided for import
 	            else
 	            {
 	            	// parse the form to get the job specs
@@ -1162,6 +1171,12 @@ public class FileManagementResource extends AbstractFileResource
 					{
 						// resolve the uri
 						URI uri = new URI(StringUtils.trim(sUri));
+
+						if (! PermissionManager.canUserReadUri(username, null, uri)) {
+							String msg = "User does not have permission to access source url, " + sUri;
+							throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,msg, new PermissionException());
+						}
+
 						if (StringUtils.isBlank(name)) {
 							// pull the file name from the url
 							name = FilenameUtils.getName(uri.getPath());

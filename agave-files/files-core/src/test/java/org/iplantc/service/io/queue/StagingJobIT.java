@@ -5,7 +5,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.Settings;
-import org.iplantc.service.io.clients.APIResponse;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.dao.QueueTaskDao;
 import org.iplantc.service.io.model.LogicalFile;
@@ -785,8 +784,6 @@ public class StagingJobIT extends BaseTestCase {
             if (!destClient.doesExist("")) {
                 destClient.mkdirs("");
             }
-
-
 
             URI sourceUri = new URI("agave://" + sourceSystem.getSystemId() + "/" + srcPath);
 

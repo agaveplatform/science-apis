@@ -144,10 +144,10 @@ public class FilesTransferListenerIT extends BaseTestCase {
         return new Object[][]{
                 {"transfertask.created", STAGING},
                 {"transfertask.assigned", STAGING_QUEUED},
-                {"transfer.completed", STAGING_COMPLETED},
+                {"transfer.retry", STAGING_QUEUED},
                 {"transfertask.finished", STAGING_COMPLETED},
                 {"transfertask.failed", STAGING_FAILED},
-                {"transfer.failed", STAGING_FAILED}
+                {"transfertask.canceled", STAGING_FAILED}
         };
     }
 
@@ -155,10 +155,10 @@ public class FilesTransferListenerIT extends BaseTestCase {
         return List.of(
                 "transfertask.created",
                 "transfertask.assigned",
-                "transfer.completed",
+                "transfer.retry",
                 "transfertask.finished",
                 "transfertask.failed",
-                "transfer.failed"
+                "transfertask.canceled"
         );
     }
 
@@ -214,6 +214,9 @@ public class FilesTransferListenerIT extends BaseTestCase {
     @Test
     public void testRunUpdatesStatus() throws MessagingException, MessageProcessingException, IOException, LogicalFileException, RemoteDataException, RemoteCredentialException {
         FilesTransferListener listener = getMockFilesTransferListener();
+        doNothing().when(listener).updateSourceLogicalFile(anyString(), anyString(), any(FilesTransferListener.TransferTaskEventType.class), anyString());
+        doNothing().when(listener).updateDestinationLogicalFile(anyString(), anyString(), any(FilesTransferListener.TransferTaskEventType.class), anyString());
+
 
         try {
             ExecutorService executor = Executors.newCachedThreadPool();
@@ -229,11 +232,8 @@ public class FilesTransferListenerIT extends BaseTestCase {
             InOrder verifyOrder = inOrder(listener);
 
             for (Object[] event : events) {
-                verifyOrder.verify(listener).updateTransferStatus(file, StagingTaskStatus.valueOf(event[1].toString()), SYSTEM_OWNER);
-                if (StagingTaskStatus.valueOf(event[1].toString()).equals(STAGING_COMPLETED.name())) {
-                    //updateDestinationLogicalFile should be called for transfer.completed and transfertask.finished)
-                    verify(listener, times(2)).updateDestinationLogicalFile(anyString(), anyString(), any() , anyString());
-                }
+                verifyOrder.verify(listener).updateSourceLogicalFile(file.getSourceUri(), SYSTEM_OWNER, FilesTransferListener.TransferTaskEventType.valueOfEventName(event[0].toString()), file.getTenantId());
+                verifyOrder.verify(listener).updateDestinationLogicalFile("agave://" + file.getSystem() + "/" + file.getPath(), SYSTEM_OWNER, FilesTransferListener.TransferTaskEventType.valueOfEventName(event[0].toString()), file.getTenantId());
             }
 
             executor.shutdown();
@@ -305,7 +305,8 @@ public class FilesTransferListenerIT extends BaseTestCase {
         LogicalFile expectedDestLogicalFile = new LogicalFile(SYSTEM_OWNER, storageSystem, destPath);
         expectedDestLogicalFile.setSourceUri(file.getPath());
         expectedDestLogicalFile.setStatus(FileEventType.CREATED.name());
-        listener.updateDestinationLogicalFile(destPath, SYSTEM_OWNER, FilesTransferListener.TransferTaskEventType.TRANSFERTASK_CREATED, file.getTenantId());
+        when(listener.lookupLogicalFileByUrl(destPath, file.getTenantId())).thenReturn(expectedDestLogicalFile);
+        listener.updateDestinationLogicalFile(destPath, SYSTEM_OWNER, FilesTransferListener.TransferTaskEventType.TRANSFERTASK_FINISHED, file.getTenantId());
         verify(listener, times(1)).persistLogicalFile(expectedDestLogicalFile);
 
     }

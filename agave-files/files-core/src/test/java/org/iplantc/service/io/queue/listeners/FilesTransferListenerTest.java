@@ -89,14 +89,15 @@ public class FilesTransferListenerTest extends BaseTestCase {
         FilesTransferListener listener = mock(FilesTransferListener.class);
         when(listener.isThreadInterrupted()).thenReturn(false, true);
         when(listener.getMessageClient()).thenReturn(client);
+        doCallRealMethod().when(listener).run();
 
         try {
             listener.run();
 
-            verify(client).stop();
+            verify(client, times(2)).stop();
             verify(client, never()).delete(any(), any(), any());
 
-            verify(listener).setMessageClient(eq(null));
+            verify(listener, atLeastOnce()).setMessageClient(eq(null));
         }
         catch (Throwable e) {
             fail("NO exception should escape the run method", e);
@@ -115,18 +116,18 @@ public class FilesTransferListenerTest extends BaseTestCase {
         when(listener.isThreadInterrupted()).thenReturn(false, true);
         when(listener.getMessageClient()).thenReturn(client);
         doNothing().when(listener).processTransferNotification(any());
+        doCallRealMethod().when(listener).run();
 
         try {
             listener.run();
 
             verify(listener, times(2)).isThreadInterrupted();
-            verify(listener).setMessageClient(eq(null));
+            verify(listener, atLeastOnce()).setMessageClient(eq(null));
             verify(client).pop(any(), any());
             verify(listener).processTransferNotification(any(JsonNode.class));
-            verify(client).delete(any(), any(), eq(1L));
+            verify(client, times(2)).delete(any(), any(), eq(1L));
             // after exception, client should be stopped and cleaned up.
             verify(client, times(2)).stop();
-            verify(listener).setMessageClient(eq(null));
         }
         catch (Throwable e) {
             fail("NO exception should escape the run method", e);
@@ -148,6 +149,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
 
             when(listener.getMessageClient()).thenReturn(client);
             doThrow(new MessageProcessingException("This should be handled and swallowed")).when(listener).processTransferNotification(any());
+            doCallRealMethod().when(listener).run();
         }
         catch (MessageProcessingException|MessagingException ignored) {}
 
@@ -155,9 +157,8 @@ public class FilesTransferListenerTest extends BaseTestCase {
 
             listener.run();
 
-            verify(client, never()).stop();
             // got a client
-            verify(listener).getMessageClient();
+            verify(listener, atLeastOnce()).getMessageClient();
             // got a message
             verify(client).pop(any(), any());
 
@@ -166,6 +167,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
 
             // deleted the message
             verify(client).stop();
+            verify(listener).setMessageClient(null);
         }
         catch (Exception e) {
             fail("No exception should escape the run method", e);
@@ -193,9 +195,9 @@ public class FilesTransferListenerTest extends BaseTestCase {
 
         listener.processTransferNotification(jsonBody);
 
-        verify(listener).updateSourceLogicalFile(eq(jsonTransferTask.get("source").textValue()), eq(jsonTransferTask.get("owner").textValue()), eq(transferTaskEvent), eq(logicalFile.getTenantId()));
+        verify(listener).updateSourceLogicalFile(jsonTransferTask.get("source").textValue(), jsonTransferTask.get("owner").textValue(), transferTaskEvent, logicalFile.getTenantId());
 
-        verify(listener).updateDestinationLogicalFile(eq(jsonTransferTask.get("dest").textValue()), eq(jsonTransferTask.get("owner").textValue()), eq(transferTaskEvent), eq(logicalFile.getTenantId()));
+        verify(listener).updateDestinationLogicalFile(jsonTransferTask.get("dest").textValue(), jsonTransferTask.get("owner").textValue(), transferTaskEvent, logicalFile.getTenantId());
     }
 
     @DataProvider
@@ -245,7 +247,7 @@ public class FilesTransferListenerTest extends BaseTestCase {
 
         listener.updateSourceLogicalFile(srcUri, SYSTEM_OWNER, transferTaskEventType , srcLogicalFile.getTenantId());
 
-        verify(listener).lookupLogicalFileByUrl(eq(srcUri), eq(srcLogicalFile.getTenantId()));
+        verify(listener).lookupLogicalFileByUrl(srcUri, srcLogicalFile.getTenantId());
         // logical file should always be updated as expected
         verify(listener).updateTransferStatus(any(LogicalFile.class), eq(transferTaskEventType.getStagingTaskStatus()), eq(SYSTEM_OWNER));
     }
@@ -337,12 +339,12 @@ public class FilesTransferListenerTest extends BaseTestCase {
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(destLogicalFile );
         doNothing().when(listener).persistLogicalFile(any(LogicalFile.class));
 
-        doCallRealMethod().when(listener).updateDestinationLogicalFile(anyString(), anyString(), transferTaskEventType, anyString());
+        doCallRealMethod().when(listener).updateDestinationLogicalFile(anyString(), anyString(), eq(transferTaskEventType), anyString());
 
         listener.updateDestinationLogicalFile(destPath, SYSTEM_OWNER, transferTaskEventType , destLogicalFile.getTenantId());
 
-        verify(listener).lookupLogicalFileByUrl(eq(destPath), eq(destLogicalFile.getTenantId()));
-        verify(destLogicalFile).addContentEvent(eq(FileEventType.OVERWRITTEN), eq(SYSTEM_OWNER));
+        verify(listener).lookupLogicalFileByUrl(destPath, destLogicalFile.getTenantId());
+        verify(destLogicalFile).addContentEvent(FileEventType.OVERWRITTEN, SYSTEM_OWNER);
         verify(listener).persistLogicalFile(any(LogicalFile.class));
     }
 

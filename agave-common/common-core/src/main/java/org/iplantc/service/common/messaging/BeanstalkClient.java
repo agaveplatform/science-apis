@@ -221,8 +221,6 @@ public class BeanstalkClient implements MessageQueueClient
 				} catch (Throwable e) {
 					throw new MessageProcessingException("Failed to process message " + body, e);
 				}
-				
-				System.out.println(" [x] Done");
 			}
 		}
 		catch (Exception e)

@@ -2,7 +2,6 @@ package org.iplantc.service.metadata.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.mongodb.BasicDBList;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -11,31 +10,30 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
-import org.bson.Document;
-import org.bson.conversions.Bson;
 import org.iplantc.service.common.dao.TenantDao;
-import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.TenantException;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.metadata.dao.MetadataSchemaDao;
-import org.iplantc.service.metadata.exceptions.*;
+import org.iplantc.service.metadata.exceptions.MetadataException;
+import org.iplantc.service.metadata.exceptions.MetadataQueryException;
+import org.iplantc.service.metadata.exceptions.MetadataValidationException;
 import org.iplantc.service.metadata.model.AssociatedReference;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import javax.validation.*;
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Set;
-
-import static com.mongodb.client.model.Filters.*;
 
 public class MetadataValidation {
 
@@ -86,12 +84,10 @@ public class MetadataValidation {
         MetadataItem item;
         JsonHandler handler = new JsonHandler();
 
-
         try {
             item = handler.parseJsonMetadata(node);
             item.setOwner(username);
             item.setInternalUsername(username);
-
 
             //validator
             Validator validator;

@@ -28,7 +28,6 @@ import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataItemCodec;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.iplantc.service.metadata.util.ServiceUtils;
 import org.joda.time.DateTime;
 import org.testng.Assert;
 import org.testng.annotations.*;
@@ -107,14 +106,17 @@ public class MetadataDataProcessingIT {
         String schemaUuid = new AgaveUUID(UUIDType.SCHEMA).toString();
 
         String strItemToAdd = "{" +
-                "\"order\" : \"sample order\"," +
+                "\"title\" : \"order profile\"," +
                 "\"type\" : \"object\", " +
                 "\"properties\" : {" +
-                "\"profile\" : { \"type\" : \"string\" }, " +
-                "\"description\" : { \"type\" : \"string\" }, " +
-                "\"status\" : {\"enum\" : [\"active\", \"retired\", \"disabled\"]}" +
+                    "\"profile\" : { \"type\" : \"string\" }, " +
+                    "\"description\" : { \"type\" : \"string\" }, " +
+                    "\"status\" : { " +
+                        "\"type\" : \"string\", " +
+                        "\"enum\" : [\"active\", \"retired\", \"disabled\"]" +
+                    "}" +
                 "}" +
-                "}";
+            "}";
 
         Document docSchema = Document.parse(strItemToAdd);
         Document doc;

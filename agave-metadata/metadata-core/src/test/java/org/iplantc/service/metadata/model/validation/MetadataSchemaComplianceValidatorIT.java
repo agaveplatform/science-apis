@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.util.Set;
 
 public class MetadataSchemaComplianceValidatorIT {
-    private String username = "TEST_USER";
+    private final String username = "TEST_USER";
 
     @Test
     public void validMetadataValueConstraintTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataStoreException {
@@ -85,7 +85,7 @@ public class MetadataSchemaComplianceValidatorIT {
     }
 
     @Test
-    public void InvalidMetadataValueConstraintTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataStoreException {
+    public void invalidMetadataValueConstraintTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataStoreException {
         String strSchemaJson = "" +
                 "{" +
                 "\"title\": \"Example Schema\", " +

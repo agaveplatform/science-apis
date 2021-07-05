@@ -3,27 +3,19 @@ package org.iplantc.service.metadata.search;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientOptions;
-import com.mongodb.MongoCredential;
-import com.mongodb.ServerAddress;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
-import org.bson.Document;
-import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.metadata.util.ServiceUtils;
-import org.joda.time.DateTime;
+import org.iplantc.service.metadata.dao.MetadataSchemaDao;
+import org.iplantc.service.metadata.model.MetadataSchemaItem;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import static org.testng.Assert.*;
+import static org.testng.Assert.fail;
 
-public class MetadataValidationTest {
-    ObjectMapper mapper = new ObjectMapper();
-    String username = "TEST_USER";
+@Test(groups={"integration"})
+public class MetadataValidationIT {
+    private final static ObjectMapper mapper = new ObjectMapper();
+    private final static String TEST_USER = "TEST_USER";
 
     private ObjectNode setupNode() {
         ObjectNode baseNode = mapper.createObjectNode();
@@ -37,42 +29,41 @@ public class MetadataValidationTest {
         return baseNode;
     }
 
+    /**
+     * Creates a metadata schema item against which to validate the metadata item under test
+     * @return id of metadata item to reference in the tests
+     */
     private String setupSchema() {
-        MongoCredential mongoCredential = MongoCredential.createScramSha1Credential(
-                Settings.METADATA_DB_USER, Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_PWD.toCharArray());
-        MongoClient mongoClient = new com.mongodb.MongoClient(
-                new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT),
-                mongoCredential,
-                MongoClientOptions.builder().build());
-        MongoDatabase mongoDatabase = mongoClient.getDatabase(org.iplantc.service.metadata.Settings.METADATA_DB_SCHEME);
-        MongoCollection schemaCollection = mongoDatabase.getCollection(org.iplantc.service.metadata.Settings.METADATA_DB_SCHEMATA_COLLECTION);
-
-
-        String schemaUuid = new AgaveUUID(UUIDType.SCHEMA).toString();
-
-        String strItemToAdd = "{" +
-                "\"order\" : \"sample order\"," +
+        String schemaJson = "{" +
+                "\"title\" : \"order profile\"," +
                 "\"type\" : \"object\", " +
                 "\"properties\" : {" +
-                "\"profile\" : { \"type\" : \"string\" }, " +
-                "\"description\" : { \"type\" : \"string\" }, " +
-                "\"status\" : {\"enum\" : [\"active\", \"retired\", \"disabled\"]}" +
+                    "\"profile\" : {" +
+                        "\"type\" : \"string\" " +
+                    "}, " +
+                    "\"description\" : { " +
+                        "\"type\" : \"string\" " +
+                    "}, " +
+                    "\"status\" : {" +
+                        "\"type\" : \"string\", " +
+                        "\"enum\" : [\"active\", \"retired\", \"disabled\"]" +
+                    "}" +
                 "}" +
-                "}";
+            "}";
 
-        Document doc;
-        String timestamp = new DateTime().toString();
-        doc = new Document("internalUsername", this.username)
-                .append("lastUpdated", timestamp)
-                .append("schema", ServiceUtils.escapeSchemaRefFieldNames(strItemToAdd))
-                .append("uuid", schemaUuid)
-                .append("created", timestamp)
-                .append("owner", this.username)
-                .append("tenantId", TenancyHelper.getCurrentTenantId());
+        MetadataSchemaItem metadataSchemaItem = null;
+        try {
+            metadataSchemaItem = new MetadataSchemaItem();
+            metadataSchemaItem.setSchema(mapper.readTree(schemaJson));
+            metadataSchemaItem.setOwner(TEST_USER);
+            MetadataSchemaDao.getInstance().insert(metadataSchemaItem);
 
-        schemaCollection.insertOne(doc);
 
-        return schemaUuid;
+        } catch (Exception e) {
+            fail("Unable to create test schema for validation test", e);
+        }
+
+        return metadataSchemaItem.getUuid();
     }
 
 
@@ -99,7 +90,7 @@ public class MetadataValidationTest {
     public void validateMetadataDocumentFieldsTest(JsonNode node, boolean bolThrowException, String message) {
         try {
             MetadataValidation validation = new MetadataValidation();
-            validation.validateMetadataNodeFields(node, username);
+            validation.validateMetadataNodeFields(node, TEST_USER);
             if (bolThrowException)
                 fail(message);
         } catch (Exception e) {

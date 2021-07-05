@@ -1,35 +1,26 @@
 package org.iplantc.service.metadata.model.validation;
 
-import java.util.Iterator;
-
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
-
 import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonschema.main.AgaveJsonSchemaFactory;
 import com.github.fge.jsonschema.main.AgaveJsonValidator;
-import com.mongodb.BasicDBObject;
+import com.github.fge.jsonschema.report.ProcessingMessage;
+import com.github.fge.jsonschema.report.ProcessingReport;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.bson.Document;
 import org.bson.conversions.Bson;
-import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.metadata.dao.MetadataSchemaDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataValidationException;
 import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
-import org.iplantc.service.metadata.model.MetadataSchemaItem;
 import org.iplantc.service.metadata.model.validation.constraints.MetadataSchemaComplianceConstraint;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.fge.jsonschema.main.JsonSchemaFactory;
-import com.github.fge.jsonschema.main.JsonValidator;
-import com.github.fge.jsonschema.report.ProcessingMessage;
-import com.github.fge.jsonschema.report.ProcessingReport;
+import javax.validation.ConstraintValidator;
+import javax.validation.ConstraintValidatorContext;
 
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
@@ -64,10 +55,8 @@ public class MetadataSchemaComplianceValidator implements ConstraintValidator<Me
                 Document schemaDoc = MetadataSchemaDao.getInstance().findOne(query);
 
 
-                if (schemaDoc == null) {
-                    //no schema for the given schemaId
-                    isValid = false;
-                } else {
+                // only care about when there is a schema for the given schemaId
+                if (schemaDoc != null) {
                     String owner = schemaDoc.getString("owner");
                     MetadataSchemaPermissionManager schemaPM = new MetadataSchemaPermissionManager((String) schemaId, owner);
 
@@ -101,26 +90,24 @@ public class MetadataSchemaComplianceValidator implements ConstraintValidator<Me
                             sb.append("\n");
                         }
                         throw new MetadataValidationException(
-                                "Metadata value does not conform to schema. \n" + sb.toString());
+                                "Metadata value does not conform to schema. \n" + sb);
                     }
 
                 }
             }
         } catch (MetadataValidationException e) {
-            log.error("Failed to validate metadata against schema", e);
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate(
                     e.getMessage())
                     .addConstraintViolation();
 
+
         } catch (MetadataException e) {
-            log.error("Failed to fetch metadata schema permissions", e);
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate(
                     "Unable to fetch metadata schema permissions")
                     .addConstraintViolation();
         } catch (Exception e) {
-            log.error("Unexpected error while validating metadata value against schema.", e);
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate(
                     "Unexpected error while validating metadata value against schema.")
@@ -128,6 +115,5 @@ public class MetadataSchemaComplianceValidator implements ConstraintValidator<Me
         }
 
         return isValid;
-//                return true;
     }
 }

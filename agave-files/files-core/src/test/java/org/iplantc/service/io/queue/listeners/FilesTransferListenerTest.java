@@ -1,16 +1,18 @@
 package org.iplantc.service.io.queue.listeners;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.messaging.MessageQueueClient;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
+import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -21,18 +23,21 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+import static org.iplantc.service.io.BaseTestCase.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.fail;
 
 
 @Test(groups = {"integration"})
-public class FilesTransferListenerTest extends BaseTestCase {
+public class FilesTransferListenerTest  {
+    private static final ObjectMapper objectMapper = new ObjectMapper();
     private String destPath;
     private URI httpUri;
 
@@ -46,6 +51,46 @@ public class FilesTransferListenerTest extends BaseTestCase {
     protected void afterClass() throws Exception {
 //        clearSystems();
 //        clearLogicalFiles();
+    }
+
+    /**
+     * Create {@link JsonNode} equivalent of a TransferTask for a given LogicalFile
+     * @param file {@link LogicalFile} to create TransferTask with
+     * @param status status of the TransferTask
+     * @return {@link JsonNode} of a TransferTask
+     */
+    protected JsonNode getTransferTask(LogicalFile file, String status) {
+        return objectMapper.createObjectNode()
+                .put("attempts", 1)
+                .put("source", file.getSourceUri())
+                .put("dest", "agave://" + file.getSystem() + "/" + file.getPath())
+                .put("owner", file.getOwner())
+                .put("tenant_id", file.getTenantId())
+                .put("uuid", new AgaveUUID(UUIDType.TRANSFER).toString())
+                .put("created", String.valueOf(Instant.now()))
+                .put("lastUpdated", String.valueOf(Instant.now()))
+                .put("endTime", String.valueOf(Instant.now()))
+                .putNull("parentTask")
+                .putNull("rootTask")
+                .put("status", status);
+    }
+
+    /**
+     * Create notification for a given TransferTask event
+     * @param transferTask the body of the notification message
+     * @param messageType the TranfserTask event to create notification for
+     * @return {@link JsonNode} of the notification message
+     * @throws IOException
+     */
+    protected JsonNode getNotification(JsonNode transferTask, String messageType) throws IOException {
+        NotificationMessageContext messageBodyContext = new NotificationMessageContext(
+                messageType, transferTask.toString(), transferTask.get("uuid").asText());
+
+        NotificationMessageBody messageBody = new NotificationMessageBody(
+                transferTask.get("uuid").asText(), transferTask.get("owner").asText(), transferTask.get("tenant_id").asText(),
+                messageBodyContext);
+
+        return objectMapper.readTree(messageBody.toJSON());
     }
 
     protected LogicalFile getMockLogicalFile(){

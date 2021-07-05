@@ -10,6 +10,7 @@ import org.iplantc.service.common.messaging.MessageQueueClient;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.exceptions.LogicalFileException;
+import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
@@ -24,13 +25,14 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
-import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.fail;
@@ -44,7 +46,8 @@ public class FilesTransferListenerIT extends BaseTestCase {
     String destPath;
 
     @BeforeClass
-    public void setUp() throws Exception {
+    public void beforeClass() throws Exception {
+        jtd = JSONTestDataUtil.getInstance();
         clearQueues();
         clearLogicalFiles();
         clearSystems();
@@ -140,26 +143,9 @@ public class FilesTransferListenerIT extends BaseTestCase {
         client = null;
     }
 
-    private Object[][] getMessageTypeToStagingTaskStatusArray() {
-        return new Object[][]{
-                {"transfertask.created", STAGING},
-                {"transfertask.assigned", STAGING_QUEUED},
-                {"transfer.retry", STAGING_QUEUED},
-                {"transfertask.finished", STAGING_COMPLETED},
-                {"transfertask.failed", STAGING_FAILED},
-                {"transfertask.canceled", STAGING_FAILED}
-        };
-    }
-
     private List<String> getNotificationEvents() {
-        return List.of(
-                "transfertask.created",
-                "transfertask.assigned",
-                "transfer.retry",
-                "transfertask.finished",
-                "transfertask.failed",
-                "transfertask.canceled"
-        );
+        return Arrays.stream(FilesTransferListener.TransferTaskEventType.values())
+                .map(val -> val.getEventName()).collect(Collectors.toList());
     }
 
 
@@ -227,20 +213,19 @@ public class FilesTransferListenerIT extends BaseTestCase {
             pushAllNotifications(getNotificationEvents());
 
             executor.awaitTermination(50, TimeUnit.MILLISECONDS);
-            Object[][] events = getMessageTypeToStagingTaskStatusArray();
 
             InOrder verifyOrder = inOrder(listener);
 
-            for (Object[] event : events) {
-                verifyOrder.verify(listener).updateSourceLogicalFile(file.getSourceUri(), SYSTEM_OWNER, FilesTransferListener.TransferTaskEventType.valueOfEventName(event[0].toString()), file.getTenantId());
-                verifyOrder.verify(listener).updateDestinationLogicalFile("agave://" + file.getSystem() + "/" + file.getPath(), SYSTEM_OWNER, FilesTransferListener.TransferTaskEventType.valueOfEventName(event[0].toString()), file.getTenantId());
+            for (FilesTransferListener.TransferTaskEventType eventType : FilesTransferListener.TransferTaskEventType.values()) {
+                verifyOrder.verify(listener).updateSourceLogicalFile(file.getSourceUri(), SYSTEM_OWNER, eventType, file.getTenantId());
+                if (eventType.isTerminal()) {
+                    verifyOrder.verify(listener).updateDestinationLogicalFile("agave://" + file.getSystem() + "/" + file.getPath(), SYSTEM_OWNER, eventType, file.getTenantId());
+                }
             }
 
             executor.shutdown();
         } catch (Exception e) {
-            if (e.getClass().equals(MessagingException.class)) {
-                fail("Exceptions should be swallowed.");
-            }
+            fail("Exceptions should be swallowed.");
         }
     }
 
@@ -268,9 +253,7 @@ public class FilesTransferListenerIT extends BaseTestCase {
 
             executor.shutdown();
         } catch (Exception e) {
-            if (e.getClass().equals(MessagingException.class)) {
-                fail("Exceptions should be swallowed.");
-            }
+            fail("Exceptions should be swallowed.");
         }
     }
 
@@ -290,10 +273,7 @@ public class FilesTransferListenerIT extends BaseTestCase {
 
             executor.shutdown();
         } catch (Exception e) {
-            fail("No exception should be thrown");
-            if (e.getClass().equals(MessagingException.class)) {
-                fail("Exceptions should be swallowed.");
-            }
+            fail("Exceptions should be swallowed.");
         }
     }
 

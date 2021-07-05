@@ -182,6 +182,7 @@ services:
 
   transfers:
     image: transfers-api:${buildNumber}
+    restart: always
     ports:
       - 8085:8085
     networks:
@@ -189,6 +190,16 @@ services:
       - default
     volumes:
       - ./transfers:/transfers
+    environment:
+      CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE: 10
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpbin.rule=Host(`transfers`)"
+      - "traefik.http.routers.httpbin.entrypoints=web"
+      - "traefik.http.routers.httpbin.tls=false"
+      - "traefik.http.routers.httpbin-secure.rule=Host(`transfers`)"
+      - "traefik.http.routers.httpbin-secure.entrypoints=websecure"
+      - "traefik.http.routers.httpbin-secure.tls=true"
 
 
 #  ftp:

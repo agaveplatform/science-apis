@@ -31,7 +31,7 @@ public class TransferTaskScheduler {
      * @throws SchedulerException if unable to submit the request
      */
     public String enqueueStagingTask(LogicalFile file, String username) throws SchedulerException, NotificationException {
-        return enqueueStagingTask(file, username, "");
+        return enqueueStagingTask(file, username, null);
     }
 
     /**
@@ -133,7 +133,7 @@ public class TransferTaskScheduler {
     protected JsonNode callTransferClient(LogicalFile file, String username, String baseUrl) throws SchedulerException {
         TransferService transferService = null;
 
-        if (baseUrl.isEmpty()){
+        if (baseUrl == null || baseUrl.isEmpty()){
             transferService = new TransferService(username, file.getTenantId());
         } else {
             transferService = new TransferService(username, file.getTenantId(), baseUrl);

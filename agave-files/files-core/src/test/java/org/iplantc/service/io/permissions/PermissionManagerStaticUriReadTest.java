@@ -1,9 +1,5 @@
 package org.iplantc.service.io.permissions;
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.io.Settings;
@@ -21,8 +17,12 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
-public class PermissionManagerStaticUriReadTest extends AbstractPermissionManagerTest 
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+
+@Test(groups={"integration"}, enabled=false)
+public class PermissionManagerStaticUriReadTest extends AbstractPermissionManagerIT
 {
 	@BeforeClass
 	protected void beforeClass() throws Exception 
@@ -67,7 +67,7 @@ public class PermissionManagerStaticUriReadTest extends AbstractPermissionManage
 			String errorMessage = String.format("User %s %s have permission to read %s on a %s%s%s", 
 					owner,
 					expectedResult ? "should have" : "should not have",
-					uri.toString(),
+					uri,
 					system.isPubliclyAvailable() ? "public" : "private",
 					system.getUserRole(Settings.WORLD_USER_USERNAME).canRead() ? " readonly" : "",
 					system.getType().name().toLowerCase() + " system");

@@ -30,7 +30,7 @@ import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.*;
 public class FilesTransferListener implements Runnable {
     private static final Logger logger = Logger.getLogger(FilesTransferListener.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static MessageQueueClient messageClient;
+    private MessageQueueClient messageClient;
 
     public enum TransferTaskEventType {
         TRANSFERTASK_CREATED("transfertask.created", false, STAGING_QUEUED),
@@ -92,8 +92,8 @@ public class FilesTransferListener implements Runnable {
         return messageClient;
     }
 
-    public void setMessageClient(org.iplantc.service.common.messaging.MessageQueueClient messageClient) {
-        FilesTransferListener.messageClient = messageClient;
+    public void setMessageClient(MessageQueueClient messageClient) {
+        this.messageClient = messageClient;
     }
 
     /**

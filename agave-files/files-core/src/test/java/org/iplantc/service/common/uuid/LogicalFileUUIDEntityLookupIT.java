@@ -11,7 +11,7 @@ import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
-import org.iplantc.service.io.uuid.AbstractUUIDEntityLookupTest;
+import org.iplantc.service.io.uuid.AbstractUUIDEntityLookupIT;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
@@ -34,7 +34,7 @@ import java.io.IOException;
  *
  */
 @Test(groups={"integration"})
-public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupTest<LogicalFile> {
+public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupIT<LogicalFile> {
 	
 	@BeforeClass
 	@Override

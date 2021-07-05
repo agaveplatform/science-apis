@@ -38,7 +38,8 @@ public class QueueTaskDaoIT extends BaseTestCase {
         clearLogicalFiles();
 
         destPath = String.format("/home/%s/%s/%s", SYSTEM_OWNER, UUID.randomUUID(), LOCAL_TXT_FILE_NAME);
-        httpUri = new URI("https://httpd:8443/public/test_upload.bin");
+        // We use the internal address of the httpd service since the call will be made from the transfers api container.
+        httpUri = new URI("https://httpd:443/public/test_upload.bin");
 
 
         system = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
@@ -80,9 +81,6 @@ public class QueueTaskDaoIT extends BaseTestCase {
         Assert.assertEquals(queuedFile.getStatus(), StagingTaskStatus.STAGING_QUEUED.name(), "Logical file " +
                 "status should be updated to STAGING_QUEUED when transfer request is successfully sent to the " +
                 "agave-transfer service.");
-//        Assert.assertNotNull(queuedFile.getTransferUuid(), "Logical file should have associated transfer " +
-//                "uuid on succcessful transfer request");
-
     }
 
     @Test

@@ -304,22 +304,21 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
 
     try{
       dbClient.query(sqlQueries.get(SqlQuery.PARENTS_NOT_CANCELED_OR_COMPLETED), fetch -> {
-
-      if (fetch.succeeded()) {
-        //ResultSet resultSet = fetch.result();
-        JsonArray response = new JsonArray(fetch.result().getRows());
-        if (response.isEmpty()) {
-          LOGGER.debug("PARENTS_NOT_CANCELED_OR_COMPLETED is empty - all parents inactive");
-          resultHandler.handle(Future.succeededFuture(response));
+        if (fetch.succeeded()) {
+          //ResultSet resultSet = fetch.result();
+          JsonArray response = new JsonArray(fetch.result().getRows());
+          if (response.isEmpty()) {
+            LOGGER.debug("PARENTS_NOT_CANCELED_OR_COMPLETED is empty - all parents inactive");
+            resultHandler.handle(Future.succeededFuture(response));
+          } else {
+            LOGGER.info("Parents not canceled or completed is not empty - some parents active");
+            resultHandler.handle(Future.succeededFuture(response));
+          }
         } else {
-          LOGGER.info("Parents not canceled or completed is not empty - some parents active");
-          resultHandler.handle(Future.succeededFuture(response));
+          LOGGER.error("Failed to query for existence of any child transfer tasks not in a CANCELED or COMPLETED state.", fetch.cause());
+          resultHandler.handle(Future.failedFuture(fetch.cause()));
         }
-      } else {
-        LOGGER.error("Failed to query for existence of any child transfer tasks not in a CANCELED or COMPLETED state.", fetch.cause());
-        resultHandler.handle(Future.failedFuture(fetch.cause()));
-      }
-    });
+      });
     }catch(Exception e) {
       LOGGER.error(e.toString());
     }
@@ -484,54 +483,60 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     JsonArray data = new JsonArray()
             .add(statusChangeTo)
             .add(id);
-      dbClient.getConnection(conn -> {
-      conn.result().setAutoCommit(false, res -> {
-        if (res.failed()) {
-          conn.result().rollback(rollback -> {
-            if (rollback.failed()) {
-              LOGGER.error("Failed to set autocommit to false before updating transfer task record {}. Database rollback failed. Data may be corrupted.", id, rollback.cause());
-              throw new RuntimeException(rollback.cause());
-            } else {
-              LOGGER.error("Failed to set autocommit to false before updating transfer task record {}. Database rollback succeeded.", id, res.cause());
-              throw new RuntimeException(res.cause());
-            }
-          });
-//          conn.result().close();
-//          throw new RuntimeException(res.cause());
-        }
-
-        conn.result().updateWithParams(sqlQueries.get(SqlQuery.CANCEL_TRANSFERTASK_BY_ID), data, update -> {
-          if (update.succeeded()) {
-            conn.result().commit(commit -> {
-              if (commit.failed()) {
-                conn.result().rollback(rollback -> {
-                  if (res.failed()) {
-                    LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback failed. Data may be corrupted.", id, rollback.cause());
-                    resultHandler.handle(Future.failedFuture(rollback.cause()));
-                  } else {
-                    LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback succeeded.", id, commit.cause());
-                    resultHandler.handle(Future.failedFuture(commit.cause()));
-                  }
-                });
+    dbClient.getConnection(getConnection -> {
+      if (getConnection.failed()) {
+        resultHandler.handle(Future.failedFuture(getConnection.cause()));
+      } else {
+        SQLConnection conn = getConnection.result();
+        conn.setAutoCommit(false, setAutocommit -> {
+          if (setAutocommit.failed()) {
+            conn.rollback(rollback -> {
+              if (rollback.failed()) {
+                LOGGER.error("Failed to set autocommit to false before updating transfer task record {}. Database rollback failed. Data may be corrupted.", id, rollback.cause());
               } else {
-                JsonArray params = new JsonArray().add(id);
-                conn.result().queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK_BY_ID), params, ar -> {
-                  if (ar.succeeded()) {
-                    resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+                LOGGER.error("Failed to set autocommit to false before updating transfer task record {}. Database rollback succeeded.", id, rollback.cause());
+              }
+              resultHandler.handle(Future.failedFuture(rollback.cause()));
+              conn.close();
+            });
+          } else {
+            conn.updateWithParams(sqlQueries.get(SqlQuery.CANCEL_TRANSFERTASK_BY_ID), data, update -> {
+              if (update.succeeded()) {
+                conn.commit(commit -> {
+                  if (commit.failed()) {
+                    conn.rollback(rollback -> {
+                      if (rollback.failed()) {
+                        LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback failed. Data may be corrupted.", id, rollback.cause());
+                        resultHandler.handle(Future.failedFuture(rollback.cause()));
+                      } else {
+                        LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback succeeded.", id, commit.cause());
+                        resultHandler.handle(Future.failedFuture(rollback.cause()));
+                      }
+                      conn.close();
+                    });
                   } else {
-                    LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", id, ar.cause());
-                    resultHandler.handle(Future.failedFuture(ar.cause()));
+                    JsonArray params = new JsonArray().add(id);
+                    conn.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK_BY_ID), params, ar -> {
+                      if (ar.succeeded()) {
+                        resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+                      } else {
+                        LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", id, ar.cause());
+                        resultHandler.handle(Future.failedFuture(ar.cause()));
+                      }
+                      conn.close();
+                    });
                   }
                 });
               }
+              else {
+                LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", update.cause());
+                resultHandler.handle(Future.failedFuture(update.cause()));
+                conn.close();
+              }
             });
-          } else {
-            LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", update.cause());
-            resultHandler.handle(Future.failedFuture(update.cause()));
           }
         });
-      });
-      conn.result().close();
+      }
     });
     return this;
   }
@@ -563,49 +568,54 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(transferTask.getTotalSkippedFiles())
             .add(uuid)
             .add(tenantId);
-      dbClient.getConnection(conn -> {
-      conn.result().setAutoCommit(false, res -> {
-        if (res.failed()) {
-          conn.result().close();
-          throw new RuntimeException(res.cause());
-        }
-
-          conn.result().updateWithParams(sqlQueries.get(SqlQuery.SAVE_TRANSFERTASK), data, update -> {
-            if (update.succeeded()) {
-              conn.result().commit(commit -> {
-                if (commit.failed()) {
-                  conn.result().rollback(rollback -> {
-                    if (res.failed()) {
-                      LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback failed. Data may be corrupted.", uuid, rollback.cause());
-                      resultHandler.handle(Future.failedFuture(rollback.cause()));
-                      conn.result().close();
+      dbClient.getConnection(getConnection -> {
+        if (getConnection.failed()) {
+          resultHandler.handle(Future.failedFuture(getConnection.cause()));
+        } else {
+          SQLConnection conn = getConnection.result();
+          conn.setAutoCommit(false, setAutoCommit -> {
+            if (setAutoCommit.failed()) {
+              resultHandler.handle(Future.failedFuture(setAutoCommit.cause()));
+              conn.close();
+            }
+            else {
+              conn.updateWithParams(sqlQueries.get(SqlQuery.SAVE_TRANSFERTASK), data, update -> {
+                if (update.succeeded()) {
+                  conn.commit(commit -> {
+                    if (commit.failed()) {
+                      conn.rollback(rollback -> {
+                        if (rollback.failed()) {
+                          LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback failed. Data may be corrupted.", uuid, rollback.cause());
+                          resultHandler.handle(Future.failedFuture(rollback.cause()));
+                        } else {
+                          LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback succeeded.", uuid, commit.cause());
+                          resultHandler.handle(Future.failedFuture(commit.cause()));
+                        }
+                        conn.close();
+                      });
                     } else {
-                      LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback succeeded.", uuid, commit.cause());
-                      resultHandler.handle(Future.failedFuture(commit.cause()));
-                      conn.result().close();
-                    }
-                  });
-                } else {
-                  JsonArray params = new JsonArray().add(uuid).add(tenantId);
-                    conn.result().queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
-                    if (ar.succeeded()) {
-                      resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
-                      conn.result().close();
-                    } else {
-                      LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", uuid, ar.cause());
-                      resultHandler.handle(Future.failedFuture(ar.cause()));
-                      conn.result().close();
+                      JsonArray params = new JsonArray().add(uuid).add(tenantId);
+                      conn.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
+                        if (ar.succeeded()) {
+                          resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+                        } else {
+                          LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", uuid, ar.cause());
+                          resultHandler.handle(Future.failedFuture(ar.cause()));
+                        }
+                        conn.close();
+                      });
                     }
                   });
                 }
+                else {
+                  LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", update.cause());
+                  resultHandler.handle(Future.failedFuture(update.cause()));
+                  conn.close();
+                }
               });
-            } else {
-              LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", update.cause());
-              resultHandler.handle(Future.failedFuture(update.cause()));
-              conn.result().close();
             }
           });
-      });
+        }
     });
     return this;
   }

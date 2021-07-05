@@ -13,6 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
+
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE;
+
 public class TransferApplication {
 
     private static final Logger log = LoggerFactory.getLogger(TransferApplication.class);
@@ -48,7 +51,7 @@ public class TransferApplication {
                         .setConfig(config)
                         .setMaxWorkerExecuteTimeUnit(TimeUnit.MILLISECONDS)
                         .setMaxWorkerExecuteTime(500)
-                        .setInstances(dbInstanceSize);
+                        .setInstances(Math.min(dbInstanceSize, config.getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 2*dbInstanceSize)));
 
                 Promise<String> dbVerticleDeployment = Promise.promise();
                 log.info("org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle");

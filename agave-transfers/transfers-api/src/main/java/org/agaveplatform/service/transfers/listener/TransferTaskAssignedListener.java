@@ -26,6 +26,7 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.net.URI;
 import java.nio.file.Paths;
@@ -202,8 +203,15 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     destClient = getRemoteDataClient(tenantId, username, destUri);
 
                     // stat the remote path to check its type and existence
+                    String resolvedSource = null;
+                    if (srcUri.getPath().startsWith(File.separator)){
+                        resolvedSource = srcUri.getPath().substring(1);
+                    } else {
+                        resolvedSource = srcUri.getPath();
+                    }
+
                     log.info("stat the remote path to check its type and existence");
-                    RemoteFileInfo srcFileInfo = srcClient.getFileInfo(srcUri.getPath());
+                    RemoteFileInfo srcFileInfo = srcClient.getFileInfo(resolvedSource);
                     log.info("Remote path was checked.");
 
                     // forward copy request directly to protocol if the source/destination is the same

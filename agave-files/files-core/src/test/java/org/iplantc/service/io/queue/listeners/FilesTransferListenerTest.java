@@ -13,6 +13,7 @@ import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -21,6 +22,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
@@ -278,7 +280,7 @@ public class FilesTransferListenerTest  {
      * @param transferTaskEventType the transfer task event coming in the message event field
      */
     @Test(dataProvider = "knownTransferTaskEventTypesProvider")
-    void updateSourceLogicalFileUpdatesExistingLogicalFileOnKnownEvents(FilesTransferListener.TransferTaskEventType transferTaskEventType) {
+    void updateSourceLogicalFileUpdatesExistingLogicalFileOnKnownEvents(FilesTransferListener.TransferTaskEventType transferTaskEventType) throws FileNotFoundException, RemoteCredentialException, RemoteDataException {
         String srcUri = "agave://sftp.example.com//etc/hosts";
         LogicalFile srcLogicalFile = getMockLogicalFile();
         when(srcLogicalFile.getSourceUri()).thenReturn(srcUri);
@@ -326,7 +328,7 @@ public class FilesTransferListenerTest  {
      * Tests updateDestinationLogicalFile fails silently when a {@link RuntimeException} is thrown looking up the
      * logical file.
      */
-    @Test void updateSourceLogicalFailsSilentlyOnRuntimeError() {
+    @Test void updateSourceLogicalFailsSilentlyOnRuntimeError() throws FileNotFoundException, RemoteCredentialException, RemoteDataException {
         FilesTransferListener listener = getMockFilesTransferListenerInstance();
         doCallRealMethod().when(listener).updateSourceLogicalFile(any(), any(), any(), any());
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenThrow(new RuntimeException("This should be swallowed"));
@@ -343,7 +345,7 @@ public class FilesTransferListenerTest  {
     /**
      * Tests updateDestinationLogicalFile does nothing when no logical file exists for the given transfer task dest
      */
-    @Test void updateSourceLogicalDoesNothingOnNullLogicalFile() {
+    @Test void updateSourceLogicalDoesNothingOnNullLogicalFile() throws FileNotFoundException, RemoteCredentialException, RemoteDataException {
         FilesTransferListener listener = getMockFilesTransferListenerInstance();
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(null);
         doCallRealMethod().when(listener).updateSourceLogicalFile(any(), any(), any(), any());
@@ -376,7 +378,7 @@ public class FilesTransferListenerTest  {
      * @param transferTaskEventType the transfer task event coming in the message event field
      */
     @Test(dataProvider = "updateDestinationLogicalFileUpdatesExistingLogicalFileOnTerminalEventsProvider")
-    void updateDestinationLogicalFileUpdatesExistingLogicalFileOnTerminalEvents(FilesTransferListener.TransferTaskEventType transferTaskEventType) {
+    void updateDestinationLogicalFileUpdatesExistingLogicalFileOnTerminalEvents(FilesTransferListener.TransferTaskEventType transferTaskEventType) throws FileNotFoundException, RemoteCredentialException, RemoteDataException {
         LogicalFile destLogicalFile = getMockLogicalFile();
         doNothing().when(destLogicalFile).addContentEvent(any(FileEventType.class), anyString());
 
@@ -441,7 +443,7 @@ public class FilesTransferListenerTest  {
      * Tests updateDestinationLogicalFile fails silently when a {@link RuntimeException} is thrown looking up the
      * logical file.
      */
-    @Test void updateDestinationLogicalFailsSilentlyOnRuntimeError() {
+    @Test void updateDestinationLogicalFailsSilentlyOnRuntimeError() throws FileNotFoundException, RemoteCredentialException, RemoteDataException {
         FilesTransferListener listener = getMockFilesTransferListenerInstance();
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenThrow(new RuntimeException("This should be swallowed"));
         doCallRealMethod().when(listener).updateDestinationLogicalFile(any(), any(), any(), any());
@@ -458,7 +460,7 @@ public class FilesTransferListenerTest  {
     /**
      * Tests updateDestinationLogicalFile does nothing when no logical file exists for the given transfer task dest
      */
-    @Test void updateDestinationLogicalDoesNothingOnNullLogicalFile() {
+    @Test void updateDestinationLogicalDoesNothingOnNullLogicalFile() throws FileNotFoundException, RemoteCredentialException, RemoteDataException {
         FilesTransferListener listener = getMockFilesTransferListenerInstance();
         when(listener.lookupLogicalFileByUrl(anyString(), anyString())).thenReturn(null);
         doCallRealMethod().when(listener).updateDestinationLogicalFile(any(), any(), any(), any());

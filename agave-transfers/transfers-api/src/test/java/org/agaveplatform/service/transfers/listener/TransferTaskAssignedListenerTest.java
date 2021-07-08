@@ -219,7 +219,8 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 		// get mock remote data clients to mock the remote src system interactions
 		URI srcUri = URI.create(rootTransferTask.getSource());
-		RemoteDataClient srcRemoteDataClient = getMockRemoteDataClient(srcUri.getPath(), false, false);
+		String resolvedSrc = srcUri.getPath().substring(1);
+		RemoteDataClient srcRemoteDataClient = getMockRemoteDataClient(resolvedSrc, false, false);
 
 		// get mock remote data clients to mock the remote dest system interactions
 		URI destUri = URI.create(rootTransferTask.getDest());
@@ -243,7 +244,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				assertTrue(result.result(), "Callback result should be true after successful assignment.");
 
 				// remote file info should be obtained once.
-				verify(srcRemoteDataClient, times(1)).getFileInfo(eq(srcUri.getPath()));
+//				verify(srcRemoteDataClient, times(1)).getFileInfo(eq(srcUri.getPath()));
 
 				// mkdir should never be called on the src client.
 				verify(srcRemoteDataClient, never()).mkdirs(eq(destUri.getPath()));
@@ -542,7 +543,8 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 		// get mock remote data clients to mock the remote src system interactions
 		URI srcUri = URI.create(rootTransferTask.getSource());
-		RemoteDataClient srcRemoteDataClient = getMockRemoteDataClient(srcUri.getPath(), true, true);
+		String resolvedSrc = srcUri.getPath().substring(1);
+		RemoteDataClient srcRemoteDataClient = getMockRemoteDataClient(resolvedSrc, true, true);
 
 		// get mock remote data clients to mock the remote dest system interactions
 		URI destUri = URI.create(rootTransferTask.getDest());
@@ -571,7 +573,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				assertFalse(result.result(), "Callback handler result should be true after successful assignment.");
 
 				// remote file info should be obtained once.
-				verify(srcRemoteDataClient, times(1)).getFileInfo(eq(srcUri.getPath()));
+				verify(srcRemoteDataClient, times(1)).getFileInfo(eq(resolvedSrc));
 
 				// mkdir should never be called on the src client.
 				verify(srcRemoteDataClient, never()).mkdirs(eq(srcUri.getPath()));
@@ -647,6 +649,82 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 			ta.removePausedTask(tt.getRootTaskId());
 
 			ctx.completeNow();
+		});
+	}
+
+	@Test
+	void resolveSourcePathTest(Vertx vertx, VertxTestContext ctx){
+		// mock out the test class
+		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
+
+		// generate a fake transfer task
+		TransferTask rootTransferTask = _createTestTransferTask();
+		rootTransferTask.setId(1L);
+		rootTransferTask.setSource("agave://postman-test-storage-test//postman-test-agave.dev-testuser-1625694752-files/compress.data");
+		JsonObject rootTransferTaskJson = rootTransferTask.toJson();
+		// generate the expected updated JsonObject
+		JsonObject updatedTransferTaskJson = rootTransferTaskJson.copy().put("status", TransferStatusType.ASSIGNED.name());
+
+		// now mock out our db interactions. Here we
+		TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(rootTransferTaskJson);
+		AsyncResult<JsonObject> updatedStatusAsyncResult = getMockAsyncResult(updatedTransferTaskJson);
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			// returning the given transfer task, adding an id if it doesn't have one.
+//			handler.handle(Future.succeededFuture(arguments.getArgumentAt(1, TransferTask.class).toJson()));
+			handler.handle(updatedStatusAsyncResult);
+			return null;
+		}).when(dbService).updateStatus(any(), any(), any(), any(Handler.class));
+
+		// assign the mock db service to the test listener
+		when(ta.getDbService()).thenReturn(dbService);
+
+		// get mock remote data clients to mock the remote src system interactions
+		URI srcUri = URI.create(rootTransferTask.getSource());
+		String resolvedSrc = srcUri.getPath().substring(1);
+		RemoteDataClient srcRemoteDataClient = getMockRemoteDataClient(resolvedSrc, false, false);
+
+		// get mock remote data clients to mock the remote dest system interactions
+		URI destUri = URI.create(rootTransferTask.getDest());
+		RemoteDataClient destRemoteDataClient = getMockRemoteDataClient(destUri.getPath(), false, false);
+
+		try {
+			when(ta.getRemoteDataClient(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getOwner()), eq(srcUri))).thenReturn(srcRemoteDataClient);
+			when(ta.getRemoteDataClient(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getOwner()), eq(destUri))).thenReturn(destRemoteDataClient);
+		} catch (Exception e) {
+			// bubble the failure up to the VertxTestContext so exceptions are reported with messages
+			try {
+				fail("Failed to initialize the remote data clients during test setup.", e);
+			} catch (Throwable t) {
+				ctx.failNow(t);
+			}
+		}
+
+		ta.processTransferTask(rootTransferTaskJson, result -> {
+			ctx.verify(() -> {
+				assertTrue(result.succeeded(), "Task assignment should return true on successful processing.");
+				assertTrue(result.result(), "Callback result should be true after successful assignment.");
+
+				// remote file info should be obtained once.
+				verify(srcRemoteDataClient, times(1)).getFileInfo(eq(resolvedSrc));
+
+				// mkdir should never be called on the src client.
+				verify(srcRemoteDataClient, never()).mkdirs(eq(destUri.getPath()));
+
+				// mkdir should only be called on directory items. this is a file.
+				verify(destRemoteDataClient, never()).mkdirs(eq(destUri.getPath()));
+				// listing should never be called when source is file
+				verify(srcRemoteDataClient, never()).ls(any());
+
+				// TRANSFER_ALL event should have been raised
+				verify(ta, times(1))._doPublishEvent(eq(TRANSFER_ALL), eq(updatedTransferTaskJson));
+				// no error event should have been raised
+				verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+
+				ctx.completeNow();
+
+			});
 		});
 	}
 

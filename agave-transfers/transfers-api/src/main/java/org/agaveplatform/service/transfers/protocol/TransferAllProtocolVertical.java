@@ -24,6 +24,7 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
@@ -177,6 +178,15 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 				// pull the system out of the url. system id is the hostname in an agave uri
 				log.debug("Creating source remote data client to {} for transfer task {}", srcUri.getHost(), tt.getUuid());
 				srcClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), srcUri);
+
+				String resolvedSource = null;
+				if (srcUri.getPath().startsWith(File.separator)){
+					resolvedSource = srcUri.getPath().substring(1);
+				} else {
+					resolvedSource = srcUri.getPath();
+				}
+
+				tt.setSource(srcClient.resolvePath(resolvedSource));
 
 				log.debug("Creating dest remote data client to {} for transfer task {}", destUri.getHost(), tt.getUuid());
 				// pull the dest system out of the url. system id is the hostname in an agave uri

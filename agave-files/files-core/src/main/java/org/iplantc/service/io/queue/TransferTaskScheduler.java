@@ -19,6 +19,8 @@ import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.SchedulerException;
 
+import java.io.File;
+
 public class TransferTaskScheduler {
     private static final Logger log = Logger.getLogger(TransferTaskScheduler.class);
     private static final String strFileUploadWebhook = "";
@@ -139,7 +141,7 @@ public class TransferTaskScheduler {
             transferService = new TransferService(username, file.getTenantId(), baseUrl);
         }
 
-        String dest = "agave://" + file.getSystem().getSystemId() + "/" + file.getPath();
+        String dest = "agave://" + file.getSystem().getSystemId() + File.separator + file.getPath();
         APIResponse response = transferService.post(file.getSourceUri(), dest);
 
         if (response.isSuccess()) {

@@ -105,11 +105,15 @@ public class URLCopy{
         if ((getSourceClient() instanceof GridFTP) && (getDestClient() instanceof GridFTP) && !shouldBeKilled) {
             try {
                 ((GridFTP) getSourceClient()).abort();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+                log.error(ignored.getMessage());
+            }
 
             try {
                 ((GridFTP) getDestClient()).abort();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+                log.error(ignored.getMessage());
+            }
         }
     }
 
@@ -233,7 +237,8 @@ public class URLCopy{
                 } catch (ClosedByInterruptException e) {
                     throw e;
                 } catch (Throwable e) {
-                    log.error("Exception {}", e.getMessage(), e.getCause());
+                    log.error("Exception Throwable {}", e.getMessage(), e.getCause());
+                    throw e;
                 }
             }
 
@@ -560,13 +565,13 @@ public class URLCopy{
 //            }
 
 //			checkCancelled(remoteTransferListener);
-
+            log.error("RemoteDateException was thrown");
             throw e;
         }
         catch (Exception e) {
             aggregateTransferTask.setEndTime(Instant.now());
             aggregateTransferTask.setStatus(TransferStatusType.FAILED);
-
+            log.error("Exception was thrown");
             throw new RemoteDataException(
                     getDefaultErrorMessage(
                             srcPath,
@@ -619,6 +624,7 @@ public class URLCopy{
             uri = URI.create(serializedUri);
             return uri.getHost();
         } catch (Exception e) {
+            log.error("Exception was thrown {}", e.getMessage());
             return null;
         }
     }
@@ -843,6 +849,7 @@ public class URLCopy{
 
                         transferTask = proxyRangeTransfer(srcPath, absoluteSourceIndex, srcRangeSize, destPath, absoluteDestIndex, listener);
                     } catch (RangeValidationException e) {
+                        log.error("RangeValidationException was caught {}", e.getMessage());
                         throw new RemoteDataException(e.getMessage(), e);
                     }
                 }
@@ -1199,6 +1206,7 @@ public class URLCopy{
         try {
             return client.getOutputStream(destPath, true, false);
         } catch (Exception e) {
+            log.error("Caught general Exception {}", e.getMessage());
             // reauthenticate and retry in case of something weird
             client.disconnect();
 
@@ -1206,6 +1214,7 @@ public class URLCopy{
                 client.authenticate();
                 return client.getOutputStream(destPath, true, true);
             } catch (RemoteDataException e1) {
+                log.error("Caught RemoteDataExcpetion e1 {}", e1.getMessage());
                 throw new RemoteDataException("Failed to open an output stream to " + destPath, e1);
             }
         }
@@ -1223,8 +1232,10 @@ public class URLCopy{
         try {
             return client.getInputStream(srcPath, true);
         } catch (RemoteDataException e) {
+            log.error("Caught RemoteDataExcpetion in getInputStream e {}", e.getMessage());
             throw e;
         } catch (Exception e) {
+            log.error("Caught general Excpetion in getInputStream e {}", e.getMessage());
             // reauthenticate and retry in case of something weird
             client.disconnect();
             client.authenticate();

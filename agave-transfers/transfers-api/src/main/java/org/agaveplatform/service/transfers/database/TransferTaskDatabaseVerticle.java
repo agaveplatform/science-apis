@@ -56,17 +56,9 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
               .put("jdbcUrl", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:mysql://127.0.0.1:3306/agavecore")) //
               .put("username", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_USERNAME))
               .put("password", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_PASSWORD))
-              .put("useServerPrepStmts", true)
-              .put("useLocalSesessionState", true)
-              .put("useLocalTransactionState", true)
-              .put("rewriteBatchedStatements", true)
-              .put("cacheResultSetMetadata", true)
-              .put("cacheServerConfiguration", true)
-              .put("elideSetAutoComits", true)
-              .put("idleTimeout", 60000)
+              .put("autoCommit", true)
               .put("connectionTimeout", 60000)
-              .put("maxLifetime", 60000)
-              .put("validationTimeout", 3000)
+              .put("validationTimeout", 45000)
               .put("leakDetectionThreshold", 5000)
               .put("driverClassName", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "com.mysql.cj.jdbc.Driver"))
               .put("maximumPoolSize", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)));
@@ -151,10 +143,11 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
     sqlQueries.put(SqlQuery.CANCEL_ALL_TRANSFERTASKS, node.get("cancel-all-transfertasks").textValue());
     sqlQueries.put(SqlQuery.GET_TRANSFERTASK_BY_ID, node.get("get-transfertask-by-id").textValue());
     sqlQueries.put(SqlQuery.GET_BYTES_TRANSFERRED_FOR_ALL_CHILDREN, node.get("get_bytes_transferred_for_all_children").textValue());
-    sqlQueries.put(SqlQuery.CANCEL_TRANSFERTASK_BY_ID, node.get("cancel_transfertask_by_id").textValue());
     sqlQueries.put(SqlQuery.PING, node.get("ping").textValue());
 
     return sqlQueries;
   }
+
+
 }
 // end::dbverticle[]

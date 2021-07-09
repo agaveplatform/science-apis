@@ -11,7 +11,7 @@ import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
-import org.iplantc.service.io.uuid.AbstractUUIDEntityLookupTest;
+import org.iplantc.service.io.uuid.AbstractUUIDEntityLookupIT;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
@@ -34,7 +34,7 @@ import java.io.IOException;
  *
  */
 @Test(groups={"integration"})
-public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupTest<LogicalFile> {
+public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupIT<LogicalFile> {
 	
 	@BeforeClass
 	@Override
@@ -99,7 +99,7 @@ public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupTest<
 		return testEntity.getUuid();
 	}
 	
-	@Test(dependsOnMethods="getResourceUrl")
+	@Test()
 	public void getAgaveRelativePathFromAbsolutePath() {
 		
 		LogicalFile lf = createEntity();
@@ -108,7 +108,7 @@ public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupTest<
 						lf.getPath(), 
 						lf.getSystem().getStorageConfig().getRootDir(), 
 						lf.getSystem().getStorageConfig().getHomeDir()),
-						lf.getAgaveRelativePathFromAbsolutePath(),
+				lf.getSystem().getStorageConfig().getHomeDir() + "/" + lf.getAgaveRelativePathFromAbsolutePath(),
 				"Relative path calculated by UUIDEntityLookup should match that calculated by LogicalFile");
 		
 	}
@@ -126,7 +126,7 @@ public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupTest<
 //				{ getEntityUuid(testEntity), getUrlFromEntityJson(serializeEntityToJSON(testEntity)) } };
 //	}
 
-	@Test(dependsOnMethods="getAgaveRelativePathFromAbsolutePath")
+	@Test()
 	public void resolveLogicalFileURLFromUUID() {
 		LogicalFile testEntity = createEntity();
 		try {
@@ -140,7 +140,7 @@ public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupTest<
 		}
 	}
 	
-	@Test(dependsOnMethods="getAgaveRelativePathFromAbsolutePath")
+	@Test()
 	public void resolveLogicalFileURLFromUUIDSystemHomeNull() {
 		
 		StorageSystem nullHomeSystem = null; 
@@ -177,7 +177,7 @@ public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupTest<
 		}
 	}
 	
-	@Test(dependsOnMethods="resolveLogicalFileURLFromUUIDSystemHomeNull")
+	@Test()
 	public void resolveLogicalFileURLFromUUIDSystemHomeEmpty() {
 		
 		StorageSystem emtpyHomeSystem = null; 

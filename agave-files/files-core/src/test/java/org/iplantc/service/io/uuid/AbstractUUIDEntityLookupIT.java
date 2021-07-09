@@ -1,7 +1,7 @@
 package org.iplantc.service.io.uuid;
 
-import java.io.IOException;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.NotImplementedException;
 import org.hibernate.Session;
 import org.iplantc.service.common.dao.TenantDao;
@@ -13,21 +13,17 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AbstractUUIDTest;
 import org.iplantc.service.common.uuid.UUIDEntityLookup;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.json.JSONException;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+
+import static org.iplantc.service.io.BaseTestCase.SYSTEM_OWNER;
 
 /**
  * Should be implemented for every entity.
@@ -35,7 +31,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @author dooley
  *
  */
-public abstract class AbstractUUIDEntityLookupTest<T> implements AbstractUUIDTest<T> {
+public abstract class AbstractUUIDEntityLookupIT<T> implements AbstractUUIDTest<T> {
 	protected String destPath;
 	protected StorageSystem system;
 	
@@ -75,14 +71,16 @@ public abstract class AbstractUUIDEntityLookupTest<T> implements AbstractUUIDTes
 	
 	protected void tearDownTenants() {
 		Session session = HibernateUtil.getSession();
-		session.createQuery("delete Tenant").executeUpdate();
+		session.createQuery("delete Tenant where tenantCode = :tenantCode")
+				.setString("tenantCode", "iplantc.org")
+				.executeUpdate();
 		session.flush();
 		session.close();
 	}
 	
 	protected void setUpSystems() throws SystemArgumentException, JSONException, IOException {
 		this.system = StorageSystem.fromJSON(JSONTestDataUtil.getInstance().getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
-		this.system.setOwner(BaseTestCase.SYSTEM_OWNER);
+		this.system.setOwner(SYSTEM_OWNER);
 		this.system.setPubliclyAvailable(true);
 		this.system.setGlobalDefault(true);
 		this.system.setAvailable(true);

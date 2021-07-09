@@ -3,8 +3,7 @@
  */
 package org.iplantc.service.io.clients;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.iplantc.service.io.exceptions.TaskException;
@@ -23,6 +22,7 @@ import org.iplantc.service.io.exceptions.TaskException;
  */
 public class APIResponse 
 {
+	private static final ObjectMapper mapper = new ObjectMapper();
 	public enum APIResponseStatus { SUCCESS, ERROR }
 	private APIResponseStatus status;
 	private JsonNode result;
@@ -36,12 +36,8 @@ public class APIResponse
 		} 
 		else
 		{
-			try 
-			{
-				ObjectMapper mapper = new ObjectMapper();
-				JsonFactory factory = mapper.getFactory();
-				JsonParser jp = factory.createJsonParser(text);
-				JsonNode response = mapper.readTree(jp);
+			try {
+				JsonNode response = mapper.readTree(text);
 				
 				if (response.has("status") && !response.get("status").isNull()) {
 					if ("success".equals(response.get("status").asText())) {
@@ -56,7 +52,11 @@ public class APIResponse
 				{
 					throw new TaskException("Unrecognized response from the server.\n" + text);
 				}
-			} catch (Exception e) {
+			}
+			catch (JsonProcessingException e) {
+				throw new TaskException("Unable to parse response from the server.\n" + text, e);
+			}
+			catch (Exception e) {
 				throw new TaskException("Unable to parse response from the server.\n" + text, e);
 			}
 		}

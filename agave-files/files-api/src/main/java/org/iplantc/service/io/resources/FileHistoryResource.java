@@ -13,6 +13,7 @@ import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
+import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.dao.FileEventDao;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.model.FileEvent;
@@ -217,8 +218,8 @@ public class FileHistoryResource extends AbstractFileResource {
 	        						}
 	        					}
 
-	                    		String strTransferUrl = TenancyHelper.resolveURLToCurrentTenant(org.iplantc.service.common.Settings.IPLANT_TRANSFER_SERVICE)
-										+ "api/transfers/" + logicalFile.getTransferUuid();
+	                    		String strTransferUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE)
+										+ "api/transfers/";
 
 	        					jsonEvent
 	        						.put("status", event.getStatus())

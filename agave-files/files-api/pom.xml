@@ -37,6 +37,7 @@
 			<plugin>
 				<groupId>com.dkanejs.maven.plugins</groupId>
 				<artifactId>docker-compose-maven-plugin</artifactId>
+				<version>${docker-compose-maven-plugin.version}</version>
 			</plugin>
 
 			<!-- iRODS containers take a while to startup, so we use a custom await config here
@@ -44,6 +45,7 @@
 			<plugin>
 				<groupId>org.agaveplatform.ops</groupId>
 				<artifactId>await-maven-plugin</artifactId>
+				<version>${await-maven-plugin.version}</version>
 			</plugin>
 
 			<!-- ************************************ -->
@@ -56,6 +58,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-war-plugin</artifactId>
+				<version>${maven-war-plugin.version}</version>
 				<executions>
 					<execution>
 						<id>prepare-war</id>

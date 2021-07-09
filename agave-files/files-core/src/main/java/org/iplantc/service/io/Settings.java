@@ -3,21 +3,16 @@
  */
 package org.iplantc.service.io;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+
+import javax.net.ssl.*;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.X509TrustManager;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 
 /**
  * @author dooley
@@ -79,7 +74,8 @@ public class Settings {
 	public static String 						MAILSMTPSPROTOCOL;
 	public static String 						MAILLOGIN;    
     public static String 						MAILPASSWORD;
-	
+    public static String 						IPLANT_TRANSFER_SERVICE;
+
 	/* General policy settings */
 	public static int 							MAX_STAGING_TASKS;
 	public static int                           STAGING_TIMEOUT_SECS;
@@ -96,6 +92,9 @@ public class Settings {
 
     // The tenant ids on which this service instance will operate.
     private static String[]                     QUEUETASK_TENANT_IDS;
+
+    public static String						TRANSFER_NOTIFICATION_SUBJECT;
+    public static String						TRANSFER_NOTIFICATION_QUEUE;
 
 	static {
 		//System.setProperty("java.protocol.handler.pkgs", "org.iplantc.service.io.remote.url.gsiftp");
@@ -216,6 +215,9 @@ public class Settings {
 			IPLANT_SYSTEM_SERVICE = (String) props.get("iplant.system.service");
 			if (!IPLANT_SYSTEM_SERVICE.endsWith("/")) IPLANT_SYSTEM_SERVICE += "/";
 			
+			IPLANT_TRANSFER_SERVICE = (String) props.get("iplant.transfer.service");
+			if (!IPLANT_TRANSFER_SERVICE.endsWith("/")) IPLANT_TRANSFER_SERVICE += "/";
+
 			IPLANT_DOCS = (String) props.get("iplant.service.documentation");
 			if (!IPLANT_DOCS.endsWith("/")) IPLANT_DOCS += "/";
 			

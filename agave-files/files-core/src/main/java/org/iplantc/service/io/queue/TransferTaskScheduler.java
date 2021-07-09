@@ -19,6 +19,8 @@ import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.SchedulerException;
 
+import java.io.File;
+
 public class TransferTaskScheduler {
     private static final Logger log = Logger.getLogger(TransferTaskScheduler.class);
     private static final String strFileUploadWebhook = "";
@@ -30,8 +32,8 @@ public class TransferTaskScheduler {
      * @param username the user who requested the transfer
      * @throws SchedulerException if unable to submit the request
      */
-    public void enqueueStagingTask(LogicalFile file, String username) throws SchedulerException, NotificationException {
-        enqueueStagingTask(file, username, "");
+    public String enqueueStagingTask(LogicalFile file, String username) throws SchedulerException, NotificationException {
+        return enqueueStagingTask(file, username, null);
     }
 
     /**
@@ -42,7 +44,7 @@ public class TransferTaskScheduler {
      * @param baseUrl  the address of the transfer api
      * @throws SchedulerException if unable to submit the request
      */
-    public void enqueueStagingTask(LogicalFile file, String username, String baseUrl) throws SchedulerException, NotificationException {
+    public String enqueueStagingTask(LogicalFile file, String username, String baseUrl) throws SchedulerException, NotificationException {
         try {
             JsonNode responseBody = callTransferClient(file, username, baseUrl);
 
@@ -52,10 +54,10 @@ public class TransferTaskScheduler {
                 throw new SchedulerException("Error response received when submitting a new transfer request.");
             } else {
                 // this is the value of the "result" field in the response
-                String uuid = parseTransferResponse(responseBody);
+                return parseTransferResponse(responseBody);
 
                 //Add transfer uuid to track in the transfers service
-                file.setTransferUuid(uuid);
+//                file.setTransferUuid(uuid);
             }
         } catch (SchedulerException e) {
             throw e;
@@ -67,7 +69,7 @@ public class TransferTaskScheduler {
                     "request to the transfers api.", e);
         } finally {
             // save the uuid with the logical file
-            updateLogicalFileAndSwallowException(file);
+//            updateLogicalFileAndSwallowException(file);
         }
     }
 
@@ -79,10 +81,11 @@ public class TransferTaskScheduler {
      * @throws SchedulerException       if unable to submit the request
      * @throws NotificationException    if unable to create notification
      */
-    public void enqueueStagingTaskWithNotification(LogicalFile file, String username) throws SchedulerException, NotificationException {
-        enqueueStagingTask(file, username, "");
+    public String enqueueStagingTaskWithNotification(LogicalFile file, String username) throws SchedulerException, NotificationException {
+        String transferUuid = enqueueStagingTask(file, username, "");
         try {
             createNotification(file);
+            return transferUuid;
         } catch (NotificationException e){
             log.debug("Unable to create notification event for transfer to " + file.getPath() + ": " + e.getMessage());
             throw e;
@@ -132,13 +135,14 @@ public class TransferTaskScheduler {
     protected JsonNode callTransferClient(LogicalFile file, String username, String baseUrl) throws SchedulerException {
         TransferService transferService = null;
 
-        if (baseUrl.isEmpty()){
+        if (baseUrl == null || baseUrl.isEmpty()){
             transferService = new TransferService(username, file.getTenantId());
         } else {
             transferService = new TransferService(username, file.getTenantId(), baseUrl);
         }
 
-        APIResponse response = transferService.post(file.getSourceUri(), file.getPath());
+        String dest = "agave://" + file.getSystem().getSystemId() + File.separator + file.getPath();
+        APIResponse response = transferService.post(file.getSourceUri(), dest);
 
         if (response.isSuccess()) {
             return response.getResult();

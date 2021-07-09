@@ -2,7 +2,6 @@ package org.iplantc.service.io.queue;
 
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
@@ -16,11 +15,13 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.UUID;
 
+import static org.iplantc.service.io.BaseTestCase.LOCAL_BINARY_FILE_NAME;
+import static org.iplantc.service.io.BaseTestCase.SYSTEM_OWNER;
 import static org.iplantc.service.io.model.enumerations.StagingTaskStatus.STAGING_QUEUED;
 import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
 
-public class UploadRunnableTest extends BaseTestCase {
+public class UploadRunnableTest {
     private static final String strWebhookUrl = "";
 
     protected LogicalFile getMockLogicalFile() {

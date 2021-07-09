@@ -83,24 +83,28 @@ public class LogicalFileNotificationIT extends BaseTestCase
 	@AfterClass
 	@Override
 	protected void afterClass() throws Exception {
+		sched.clear();
+		sched.shutdown();
+
 		clearLogicalFiles();
 		clearSystems();
 
 		drainQueue();
-		sched.clear();
-		sched.shutdown();
 	}
 
 	@BeforeMethod
 	protected void beforeMethod(Method m) throws Exception {
+		sched.clear();
+
 		clearLogicalFiles();
 
-		sched.clear();
 		startNotificationQueue(m.getName());
 	}
 
 	@AfterMethod
 	protected void afterMethod(Method m) throws Exception {
+		clearLogicalFiles();
+
 		drainQueue();
 	}
 
@@ -253,6 +257,9 @@ public class LogicalFileNotificationIT extends BaseTestCase
 		try
 		{
 			StorageSystem storageSystem = new SystemManager().getDefaultStorageSystem();
+		    if (storageSystem == null) {
+		    	initAllStorageSystems();
+			}
 			file = new LogicalFile(SYSTEM_OWNER, storageSystem,
 					URI.create("agave://" + storageSystem.getSystemId() + "/" + LOCAL_TXT_FILE_NAME),
 					storageSystem.getRemoteDataClient().resolvePath(LOCAL_TXT_FILE_NAME + ".copy"));

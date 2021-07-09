@@ -3,13 +3,19 @@
  */
 package org.iplantc.service.io;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.StringUtils;
-import org.hibernate.HibernateException;
+import org.hibernate.CacheMode;
 import org.hibernate.Session;
 import org.iplantc.service.common.persistence.HibernateUtil;
+import org.iplantc.service.common.uuid.AgaveUUID;
+import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.io.model.JSONTestDataUtil;
+import org.iplantc.service.io.model.LogicalFile;
+import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
+import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
 import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
@@ -23,11 +29,14 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.time.Instant;
 
 import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.AZURE;
 import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.SWIFT;
+import static org.testng.Assert.fail;
 
 /**
  * @author dooley
@@ -57,20 +66,22 @@ public class BaseTestCase {
 	public static String SOFTWARE_SYSTEM_TEMPLATE_DIR = "software";
 
 	// standard directories and files for io tests
-    protected static String MISSING_DIRECTORY = "I/Do/Not/Exist/unless/some/evil/person/has/this/test";
-    protected static String MISSING_FILE = "I/Do/Not/Exist/unless/some/evil/person/this/test.txt";
-    protected static String LOCAL_DIR = "target/test-classes/transfer";
-    protected static String LOCAL_DOWNLOAD_DIR = "target/test-classes/download";
-    protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.txt";
-    protected static String LOCAL_BINARY_FILE = "target/test-classes/transfer/test_upload.bin";
+    public static String MISSING_DIRECTORY = "I/Do/Not/Exist/unless/some/evil/person/has/this/test";
+    public static String MISSING_FILE = "I/Do/Not/Exist/unless/some/evil/person/this/test.txt";
+    public static String LOCAL_DIR = "target/test-classes/transfer";
+    public static String LOCAL_DOWNLOAD_DIR = "target/test-classes/download";
+    public static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.txt";
+    public static String LOCAL_BINARY_FILE = "target/test-classes/transfer/test_upload.bin";
 
-    protected static String LOCAL_DIR_NAME = "transfer";
-    protected static String LOCAL_TXT_FILE_NAME = "test_upload.txt";
-    protected static String LOCAL_BINARY_FILE_NAME = "test_upload.bin";
+    public static String LOCAL_DIR_NAME = "transfer";
+    public static String LOCAL_TXT_FILE_NAME = "test_upload.txt";
+    public static String LOCAL_BINARY_FILE_NAME = "test_upload.bin";
 
 	protected JSONTestDataUtil jtd;
 	protected JSONObject jsonTree;
 	protected SystemDao systemDao = new SystemDao();
+
+	protected static ObjectMapper objectMapper = new ObjectMapper();
 
 	/* (non-Javadoc)
 	 * @see junit.framework.TestCase#setUp()
@@ -82,30 +93,6 @@ public class BaseTestCase {
 
         clearSystems();
         clearLogicalFiles();
-
-//		Properties props = new Properties();
-//		props.load(getClass().getClassLoader().getResourceAsStream(TEST_PROPERTIES_FILE));
-//		username = (String)props.getProperty("test.iplant.username");
-//		password = (String)props.getProperty("test.iplant.password");
-//		String urlencodedcredentials = URLEncoder.encode(username, "utf-8") + ":" + URLEncoder.encode(password, "utf-8");
-//
-//		uploadFilePath = (String)props.getProperty("test.file.path");
-//		testFileAnalysisDirectory = new File((String)props.getProperty("test.file.analysis.dir.path"));
-//		//ftpUri = new URI("ftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.ftp.uri")));
-//		gridFtpUri = new URI("gsiftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.gridftp.uri"));
-//		httpUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.http.uri"));
-//		httpsUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.https.uri"));
-//		s3Uri = new URI((String)props.getProperty("test.s3.uri"));
-//		sftpUri = new URI("sftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.sftp.uri"));
-//
-//		destPath = "/testparentparentparent/testparentparent/testparent/test.dat";
-
-//		TenantDao tenantDao = new TenantDao();
-//		Tenant tenant = tenantDao.findByTenantId("agave.dev");
-//		if (tenant == null) {
-//			tenant = new Tenant("iplantc.org", "https://agave.iplantc.org", "xxx@tacc.utexas.edu", "Test Admin");
-//			tenantDao.persist(tenant);
-//		}
 	}
 
 	@AfterClass
@@ -123,20 +110,20 @@ public class BaseTestCase {
         Session session = null;
         try {
             HibernateUtil.beginTransaction();
+            HibernateUtil.disableAllFilters();
             session = HibernateUtil.getSession();
             session.clear();
-            HibernateUtil.disableAllFilters();
 
-            session.createQuery("delete RemoteSystem").executeUpdate();
-            session.createQuery("delete BatchQueue").executeUpdate();
-            session.createQuery("delete StorageConfig").executeUpdate();
-            session.createQuery("delete LoginConfig").executeUpdate();
-            session.createQuery("delete AuthConfig").executeUpdate();
-            session.createQuery("delete SystemRole").executeUpdate();
-            session.createQuery("delete CredentialServer").executeUpdate();
+            session.createQuery("delete RemoteSystem").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+            session.createQuery("delete BatchQueue").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+            session.createQuery("delete StorageConfig").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+            session.createQuery("delete LoginConfig").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+            session.createQuery("delete AuthConfig").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+            session.createQuery("delete SystemRole").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+            session.createQuery("delete CredentialServer").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
             session.flush();
-        } catch (Throwable t) {
-            t.printStackTrace();
+        } catch (Exception e) {
+            fail("Failed to clear test system tables", e);
         } finally {
             try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
@@ -144,29 +131,26 @@ public class BaseTestCase {
 
     /**
      * Clears all logical files and related entity tables from db
-     * @throws Exception if something goes wrong
      */
-	protected void clearLogicalFiles() throws Exception {
+	protected void clearLogicalFiles() {
 		Session session = null;
 		try
 		{
 			HibernateUtil.beginTransaction();
+            HibernateUtil.disableAllFilters();
 			session = HibernateUtil.getSession();
 			session.clear();
-			HibernateUtil.disableAllFilters();
-
-			session.createQuery("DELETE LogicalFile").executeUpdate();
-			session.createQuery("DELETE StagingTask").executeUpdate();
-            session.createQuery("DELETE TransferTaskImpl").executeUpdate();
-            session.createSQLQuery("DELETE FROM TransferApiTasks").executeUpdate();
-			session.createQuery("DELETE RemoteFilePermission").executeUpdate();
-			session.createQuery("DELETE TransferTaskPermission").executeUpdate();
-            session.createQuery("DELETE FileEvent").executeUpdate();
-			session.createQuery("DELETE Notification").executeUpdate();
+            session.createQuery("DELETE LogicalFile").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+			session.createQuery("DELETE StagingTask").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+            session.createQuery("DELETE TransferTaskImpl").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+            session.createSQLQuery("DELETE FROM TransferApiTasks").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+			session.createQuery("DELETE RemoteFilePermission").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+			session.createQuery("DELETE TransferTaskPermission").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+            session.createQuery("DELETE FileEvent").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
+			session.createQuery("DELETE Notification").setCacheable(false).setCacheMode(CacheMode.IGNORE).executeUpdate();
 		}
-		catch (HibernateException ex)
-		{
-			throw new SystemException(ex);
+		catch (Exception e) {
+            fail("Failed to clear test logical file tables", e);
 		}
 		finally
 		{
@@ -374,5 +358,46 @@ public class BaseTestCase {
              return ip.toString();
         }
 	}
+
+    /**
+     * Create {@link JsonNode} equivalent of a TransferTask for a given LogicalFile
+     * @param file {@link LogicalFile} to create TransferTask with
+     * @param status status of the TransferTask
+     * @return {@link JsonNode} of a TransferTask
+     */
+    protected JsonNode getTransferTask(LogicalFile file, String status) {
+        return objectMapper.createObjectNode()
+                .put("attempts", 1)
+                .put("source", file.getSourceUri())
+                .put("dest", "agave://" + file.getSystem() + "/" + file.getPath())
+                .put("owner", file.getOwner())
+                .put("tenant_id", file.getTenantId())
+                .put("uuid", new AgaveUUID(UUIDType.TRANSFER).toString())
+                .put("created", String.valueOf(Instant.now()))
+                .put("lastUpdated", String.valueOf(Instant.now()))
+                .put("endTime", String.valueOf(Instant.now()))
+                .putNull("parentTask")
+                .putNull("rootTask")
+                .put("status", status);
+    }
+
+    /**
+     * Create notification for a given TransferTask event
+     * @param transferTask the body of the notification message
+     * @param messageType the TranfserTask event to create notification for
+     * @return {@link JsonNode} of the notification message
+     * @throws IOException
+     */
+    protected JsonNode getNotification(JsonNode transferTask, String messageType) throws IOException {
+        NotificationMessageContext messageBodyContext = new NotificationMessageContext(
+                messageType, transferTask.toString(), transferTask.get("uuid").asText());
+
+        NotificationMessageBody messageBody = new NotificationMessageBody(
+                transferTask.get("uuid").asText(), transferTask.get("owner").asText(), transferTask.get("tenant_id").asText(),
+                messageBodyContext);
+
+        return objectMapper.readTree(messageBody.toJSON());
+    }
+
 
 }

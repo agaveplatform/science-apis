@@ -33,6 +33,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
+
 /**
  * Handles the staging of data into the user's StorageSystem. This differs
  * from a transfer task in that the flow is always inward to the StorageSystem
@@ -142,7 +143,7 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
 
 
                     try {
-                        String strUrl = TenancyHelper.resolveURLToCurrentTenant(org.iplantc.service.common.Settings.IPLANT_TRANSFER_SERVICE) +
+                        String strUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) +
                                 "api/transfers/";
 //                      String strUrl = buildUuidValidationURL(uuid);
                         HttpClient httpClient = HttpClientBuilder.create().build();

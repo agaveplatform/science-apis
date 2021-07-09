@@ -12,23 +12,25 @@ import org.testng.Assert;
 import org.testng.annotations.*;
 
 import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import static org.testng.Assert.*;
 
-@Test(groups={"integration"})
+@Test(singleThreaded = true, groups={"integration"})
 public class LogicalFileDaoIT extends BaseTestCase
 {
-	private LogicalFile file;
-	private LogicalFile sibling;
-	private LogicalFile cousin;
-	private LogicalFile parent;
-	private LogicalFile uncle;
-	private LogicalFile parentParent;
-	private LogicalFile parentParentParent;
-	private LogicalFile rootParent;
+	//	private LogicalFile file;
+//	private LogicalFile sibling;
+//	private LogicalFile cousin;
+//	private LogicalFile parent;
+//	private LogicalFile uncle;
+//	private LogicalFile parentParent;
+//	private LogicalFile parentParentParent;
+//	private LogicalFile rootParent;
 	private final SystemDao systemDao = new SystemDao();
 	private StorageSystem system;
 	private String destPath;
@@ -59,47 +61,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	protected void setUp() throws Exception
 	{
 		clearLogicalFiles();
-
 		destPath = String.format("/%s/%s/%s/%s", UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
-		file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
-		file.setStatus(StagingTaskStatus.STAGING_QUEUED);
-//		file.setUuid(file.getPath());
-
-
-		parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
-		parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
-		parent.setNativeFormat(LogicalFile.DIRECTORY);
-//		parent.setUuid(parent.getPath());
-
-		sibling = new LogicalFile(SYSTEM_OWNER, system, httpUri, parent.getPath() + "/sibling.dat");
-		sibling.setStatus(StagingTaskStatus.STAGING_QUEUED);
-//		sibling.setUuid(sibling.getPath());
-
-		parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parent.getPath()));
-		parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
-		parentParent.setNativeFormat(LogicalFile.DIRECTORY);
-//		parentParent.setUuid(parentParent.getPath());
-
-		uncle = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParent.getPath() + "/sibling");
-		uncle.setStatus(StagingTaskStatus.STAGING_QUEUED);
-		uncle.setNativeFormat(LogicalFile.DIRECTORY);
-//		uncle.setUuid(uncle.getPath());
-
-		cousin = new LogicalFile(SYSTEM_OWNER, system, httpUri, uncle.getPath() + "/cousin.dat");
-		cousin.setStatus(StagingTaskStatus.STAGING_QUEUED);
-//		cousin.setUuid(cousin.getPath());
-
-		parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parentParent.getPath()));
-		parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
-		parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
-//		parentParentParent.setUuid(parentParentParent.getPath());
-
-		rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
-		rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
-		rootParent.setNativeFormat(LogicalFile.DIRECTORY);
-//		rootParent.setUuid();
-
-		//LogicalFileDao.persist(file);
 	}
 
 	@AfterMethod
@@ -128,6 +90,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test
 	public void testPersist() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.persist(file);
 			assertNotNull(file.getId(), "Failed to persist logical file");
 		} catch (HibernateException e) {
@@ -148,6 +111,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindByIdInvalid"})
 	public void testFindById() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 			assertNotNull(file.getId(), "Failed to save the file");
 
@@ -161,6 +125,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindById"})
 	public void testFindBySystemPath() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 			LogicalFile f = LogicalFileDao.findBySystemAndPath(file.getSystem(), file.getPath());
 			assertNotNull(f,"Failed to retrieve file by url");
@@ -172,6 +137,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindBySystemPath"})
 	public void testFindBySystemAndNullPath() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 			LogicalFileDao.findBySystemAndPath(file.getSystem(), null);
 			fail("Null path should throw exception");
@@ -183,6 +149,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindBySystemAndNullPath"})
 	public void testFindByNullSystemAndPath() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 			LogicalFileDao.findBySystemAndPath(null, file.getPath());
 			fail("Null system should throw exception");
@@ -194,6 +161,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindByNullSystemAndPath"})
 	public void testFindByNullSystemAndNullPath() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 			LogicalFileDao.findBySystemAndPath(null, null);
 			fail("Null system and path should throw exception");
@@ -205,7 +173,12 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindByNullSystemAndNullPath"})
 	public void testFindParent() {
 		try {
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(parent);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 
 			LogicalFile foundParent = LogicalFileDao.findParent(file);
@@ -218,6 +191,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindParent"})
 	public void testFindParentMissing() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 
 			LogicalFile foundParent = LogicalFileDao.findParent(file);
@@ -231,8 +205,17 @@ public class LogicalFileDaoIT extends BaseTestCase
 	public void testFindParentReturnsFirstParent() {
 		try {
 
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(rootParent);
+
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(parent);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 
 			LogicalFile foundParent = LogicalFileDao.findParent(file);
@@ -275,7 +258,12 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindClosestParentNullSystemNullPath"})
 	public void testFindClosestParentReturnsImmediateParent() {
 		try {
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(parent);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 
 			LogicalFile foundParent = LogicalFileDao.findClosestParent(file.getSystem(), file.getPath());
@@ -289,7 +277,13 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindClosestParentReturnsImmediateParent"})
 	public void testFindClosestParentReturnsRootParentWhenNoIntermediate() {
 		try {
+
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(rootParent);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 
 			LogicalFile foundParent = LogicalFileDao.findClosestParent(file.getSystem(), file.getPath());
@@ -304,6 +298,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindClosestParentReturnsRootParentWhenNoIntermediate"})
 	public void testFindClosestParentReturnsNullWhenNoIntermediateAndNoRootParent() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 
 			LogicalFile foundParent = LogicalFileDao.findClosestParent(file.getSystem(), file.getPath());
@@ -317,8 +312,36 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindClosestParentReturnsNullWhenNoIntermediateAndNoRootParent"})
 	public void testFindClosestParentReturnsImmediateParentWhenImmediateAndMultipleParentsExist() {
 		try {
+			Path parentParentParentPath = Paths.get("/")
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString());
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParentParentPath.toString());
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParentParent);
+
+			Path parentParentPath = parentParentParentPath
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString());
+
+			LogicalFile parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParentPath.toString());
+			parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(parentParent);
+
+			Path parentPath = parentParentPath
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString());
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentPath.toString());
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(parent);
+
+			Path filePath = parentPath
+					.resolve(UUID.randomUUID().toString());
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, filePath.toString());
 			LogicalFileDao.save(file);
 
 			LogicalFile foundParent = LogicalFileDao.findClosestParent(file.getSystem(), file.getPath());
@@ -332,8 +355,31 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindClosestParentReturnsImmediateParentWhenImmediateAndMultipleParentsExist"})
 	public void testFindClosestParentReturnsFirstParentWhenMultipleParentsExist() {
 		try {
+			Path parentParentParentPath = Paths.get("/")
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString());
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParentParentPath.toString());
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(parentParentParent);
+
+			Path parentParentPath = parentParentParentPath
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString());
+
+			LogicalFile parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParentPath.toString());
+			parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(parentParent);
+
+
+			Path filePath = parentParentPath
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString());
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, filePath.toString());
 			LogicalFileDao.save(file);
 
 			LogicalFile foundParent = LogicalFileDao.findClosestParent(file.getSystem(), file.getPath());
@@ -347,8 +393,25 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindClosestParentReturnsFirstParentWhenMultipleParentsExist"})
 	public void testFindClosestParentReturnsFirstParentWhenMultipleParentsAndRootExist() {
 		try {
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(rootParent);
+
+			Path parentPath = Paths.get("/")
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString());
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentPath.toString());
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(parentParentParent);
+
+			Path filePath = parentPath
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString())
+					.resolve(UUID.randomUUID().toString());
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, filePath.toString());
 			LogicalFileDao.save(file);
 
 			LogicalFile foundParent = LogicalFileDao.findClosestParent(file.getSystem(), file.getPath());
@@ -362,6 +425,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindClosestParentReturnsFirstParentWhenMultipleParentsAndRootExist"})
 	public void testFindClosestParentReturnsNullWithoutParents() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 
 			LogicalFile foundParent = LogicalFileDao.findClosestParent(file.getSystem(), file.getPath());
@@ -570,8 +634,12 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindNonOverlappingChildrenReturnsOnlyOverlappingChildrenOnFullCopy"})
 	public void testFindParentReturnsClosestParent() {
 		try {
-
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(rootParent);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 
 			LogicalFile foundParent = LogicalFileDao.findParent(file);
@@ -614,12 +682,14 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testFindByOwnerEmpty"})
 	public void testFindByOwner() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
 			List<LogicalFile> files = LogicalFileDao.findByOwner(file.getOwner());
 			assertNotNull(files,"Failed to retrieve inputs for " + file.getOwner());
 			assertFalse(files.isEmpty(), "No files retrieved for " + file.getOwner());
 		} catch (HibernateException e) {
-			fail("Retrieving files for " + file.getOwner() + " should not throw an exception", e);
+			fail("Retrieving files for " + SYSTEM_OWNER + " should not throw an exception", e);
 		}
 	}
 
@@ -656,6 +726,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testUpdateTransferStatusLogicalFileNullString"})
 	public void testUpdateTransferStatusLogicalFileString() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.updateTransferStatus(file, StagingTaskStatus.STAGING_COMPLETED, file.getOwner());
 			LogicalFile f = LogicalFileDao.findById(file.getId());
 			assertNotNull(f, "Test file should be returned from search by id");
@@ -688,7 +759,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testUpdateTransferStatusStringEmptyString"})
 	public void testUpdateTransferStatusStringStringNull() {
 		try {
-			LogicalFileDao.updateTransferStatus(file.getSystem(), file.getPath(), null);
+			LogicalFileDao.updateTransferStatus(system, destPath, null);
 			fail("null status should throw an exception");
 		} catch (HibernateException e) {
 			// null status should throw an exception
@@ -698,7 +769,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testUpdateTransferStatusStringStringNull"})
 	public void testUpdateTransferStatusStringStringEmpty() {
 		try {
-			LogicalFileDao.updateTransferStatus(file.getSystem(), file.getPath(),"");
+			LogicalFileDao.updateTransferStatus(system, destPath,"");
 			fail("Empty status should throw an exception");
 		} catch (HibernateException e) {
 			// empty status should throw an exception
@@ -708,7 +779,9 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testUpdateTransferStatusStringStringEmpty"})
 	public void testUpdateTransferStatusStringString() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
 			LogicalFileDao.updateTransferStatus(file.getSystem(), file.getPath(),StagingTaskStatus.STAGING_FAILED.name());
 			LogicalFile f = LogicalFileDao.findById(file.getId());
 			assertNotNull(f, "Test file should be returned from search by id");
@@ -731,7 +804,9 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testRemoveNull"})
 	public void testRemove() {
 		try {
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
 			assertNotNull(file.getId(), "Failed to save logical file");
 			Long id = file.getId();
 
@@ -746,11 +821,28 @@ public class LogicalFileDaoIT extends BaseTestCase
 	public void testDeleteSubtreePathDoesNotDeleteFile()
 	{
 		try {
-			LogicalFileDao.save(rootParent);
-			LogicalFileDao.save(parentParentParent);
-			LogicalFileDao.save(parentParent);
-			LogicalFileDao.save(parent);
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parent);
+
+			LogicalFile parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parent.getPath()));
+			parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParent);
+
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parentParent.getPath()));
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParentParent);
+
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(rootParent);
 
 			LogicalFileDao.deleteSubtreePath(file.getPath(), file.getSystem().getId());
 
@@ -767,11 +859,28 @@ public class LogicalFileDaoIT extends BaseTestCase
 	public void testDeleteSubtreePathDoesDeletesChildFiles()
 	{
 		try {
-			LogicalFileDao.save(rootParent);
-			LogicalFileDao.save(parentParentParent);
-			LogicalFileDao.save(parentParent);
-			LogicalFileDao.save(parent);
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parent);
+
+			LogicalFile parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parent.getPath()));
+			parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParent);
+
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parentParent.getPath()));
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParentParent);
+
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(rootParent);
 
 			LogicalFileDao.deleteSubtreePath(parent.getPath(), parent.getSystem().getId());
 
@@ -788,14 +897,41 @@ public class LogicalFileDaoIT extends BaseTestCase
 	public void testDeleteSubtreePathDoesDeletesChildDirectories()
 	{
 		try {
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(rootParent);
-			LogicalFileDao.save(parentParentParent);
-			LogicalFileDao.save(parentParent);
-			LogicalFileDao.save(parent);
-			LogicalFileDao.save(uncle);
-			LogicalFileDao.save(cousin);
-			LogicalFileDao.save(sibling);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parent);
+
+			LogicalFile parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parent.getPath()));
+			parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParent);
+
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parentParent.getPath()));
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParentParent);
+
+			LogicalFile uncle = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParent.getPath() + "/sibling");
+			uncle.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			uncle.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(uncle);
+
+			LogicalFile cousin = new LogicalFile(SYSTEM_OWNER, system, httpUri, uncle.getPath() + "/cousin.dat");
+			cousin.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(cousin);
+
+			LogicalFile sibling = new LogicalFile(SYSTEM_OWNER, system, httpUri, parent.getPath() + "/sibling.dat");
+			sibling.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(sibling);
 
 			LogicalFileDao.deleteSubtreePath(parentParent.getPath(), parentParent.getSystem().getId());
 
@@ -823,14 +959,41 @@ public class LogicalFileDaoIT extends BaseTestCase
 	public void testDeleteSubtreePathDoesNotDeletesSiblingDirectories()
 	{
 		try {
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(rootParent);
-			LogicalFileDao.save(parentParentParent);
-			LogicalFileDao.save(parentParent);
-			LogicalFileDao.save(parent);
-			LogicalFileDao.save(uncle);
-			LogicalFileDao.save(cousin);
-			LogicalFileDao.save(sibling);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parent);
+
+			LogicalFile parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parent.getPath()));
+			parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParent);
+
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parentParent.getPath()));
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParentParent);
+
+			LogicalFile uncle = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParent.getPath() + "/sibling");
+			uncle.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			uncle.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(uncle);
+
+			LogicalFile cousin = new LogicalFile(SYSTEM_OWNER, system, httpUri, uncle.getPath() + "/cousin.dat");
+			cousin.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(cousin);
+
+			LogicalFile sibling = new LogicalFile(SYSTEM_OWNER, system, httpUri, parent.getPath() + "/sibling.dat");
+			sibling.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(sibling);
 
 			LogicalFileDao.deleteSubtreePath(parent.getPath(), parent.getSystem().getId());
 
@@ -861,14 +1024,41 @@ public class LogicalFileDaoIT extends BaseTestCase
 	public void testDeleteSubtreePathDoesDeletesEntireTree()
 	{
 		try {
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(rootParent);
-			LogicalFileDao.save(parentParentParent);
-			LogicalFileDao.save(parentParent);
-			LogicalFileDao.save(parent);
-			LogicalFileDao.save(uncle);
-			LogicalFileDao.save(sibling);
-			LogicalFileDao.save(cousin);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parent);
+
+			LogicalFile parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parent.getPath()));
+			parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParent);
+
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parentParent.getPath()));
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParentParent);
+
+			LogicalFile uncle = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParent.getPath() + "/sibling");
+			uncle.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			uncle.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(uncle);
+
+			LogicalFile cousin = new LogicalFile(SYSTEM_OWNER, system, httpUri, uncle.getPath() + "/cousin.dat");
+			cousin.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(cousin);
+
+			LogicalFile sibling = new LogicalFile(SYSTEM_OWNER, system, httpUri, parent.getPath() + "/sibling.dat");
+			sibling.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(sibling);
 
 			LogicalFileDao.deleteSubtreePath(rootParent.getPath(), rootParent.getSystem().getId());
 
@@ -906,15 +1096,42 @@ public class LogicalFileDaoIT extends BaseTestCase
 	{
 		try
 		{
-			rootParent.setPath("/");
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(rootParent);
-			LogicalFileDao.save(parentParentParent);
-			LogicalFileDao.save(parentParent);
-			LogicalFileDao.save(parent);
-			LogicalFileDao.save(uncle);
-			LogicalFileDao.save(sibling);
-			LogicalFileDao.save(cousin);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parent);
+
+			LogicalFile parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parent.getPath()));
+			parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParent);
+
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parentParent.getPath()));
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParentParent);
+
+			LogicalFile uncle = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParent.getPath() + "/sibling");
+			uncle.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			uncle.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(uncle);
+
+			LogicalFile cousin = new LogicalFile(SYSTEM_OWNER, system, httpUri, uncle.getPath() + "/cousin.dat");
+			cousin.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(cousin);
+
+			LogicalFile sibling = new LogicalFile(SYSTEM_OWNER, system, httpUri, parent.getPath() + "/sibling.dat");
+			sibling.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(sibling);
+
 
 
 			List<LogicalFile> parents = LogicalFileDao.findParents(rootParent.getSystem(), rootParent.getPath());
@@ -930,14 +1147,42 @@ public class LogicalFileDaoIT extends BaseTestCase
 	{
 		try
 		{
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(rootParent);
-			LogicalFileDao.save(parentParentParent);
-			LogicalFileDao.save(parentParent);
-			LogicalFileDao.save(parent);
-			LogicalFileDao.save(uncle);
-			LogicalFileDao.save(sibling);
-			LogicalFileDao.save(cousin);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parent);
+
+			LogicalFile parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parent.getPath()));
+			parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParent);
+
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parentParent.getPath()));
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParentParent);
+
+			LogicalFile uncle = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParent.getPath() + "/sibling");
+			uncle.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			uncle.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(uncle);
+
+			LogicalFile cousin = new LogicalFile(SYSTEM_OWNER, system, httpUri, uncle.getPath() + "/cousin.dat");
+			cousin.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(cousin);
+
+			LogicalFile sibling = new LogicalFile(SYSTEM_OWNER, system, httpUri, parent.getPath() + "/sibling.dat");
+			sibling.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(sibling);
+
 
 			List<LogicalFile> parents = LogicalFileDao.findParents(rootParent.getSystem(), rootParent.getPath());
 
@@ -950,14 +1195,42 @@ public class LogicalFileDaoIT extends BaseTestCase
 	@Test(dependsOnMethods={"testDeleteSubtreePathDoesDeletesEntireTree"})
 	public void testFindParents() {
 		try {
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(rootParent);
-			LogicalFileDao.save(parentParentParent);
-			LogicalFileDao.save(parentParent);
-			LogicalFileDao.save(parent);
-			LogicalFileDao.save(uncle);
-			LogicalFileDao.save(sibling);
-			LogicalFileDao.save(cousin);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parent);
+
+			LogicalFile parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parent.getPath()));
+			parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParent);
+
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parentParent.getPath()));
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParentParent);
+
+			LogicalFile uncle = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParent.getPath() + "/sibling");
+			uncle.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			uncle.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(uncle);
+
+			LogicalFile cousin = new LogicalFile(SYSTEM_OWNER, system, httpUri, uncle.getPath() + "/cousin.dat");
+			cousin.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(cousin);
+
+			LogicalFile sibling = new LogicalFile(SYSTEM_OWNER, system, httpUri, parent.getPath() + "/sibling.dat");
+			sibling.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(sibling);
+
 
 			List<LogicalFile> parents = LogicalFileDao.findParents(file.getSystem(), file.getPath());
 
@@ -984,14 +1257,42 @@ public class LogicalFileDaoIT extends BaseTestCase
 	{
 		try
 		{
+			LogicalFile rootParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, "/");
+			rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 			LogicalFileDao.save(rootParent);
-			LogicalFileDao.save(parentParentParent);
-			LogicalFileDao.save(parentParent);
-			LogicalFileDao.save(parent);
-			LogicalFileDao.save(uncle);
-			LogicalFileDao.save(sibling);
-			LogicalFileDao.save(cousin);
+
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
+
+			LogicalFile parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+			parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parent);
+
+			LogicalFile parentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parent.getPath()));
+			parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParent);
+
+			LogicalFile parentParentParent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parentParent.getPath()));
+			parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
+			parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(parentParentParent);
+
+			LogicalFile uncle = new LogicalFile(SYSTEM_OWNER, system, httpUri, parentParent.getPath() + "/sibling");
+			uncle.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			uncle.setNativeFormat(LogicalFile.DIRECTORY);
+			LogicalFileDao.save(uncle);
+
+			LogicalFile cousin = new LogicalFile(SYSTEM_OWNER, system, httpUri, uncle.getPath() + "/cousin.dat");
+			cousin.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(cousin);
+
+			LogicalFile sibling = new LogicalFile(SYSTEM_OWNER, system, httpUri, parent.getPath() + "/sibling.dat");
+			sibling.setStatus(StagingTaskStatus.STAGING_QUEUED);
+			LogicalFileDao.save(sibling);
+
 
 			List<LogicalFile> parents = LogicalFileDao.findParents(cousin.getSystem(), cousin.getPath());
 
@@ -1015,6 +1316,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	{
 		try
 		{
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			LogicalFileDao.save(file);
 
 			List<LogicalFile> parents = LogicalFileDao.findParents(file.getSystem(), file.getPath());
@@ -1031,6 +1333,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	{
 		try
 		{
+			LogicalFile file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 			List<LogicalFile> parents = LogicalFileDao.findParents(file.getSystem(), file.getPath());
 
 			assertTrue(parents.isEmpty(), "findParents should not return results when there are no no entries");

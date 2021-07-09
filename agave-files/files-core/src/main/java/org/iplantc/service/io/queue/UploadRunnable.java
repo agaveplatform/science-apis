@@ -5,6 +5,7 @@ import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.manager.LogicalFileManager;
+import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
@@ -14,11 +15,15 @@ import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.URLCopy;
+import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.local.Local;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
+import org.quartz.SchedulerException;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
 
 /**
  * Class to encapsulate staging of files directly uploaded to the api to the remote system.

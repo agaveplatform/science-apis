@@ -96,7 +96,7 @@ public class BaseTestCase {
      * Clears all systems and related entity tables from db
      * @throws Exception if something goes wrong
      */
-    protected void clearSystems() throws Exception {
+    protected void clearSystems() {
         Session session = null;
         try {
             HibernateUtil.beginTransaction();
@@ -123,7 +123,7 @@ public class BaseTestCase {
      * Clears all logical files and related entity tables from db
      * @throws Exception if something goes wrong
      */
-	protected void clearLogicalFiles() throws Exception {
+	protected void clearLogicalFiles() {
 		Session session = null;
 		try
 		{
@@ -136,7 +136,6 @@ public class BaseTestCase {
 			session.createQuery("DELETE StagingTask").executeUpdate();
 			session.createQuery("DELETE RemoteFilePermission").executeUpdate();
 			session.createQuery("DELETE TransferTaskPermission").executeUpdate();
-			session.createQuery("DELETE TransferTask").executeUpdate();
 			session.createQuery("DELETE Notification").executeUpdate();
 		}
 		catch (HibernateException ex)

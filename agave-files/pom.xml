@@ -67,10 +67,10 @@
 								<goal>Await</goal>
 							</goals>
 							<configuration>
-								<initialWait>20000</initialWait>
+								<initialWait>5000</initialWait>
 								<skip>${skip.integration.tests}</skip>
 								<poll>
-									<attempts>10</attempts>
+									<attempts>100</attempts>
 									<sleep>5000</sleep>
 								</poll>
 								<tcpConnections>
@@ -87,6 +87,20 @@
 										<port>1257</port>
 									</tcpConnection>
 								</tcpConnections>
+								<httpConnections>
+									<httpConnection>
+										<url>http://httpd:10080/public/</url>
+										<statusCode>200</statusCode>
+									</httpConnection>
+									<httpConnection>
+										<url>http://httpbin:8200/status/200</url>
+										<statusCode>200</statusCode>
+									</httpConnection>
+									<httpConnection>
+										<url>http://transfers:8085/health</url>
+										<statusCode>200</statusCode>
+									</httpConnection>
+								</httpConnections>
 							</configuration>
 						</execution>
 					</executions>

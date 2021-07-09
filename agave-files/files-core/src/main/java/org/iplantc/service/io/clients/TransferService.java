@@ -133,10 +133,15 @@ public class TransferService {
             HttpResponse response = httpClient.execute(post);
 
             try {
+				int responseCode = response.getStatusLine().getStatusCode();
 				log.debug("Response from transfers api: " + response.getStatusLine());
                 HttpEntity entity = response.getEntity();
                 String entityContent = EntityUtils.toString(entity, "UTF-8");
+				if ( responseCode == 201 || responseCode == 200 ) {
                 return new APIResponse(entityContent);
+				} else {
+					throw new TaskException("Failed to perform POST on " + baseUrl + ": " + entityContent);
+				}
             } finally {
                 post.releaseConnection();
             }

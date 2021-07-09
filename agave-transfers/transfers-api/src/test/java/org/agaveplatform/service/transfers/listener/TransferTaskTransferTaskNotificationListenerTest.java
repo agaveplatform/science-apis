@@ -13,6 +13,7 @@ import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.MessageQueueClient;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -35,9 +36,9 @@ import static org.mockito.Mockito.*;
 @DisplayName("Notification listener unit tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({JDBCClient.class})
-//@Disabled
-class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
-    private static final Logger log = LoggerFactory.getLogger(TransferTaskTransferTaskNotificationListenerTest.class);
+@Disabled
+class TransferTaskNotificationListenerTest extends BaseTestCase {
+    private static final Logger log = LoggerFactory.getLogger(TransferTaskNotificationListenerTest.class);
     private static final List<String> NOTIFICATION_EVENTS = List.of(
             TRANSFERTASK_CREATED,
             TRANSFERTASK_UPDATED,

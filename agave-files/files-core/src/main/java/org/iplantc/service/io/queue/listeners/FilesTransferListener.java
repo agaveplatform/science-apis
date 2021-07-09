@@ -9,15 +9,14 @@ import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.messaging.MessageClientFactory;
 import org.iplantc.service.common.messaging.MessageQueueClient;
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.io.dao.LogicalFileDao;
-import org.iplantc.service.io.exceptions.LogicalFileException;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.util.ApiUriUtil;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 
 import java.io.FileNotFoundException;
@@ -115,7 +114,6 @@ public class FilesTransferListener implements Runnable {
     public void run() {
         try {
             while (! isThreadInterrupted()) {
-//                MessageQueueClient messageQueueClient = null;
                 Message msg = null;
                 try {
                     getMessageClient();
@@ -128,8 +126,6 @@ public class FilesTransferListener implements Runnable {
                 }
 
                 try {
-                    // dynamically register all the status listeners we want to take action on
-//                    List<StagingTaskStatus> stagingTaskStatuses = List.of(STAGING_COMPLETED, STAGING_FAILED, STAGING, STAGING_QUEUED);
 
                     msg = getMessageClient().pop(FILES_STAGING_TOPIC, FILES_STAGING_QUEUE);
                     try {
@@ -137,8 +133,6 @@ public class FilesTransferListener implements Runnable {
                         JsonNode jsonBody = objectMapper.readTree(msg.getMessage());
 
                         processTransferNotification(jsonBody);
-
-//                        getMessageClient().delete(FILES_STAGING_TOPIC, FILES_STAGING_QUEUE, msg.getId());
                     }
                     catch (JsonProcessingException e) {
                         String message = String.format("Invalid json found in transfer task message body, %s: %s",
@@ -241,7 +235,7 @@ public class FilesTransferListener implements Runnable {
     protected void updateSourceLogicalFile(String srcUrl, String username, TransferTaskEventType transferTaskEventType, String tenantId) {
         try {
             // Retrieve current logical file
-            LogicalFile sourceLogicalFile = lookupSourceLogicalFileByUrl(srcUrl, tenantId);
+            LogicalFile sourceLogicalFile = lookupLogicalFileByUrl(srcUrl, tenantId);
             // if the logical file exists, this was a transfer from a known agave system via a files-import request.
             // we want to update the source logical file status for backward compatibility.
             if (sourceLogicalFile != null) {
@@ -265,7 +259,10 @@ public class FilesTransferListener implements Runnable {
             // the messages with no trace.
             logger.debug("Failed to process " + transferTaskEventType.getEventName() + " event for source target " +
                     srcUrl + " in tenant " + tenantId + ". This notification will be ignored");
-        } catch (LogicalFileException e){
+//        } catch (LogicalFileException e){
+//            logger.debug("Unable to retrieve logical file for with source target " + srcUrl + " in tenant " +
+//                    tenantId + ". This notification will be ignored");
+        } catch (RemoteCredentialException | FileNotFoundException | RemoteDataException e) {
             logger.debug("Unable to retrieve logical file for with source target " + srcUrl + " in tenant " +
                     tenantId + ". This notification will be ignored");
         }
@@ -342,7 +339,6 @@ public class FilesTransferListener implements Runnable {
      * @see LogicalFileDao#findBySourceUrl(String)
      */
     protected LogicalFile lookupLogicalFileByUrl(String target, String tenantId) throws RemoteDataException, RemoteCredentialException, FileNotFoundException {
-        TenancyHelper.setCurrentTenantId(tenantId);
 
         URI srcURI = URI.create(target);
 
@@ -353,7 +349,11 @@ public class FilesTransferListener implements Runnable {
             return null;
         } else {
             logger.debug("Finding remote system for logical file " + target + "...");
-            RemoteSystem remoteSystem = getSystemById(srcURI.getHost(), tenantId);
+            RemoteSystem remoteSystem = null;
+            if (ApiUriUtil.isInternalURI(srcURI)) {
+                remoteSystem = getSystemById(srcURI.getHost(), tenantId);
+            }
+
             if (remoteSystem == null) {
                 logger.debug("No matching system found for the destination of the transfer task. Skipping logical file update and events.");
                 return null;
@@ -365,35 +365,35 @@ public class FilesTransferListener implements Runnable {
         }
     }
 
-    /**
-     * Mockable helper method to wrap the static call to  {@link LogicalFileDao#findBySourceUrlAndTenant(String, String)}.
-     * @param target a serialized URI representing a file item at the source or dest of a transfer
-     * @param tenantId the id of the tenant for which to lookup the url
-     * @return the logical file for the given url or null if not found
-     * @see LogicalFileDao#findBySourceUrl(String)
-     */
-    protected LogicalFile lookupSourceLogicalFileByUrl(String target, String tenantId) throws LogicalFileException {
-        TenancyHelper.setCurrentTenantId(tenantId);
-
-        URI srcURI = URI.create(target);
-
-        // if the src URI is a local file, then we are handling an event for an internal transfer and do not need
-        // to create a notification as there would be no mechanism for a user to subscribe.
-        if (srcURI.getScheme() == null || srcURI.getScheme().equalsIgnoreCase("file")) {
-            logger.debug("Ignoring internal source file " + target + "...");
-            return null;
-        } else {
-            logger.debug("Finding remote system for source logical file " + target + "...");
-            RemoteSystem remoteSystem = getSystemById(srcURI.getHost(), tenantId);
-            if (remoteSystem == null) {
-                logger.debug("No matching system found for the source of the transfer task. Skipping logical file update and events.");
-                return null;
-            } else {
-                logger.debug("Finding source logical file on system " + remoteSystem.getName() + " with path " + target);
-                return LogicalFileDao.findBySourceUrlAndTenant(target, tenantId);
-            }
-        }
-    }
+//    /**
+//     * Mockable helper method to wrap the static call to  {@link LogicalFileDao#findBySourceUrlAndTenant(String, String)}.
+//     * @param target a serialized URI representing a file item at the source or dest of a transfer
+//     * @param tenantId the id of the tenant for which to lookup the url
+//     * @return the logical file for the given url or null if not found
+//     * @see LogicalFileDao#findBySourceUrl(String)
+//     */
+//    protected LogicalFile lookupSourceLogicalFileByUrl(String target, String tenantId) throws LogicalFileException {
+//
+//       URI srcURI = URI.create(target);
+//
+//        // if the src URI is a local file, then we are handling an event for an internal transfer and do not need
+//        // to create a notification as there would be no mechanism for a user to subscribe.
+//        if (srcURI.getScheme() == null || srcURI.getScheme().equalsIgnoreCase("file")) {
+//            logger.debug("Ignoring internal source file " + target + "...");
+//            return null;
+//        } else if (srcURI.getScheme().equalsIgnoreCase("agave")) {
+//            logger.debug("Finding remote system for source logical file " + target + "...");
+//
+//            RemoteSystem remoteSystem = getSystemById(srcURI.getHost(), tenantId);
+//            if (remoteSystem == null) {
+//                logger.debug("No matching system found for the source of the transfer task. Skipping logical file update and events.");
+//                return null;
+//            } else {
+//                logger.debug("Finding source logical file on system " + remoteSystem.getName() + " with path " + target);
+//                return LogicalFileDao.findBySourceUrlAndTenant(target, tenantId);
+//            }
+//        }
+//    }
 
     /**
      * Updates the logical file status and sends an event of the status change. This is a helper for the call to

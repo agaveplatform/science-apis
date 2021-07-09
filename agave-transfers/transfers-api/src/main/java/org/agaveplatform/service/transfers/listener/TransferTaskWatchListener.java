@@ -13,10 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.MAX_TIME_FOR_HEALTHCHECK;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.MAX_TIME_FOR_HEALTHCHECK_PARENT;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
 
@@ -64,15 +61,15 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 		});
 
 
-		getVertx().setPeriodic(healthParentTimer, resp -> {
-			processParentEvent(batchResp -> {
-				if (batchResp.succeeded()) {
-					log.trace("Periodic transfer task watch starting");
-				} else {
-					log.error("Failed to execute the periodic transfer watch task. {}", batchResp.cause().getMessage(), batchResp.cause());
-				}
-			});
-		});
+//		getVertx().setPeriodic(healthParentTimer, resp -> {
+//			processParentEvent(batchResp -> {
+//				if (batchResp.succeeded()) {
+//					log.trace("Periodic transfer task watch starting");
+//				} else {
+//					log.error("Failed to execute the periodic transfer watch task. {}", batchResp.cause().getMessage(), batchResp.cause());
+//				}
+//			});
+//		});
 
 	}
 

@@ -201,6 +201,20 @@
                             </resources>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>clean-container</id>
+                        <!-- Generic docker build of API -->
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>removeImage</goal>
+                        </goals>
+                        <configuration>
+                            <imageTags>
+                                <tag>${buildNumber}</tag>
+                                <tag>${project.version}</tag>
+                            </imageTags>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 

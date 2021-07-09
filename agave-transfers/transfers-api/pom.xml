@@ -36,6 +36,10 @@
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
             </resource>
+            <resource>
+                <filtering>true</filtering>
+                <directory>src/main/docker</directory>
+            </resource>
         </resources>
         <testResources>
             <testResource>
@@ -202,6 +206,20 @@
                                     </includes>
                                 </resource>
                             </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>clean-container</id>
+                        <!-- Generic docker build of API -->
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>removeImage</goal>
+                        </goals>
+                        <configuration>
+                            <imageTags>
+                                <tag>${buildNumber}</tag>
+                                <tag>${project.version}</tag>
+                            </imageTags>
                         </configuration>
                     </execution>
                 </executions>
@@ -411,6 +429,13 @@
             <artifactId>junit-jupiter-params</artifactId>
             <version>5.6.0</version>
             <scope>test</scope>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/io.cloudevents/cloudevents-parent -->
+        <dependency>
+            <groupId>io.cloudevents</groupId>
+            <artifactId>cloudevents-parent</artifactId>
+            <version>1.1.0</version>
+            <type>pom</type>
         </dependency>
     </dependencies>
 </project>

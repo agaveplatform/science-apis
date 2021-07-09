@@ -437,11 +437,18 @@
                                     <attempts>15</attempts>
                                     <sleep>2000</sleep>
                                 </poll>
-                                <tcpConnections>
-                                    <tcpConnection>
+                                <mysqlConnections>
+                                    <mysqlConnection>
                                         <host>${foundation.db.test.host}</host>
                                         <port>${foundation.db.test.port}</port>
-                                    </tcpConnection>
+                                        <database>${foundation.db.test.database}</database>
+                                        <username>${foundation.db.test.username}</username>
+                                        <password>${foundation.db.test.password}</password>
+                                        <port>${foundation.db.test.port}</port>
+                                        <query>select * from tenants</query>
+                                    </mysqlConnection>
+                                </mysqlConnections>
+                                <tcpConnections>
                                     <tcpConnection>
                                         <host>${foundation.service.meta.db.host}</host>
                                         <port>${foundation.service.meta.db.port}</port>
@@ -691,6 +698,18 @@
                     </plugin>
                 </plugins>
             </reporting>
+        </profile>
+        <profile>
+            <!-- *********************************************************************
+                **	turns off tests and build of docker containers                      **
+                ***********************************************************************-->
+            <id>docker-build</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <skip.docker.build>false</skip.docker.build>
+            </properties>
         </profile>
         <profile>
             <id>agave</id>

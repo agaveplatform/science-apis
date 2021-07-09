@@ -1,0 +1,455 @@
+swagger: '2.0'
+info:
+  title: Agave Internal Transfers API
+  description: This is the definition of the internal transfer task api
+  version: 0.1.0
+host: transfers
+schemes:
+  - http
+basePath: /
+produces:
+  - application/json
+paths:
+  /api/transfers:
+    get:
+      operationId: listTransferTaskss
+      summary: Available transfer tasks
+      description: The Transfers endpoint returns summary information about the available list of transfer tasks.
+      tags:
+        - TransferTask
+      parameters:
+        - name: naked
+          in: query
+          description: If true return only the payload, not the standard response wrapper
+          required: false
+          type: boolean
+          default: true
+        - name: limit
+          in: query
+          description: Maximum number of responses. Default 100
+          required: false
+          type: integer
+          default: 100
+        - name: offset
+          in: query
+          description: Number of results to skip by default
+          required: false
+          type: integer
+          default: 0
+      responses:
+        '200':
+          description: An array of transfer tasks
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TransferTask'
+        '400':
+          description: 'Bad request, usually due to invalid resource type in the response query.'
+          schema:
+            $ref: '#/definitions/Error'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+      security:
+        - jwt:
+            - PRODUCTION
+    post:
+      operationId: addTransferTask
+      summary: Creat a new transfer task
+      description: Creates a new transfer task
+      tags:
+        - Tag
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: JSON Tag object
+          required: true
+          schema:
+            $ref: '#/definitions/TransferRequest'
+        - name: naked
+          in: query
+          description: If true return only the payload, not the standard response wrapper
+          required: false
+          type: boolean
+          default: true
+      responses:
+        '201':
+          description: An array of tags
+          schema:
+            $ref: '#/definitions/TransferTask'
+        '400':
+          description: 'Bad request, usually due to invalid resource type in the response query.'
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: You do not have sufficient permissions to the tagged resources to apply the tag.
+          schema:
+            $ref: '#/definitions/Error'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+      security:
+        - jwt:
+            - PRODUCTION
+    delete:
+      operationId: deleteAllTransferTask
+      summary: Delete all TransferTasks
+      description: Deletes all TransferTasks
+      tags:
+        - TransferTask
+      parameters:
+        - name: naked
+          in: query
+          description: If true return only the payload, not the standard response wrapper
+          required: false
+          type: boolean
+          default: true
+      responses:
+        '204':
+          description: "No Content"
+        '403':
+          description: You do not have sufficient permissions to view this TransferTask.
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+      security:
+        - jwt:
+            - PRODUCTION
+  '/tags/v2/{id}':
+    get:
+      operationId: getTransferTaskDetails
+      summary: TransferTask Details
+      description: Returns detailed information about the named transfer task
+      tags:
+        - TransferTask
+      parameters:
+        - name: id
+          in: path
+          description: Unique id of the transfer task
+          required: true
+          type: string
+        - name: naked
+          in: query
+          description: If true return only the payload, not the standard response wrapper
+          required: false
+          type: boolean
+          default: true
+      responses:
+        '200':
+          description: TransferTask details
+          schema:
+            "$ref": "#/definitions/TransferTask"
+        '403':
+          description: You do not have sufficient permissions to view this tag.
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+      security:
+        - jwt:
+            - PRODUCTION
+    put:
+      operationId: updateTransferTask
+      summary: Update TransferTask
+      description: Updates the given transfer task with the updated information
+      tags:
+        - TransferTask
+      consumes:
+        - application/json
+      parameters:
+        - name: id
+          in: path
+          description: Unique id of the transfer task
+          required: true
+          type: string
+        - name: body
+          in: body
+          description: JSON TransferTask object
+          required: true
+          schema:
+            $ref: '#/definitions/TransferTask'
+        - name: naked
+          in: query
+          description: If true return only the payload, not the standard response wrapper
+          required: false
+          type: boolean
+          default: true
+      responses:
+        '200':
+          description: TransferTask details
+          schema:
+            "$ref": "#/definitions/TransferTask"
+        '403':
+          description: You do not have sufficient permissions to view this tag.
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+      security:
+        - jwt:
+            - PRODUCTION
+    delete:
+      operationId: deleteTransferTask
+      summary: Delete TransferTask
+      description: Deletes the TransferTask and all permissions
+      tags:
+        - TransferTask
+      parameters:
+        - name: id
+          in: path
+          description: Unique id of the TransferTask
+          required: true
+          type: string
+        - name: naked
+          in: query
+          description: If true return only the payload, not the standard response wrapper
+          required: false
+          type: boolean
+          default: true
+      responses:
+        '204':
+          description: "No Content"
+        '403':
+          description: You do not have sufficient permissions to view this TransferTask.
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+      security:
+        - jwt:
+            - PRODUCTION
+  '/tags/v2/{id}/cancel':
+    post:
+      operationId: cancelTransferTask
+      summary: Cancel active transfer task
+      description: Cancels the active transfer task
+      tags:
+        - TransferTask
+      consumes:
+        - application/json
+        - multipart/form-data
+        - text/any
+      parameters:
+        - in: path
+          name: id
+          description: Unique id of the transfer task
+          required: true
+          type: string
+        - in: body
+          name: body
+          description: List of resource uuid to cancel
+          required: true
+          type: string
+        - name: naked
+          in: query
+          description: If true return only the payload, not the standard response wrapper
+          required: false
+          type: boolean
+          default: true
+      responses:
+        '200':
+          description: Tag resources
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TransferTask'
+        '403':
+          description: You do not have sufficient permissions to either the tag or resource.
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+      security:
+        - jwt:
+            - PRODUCTION
+    delete:
+      operationId: clearTransferTasks
+      summary: Clear all tagged resources
+      description: Removes all resources from the given tag
+      tags:
+        - Tag
+      parameters:
+        - in: path
+          name: id
+          description: id of the tag
+          required: true
+          type: string
+        - name: naked
+          in: query
+          description: If true return only the payload, not the standard response wrapper
+          required: false
+          type: boolean
+          default: true
+      responses:
+        '204':
+          description: No content
+        '403':
+          description: You do not have sufficient permissions to either the tag or resource.
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+      security:
+        - jwt:
+            - PRODUCTION
+securityDefinitions:
+  jwt:
+    type: oauth2
+    authorizationUrl: 'https://sandbox.agaveplatform.org/authorization'
+    flow: jwt
+    scopes:
+      PRODUCTION: catchall scope for all core apis
+definitions:
+  TransferRequest:
+    description: Requst to create a new transfer task
+    type: object
+    properties:
+      source:
+        description: source url from which to copy the data
+        type: string
+      dest:
+        description: destination url to which to copy the data
+        type: string
+  TransferTask:
+    description: Base transfer task object
+    type: object
+    properties:
+      id:
+        description: The id of this transfer task
+        type: string
+      source:
+        description: The source url from which to copy the data
+        type: string
+      dest:
+        description: The destination url to which to copy the data
+        type: string
+      endTime:
+        description: The time at which the transfer ended
+        type: string
+      lastAttempt:
+        description: The start time of the last attempt
+        type: string
+        format: date-time
+      nextAttempt:
+        description: The time after which the transfer will be reattempted
+        type: string
+        format: date-time
+      owner:
+        description: The username that requested the transfer
+        type: string
+      parentTask:
+        description: The transfer task that spawned this transfer task. Null when this is the original task
+        type: string
+      rootTask:
+        description: The transfer task from which this transfer task and all parents were spawned. Null when this is the original task
+        type: string
+      status:
+        description: The current status of the TransferTask
+        type: string
+        enum:
+          - CREATED
+          - CANCELLED
+          - CANCELING_WAITING
+          - CANCELED_ERROR
+          - DELETED
+          - DELETED_WAITING
+          - DELETED_ERROR
+          - PROCESSING_DIRECTORY
+          - ASSIGNED
+          - TRANSFERRING
+          - READ_STARTED
+          - READ_IN_PROGRESS
+          - READ_COMPLETED
+          - WRITE_STARTED
+          - WRITE_IN_PROGRESS
+          - WRITE_COMPLETED
+          - STREAM_COPY_STARTED
+          - STREAM_COPY_IN_PROGRESS
+          - STREAM_COPY_COMPLETED
+          - RETRYING
+          - FAILED
+          - COMPLETED
+          - COMPLETED_WITH_ERRORS
+          - PAUSED
+          - PAUSE_WAITING
+          - QUEUED
+          - ERROR
+      bytesTransferred:
+        description: Number of bytes transferred to date by this transfer task
+        type: integer
+      startTime:
+        description: The time at which the transfer was first attempted
+        type: string
+        format: date-time
+      totalFiles:
+        description: The number of files transferred by this transfer task
+        type: integer
+      transferRate:
+        description: The average transfer rate in bytes per second
+        type: number
+      totalSize:
+        description: The total size of date to be trasferred in bytes
+        type: integer
+      totalSkippedFiles:
+        description: The number of files skipped during the transfer
+        type: integer
+      created:
+        description: The time the transfer task was created
+        type: string
+        format: date-time
+      lastUpdated:
+        description: The time the transfer task was last updated
+        type: string
+        format: date-time
+  Error:
+    description: Generic error response
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      fields:
+        type: string

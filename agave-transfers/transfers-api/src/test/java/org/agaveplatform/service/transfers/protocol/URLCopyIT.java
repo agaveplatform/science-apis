@@ -668,5 +668,71 @@ public class URLCopyIT extends BaseTestCase {
         }
     }
 
+    @Test
+    @DisplayName("Test URLCopy cancel streamingTransfer")
+    public void testCancelStreamingCopy (Vertx vertx, VertxTestContext ctx) {
+        try {
+            allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
+            Settings.ALLOW_RELAY_TRANSFERS = false;
+
+            RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
+
+            RemoteDataClient mockSrcRemoteDataClient = getMockRemoteDataClientInstance(TRANSFER_SRC);
+            RemoteDataClient mockDestRemoteDataClient = getMockRemoteDataClientInstance(TRANSFER_DEST);
+
+            RemoteInputStream mockRemoteInputStream = mock(RemoteInputStream.class);
+            when(mockRemoteInputStream.isBuffered()).thenReturn(true);
+            when(mockRemoteInputStream.read(any(), eq(0), anyInt())).thenReturn(FILE_SIZE.intValue(), -1);
+
+            when(mockSrcRemoteDataClient.getInputStream(anyString(), eq(true))).thenReturn(mockRemoteInputStream);
+            URI path = new URI(TRANSFER_SRC);
+            doReturn(FILE_SIZE).when(mockSrcRemoteDataClient).length(path.getPath());
+            RemoteOutputStream mockRemoteOutputStream = mock(RemoteOutputStream.class);
+            when(mockRemoteOutputStream.isBuffered()).thenReturn(true);
+            doCallRealMethod().when(mockRemoteOutputStream).write(any(), eq(0), anyInt());
+            doNothing().when(mockRemoteOutputStream).write(any(), eq(0), anyInt());
+            when(mockDestRemoteDataClient.getOutputStream(anyString(), eq(true), eq(false))).thenReturn(mockRemoteOutputStream);
+
+            TransferTask tt = _createTestTransferTask();
+            tt.setId(1L);
+            tt.setSource(TRANSFER_SRC);
+            tt.setDest(TRANSFER_DEST);
+            JsonObject rootJson = tt.toJson();
+
+            RemoteStreamingTransferListenerImpl mockRemoteStreamingTransferListenerImpl = getMockRemoteStreamingTransferListener(tt, mockRetryRequestManager);
+            when(mockRemoteStreamingTransferListenerImpl.isCancelled()).thenReturn(true, false);
+            doCallRealMethod().when(mockRemoteStreamingTransferListenerImpl).cancel();
+
+            //Injecting the mocked arguments to the mocked URLCopy
+            //Using InjectMocks annotation will not create a mock of URLCopy, which we need to pass in the mocked RemoteTransferListenerImpl
+            URLCopy mockCopy = getMockURLCopyInstance(vertx, tt);
+            when(mockCopy.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
+            when(mockCopy.getRemoteStreamingTransferListenerForTransferTask(any(TransferTask.class))).thenReturn(mockRemoteStreamingTransferListenerImpl);
+            when(mockCopy.getSourceClient()).thenReturn(mockSrcRemoteDataClient);
+            when(mockCopy.getDestClient()).thenReturn(mockDestRemoteDataClient);
+
+            try {
+                doCallRealMethod().when(mockCopy).checkCancelled(any(RemoteUnaryTransferListenerImpl.class));
+                mockCopy.copy(tt);
+
+            } catch (ClosedByInterruptException e) {
+                JsonObject writeCancelledJson = rootJson;
+                writeCancelledJson.put("status", TransferStatusType.CANCELLED);
+                Thread.sleep(3);
+
+                ctx.verify(() -> {
+                    assertEquals(TransferStatusType.CANCELLED, tt.getStatus(), "Expected transfer task status to be CANCELLED when copy is cancelled or killed.");
+                    verify(mockRemoteStreamingTransferListenerImpl, times(1)).cancel();
+                    ctx.completeNow();
+                });
+            }
+
+        } catch (Exception e) {
+            Assertions.fail("Expected cancel copy to throw ClosedByInterruptException but threw " + e);
+        } finally {
+            Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
+        }
+    }
+
 
 }

@@ -19,7 +19,6 @@ import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
@@ -73,7 +72,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
     }
 
     NatsJetstreamMessageClient getMockNats() throws Exception {
-        NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+        NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
         doNothing().when(natsClient).push(any(), any(), any());
         return getMockNats();
     }

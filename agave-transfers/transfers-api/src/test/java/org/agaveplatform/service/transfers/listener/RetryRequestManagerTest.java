@@ -14,7 +14,6 @@ import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
@@ -65,7 +64,7 @@ public class RetryRequestManagerTest extends BaseTestCase {
         return listener;
     }
     NatsJetstreamMessageClient getMockNats() throws Exception {
-        NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+        NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
         doNothing().when(natsClient).push(any(), any(), any());
         return getMockNats();
     }

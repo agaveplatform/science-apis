@@ -7,7 +7,6 @@ import org.agaveplatform.service.transfers.exception.DuplicateMessageException;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.util.Slug;
-import org.iplantc.service.common.uuid.UUIDType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,16 +85,19 @@ public class NatsJetstreamMessageClient {
         connect(connectionUri);
         setConsumerName(consumerName);
         setStreamName(streamName);
-
-        getOrCreateStream(streamName);
     }
 
-    private void getOrCreateStream(String streamName) throws IOException {
+    /**
+     * Ensures the stream defined for this client is present in Nats Jetstream with the subjects provided
+     * @param subjects one or more subject prefixes to register with the stream
+     * @throws IOException if a networking issue occurs, or unable to interact with nats
+     */
+    public void getOrCreateStream(String... subjects) throws IOException {
         try {
             if (! getJetStreamManagement().getStreamNames().contains(streamName)) {
                 StreamConfiguration streamConfig = StreamConfiguration.builder()
                         .name(streamName)
-                        .subjects(UUIDType.TRANSFER.name().toLowerCase() + ".>" )
+                        .subjects(subjects)
                         .retentionPolicy(RetentionPolicy.WorkQueue)
                         .maxConsumers(-1)
                         .maxBytes(-1)

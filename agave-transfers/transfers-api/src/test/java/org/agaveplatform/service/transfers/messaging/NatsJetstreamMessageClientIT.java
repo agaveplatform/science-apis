@@ -122,17 +122,18 @@ public class NatsJetstreamMessageClientIT {
     @Test
     @DisplayName("Push message onto queue...")
     public void push() {
-        NatsJetstreamMessageClient messageClient;
+        NatsJetstreamMessageClient agaveMessageClient = null;
         String testBody = UUID.randomUUID().toString();
         io.nats.client.Message msg = null;
 
         try {
-            messageClient = new NatsJetstreamMessageClient(NATS_URL,TEST_STREAM, "push-test-consumer");
+            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "push-test-consumer");
+            agaveMessageClient.getOrCreateStream(TEST_STREAM_SUBJECT);
 
             // test pushing of message for each message type
 //            for (String messageType : MessageType.values()) {
             String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFER_COMPLETED;
-            messageClient.push(subject, testBody);
+            agaveMessageClient.push(subject, testBody);
 
             nc.flush(Duration.ofSeconds(1));
             msg = getSingleNatsMessage();
@@ -155,15 +156,19 @@ public class NatsJetstreamMessageClientIT {
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
         }
+        finally {
+            if (agaveMessageClient != null) agaveMessageClient.stop();
+        }
     }
 
     @Test
     @DisplayName("Fetch message from queue...")
     public void fetch() {
-        NatsJetstreamMessageClient agaveMessageClient;
+        NatsJetstreamMessageClient agaveMessageClient = null;
 
         try {
             agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
+            agaveMessageClient.getOrCreateStream(TEST_STREAM_SUBJECT);
 
             // test pushing of message for each message type
 //            for (String messageType : MessageType.values()) {
@@ -194,16 +199,20 @@ public class NatsJetstreamMessageClientIT {
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
         }
+        finally {
+            if (agaveMessageClient != null) agaveMessageClient.stop();
+        }
     }
 
     @Test
     @DisplayName("Fetch multiple messages from queue...")
     public void fetchMany() {
-        NatsJetstreamMessageClient agaveMessageClient;
+        NatsJetstreamMessageClient agaveMessageClient = null;
         int testMessageCount = 5;
 
         try {
             agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
+            agaveMessageClient.getOrCreateStream(TEST_STREAM_SUBJECT);
 
             // test pushing of message for each message type
             String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_CREATED;
@@ -233,15 +242,19 @@ public class NatsJetstreamMessageClientIT {
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
         }
+        finally {
+            if (agaveMessageClient != null) agaveMessageClient.stop();
+        }
     }
 
     @Test
     @DisplayName("Pop single message from queue...")
     public void pop() {
-        NatsJetstreamMessageClient agaveMessageClient;
+        NatsJetstreamMessageClient agaveMessageClient = null;
 
         try {
             agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
+            agaveMessageClient.getOrCreateStream(TEST_STREAM_SUBJECT);
 
             // test pushing of message for each message type
 //            for (String messageType : MessageType.values()) {
@@ -268,16 +281,20 @@ public class NatsJetstreamMessageClientIT {
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
         }
+        finally {
+            if (agaveMessageClient != null) agaveMessageClient.stop();
+        }
     }
 
     @Test
     @DisplayName("Listen for messages pushed from a stream...")
     public void listen() {
-        NatsJetstreamMessageClient agaveMessageClient;
+        NatsJetstreamMessageClient agaveMessageClient = null;
         int testMessageCount = 5;
 
         try {
             agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
+            agaveMessageClient.getOrCreateStream(TEST_STREAM_SUBJECT);
 
             CountDownLatch msgLatch = new CountDownLatch(testMessageCount);
             AtomicInteger received = new AtomicInteger();
@@ -330,6 +347,9 @@ public class NatsJetstreamMessageClientIT {
 
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
+        }
+        finally {
+            if (agaveMessageClient != null) agaveMessageClient.stop();
         }
     }
 

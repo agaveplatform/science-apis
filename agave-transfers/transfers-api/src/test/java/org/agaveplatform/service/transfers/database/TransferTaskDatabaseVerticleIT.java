@@ -363,47 +363,6 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
     }
 
     @Test
-    @DisplayName("TransferTaskDatabaseVerticle - getTransferTaskTree should return tree of parent and children tasks")
-//    @Disabled
-    public void getTransferTaskTreeTest(Vertx vertx, VertxTestContext context) {
-        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
-            initTestTransferTaskTree(testTreeReply -> {
-                if (testTreeReply.succeeded()) {
-                    TransferTask parentTask = testTreeReply.result().get(1);
-
-                    service.getTransferTaskTree(parentTask.getTenantId(), parentTask.getUuid(), reply -> {
-                        context.verify(() -> {
-                            assertTrue(reply.succeeded(), "getTransferTaskTree should have succeeded for valid file");
-                            assertNotNull(reply.result(), "getTransferTaskTree should return Array JsonObject " +
-                                    "representing transfer task tree record.");
-                            assertEquals(reply.result().size(), 2, "Only the first level children of the " +
-                                    "test parent task should equal the transfer tasks added");
-
-                            reply.result().forEach(queryResponse -> {
-                                TransferTask queryResponseTask = new TransferTask((JsonObject) queryResponse);
-                                AtomicBoolean match = new AtomicBoolean(false);
-                                testTreeReply.result().forEach(testTask -> {
-                                    if (!match.get()) {
-                                        if (queryResponseTask.getUuid().equals(testTask.getUuid())) {
-                                            match.set(true);
-                                        }
-                                    }
-                                });
-                                if (!match.get()) {
-                                    fail("All added test transfer tasks should be returned by getTransferTaskTree");
-                                }
-                            });
-                            context.completeNow();
-                        });
-                    });
-                } else {
-                    context.failNow(testTreeReply.cause());
-                }
-            });
-        }));
-    }
-
-    @Test
     @DisplayName("TransferTaskDatabaseVerticle - setTransferTaskCanceledWhereNotCompleted - transfers not completed," +
             "cancelled, or failed should be set to cancelled.")
     public void setTransferTaskWhereNotCompletedTest(Vertx vertx, VertxTestContext context) {

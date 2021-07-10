@@ -22,7 +22,6 @@ import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +50,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskPausedListenerTest.class);
 
 	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) throws Exception {
-		TransferTaskPausedListener listener = Mockito.mock(TransferTaskPausedListener.class);
+		TransferTaskPausedListener listener = mock(TransferTaskPausedListener.class);
 		when(listener.getEventChannel()).thenReturn(MessageType.TRANSFERTASK_PAUSED);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
@@ -64,7 +63,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
 		doCallRealMethod().when(listener).doHandleFailure(any(), any(), any());
 
-		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+		NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
 		doNothing().when(natsClient).push(any(), any(), anyInt());
 		when(listener.getMessageClient()).thenReturn(natsClient);
 		return listener;
@@ -82,7 +81,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).processPauseRequest(any(JsonObject.class), any());
 		doCallRealMethod().when(listener).start();
-		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+		NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
 		doNothing().when(natsClient).push(any(), any(), anyInt());
 		when(listener.getMessageClient()).thenReturn(natsClient);
 		doCallRealMethod().when(listener).start();

@@ -23,7 +23,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 
@@ -60,7 +59,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 		return listener;
 	}
 	NatsJetstreamMessageClient getMockNats() throws Exception {
-		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+		NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
 		doNothing().when(natsClient).push(any(), any(), any());
 		return getMockNats();
 	}

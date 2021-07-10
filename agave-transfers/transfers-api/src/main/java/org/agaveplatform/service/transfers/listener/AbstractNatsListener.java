@@ -97,6 +97,8 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
                     config().getString(TransferTaskConfigProperties.NATS_URL, CONNECTION),
                     getStreamName(),
                     this.getClass().getSimpleName());
+            
+            this.messageClient.getOrCreateStream(UUIDType.TRANSFER.name().toLowerCase() + ".>" );
         }
         return this.messageClient;
     }

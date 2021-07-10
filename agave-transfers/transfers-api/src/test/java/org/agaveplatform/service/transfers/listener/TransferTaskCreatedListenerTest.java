@@ -20,17 +20,16 @@ import org.iplantc.service.systems.exceptions.SystemRoleException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.enumerations.RoleType;
-import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CREATED;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -41,7 +40,7 @@ import static org.mockito.Mockito.*;
 class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException, MessagingException {
-		TransferTaskCreatedListener listener = Mockito.mock(TransferTaskCreatedListener.class);
+		TransferTaskCreatedListener listener = mock(TransferTaskCreatedListener.class);
 		try {
 			when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
 			when(listener.getVertx()).thenReturn(vertx);
@@ -68,7 +67,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 	}
 
 	NatsJetstreamMessageClient getMockNats() throws Exception {
-		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+		NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
 		//doNothing().when(natsClient).push(any(), any(), any());
 		doNothing().when(natsClient).push(any(),any());
 		return natsClient;

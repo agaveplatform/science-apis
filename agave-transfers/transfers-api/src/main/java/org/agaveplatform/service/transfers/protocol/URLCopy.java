@@ -47,8 +47,8 @@ import static org.agaveplatform.service.transfers.enumerations.TransferTaskEvent
 public class URLCopy{
     private static final Logger log = LoggerFactory.getLogger(URLCopy.class);
     private final RetryRequestManager retryRequestManager;
-    private RemoteDataClient sourceClient;
-    private RemoteDataClient destClient;
+    private final RemoteDataClient sourceClient;
+    private final RemoteDataClient destClient;
 
     private final Vertx vertx;
     private final AtomicBoolean killed = new AtomicBoolean(false);
@@ -105,15 +105,13 @@ public class URLCopy{
         if ((getSourceClient() instanceof GridFTP) && (getDestClient() instanceof GridFTP) && !shouldBeKilled) {
             try {
                 ((GridFTP) getSourceClient()).abort();
-            } catch (Exception ignored) {
-                log.error(ignored.getMessage());
-            }
+            } catch (Exception ignored) {}
 
             try {
                 ((GridFTP) getDestClient()).abort();
-            } catch (Exception ignored) {
-                log.error(ignored.getMessage());
-            }
+            } catch (Exception ignored) {}
+
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -123,9 +121,9 @@ public class URLCopy{
      * @param listener the {@link RemoteTransferListener} observing the transfer
      * @throws ClosedByInterruptException if the transfer has been transferred
      */
-    protected void checkCancelled(RemoteTransferListener listener) throws InterruptedException {
+    protected void checkCancelled(RemoteTransferListener listener) throws ClosedByInterruptException {
         if (isKilled() || listener.isCancelled()) {
-            throw new InterruptedException();
+            throw new ClosedByInterruptException();
         }
     }
 
@@ -179,9 +177,6 @@ public class URLCopy{
         String srcPath = URI.create(transferTask.getSource()).getPath();
         String destPath = URI.create(transferTask.getDest()).getPath();
 
-        sourceClient = getSourceClient();
-        destClient = getDestClient();
-
         try {
             RemoteTransferListenerImpl listener = null;
 
@@ -192,16 +187,22 @@ public class URLCopy{
             }
 
             // source and dest are the same host, so do a server-side copy
-            if (sourceClient.equals(destClient)) {
+            if (getSourceClient().equals(getDestClient())) {
                 listener = getRemoteUnaryTransferListenerForTransferTask(transferTask);
                 // should be able to do a relay transfer here just as easily
-                sourceClient.copy(srcPath, destPath, listener);
+                File destFile = new File(destPath);
+                File parentPath = destFile.getParentFile();
+                if (!parentPath.exists()){
+                    parentPath.mkdirs();
+                }
+
+                getSourceClient().copy(srcPath, destPath, listener);
                 transferTask = (TransferTask)listener.getTransferTask();
             }
             // delegate to third-party transfer if supported
-            else if (sourceClient.isThirdPartyTransferSupported() &&
-                    destClient.isThirdPartyTransferSupported() &&
-                    sourceClient.getClass().equals(destClient.getClass())) {
+            else if (getSourceClient().isThirdPartyTransferSupported() &&
+                    getDestClient().isThirdPartyTransferSupported() &&
+                    getSourceClient().getClass().equals(getDestClient().getClass())) {
 
                 listener = getRemoteTransferListenerForTransferTask(transferTask);
                 transferTask = dothirdPartyTransfer(srcPath, destPath, listener);
@@ -210,7 +211,7 @@ public class URLCopy{
             else {
 
                 try {
-                    double srcFileLength = sourceClient.length(srcPath);
+                    double srcFileLength = getSourceClient().length(srcPath);
                     long availableBytes = new File("/").getUsableSpace();
 
                     // we have a choice of using a relay or streaming transfer. For relay transfers,
@@ -245,12 +246,12 @@ public class URLCopy{
             return transferTask;
         } finally {
             try {
-                if (destClient.isPermissionMirroringRequired()) {
-                    destClient.setOwnerPermission(destClient.getUsername(), destPath, true);
-                    destClient.setOwnerPermission(transferTask.getOwner(), destPath, true);
+                if (getDestClient().isPermissionMirroringRequired()) {
+                    getDestClient().setOwnerPermission(getDestClient().getUsername(), destPath, true);
+                    getDestClient().setOwnerPermission(transferTask.getOwner(), destPath, true);
                 }
             } catch (Exception e) {
-                log.error("Failed to set permissions on " + destClient.getHost() + " for user " + transferTask.getOwner(), e);
+                log.error("Failed to set permissions on " + getDestClient().getHost() + " for user " + transferTask.getOwner(), e);
             }
         }
     }
@@ -302,7 +303,7 @@ public class URLCopy{
      * @throws InterruptedException if the transfer was interrupted
      */
     protected TransferTask relayTransfer(String srcPath, String destPath, TransferTask aggregateTransferTask)
-            throws RemoteDataException, InterruptedException {
+            throws RemoteDataException, ClosedByInterruptException {
         File tmpFile = null;
         File tempDir = null;
         TransferTask srcChildTransferTask = null;
@@ -391,7 +392,7 @@ public class URLCopy{
                             getProtocolForClass(getSourceClient().getClass()),
                             "local"), e);
                     throw e;
-                } catch (InterruptedException e){
+                } catch (ClosedByInterruptException e){
                     log.debug(String.format(
                             "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
                             aggregateTransferTask.getUuid(),
@@ -474,7 +475,7 @@ public class URLCopy{
                             "local",
                             getProtocolForClass(getDestClient().getClass())), e);
                     throw e;
-                } catch (InterruptedException e){
+                } catch (ClosedByInterruptException e){
                     log.debug(String.format(
                             "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
                             aggregateTransferTask.getUuid(),
@@ -544,7 +545,7 @@ public class URLCopy{
                 //transfer updates are handled through the listener
             }
         }
-        catch (InterruptedException e) {
+        catch (ClosedByInterruptException e) {
             log.debug(String.format(
                     "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
                     aggregateTransferTask.getUuid(),
@@ -565,13 +566,13 @@ public class URLCopy{
 //            }
 
 //			checkCancelled(remoteTransferListener);
-            log.error("RemoteDateException was thrown");
+
             throw e;
         }
         catch (Exception e) {
             aggregateTransferTask.setEndTime(Instant.now());
             aggregateTransferTask.setStatus(TransferStatusType.FAILED);
-            log.error("Exception was thrown");
+
             throw new RemoteDataException(
                     getDefaultErrorMessage(
                             srcPath,
@@ -624,7 +625,6 @@ public class URLCopy{
             uri = URI.create(serializedUri);
             return uri.getHost();
         } catch (Exception e) {
-            log.error("Exception was thrown {}", e.getMessage());
             return null;
         }
     }
@@ -706,7 +706,7 @@ public class URLCopy{
                 bos.write(b, 0, length);
 
 
-                // update the progress every 15 seconds buffer cycle. This reduced the impact
+                // update the progress every 10 seconds buffer cycle. This reduced the impact
                 // from the observing process while keeping the update interval at a
                 // rate the user can somewhat trust
                 if (System.currentTimeMillis() > (callbackTime + 10000)) {
@@ -738,7 +738,7 @@ public class URLCopy{
             return (TransferTask)listener.getTransferTask();
 
         }
-        catch (InterruptedException e) {
+        catch (ClosedByInterruptException e) {
             log.debug(String.format(
                     "Aborted streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -849,7 +849,6 @@ public class URLCopy{
 
                         transferTask = proxyRangeTransfer(srcPath, absoluteSourceIndex, srcRangeSize, destPath, absoluteDestIndex, listener);
                     } catch (RangeValidationException e) {
-                        log.error("RangeValidationException was caught {}", e.getMessage());
                         throw new RemoteDataException(e.getMessage(), e);
                     }
                 }
@@ -1080,7 +1079,7 @@ public class URLCopy{
             listener.progressed(bytesSoFar);
 
             // now replace the original with the patched temp file
-            destClient.doRename(tmpFilename, destPath);
+            getDestClient().doRename(tmpFilename, destPath);
 
             listener.completed();
 
@@ -1206,7 +1205,6 @@ public class URLCopy{
         try {
             return client.getOutputStream(destPath, true, false);
         } catch (Exception e) {
-            log.error("Caught general Exception {}", e.getMessage());
             // reauthenticate and retry in case of something weird
             client.disconnect();
 
@@ -1214,7 +1212,6 @@ public class URLCopy{
                 client.authenticate();
                 return client.getOutputStream(destPath, true, true);
             } catch (RemoteDataException e1) {
-                log.error("Caught RemoteDataExcpetion e1 {}", e1.getMessage());
                 throw new RemoteDataException("Failed to open an output stream to " + destPath, e1);
             }
         }
@@ -1232,10 +1229,8 @@ public class URLCopy{
         try {
             return client.getInputStream(srcPath, true);
         } catch (RemoteDataException e) {
-            log.error("Caught RemoteDataExcpetion in getInputStream e {}", e.getMessage());
             throw e;
         } catch (Exception e) {
-            log.error("Caught general Excpetion in getInputStream e {}", e.getMessage());
             // reauthenticate and retry in case of something weird
             client.disconnect();
             client.authenticate();

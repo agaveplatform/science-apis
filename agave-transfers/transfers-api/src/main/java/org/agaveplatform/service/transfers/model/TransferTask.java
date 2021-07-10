@@ -177,6 +177,7 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	}
 
 	public TransferTask(String source, String dest){
+		this();
 		this.source = source;
 		this.dest = dest;
 	}

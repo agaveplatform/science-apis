@@ -468,7 +468,7 @@ public class URLCopyIT extends BaseTestCase {
             doNothing().when(mockCopy).killCopyTask();
 
             try {
-                doCallRealMethod().when(mockCopy).checkCancelled(any(RemoteUnaryTransferListenerImpl.class));
+                doCallRealMethod().when(mockCopy).checkCancelled(any(RemoteTransferListener.class));
                 TransferTask copiedTransfer = mockCopy.copy(tt);
             } catch (ClosedByInterruptException e) {
                 JsonObject readCancelledJson = srcChildTransferTask.toJson();
@@ -484,7 +484,7 @@ public class URLCopyIT extends BaseTestCase {
                 });
             }
         } catch (Exception e) {
-            Assertions.fail("Expected cancel copy to throw ClosedByInterruptionException but threw " + e.getMessage());
+            Assertions.fail("Expected cancel copy to throw ClosedByInterruptException but threw " + e);
         } finally {
             Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
         }
@@ -567,7 +567,7 @@ public class URLCopyIT extends BaseTestCase {
                 });
             }
         } catch (Exception e) {
-            Assertions.fail("Expected cancel copy to throw ClosedByInterruptionException but threw " + e.getMessage());
+            Assertions.fail("Expected cancel copy to throw ClosedByInterruptionException but threw " + e);
         } finally {
             Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
         }

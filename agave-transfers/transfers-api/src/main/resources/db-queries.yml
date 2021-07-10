@@ -132,7 +132,7 @@ set-transfertask-cancelled-where-not-completed: |
   UPDATE TransferApiTasks
   SET status = 'CANCELLED', last_updated = NOW()
   WHERE `tenant_id` = ? AND `uuid` = ? AND status not in ('COMPLETED', 'CANCELLED','CANCELED_ERROR','FAILED')
-get_transfertask_tree: |
+get-transfertask-tree: |
   SELECT *
   FROM TransferApiTasks
   WHERE parent_task = (SELECT parent_task from TransferApiTasks where `uuid` = ? )

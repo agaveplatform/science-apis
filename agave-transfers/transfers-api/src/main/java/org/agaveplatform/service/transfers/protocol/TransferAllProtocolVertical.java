@@ -344,7 +344,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 	 * @param srcClient the remote data client to the source of the transfer task
 	 * @param destClient the remote data client to the destination of the transfer task
 	 * @param transferTask the transfer task to update with progress of the transfer.
-	 * @param handler
+	 * @param handler the callback handler for the result
 	 * @return the completed transfer task.
 	 * @throws RemoteDataException when a connection cannot be made to the {@link RemoteSystem}
 	 * @throws IOException if unable to connect to the remote host.
@@ -480,7 +480,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 
 		// allow for handling transfer of local files cached to the local (shared) file system. This happens during
 		// file uploads and file processing operations between services.
-		if (target.getScheme().equalsIgnoreCase("file")) {
+		if (target.getScheme() == null || target.getScheme().equalsIgnoreCase("file")) {
 			return new Local(null, "/", "/");
 		} else {
 			return new RemoteDataClientFactory().getInstance(username, null, target);

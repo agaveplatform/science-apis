@@ -55,6 +55,22 @@ services:
     labels:
       - "traefik.enable=true"
 
+
+#  sftp-relay:
+#    image: agaveplatform/sftp-relay:develop
+#    ports:
+#      - 50051:50051
+#      - 9092
+#    restart: on-failure
+#    volumes:
+#      - ./transfer:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target/test-classes/transfer
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)"
+#      - "traefik.http.routers.sftp-relay.entrypoints=grpc"
+#      - "traefik.http.services.sftp-relay.loadbalancer.server.scheme=h2c"
+#      - "traefik.http.services.sftp-relay.loadbalancer.server.port=50051"
+
   sftp:
     image: agaveplatform/sshd:latest
     command: "-p 10022"
@@ -63,21 +79,6 @@ services:
       - services
     ports:
       - '10022:10022'
-    volumes:
-    - /tmp/src:/tmp/src
-    - /tmp/dest:/tmp/dest
-
-  sftp2:
-    image: agaveplatform/sshd:latest
-    command: "-p 10022"
-    restart: on-failure
-    networks:
-      - services
-    ports:
-      - '10023:10023'
-    volumes:
-      - /tmp/src:/tmp/src
-      - /tmp/dest:/tmp/dest
 
   sftptunnel:
    image: agaveplatform/sshd:latest
@@ -181,28 +182,28 @@ services:
         - "traefik.http.routers.httpbin-secure.entrypoints=websecure"
         - "traefik.http.routers.httpbin-secure.tls=true"
 
-#  httpd:
-#    image: agaveplatform/apache-dev:latest
-#    hostname: docker.example.com
-#    restart: on-failure
-#    networks:
-#      - services
-#    ports:
-#      - '10080:80'
-#      - '10443:443'
-#    volumes:
-#      - ./transfer:/var/www/html/public
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.http.routers.httpd.rule=Host(`httpd`)"
-#      - "traefik.http.routers.httpd.entrypoints=web"
-#      - "traefik.http.routers.httpd.tls=false"
-#      - "traefik.http.routers.httpd.service=httpd"
-#      - "traefik.http.routers.httpd-secure.rule=Host(`httpd`)"
-#      - "traefik.http.routers.httpd-secure.entrypoints=websecure"
-#      - "traefik.http.routers.httpd-secure.service=httpd"
-#      - "traefik.http.routers.httpd-secure.tls=true"
-#      - "traefik.http.services.httpd.loadbalancer.server.port=80"
+  httpd:
+    image: agaveplatform/apache-dev:latest
+    hostname: docker.example.com
+    restart: on-failure
+    networks:
+      - services
+    ports:
+      - '10080:80'
+      - '10443:443'
+    volumes:
+      - ./transfer:/var/www/html/public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpd.rule=Host(`httpd`)"
+      - "traefik.http.routers.httpd.entrypoints=web"
+      - "traefik.http.routers.httpd.tls=false"
+      - "traefik.http.routers.httpd.service=httpd"
+      - "traefik.http.routers.httpd-secure.rule=Host(`httpd`)"
+      - "traefik.http.routers.httpd-secure.entrypoints=websecure"
+      - "traefik.http.routers.httpd-secure.service=httpd"
+      - "traefik.http.routers.httpd-secure.tls=true"
+      - "traefik.http.services.httpd.loadbalancer.server.port=80"
 
 #  ftp:
 #    image: agaveapi/pure-ftpd:latest

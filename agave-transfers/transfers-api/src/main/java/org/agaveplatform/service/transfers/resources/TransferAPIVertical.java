@@ -130,6 +130,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
         router.get("/api/transfers/:uuid").handler(this::getOne);
         router.put("/api/transfers/:uuid").handler(this::updateOne);
         router.delete("/api/transfers/:uuid").handler(this::deleteOne);
+
         router.post("/api/transfers/:uuid/cancel").handler(this::cancelOne);
 
         // Accept post of a cancel TransferTask, validates the request, and inserts into the db.
@@ -241,6 +242,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
         String username = principal.getString("username");
         int limit = getPageSize(routingContext);
         int offset = getOffset(routingContext);
+
         dbService.getAllForUser(tenantId, username, limit, offset, reply -> {
             if (reply.succeeded()) {
                 routingContext.response()

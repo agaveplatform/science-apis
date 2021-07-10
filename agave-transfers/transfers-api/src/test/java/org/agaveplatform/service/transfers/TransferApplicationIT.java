@@ -89,6 +89,8 @@ public class TransferApplicationIT extends BaseTestCase {
                     softly.assertThat(respTask.getTenantId()).as("Returned task tenant id is equivalent to the jwt tenant id").isEqualTo(TENANT_ID);
                     softly.assertAll();
                     requestCheckpoint.flag();
+
+                    ctx.completeNow();
                 });
             }));
         }));

@@ -53,9 +53,11 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         setStreamName("AGAVE_" + config().getString(TransferTaskConfigProperties.AGAVE_ENVIRONMENT,"DEV"));
     }
 
+
     public String getConnection(){
         return CONNECTION;
     }
+
     @Override
     public String getDefaultEventChannel() {
         return null;

@@ -51,14 +51,21 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     this.dbClient = dbClient;
     this.sqlQueries = sqlQueries;
 
-    dbClient.getConnection(ar -> {
-      if (ar.failed()) {
-        LOGGER.error("Could not open a database connection", ar.cause());
-        readyHandler.handle(Future.failedFuture(ar.cause()));
+    dbClient.getConnection(getConnection -> {
+      if (getConnection.failed()) {
+        LOGGER.error("Could not open a database connection", getConnection.cause());
+        readyHandler.handle(Future.failedFuture(getConnection.cause()));
       } else {
-        SQLConnection connection = ar.result();
-        connection.close();
-        readyHandler.handle(Future.succeededFuture(this));
+        SQLConnection conn = getConnection.result();
+        conn.close(close -> {
+          if (close.failed()) {
+            LOGGER.error("Failed to close connection", close.cause());
+            readyHandler.handle(Future.failedFuture(close.cause()));
+          } else {
+            LOGGER.error("Closed connection");
+            readyHandler.handle(Future.succeededFuture(this));
+          }
+        });
       }
     });
   }
@@ -495,8 +502,13 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
               } else {
                 LOGGER.error("Failed to set autocommit to false before updating transfer task record {}. Database rollback succeeded.", id, rollback.cause());
               }
-              resultHandler.handle(Future.failedFuture(rollback.cause()));
-              conn.close();
+
+              conn.close(close -> {
+                if (close.failed()) {
+                  LOGGER.error("Failed to close connection after rollback. This may cause a thread leak in the connection pool.", close.cause());
+                }
+                resultHandler.handle(Future.failedFuture(rollback.cause()));
+              });
             });
           } else {
             conn.updateWithParams(sqlQueries.get(SqlQuery.CANCEL_TRANSFERTASK_BY_ID), data, update -> {
@@ -506,31 +518,43 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
                     conn.rollback(rollback -> {
                       if (rollback.failed()) {
                         LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback failed. Data may be corrupted.", id, rollback.cause());
-                        resultHandler.handle(Future.failedFuture(rollback.cause()));
                       } else {
                         LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback succeeded.", id, commit.cause());
-                        resultHandler.handle(Future.failedFuture(rollback.cause()));
                       }
-                      conn.close();
+
+                      conn.close(close -> {
+                        if (close.failed()) {
+                          LOGGER.error("Failed to close connection after rollback. This may cause a thread leak in the connection pool.", close.cause());
+                        }
+                        resultHandler.handle(Future.failedFuture(rollback.cause()));
+                      });
                     });
                   } else {
                     JsonArray params = new JsonArray().add(id);
                     conn.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK_BY_ID), params, ar -> {
                       if (ar.succeeded()) {
-                        resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+                        conn.close(close -> {
+                          if (close.failed()) {
+                            LOGGER.error("Failed to close connection after update. This may cause a thread leak in the connection pool.", close.cause());
+                          }
+                          resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+                        });
                       } else {
                         LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", id, ar.cause());
                         resultHandler.handle(Future.failedFuture(ar.cause()));
                       }
-                      conn.close();
                     });
                   }
                 });
               }
               else {
                 LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", update.cause());
-                resultHandler.handle(Future.failedFuture(update.cause()));
-                conn.close();
+                conn.close(close -> {
+                  if (close.failed()) {
+                    LOGGER.error("Failed to close connection after update. This may cause a thread leak in the connection pool.", close.cause());
+                  }
+                  resultHandler.handle(Future.failedFuture(update.cause()));
+                });
               }
             });
           }
@@ -539,7 +563,6 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     });
     return this;
   }
-
 
   /**
    * Update entire {@link TransferTask} with {@code transferTask}
@@ -574,42 +597,60 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
           SQLConnection conn = getConnection.result();
           conn.setAutoCommit(false, setAutoCommit -> {
             if (setAutoCommit.failed()) {
-              resultHandler.handle(Future.failedFuture(setAutoCommit.cause()));
-              conn.close();
+              conn.close(close -> {
+                if (close.failed()) {
+                  LOGGER.error("Failed to close connection after failing to set autocommit. This may cause a thread leak in the connection pool.", close.cause());
+                }
+                resultHandler.handle(Future.failedFuture(setAutoCommit.cause()));
+              });
             }
             else {
               conn.updateWithParams(sqlQueries.get(SqlQuery.SAVE_TRANSFERTASK), data, update -> {
                 if (update.succeeded()) {
                   conn.commit(commit -> {
                     if (commit.failed()) {
+                      LOGGER.error("Failed to commit transaction after updating transfer task record {}", uuid, commit.cause());
                       conn.rollback(rollback -> {
-                        if (rollback.failed()) {
-                          LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback failed. Data may be corrupted.", uuid, rollback.cause());
-                          resultHandler.handle(Future.failedFuture(rollback.cause()));
-                        } else {
-                          LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback succeeded.", uuid, commit.cause());
-                          resultHandler.handle(Future.failedFuture(commit.cause()));
-                        }
-                        conn.close();
+                        conn.close(close -> {
+                          if (close.failed()) {
+                            LOGGER.error("Failed to rollback failed transaction after update. This may cause a thread leak in the connection pool.", close.cause());
+                          }
+
+                          if (rollback.failed()) {
+//                            LOGGER.error("Failed to rollback updating transfer task record {}. Database rollback failed. Data may be corrupted.", uuid, rollback.cause());
+                            resultHandler.handle(Future.failedFuture(rollback.cause()));
+                          } else {
+                            resultHandler.handle(Future.failedFuture(commit.cause()));
+                          }
+                        });
                       });
                     } else {
                       JsonArray params = new JsonArray().add(uuid).add(tenantId);
                       conn.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
-                        if (ar.succeeded()) {
-                          resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
-                        } else {
-                          LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", uuid, ar.cause());
-                          resultHandler.handle(Future.failedFuture(ar.cause()));
-                        }
-                        conn.close();
+                        conn.close(close -> {
+                          if (close.failed()) {
+                            LOGGER.error("Failed to close connection while fetching record after update. This may cause a thread leak in the connection pool.", close.cause());
+                          }
+
+                          if (ar.succeeded()) {
+                            resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+                          } else {
+                            LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", uuid, ar.cause());
+                            resultHandler.handle(Future.failedFuture(ar.cause()));
+                          }
+                        });
                       });
                     }
                   });
                 }
                 else {
-                  LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", update.cause());
-                  resultHandler.handle(Future.failedFuture(update.cause()));
-                  conn.close();
+                  LOGGER.error("Failed to fetch new transfer task record after update. Database query error", update.cause());
+                  conn.close(close -> {
+                    if (close.failed()) {
+                      LOGGER.error("Failed to close connection after failed update. This may cause a thread leak in the connection pool.", close.cause());
+                    }
+                    resultHandler.handle(Future.failedFuture(update.cause()));
+                  });
                 }
               });
             }

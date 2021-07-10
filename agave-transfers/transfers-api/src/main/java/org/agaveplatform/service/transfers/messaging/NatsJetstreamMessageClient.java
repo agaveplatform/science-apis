@@ -7,6 +7,7 @@ import org.agaveplatform.service.transfers.exception.DuplicateMessageException;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.util.Slug;
+import org.iplantc.service.common.uuid.UUIDType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,6 +86,36 @@ public class NatsJetstreamMessageClient {
         connect(connectionUri);
         setConsumerName(consumerName);
         setStreamName(streamName);
+
+        getOrCreateStream(streamName);
+    }
+
+    private void getOrCreateStream(String streamName) throws IOException {
+        try {
+            if (! getJetStreamManagement().getStreamNames().contains(streamName)) {
+                StreamConfiguration streamConfig = StreamConfiguration.builder()
+                        .name(streamName)
+                        .subjects(UUIDType.TRANSFER.name().toLowerCase() + ".>" )
+                        .retentionPolicy(RetentionPolicy.WorkQueue)
+                        .maxConsumers(-1)
+                        .maxBytes(-1)
+                        .maxAge(Duration.ofDays(30))
+                        .maxMsgSize(-1)
+                        .maxMessages(-1)
+                        .storageType(StorageType.Memory)
+                        .replicas(1)
+                        .noAck(false)
+                        // .template(...)
+                        .discardPolicy(DiscardPolicy.Old)
+                        .build();
+                StreamInfo streamInfo = jsm.addStream(streamConfig);
+                log.info("Created missing NATS stream {}: {}", streamName, streamInfo);
+            } else {
+                log.debug("NATS stream {} already existed.", streamName);
+            }
+        } catch(JetStreamApiException e) {
+            throw new IOException("Unable to create NATS stream " + streamName, e);
+        }
     }
 
     /**
@@ -249,7 +280,7 @@ public class NatsJetstreamMessageClient {
      * @param body  the message content to persist
      * @throws MessagingException if communication with Nats fails
      */
-    public void push(String subject, String body) throws IOException, MessagingException, Exception {
+    public void push(String subject, String body) throws Exception {
         // create a typical NATS message
         io.nats.client.Message natsMessage = NatsMessage.builder()
                 .subject(subject)
@@ -304,7 +335,7 @@ public class NatsJetstreamMessageClient {
      * @throws MessagingException if communication with the subject fails
      * @throws IOException when unable to connect to the NATS server
      */
-    public void push(String subject, String body, int secondsToDelay) throws IOException, MessagingException, Exception {
+    public void push(String subject, String body, int secondsToDelay) throws Exception {
         log.debug("Delayed messages are not supported by NATS JetStream. Message will be added immediately");
         push(subject, body);
     }
@@ -318,7 +349,7 @@ public class NatsJetstreamMessageClient {
      * @throws MessagingException if communication with the NATS server fails
      * @throws IOException when unable to connect to the NATS server
      */
-    public void reject(String subject, Object messageId, String message) throws IOException, MessagingException, Exception {
+    public void reject(String subject, Object messageId, String message) throws Exception {
         log.info("Message rejection is not supported. The same message will instead be pushed back to the stream.");
         delete(messageId);
         push(subject, message);

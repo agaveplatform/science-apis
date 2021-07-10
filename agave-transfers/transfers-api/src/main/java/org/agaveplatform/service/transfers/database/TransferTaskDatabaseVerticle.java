@@ -81,6 +81,7 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
       }
     });
   }
+
   /*
    * Note: this uses blocking APIs, but data is small...
    */

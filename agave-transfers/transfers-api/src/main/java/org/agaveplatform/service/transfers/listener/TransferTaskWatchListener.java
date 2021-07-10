@@ -3,7 +3,6 @@ package org.agaveplatform.service.transfers.listener;
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,9 +10,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.MAX_TIME_FOR_HEALTHCHECK_MILLIS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
 
 
 public class TransferTaskWatchListener extends AbstractNatsListener {
@@ -45,7 +44,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
 		int healthTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK_MILLIS, 600000);
-		int healthParentTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK_PARENT_MILLIS, 600000);
+//		int healthParentTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK_PARENT_MILLIS, 600000);
 
 		getVertx().setPeriodic( healthTimer, resp -> {
 			processRootTaskEvent(batchResp -> {

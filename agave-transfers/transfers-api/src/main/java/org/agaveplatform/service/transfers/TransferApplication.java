@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE;
+
 public class TransferApplication {
 
     private static final Logger log = LoggerFactory.getLogger(TransferApplication.class);
@@ -25,9 +27,9 @@ public class TransferApplication {
 
         Vertx vertx = Vertx.vertx();
 
-        int poolSize = 5;
-        int instanceSize = 2;
-        int dbInstanceSize = 2;
+        int poolSize = 10;
+        int instanceSize = 5;
+        int dbInstanceSize = 5;
 
         String configPath = System.getenv("AGAVE_CONFIG_PATH");
         if (configPath == null) {
@@ -55,20 +57,21 @@ public class TransferApplication {
                 DeploymentOptions dbDeploymentOptions = new DeploymentOptions()
                         .setConfig(config)
                         .setMaxWorkerExecuteTimeUnit(TimeUnit.MILLISECONDS)
-                        .setMaxWorkerExecuteTime(5000)
-                        .setInstances(dbInstanceSize);
+                        .setMaxWorkerExecuteTime(500)
+                        .setInstances(Math.min(dbInstanceSize, config.getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 2*dbInstanceSize)));
 
                 Promise<String> dbVerticleDeployment = Promise.promise();
                 log.info("org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle");
-                vertx.deployVerticle("org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle",
-                        dbDeploymentOptions, dbVerticleDeployment);
+                vertx.deployVerticle("org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle", dbDeploymentOptions, dbVerticleDeployment);
 
-                dbVerticleDeployment.future().compose(id -> {
-
+                dbVerticleDeployment.future().onFailure(resp -> {
+                    log.error("Unable to start db verticle.", resp.getCause());
+                    System.exit(1);
+                }).compose(id -> {
                     Promise<String> httpVerticleDeployment = Promise.promise();
-                    vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferAPIVertical", new DeploymentOptions().setConfig(config), res -> {
-                        if (res.succeeded()) {
-                            log.info("TransferAPIVertical ({}) started on port {}", res.result(), config.getInteger("HTTP_PORT"));
+                    vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferAPIVertical", new DeploymentOptions().setConfig(config), deployApiVerticle -> {
+                        if (deployApiVerticle.succeeded()) {
+                            log.info("TransferAPIVertical ({}) started on port {}", deployApiVerticle.result(), config.getInteger("HTTP_PORT"));
 
                             DeploymentOptions localOptions = new DeploymentOptions()
                                     .setConfig(config)
@@ -78,11 +81,11 @@ public class TransferApplication {
 
                             // Deployment TransferTaskCreatedListener verticle
                             vertx.deployVerticle(TransferTaskCreatedListener.class.getName(),
-                                    localOptions, res30 -> {
-                                        if (res30.succeeded()) {
-                                            log.info("TransferTaskCreatedListener Deployment id is {}", res30.result());
+                                    localOptions, res1 -> {
+                                        if (res1.succeeded()) {
+                                            log.info("TransferTaskCreatedListener Deployment id is {}", res1.result());
                                         } else {
-                                            log.error("TransferTaskCreatedListener Deployment failed ! {}", res30.result());
+                                            log.error("TransferTaskCreatedListener Deployment failed ! {}", res1.result());
                                         }
                                     });
 
@@ -120,9 +123,9 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferAllProtocolVertical.class.getName(), //"org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical",
                                     workerOptions, res4 -> {
                                         if (res4.succeeded()) {
-                                            log.info("TransferAllProtocolVertical Deployment id is " + res.result());
+                                            log.info("TransferAllProtocolVertical Deployment id is " + res4.result());
                                         } else {
-                                            log.error("TransferAllProtocolVertical Deployment failed ! {}", res4.result());
+                                            log.error("TransferAllProtocolVertical Deployment failed !", res4.cause());
                                         }
                                     });
 
@@ -132,7 +135,7 @@ public class TransferApplication {
                                         if (res5.succeeded()) {
                                             log.info("TransferCompleteTaskListener Deployment id is " + res5.result());
                                         } else {
-                                            log.error("TransferCompleteTaskListener Deployment failed ! {}",res5.result());
+                                            log.error("TransferCompleteTaskListener Deployment failed !",res5.cause());
                                         }
                                     });
 
@@ -143,7 +146,7 @@ public class TransferApplication {
                                         if (res6.succeeded()) {
                                             log.info("TransferTaskErrorTaskListener Deployment id is " + res6.result());
                                         } else {
-                                            log.error("TransferTaskErrorTaskListener Deployment failed !{}", res6.result());
+                                            log.error("TransferTaskErrorTaskListener Deployment failed !", res6.cause());
                                         }
                                     });
 
@@ -153,7 +156,7 @@ public class TransferApplication {
                                         if (res7.succeeded()) {
                                             log.info("TransferFailureHandler Deployment id is " + res7.result());
                                         } else {
-                                            log.error("TransferFailureHandler Deployment failed ! {}", res7.result());
+                                            log.error("TransferFailureHandler Deployment failed !", res7.cause());
                                         }
                                     });
 
@@ -163,7 +166,7 @@ public class TransferApplication {
                                         if (res8.succeeded()) {
                                             log.info("TransferTaskCancelListener Deployment id is " + res8.result());
                                         } else {
-                                            log.error("TransferTaskCancelListener Deployment failed ! {}", res8.result());
+                                            log.error("TransferTaskCancelListener Deployment failed ! {}", res8.cause());
                                         }
                                     });
 
@@ -173,7 +176,7 @@ public class TransferApplication {
                                         if (res9.succeeded()) {
                                             log.info("TransferTaskPausedListener Deployment id is " + res9.result());
                                         } else {
-                                            log.error("TransferTaskPausedListener Deployment failed ! {}", res9.result());
+                                            log.error("TransferTaskPausedListener Deployment failed ! {}", res9.cause());
                                         }
                                     });
 
@@ -191,9 +194,9 @@ public class TransferApplication {
                             vertx.deployVerticle(TransferTaskNotificationListener.class.getName(), //"org.agaveplatform.service.transfers.listener.NotificationListener",
                                     notificationWorkerOptions, res10 -> {
                                         if (res10.succeeded()) {
-                                            log.info("NotificationListener Deployment id is " + res10.result());
+                                            log.info("TransferTaskNotificationListener Deployment id is " + res10.result());
                                         } else {
-                                            log.error("NotificationListener Deployment failed ! {}", res10.result());
+                                            log.error("TransferTaskNotificationListener Deployment failed ! {}", res10.cause());
                                         }
                                     });
 
@@ -203,7 +206,7 @@ public class TransferApplication {
                                         if (res11.succeeded()){
                                             log.info("TransferErrorListener Deployment id is " + res11.result());
                                         }else{
-                                            log.error("TransferErrorListener Deployment failed ! {}", res11.result());
+                                            log.error("TransferErrorListener Deployment failed ! {}", res11.cause());
                                         }
                                     });
 
@@ -213,7 +216,7 @@ public class TransferApplication {
                                         if (res12.succeeded()) {
                                             log.info("TransferHealthcheckListener Deployment id is " + res12.result());
                                         } else {
-                                            log.error("TransferHealthcheckListener Deployment failed ! {}", res12.result());
+                                            log.error("TransferHealthcheckListener Deployment failed ! {}", res12.cause());
                                         }
                                     });
 //                            // Deploy the TransferHealthParentcheckListener vertical
@@ -231,7 +234,7 @@ public class TransferApplication {
                                         if (res13.succeeded()) {
                                             log.info("TransferWatchListener Deployment id is " + res13.result());
                                         } else {
-                                            log.error("TransferWatchListener Deployment failed ! {}", res13.result());
+                                            log.error("TransferWatchListener Deployment failed ! {}", res13.cause());
                                         }
                                     });
 
@@ -241,7 +244,7 @@ public class TransferApplication {
                                         if (res14.succeeded()) {
                                             log.info("TransferTaskUpdateListener Deployment id is " + res14.result());
                                         } else {
-                                            log.error("TransferTaskUpdateListener Deployment failed ! {}", res14.result());
+                                            log.error("TransferTaskUpdateListener Deployment failed ! {}", res14.cause());
                                         }
                                     });
 
@@ -251,39 +254,29 @@ public class TransferApplication {
                                         if (res15.succeeded()) {
                                             log.info("TransferTaskFinishedListener Deployment id is " + res15.result());
                                         } else {
-                                            log.error("TransferTaskFinishedListener Deployment failed ! {}", res15.result());
+                                            log.error("TransferTaskFinishedListener Deployment failed !", res15.cause());
                                         }
                                     });
-
-                            // Deploy the Nats vertical
-//                            vertx.deployVerticle(NatsListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskFinishedListener",
-//                                    localOptions, res56 -> {
-//                                        if (res56.succeeded()) {
-//                                            log.info("Nats Deployment id is " + res56.result());
-//                                        } else {
-//                                            log.error("Nats Deployment failed !" + res56.result());
-//                                        }
-//                                    });
-                        } else {
-                            log.error("TransferAPIVertical deployment failed !\n ", res.cause());
-                            res.cause().printStackTrace();
+                        }
+                        else {
+                            log.error("TransferAPIVertical deployment failed !", deployApiVerticle.cause());
                         }
                     });
 
                     return httpVerticleDeployment.future();
 
-                }).setHandler(ar -> {
+                }).onComplete(ar -> {
                     NatsJetstreamMessageClient.disconnect();
                     if (ar.succeeded()) {
                         log.info("TransferApiVertical ({}) started on port {}", ar.result(), config.getInteger("HTTP_PORT"));
-
                     } else {
-                        log.error("TransferApiVertical deployment failed !\n {}", ar.result());
-                        ar.cause().printStackTrace();
+                        log.error("TransferApiVertical deployment failed !", ar.cause());
+                        System.exit(1);
                     }
                 });
             } else {
                 log.error("Error retrieving configuration.");
+                System.exit(1);
             }
         });
     }

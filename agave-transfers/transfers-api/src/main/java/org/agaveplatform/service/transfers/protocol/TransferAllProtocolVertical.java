@@ -9,6 +9,7 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractNatsListener;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang.NotImplementedException;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
@@ -60,6 +61,16 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 		return EVENT_CHANNEL;
 	}
 	public Connection nc;
+
+	/**
+	 * Mockable method to retrieve the NatsJetstreamMessageClient
+	 * @return
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
+	protected NatsJetstreamMessageClient getMessageClient() throws IOException, InterruptedException {
+		return super.getMessageClient();
+	}
 
 //	public Connection getConnection(){return nc;}
 

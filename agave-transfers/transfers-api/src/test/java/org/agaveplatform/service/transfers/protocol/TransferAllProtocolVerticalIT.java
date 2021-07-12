@@ -14,6 +14,7 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -49,8 +50,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_ALL;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
@@ -149,7 +149,7 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 	@DisplayName("Test actual data transfer")
 	@Timeout(value=2, timeUnit=TimeUnit.MINUTES)
 	public void testProcessCopyRequest (Vertx vertx, VertxTestContext ctx) throws SystemUnknownException, AgaveNamespaceException, RemoteCredentialException,
-			PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException, InterruptedException {
+			PermissionException, IOException, RemoteDataException, InterruptedException {
 
 		RemoteSystem destSystem = getTestSystem(StorageProtocolType.SFTP);
 		// save the system so it can be referenced in the transfer protocol vertical
@@ -297,7 +297,15 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 		// return our mock urlcopy instance
 		when(txfrAllVert.getUrlCopy(any(), any())).thenReturn(urlCopyMock);
 		// we don't need to send events, just mock the call so we can ensure it's being called.
-		doNothing().when(txfrAllVert)._doPublishEvent(any(), any(JsonObject.class), any());
+		NatsJetstreamMessageClient mockNatsClient = mock(NatsJetstreamMessageClient.class);
+		try {
+			doNothing().when(mockNatsClient).push(anyString(), anyString());
+		} catch (Exception e) {
+			fail("Mocked call to do nothing should not throw an exception.");
+		}
+		doCallRealMethod().when(txfrAllVert)._doPublishEvent(any(), any(JsonObject.class), any());
+		when(txfrAllVert.getMessageClient()).thenReturn(mockNatsClient);
+
 		// checks pass for 5 seconds (5 * 200ms) + 2 initial checks
 		when(txfrAllVert.taskIsNotInterrupted(any(TransferTask.class))).thenReturn(true, true,
 				true, true, true, true, true, true, // 1 second
@@ -374,7 +382,16 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
         TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(vertx);
         when(txfrAllVert.getRemoteDataClient(anyString(), anyString(), any())).thenReturn(srcRemoteDataClient, destRemoteDataClient);
         when(txfrAllVert.getUrlCopy(any(), any())).thenCallRealMethod();
-		doNothing().when(txfrAllVert)._doPublishEvent(any(), any(JsonObject.class), any());
+
+		// we don't need to send events, just mock the call so we can ensure it's being called.
+		NatsJetstreamMessageClient mockNatsClient = mock(NatsJetstreamMessageClient.class);
+		try {
+			doNothing().when(mockNatsClient).push(anyString(), anyString());
+		} catch (Exception e) {
+			fail("Mocked call to do nothing should not throw an exception.");
+		}
+		doCallRealMethod().when(txfrAllVert)._doPublishEvent(any(), any(JsonObject.class), any());
+		when(txfrAllVert.getMessageClient()).thenReturn(mockNatsClient);
 
 		// then we fail the check immediately afterwards to fail the test
 		when(txfrAllVert.taskIsNotInterrupted(any(TransferTask.class))).thenReturn(false);

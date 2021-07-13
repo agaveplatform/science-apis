@@ -47,6 +47,7 @@ public class FilesTransferListenerIT extends BaseTestCase {
 
     @BeforeClass
     public void beforeClass() throws Exception {
+        System.out.println("Starting FilesTransferListenerIT");
         jtd = JSONTestDataUtil.getInstance();
         clearQueues();
         clearLogicalFiles();
@@ -78,69 +79,6 @@ public class FilesTransferListenerIT extends BaseTestCase {
         clearQueues();
         clearLogicalFiles();
         clearSystems();
-    }
-
-    /**
-     * Flushes the messaging tube of any and all existing jobs.
-     */
-    public void clearQueues() {
-        ClientImpl client = null;
-
-        // drain the message queue
-        client = new ClientImpl(Settings.MESSAGING_SERVICE_HOST,
-                Settings.MESSAGING_SERVICE_PORT);
-
-        for (String tube : client.listTubes()) {
-            try {
-                client.watch(tube);
-                client.useTube(tube);
-                client.kick(Integer.MAX_VALUE);
-
-                com.surftools.BeanstalkClient.Job beanstalkJob = null;
-                do {
-                    try {
-                        beanstalkJob = client.peekReady();
-                        if (beanstalkJob != null)
-                            client.delete(beanstalkJob.getJobId());
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                    }
-                } while (beanstalkJob != null);
-                do {
-                    try {
-                        beanstalkJob = client.peekBuried();
-                        if (beanstalkJob != null)
-                            client.delete(beanstalkJob.getJobId());
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                    }
-                } while (beanstalkJob != null);
-                do {
-                    try {
-                        beanstalkJob = client.peekDelayed();
-
-                        if (beanstalkJob != null)
-                            client.delete(beanstalkJob.getJobId());
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                    }
-                } while (beanstalkJob != null);
-
-            } catch (Throwable e) {
-                e.printStackTrace();
-            } finally {
-                try {
-                    client.ignore(tube);
-                } catch (Throwable e) {
-                }
-
-            }
-        }
-        try {
-            client.close();
-        } catch (Throwable e) {
-        }
-        client = null;
     }
 
     private List<String> getNotificationEvents() {
@@ -216,7 +154,11 @@ public class FilesTransferListenerIT extends BaseTestCase {
 
             InOrder verifyOrder = inOrder(listener);
 
-            for (FilesTransferListener.TransferTaskEventType eventType : FilesTransferListener.TransferTaskEventType.values()) {
+            List<FilesTransferListener.TransferTaskEventType> eventTypes = List.of(FilesTransferListener.TransferTaskEventType.TRANSFERTASK_ASSIGNED,
+                    FilesTransferListener.TransferTaskEventType.TRANSFERTASK_FINISHED);
+
+
+            for (FilesTransferListener.TransferTaskEventType eventType : eventTypes) {
                 verifyOrder.verify(listener).updateSourceLogicalFile(file.getSourceUri(), SYSTEM_OWNER, eventType, file.getTenantId());
                 if (eventType.isTerminal()) {
                     verifyOrder.verify(listener).updateDestinationLogicalFile("agave://" + file.getSystem() + "/" + file.getPath(), SYSTEM_OWNER, eventType, file.getTenantId());

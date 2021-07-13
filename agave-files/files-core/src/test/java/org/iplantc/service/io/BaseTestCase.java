@@ -5,9 +5,11 @@ package org.iplantc.service.io;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.CacheMode;
 import org.hibernate.Session;
+import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -34,8 +36,7 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.time.Instant;
 
-import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.AZURE;
-import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.SWIFT;
+import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.*;
 import static org.testng.Assert.fail;
 
 /**
@@ -397,6 +398,69 @@ public class BaseTestCase {
                 messageBodyContext);
 
         return objectMapper.readTree(messageBody.toJSON());
+    }
+
+    /**
+     * Flushes the messaging tube of any and all existing jobs.
+     */
+    public void clearQueues() {
+        ClientImpl client = null;
+
+        // drain the message queue
+        client = new ClientImpl(org.iplantc.service.common.Settings.MESSAGING_SERVICE_HOST,
+                Settings.MESSAGING_SERVICE_PORT);
+
+        for (String tube : client.listTubes()) {
+            try {
+                client.watch(tube);
+                client.useTube(tube);
+                client.kick(Integer.MAX_VALUE);
+
+                com.surftools.BeanstalkClient.Job beanstalkJob = null;
+                do {
+                    try {
+                        beanstalkJob = client.peekReady();
+                        if (beanstalkJob != null)
+                            client.delete(beanstalkJob.getJobId());
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
+                } while (beanstalkJob != null);
+                do {
+                    try {
+                        beanstalkJob = client.peekBuried();
+                        if (beanstalkJob != null)
+                            client.delete(beanstalkJob.getJobId());
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
+                } while (beanstalkJob != null);
+                do {
+                    try {
+                        beanstalkJob = client.peekDelayed();
+
+                        if (beanstalkJob != null)
+                            client.delete(beanstalkJob.getJobId());
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
+                } while (beanstalkJob != null);
+
+            } catch (Throwable e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    client.ignore(tube);
+                } catch (Throwable e) {
+                }
+
+            }
+        }
+        try {
+            client.close();
+        } catch (Throwable e) {
+        }
+        client = null;
     }
 
 

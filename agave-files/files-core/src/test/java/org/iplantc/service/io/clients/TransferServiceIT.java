@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.exceptions.TaskException;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -12,17 +13,23 @@ import java.net.URISyntaxException;
 
 import static org.testng.Assert.*;
 
+@Test(groups={"integration"})
 public class TransferServiceIT extends BaseTestCase {
     String source;
     String dest;
     String transferUuid;
-    ObjectMapper mapper = new ObjectMapper();
 
     @BeforeClass
     public void beforeClass() throws URISyntaxException {
         source = "https://httpd:8443/public/test_upload.bin";
         // Transfers api is an internal service. The destination must be a valid location.
         dest = "file:/dev/null";
+    }
+
+    @AfterClass
+    public void afterClass() throws Exception {
+        clearQueues();
+        clearLogicalFiles();
     }
 
     @Test
@@ -40,7 +47,7 @@ public class TransferServiceIT extends BaseTestCase {
         assertEquals(jsonResponse.get("dest").asText(), dest, "Dest from transfer api should match dest from request");
         assertEquals(jsonResponse.get("tenant_id").asText(), TENANT_ID, "Tenant id from transfer api should match tenant id from request");
         } catch (TaskException e){
-            fail("TransferService should connect and send requests to " + Settings.IPLANT_TRANSFER_SERVICE + " without throwing an exception.");
+            fail("TransferService should connect and send requests to " + Settings.IPLANT_TRANSFER_SERVICE + " without throwing an exception: " + e.getMessage());
         }
     }
 

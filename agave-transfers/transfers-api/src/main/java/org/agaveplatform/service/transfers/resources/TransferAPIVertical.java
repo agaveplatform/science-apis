@@ -340,24 +340,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
         String username = principal.getString("username");
         String uuid = routingContext.pathParam("uuid");
 
-        log.debug("username = {}", username);
-        JsonObject body = routingContext.getBodyAsJson();
-        String source = body.getString("source");
-        String dest = body.getString("dest");
-        // request body was validated prior to this method being called
-//        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);
-        TransferTask transferTask = new TransferTask();
-        transferTask.setCreated(Instant.now());
-        transferTask.setTenantId(tenantId);
-        transferTask.setOwner(username);
         try {
-            final URI srcUri = URI.create(source);
-            final URI destUri = URI.create(dest);
-
-            //URLEncode paths
-            transferTask.setSource(srcUri.toString());
-            transferTask.setDest(destUri.toString());
-
             // lookup task to get the id
             dbService.getByUuid(tenantId, uuid, getByIdReply -> {
                 if (getByIdReply.succeeded()) {
@@ -370,6 +353,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 user.isAdminRoleExists()) {
                             dbService.updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(),deleteReply -> {
                                 if (deleteReply.succeeded()) {
+                                    TransferTask transferTask = new TransferTask(deleteReply.result());
+                                    final URI srcUri = URI.create(transferTask.getSource());
+
                                     String subject = createPushMessageSubject(
                                             transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
                                             MessageType.TRANSFERTASK_CANCELED);
@@ -502,22 +488,8 @@ public class TransferAPIVertical extends AbstractNatsListener {
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");
         String uuid = routingContext.pathParam("uuid");
-        JsonObject body = routingContext.getBodyAsJson();
-        String source = body.getString("source");
-        String dest = body.getString("dest");
 
-        TransferTask transferTask = new TransferTask();
-        transferTask.setCreated(Instant.now());
-        transferTask.setTenantId(tenantId);
-        transferTask.setOwner(username);
         try {
-            final URI srcUri = URI.create(source);
-            final URI destUri = URI.create(dest);
-
-            //URLEncode paths
-            transferTask.setSource(srcUri.toString());
-            transferTask.setDest(destUri.toString());
-
             // lookup task to get the id
             dbService.getByUuid(tenantId, uuid, getByIdReply -> {
                 if (getByIdReply.succeeded()) {
@@ -530,13 +502,17 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 user.isAdminRoleExists()) {
                             dbService.delete(tenantId, uuid, deleteReply -> {
                                 if (deleteReply.succeeded()) {
-                                    JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
+                                    //delete returns empty result on successful delete
+//                                    JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
+
+                                    TransferTask transferTask = new TransferTask(getByIdReply.result());
+                                    final URI srcUri = URI.create(transferTask.getSource());
 
                                     String subject = createPushMessageSubject(
                                             transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
                                             MessageType.TRANSFERTASK_DELETED);
 
-                                    _doPublishEvent(subject, jo, deleteResp -> {
+                                    _doPublishEvent(subject, transferTask.toJson(), deleteResp -> {
                                         if (deleteResp.succeeded()) {
                                             routingContext.response()
                                                     .putHeader("content-type", "application/json")
@@ -663,23 +639,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
         String uuid = routingContext.pathParam("uuid");
         AgaveResponseBuilder responseBuilder = AgaveResponseBuilder.getInstance(routingContext);
 
-        JsonObject body = routingContext.getBodyAsJson();
-        String source = body.getString("source");
-        String dest = body.getString("dest");
-
-        TransferTask transferTask = new TransferTask();
-        transferTask.setCreated(Instant.now());
-        transferTask.setTenantId(tenantId);
-        transferTask.setOwner(username);
-
         try {
-            final URI srcUri = URI.create(source);
-            final URI destUri = URI.create(dest);
-
-            //URLEncode paths
-            transferTask.setSource(srcUri.toString());
-            transferTask.setDest(destUri.toString());
-
             // lookup the transfer task regardless
             dbService.getByUuid(tenantId, uuid, getByIdReply -> {
                 if (getByIdReply.succeeded()) {

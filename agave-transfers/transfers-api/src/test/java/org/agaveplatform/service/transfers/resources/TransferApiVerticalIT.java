@@ -315,6 +315,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
                             String ownerToken = this.makeTestJwt(TEST_USERNAME);
                             SoftAssertions softly = new SoftAssertions();
                             ctx.verify(() -> {
+                                //Response when making request by a user without valid permissions
                                 String response = given()
                                         .spec(requestSpecification)
                                         .header(TEST_JWT_HEADER, otherUserToken)
@@ -331,6 +332,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
                                 softly.assertThat(responseJson.size()).as("Unshared user listing response size").isEqualTo(0);
 
+                                //Response when making request as the owner
                                 response = given()
                                         .spec(requestSpecification)
                                         .header(TEST_JWT_HEADER, ownerToken)
@@ -352,6 +354,134 @@ public class TransferApiVerticalIT extends BaseTestCase {
                                 // same transfer tasks ids should be in the response
                                 softly.assertThat(responseUuids).as("Owner listing response contents").containsAll(testTransferTaskUuids);
                                 softly.assertAll();
+
+                                requestCheckpoint.flag();
+                            });
+                        }));
+                    }
+                });
+            }));
+        }));
+    }
+
+    @Test
+    @DisplayName("Get one transfer task by user")
+    void getOneForUser(Vertx vertx, VertxTestContext ctx) {
+
+        DeploymentOptions options = new DeploymentOptions().setConfig(config);
+        Checkpoint dbDeploymentCheckpoint = ctx.checkpoint();
+        Checkpoint apiDeploymentCheckpoint = ctx.checkpoint();
+        Checkpoint testDataCheckpoint = ctx.checkpoint();
+        Checkpoint requestCheckpoint = ctx.checkpoint();
+
+        vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, ctx.succeeding(dbId -> {
+            dbDeploymentCheckpoint.flag();
+
+            dbService = TransferTaskDatabaseService.createProxy(vertx, config.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
+
+            dbService.deleteAll(TENANT_ID, ctx.succeeding(deleteAllTransferTask -> {
+                // fetch saved transfer tasks to request from the service in our test
+                addTransferTasks(1, taskReply -> {
+                    testDataCheckpoint.flag();
+                    if (taskReply.failed()) {
+                        ctx.failNow(taskReply.cause());
+                    } else {
+
+                        // result should have our tasks
+                        JsonArray testTransferTasks = taskReply.result();
+                        JsonObject jsonTransferTask = testTransferTasks.getJsonObject(0);
+
+                        vertx.deployVerticle(TransferAPIVertical.class, options, ctx.succeeding(apiId -> {
+                            apiDeploymentCheckpoint.flag();
+
+                            RequestSpecification requestSpecification = new RequestSpecBuilder()
+                                    .setBaseUri("http://localhost:" + port + "/")
+                                    .build();
+
+                            String ownerToken = this.makeTestJwt(TEST_USERNAME);
+                            SoftAssertions softly = new SoftAssertions();
+                            ctx.verify(() -> {
+                                String ownerResponse = given()
+                                        .spec(requestSpecification)
+                                        .header(TEST_JWT_HEADER, ownerToken)
+                                        .contentType(ContentType.JSON)
+                                        .queryParam("naked", true)
+                                        .when()
+                                        .get("api/transfers/" + jsonTransferTask.getString("uuid"))
+                                        .then()
+                                        .assertThat()
+                                        .statusCode(200)
+                                        .extract()
+                                        .asString();
+                                JsonObject responseJson = new JsonObject(ownerResponse);
+
+                                softly.assertThat(responseJson).isNotNull();
+                                softly.assertThat(responseJson.getValue("uuid")).isEqualTo(jsonTransferTask.getValue("uuid"));
+                                softly.assertThat(responseJson.getValue("tenant_id")).isEqualTo(jsonTransferTask.getValue("tenant_id"));
+                                softly.assertThat(responseJson.getValue("owner")).isEqualTo(jsonTransferTask.getValue("owner"));
+                                softly.assertThat(responseJson.getValue("source")).isEqualTo(jsonTransferTask.getValue("source"));
+                                softly.assertThat(responseJson.getValue("dest")).isEqualTo(jsonTransferTask.getValue("dest"));
+
+                                softly.assertAll();
+
+                                requestCheckpoint.flag();
+                            });
+                        }));
+                    }
+                });
+            }));
+        }));
+    }
+
+    @Test
+    @DisplayName("Get one transfer task by user without permissions")
+    void getOneForUserWithoutPermissions(Vertx vertx, VertxTestContext ctx) {
+
+        DeploymentOptions options = new DeploymentOptions().setConfig(config);
+        Checkpoint dbDeploymentCheckpoint = ctx.checkpoint();
+        Checkpoint apiDeploymentCheckpoint = ctx.checkpoint();
+        Checkpoint testDataCheckpoint = ctx.checkpoint();
+        Checkpoint requestCheckpoint = ctx.checkpoint();
+
+        vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, ctx.succeeding(dbId -> {
+            dbDeploymentCheckpoint.flag();
+
+            dbService = TransferTaskDatabaseService.createProxy(vertx, config.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
+
+            dbService.deleteAll(TENANT_ID, ctx.succeeding(deleteAllTransferTask -> {
+                // fetch saved transfer tasks to request from the service in our test
+                addTransferTasks(1, taskReply -> {
+                    testDataCheckpoint.flag();
+                    if (taskReply.failed()) {
+                        ctx.failNow(taskReply.cause());
+                    } else {
+
+                        // result should have our tasks
+                        JsonArray testTransferTasks = taskReply.result();
+
+                        String uuid = testTransferTasks.getJsonObject(0).getString("uuid");
+
+                        vertx.deployVerticle(TransferAPIVertical.class, options, ctx.succeeding(apiId -> {
+                            apiDeploymentCheckpoint.flag();
+
+                            RequestSpecification requestSpecification = new RequestSpecBuilder()
+                                    .setBaseUri("http://localhost:" + port + "/")
+                                    .build();
+
+                            String otherUserToken = this.makeTestJwt(TEST_OTHER_USERNAME);
+                            ctx.verify(() -> {
+                                //Response when making request by a user without valid permissions
+                                given()
+                                    .spec(requestSpecification)
+                                    .header(TEST_JWT_HEADER, otherUserToken)
+                                    .queryParam("naked", true)
+                                    .when()
+                                    .get("api/transfers/" + uuid)
+                                    .then()
+                                    .assertThat()
+                                    .statusCode(403)
+                                    .extract()
+                                    .asString();
 
                                 requestCheckpoint.flag();
                             });

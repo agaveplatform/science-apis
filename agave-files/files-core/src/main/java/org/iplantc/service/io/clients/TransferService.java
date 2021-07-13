@@ -79,19 +79,16 @@ public class TransferService {
 
 		try (CloseableHttpClient httpClient = HttpClientBuilder.create().build()){
         	HttpGet get = new HttpGet(endpoint);
-			get.setHeader("Content-Type", "application/json; utf-8");
-			get.setHeader("Accept", "application/json");
-			get.setHeader("Content-Language", "en-US");
 			get.setHeader(getHttpAuthHeader(getTenantId()), getHttpAuthToken(getUsername(), getTenantId()));
 
-            HttpResponse response = httpClient.execute(get);
+			HttpResponse response = httpClient.execute(get);
 
             try {
                 log.debug("Response from transfers api: " + response.getStatusLine());
-                HttpEntity entity = response.getEntity();
-                String body = EntityUtils.toString(entity, "UTF-8");
-                EntityUtils.consume(entity);
-                return new APIResponse(body);
+					HttpEntity entity = response.getEntity();
+					String body = EntityUtils.toString(entity, "UTF-8");
+					EntityUtils.consume(entity);
+					return new APIResponse(body);
             } finally {
                 get.releaseConnection();
             }

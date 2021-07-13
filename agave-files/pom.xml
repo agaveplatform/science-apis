@@ -100,6 +100,10 @@
 										<url>http://transfers:8085/health</url>
 										<statusCode>200</statusCode>
 									</httpConnection>
+									<httpConnection>
+										<url>http://nats:8222/varz</url>
+										<statusCode>200</statusCode>
+									</httpConnection>
 								</httpConnections>
 							</configuration>
 						</execution>

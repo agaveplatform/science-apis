@@ -1,26 +1,21 @@
 package org.iplantc.service.common.discovery.providers.sql;
 
-import java.util.Arrays;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-
 import org.codehaus.plexus.util.StringUtils;
 import org.iplantc.service.common.discovery.ServiceCapability;
+
+import javax.persistence.*;
+import java.util.Arrays;
 
 /**
  * When a container starts, it will contain zero or
  * more {@link DiscoverableService}s. Each {@link DiscoverableService} 
  * registers itself with the appropriate list of one or more
- * {@link ServiceCapabilityImpl}. In this way, the existence of all
- * {@link DiscoverableService} and their {@link ServiceCapabilityImpl} 
+ * {@link ServiceCapability}. In this way, the existence of all
+ * {@link DiscoverableService} and their {@link ServiceCapability}
  * is known at all times and can be used to make proper load 
  * balancing and routing decisions within the work queues. 
  * 
- * A {@link ServiceCapabilityImpl} is simply a statment of the context 
+ * A {@link ServiceCapability} is simply a statment of the context
  * are conceptually mapped to specific worker tasks within each
  * API. 
  * 
@@ -410,7 +405,7 @@ public class DiscoverableServiceCapability implements ServiceCapability
 	}
 		
 	/**
-	 * Compares two {@link ServiceCapabilityImpl} fields to determine whether
+	 * Compares two {@link ServiceCapability} fields to determine whether
 	 * the first value covers the same scope the second value 
 	 * supports. Every field contains something different, however
 	 * the determination uses a common vocabulary.
@@ -419,10 +414,10 @@ public class DiscoverableServiceCapability implements ServiceCapability
 	 * ^token: invalidates * as a match for this kind of token.
 	 * token: only values with exact match are covered
 	 * 
-	 * The implication of this grammar is that all {@link ServiceCapabilityImpl} 
-	 * on all matching {@link DiscoveryService}s must be checked before a 
-	 * determination can be made about whether a particular {@link ServiceCapabilityImpl}
-	 * is supported for a given {@link DiscoveryService}.
+	 * The implication of this grammar is that all {@link ServiceCapability}
+	 * on all matching {@link DiscoverableService}s must be checked before a
+	 * determination can be made about whether a particular {@link ServiceCapability}
+	 * is supported for a given {@link DiscoverableService}.
 	 * 
 	 * @param val1
 	 * @param val2
@@ -445,20 +440,15 @@ public class DiscoverableServiceCapability implements ServiceCapability
 		// the values, minus the preceding underscore
 		// are the same, a match is present otherwise
 		// no match
-		} else if (val2.startsWith("^")) {
+		} else // otherwise, this value is a specific
+            // named value and only matches the same value.
+            if (val2.startsWith("^")) {
 			
 			return (val2.substring(1).equals(val1));
 		
 		// neither is an invalidator. if the first 
 		// value is a wildcard, it matches any other value
-		} else if (val1.equals("*")) {
-			return true; 
-		
-		// otherwise, this value is a specific
-		// named value and only matches the same value.
-		} else {
-			return false;
-		}
+		} else return val1.equals("*");
 	}
 	
 	/* (non-Javadoc)

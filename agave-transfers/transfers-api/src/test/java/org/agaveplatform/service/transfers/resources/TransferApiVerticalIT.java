@@ -15,7 +15,6 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.assertj.core.api.SoftAssertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -36,7 +35,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Transfers API integration tests")
 //@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Disabled
 public class TransferApiVerticalIT extends BaseTestCase {
 
     private static final Logger log = LoggerFactory.getLogger(TransferApiVerticalIT.class);
@@ -112,9 +110,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
             TransferAPIVertical apiVert = null;
             try {
                 apiVert = new TransferAPIVertical(vertx);
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e) {
+            } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
             vertx.deployVerticle(apiVert, options, ctx.succeeding(apiId -> {
@@ -164,9 +160,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
                 TransferAPIVertical apiVert = null;
                 try {
                     apiVert = new TransferAPIVertical(vertx);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
+                } catch (IOException | InterruptedException e) {
                     e.printStackTrace();
                 }
                 vertx.deployVerticle(apiVert, options, ctx.succeeding(apiId -> {
@@ -631,7 +625,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
 
     @Test
     @DisplayName("Cancel transfer task by admin")
-    @Disabled
+//    @Disabled
     void cancelTaskForAdmin(Vertx vertx, VertxTestContext ctx) throws Exception {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);

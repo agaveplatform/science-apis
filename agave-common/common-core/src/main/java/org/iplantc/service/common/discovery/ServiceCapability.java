@@ -1,142 +1,140 @@
 package org.iplantc.service.common.discovery;
 
-import org.codehaus.plexus.util.StringUtils;
-
 public interface ServiceCapability
 {
 	/**
 	 * @return the id
 	 */
-	public abstract Long getId();
+    Long getId();
 
 	/**
 	 * @param id the id to set
 	 */
-	public abstract void setId(Long id);
+    void setId(Long id);
 
 	/**
 	 * @return the tenantCode
 	 */
-	public abstract String getTenantCode();
+    String getTenantCode();
 
 	/**
 	 * @param tenantCode the tenantCode to set
 	 */
-	public abstract void setTenantCode(String tenantCode);
+    void setTenantCode(String tenantCode);
 
 	/**
 	 * @return the apiName
 	 */
-	public abstract String getApiName();
+    String getApiName();
 
 	/**
 	 * @param apiName the apiName to set
 	 */
-	public abstract void setApiName(String apiName);
+    void setApiName(String apiName);
 
 	/**
 	 * @return the activityType
 	 */
-	public abstract String getActivityType();
+    String getActivityType();
 
 	/**
 	 * @param activityType the activityType to set
 	 */
-	public abstract void setActivityType(String activityType);
+    void setActivityType(String activityType);
 
 	/**
 	 * @return the username
 	 */
-	public abstract String getUsername();
+    String getUsername();
 
 	/**
 	 * @param username the username to set
 	 */
-	public abstract void setUsername(String username);
+    void setUsername(String username);
 
 	/**
 	 * @return the groupName
 	 */
-	public abstract String getGroupName();
+    String getGroupName();
 
 	/**
 	 * @param groupName the groupName to set
 	 */
-	public abstract void setGroupName(String groupName);
+    void setGroupName(String groupName);
 
 	/**
 	 * @return the definition
 	 */
-	public abstract String getDefinition();
+    String getDefinition();
 
 	/**
 	 * @param definition the definition to set
 	 */
-	public abstract void setDefinition(String definition);
+    void setDefinition(String definition);
 
 	/**
-	 * Whether the given {@link ServiceCapabilityImpl} allows the
+	 * Whether the given {@link ServiceCapability} allows the
 	 * given behavior either through wildcard or exact matching.
 	 * 
-	 * @param {@link ServiceCapabilityImpl} 
-	 * @return true if the this {@link ServiceCapabilityImpl} in any 
-	 * way matches the provided {@link ServiceCapabilityImpl}
+	 * @param {@link ServiceCapability}
+	 * @return true if the this {@link ServiceCapability} in any
+	 * way matches the provided {@link ServiceCapability}
 	 */
-	public abstract boolean allows(ServiceCapability o);
+    boolean allows(ServiceCapability o);
 
 	/**
-	 * Whether the given {@link ServiceCapabilityImpl} is invalidated
-	 * by this {@link ServiceCapabilityImpl}. This differs from the 
-	 * {@link ServiceCapabilityImpl#allows(ServiceCapabilityImpl)} method in
+	 * Whether the given {@link ServiceCapability} is invalidated
+	 * by this {@link ServiceCapability}. This differs from the
+	 * {@link ServiceCapability#allows(ServiceCapability)} method in
 	 * that this only returns true if an explicit invalidation 
 	 * field is found. 
 	 * 
 	 * a.invalidates(b) does not imply a.allows(b)
 	 * 
-	 * @param {@link ServiceCapabilityImpl} 
-	 * @return true if the this {@link ServiceCapabilityImpl} in any 
-	 * way matches the provided {@link ServiceCapabilityImpl}
+	 * @param {@link ServiceCapability}
+	 * @return true if the this {@link ServiceCapability} in any
+	 * way matches the provided {@link ServiceCapability}
 	 */
-	public abstract boolean invalidates(ServiceCapability o);
+    boolean invalidates(ServiceCapability o);
 
 	/**
      * @return the executionSystemId
      */
-    public String getExecutionSystemId();
+    String getExecutionSystemId();
 
     /**
      * @param executionSystemId the executionSystemId to set
      */
-    public void setExecutionSystemId(String executionSystemId);
+    void setExecutionSystemId(String executionSystemId);
     
     /**
      * @return the sourceSystemId
      */
-    public String getSourceSystemId();
+    String getSourceSystemId();
 
     /**
      * @param sourceSystemId the sourceSystemId to set
      */
-    public void setSourceSystemId(String sourceSystemId);
+    void setSourceSystemId(String sourceSystemId);
     
     /**
      * @return the destSystemId
      */
-    public String getDestSystemId();
+    String getDestSystemId();
 
     /**
      * @param sourceSystemId the destSystemId to set
      */
-    public void setDestSystemId(String sourceSystemId);
+    void setDestSystemId(String sourceSystemId);
 
     /**
      * @return the batchQueueName
      */
-    public String getBatchQueueName();
+    String getBatchQueueName();
 
     /**
      * @param batchQueueName the batchQueueName to set
      */
-    public void setBatchQueueName(String batchQueueName);
+    void setBatchQueueName(String batchQueueName);
 
 }

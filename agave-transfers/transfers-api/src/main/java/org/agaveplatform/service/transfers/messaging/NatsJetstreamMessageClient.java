@@ -94,9 +94,10 @@ public class NatsJetstreamMessageClient {
      */
     public void getOrCreateStream(String... subjects) throws IOException {
         try {
-            if (! getJetStreamManagement().getStreamNames().contains(streamName)) {
+            if (! getJetStreamManagement().getStreamNames().contains(getStreamName())) {
                 StreamConfiguration streamConfig = StreamConfiguration.builder()
-                        .name(streamName)
+                        .name(getStreamName())
+                        .storageType(StorageType.File)
                         .subjects(subjects)
                         .retentionPolicy(RetentionPolicy.WorkQueue)
                         .maxConsumers(-1)
@@ -104,17 +105,20 @@ public class NatsJetstreamMessageClient {
                         .maxAge(Duration.ofDays(30))
                         .maxMsgSize(-1)
                         .maxMessages(-1)
-                        .storageType(StorageType.Memory)
                         .replicas(1)
                         .noAck(false)
                         // .template(...)
                         .discardPolicy(DiscardPolicy.Old)
                         .build();
                 StreamInfo streamInfo = jsm.addStream(streamConfig);
-                log.info("Created missing NATS stream {}: {}", streamName, streamInfo);
-            } else {
-                log.debug("NATS stream {} already existed.", streamName);
+//                JsonUtils.printFormatted(streamInfo);
+                log.info("Created missing NATS stream {}: {}", getStreamName(), streamInfo);
             }
+//            else {
+//////                StreamInfo streamInfo = getJetStreamManagement().getStreamInfo(getStreamName());
+//////                log.debug("NATS stream {} already existed: {}", getStreamName(), streamInfo);
+//                log.debug("NATS stream {} already existed", getStreamName());
+//            }
         } catch(JetStreamApiException e) {
             throw new IOException("Unable to create NATS stream " + streamName, e);
         }
@@ -188,6 +192,7 @@ public class NatsJetstreamMessageClient {
         String subscriptionKey = getStreamName() + "-" + durable;
         if (!subscriptionMap.containsKey(subscriptionKey)) {
             PullSubscribeOptions pullSubscribeOptions = PullSubscribeOptions.builder()
+                    .stream(getStreamName())
                     .durable(durable)
                     .build();
 
@@ -311,13 +316,13 @@ public class NatsJetstreamMessageClient {
                         throw new MessagingException("Unable to publish message to NATS server after " + MAX_ATTEMPTS + " attempts.");
                     }
                 } else {
-                    if (log.isDebugEnabled()) {
-                        log.debug("NatsJetstreamMessage{" +
-                                "stream='" + getStreamName() + "'" +
-                                ", subject=" + subject +
-                                ", seq=" + pa.getSeqno() +
-                                "}");
-                    }
+//                    if (log.isDebugEnabled()) {
+//                        log.debug("NatsJetstreamMessage{" +
+//                                "stream='" + getStreamName() + "'" +
+//                                ", subject=" + subject +
+//                                ", seq=" + pa.getSeqno() +
+//                                "}");
+//                    }
                     return;
                 }
             } catch (JetStreamApiException e) {
@@ -417,8 +422,8 @@ public class NatsJetstreamMessageClient {
             JetStreamSubscription subscription = getOrCreatePullSubscription(subject);
             int read = 0;
             while (read < numberOfMessages) {
-                List<io.nats.client.Message> message = subscription.fetch(10, Duration.ofSeconds(timeoutSeconds));
-                for (io.nats.client.Message m : message) {
+                List<io.nats.client.Message> batch = subscription.fetch(10, Duration.ofSeconds(timeoutSeconds));
+                for (io.nats.client.Message m : batch) {
                     read++;
                     m.ack();
                     agaveMessages.add(new Message(m.getSID(), new String(m.getData())));
@@ -528,11 +533,17 @@ public class NatsJetstreamMessageClient {
     public void stop() {
         subscriptionMap.forEach((key, subscription) -> {
             try {
-                subscription.unsubscribe();
+                if (subscription.getDispatcher() != null) {
+                    subscription.getDispatcher().unsubscribe(subscription.getSubject());
+                }
+                else {
+                    subscription.unsubscribe();
+                }
             } catch (Exception e) {
-                log.debug("Failed to unsubscribe client " + key);
+                log.debug("Failed to unsubscribe client {}: {}", key, e.getMessage());
             }
         });
+        subscriptionMap.clear();
     }
 
     /**

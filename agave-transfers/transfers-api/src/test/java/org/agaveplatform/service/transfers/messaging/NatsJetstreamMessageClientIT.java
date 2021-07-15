@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.messaging;
 
 import io.nats.client.*;
 import io.nats.client.api.*;
+import io.nats.client.support.JsonUtils;
 import io.vertx.junit5.VertxExtension;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.junit.jupiter.api.*;
@@ -52,19 +53,25 @@ public class NatsJetstreamMessageClientIT {
         jsm = nc.jetStreamManagement();
         try {
             StreamInfo si = jsm.getStreamInfo(TEST_STREAM);
+            log.debug("Found test stream {}", TEST_STREAM);
+            JsonUtils.printFormatted(si);
             PurgeResponse pr = jsm.purgeStream(TEST_STREAM);
+            JsonUtils.printFormatted(pr);
             if (!pr.isSuccess()) {
                 fail("Failed to purge test queue prior to test run");
             }
         } catch (JetStreamApiException e) {
             if (e.getErrorCode() == 404) {
+                log.debug("Missing test stream {}", TEST_STREAM);
                 StreamConfiguration streamConfiguration = StreamConfiguration.builder()
                         .name(TEST_STREAM)
                         .addSubjects(TEST_STREAM_SUBJECT)
                         .storageType(StorageType.Memory)
                         .build();
 
-                jsm.addStream(streamConfiguration);
+                StreamInfo si = jsm.addStream(streamConfiguration);
+                log.debug("Created test stream {}", TEST_STREAM);
+                JsonUtils.printFormatted(si);
             }
         }
 
@@ -111,10 +118,13 @@ public class NatsJetstreamMessageClientIT {
         List<io.nats.client.Message> messages = nativeClientSubscription.fetch(1, Duration.ofSeconds(1));
 
         if (messages.isEmpty()) {
+            log.debug("No message returned from stream");
             return null;
         } else {
             io.nats.client.Message msg = messages.get(0);
             msg.ack();
+            log.debug("Fetched message from nats {}", msg.getSubject());
+            JsonUtils.printFormatted(msg.metaData());
             return msg;
         }
     }
@@ -132,8 +142,14 @@ public class NatsJetstreamMessageClientIT {
 
             // test pushing of message for each message type
 //            for (String messageType : MessageType.values()) {
-            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFER_COMPLETED;
-            agaveMessageClient.push(subject, testBody);
+            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFER_COMPLETED + ".push";
+            try {
+                // push a message with a unique body to ensure we can get it back.
+                agaveMessageClient.push(subject, testBody);
+            } catch (Exception e) {
+                log.error("Failed to push {} message to stream {}", subject, TEST_STREAM, e);
+                fail(e);
+            }
 
             nc.flush(Duration.ofSeconds(1));
             msg = getSingleNatsMessage();
@@ -152,8 +168,8 @@ public class NatsJetstreamMessageClientIT {
                 // clean up test client
                 nc.jetStreamManagement().deleteConsumer(TEST_STREAM, subject);
             } catch (Exception ignored) {}
-//            }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
         }
         finally {
@@ -174,13 +190,23 @@ public class NatsJetstreamMessageClientIT {
 //            for (String messageType : MessageType.values()) {
 
             String testBody = UUID.randomUUID().toString();
-            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_CREATED;
+            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_CREATED + ".fetch";
 
-            // push a message with a unique body to ensure we can get it back.
-            agaveMessageClient.push(subject, testBody);
+            try {
+                // push a message with a unique body to ensure we can get it back.
+                agaveMessageClient.push(subject, testBody);
+            } catch (Exception e) {
+                log.error("Failed to push {} message to stream {}", subject, TEST_STREAM, e);
+                fail(e);
+            }
 
-            List<org.iplantc.service.common.messaging.Message> messages =
-                    agaveMessageClient.fetch(subject, 1, 2);
+            List<org.iplantc.service.common.messaging.Message> messages = null;
+            try {
+                messages = agaveMessageClient.fetch(subject, 1, 2);
+            } catch (Exception e) {
+                log.error("Failed to fetch message for subject {} in stream {}", subject, TEST_STREAM, e);
+                fail(e);
+            }
 
             assertFalse(messages.isEmpty(), "Test message pushed to stream should be fetched ");
 
@@ -191,11 +217,6 @@ public class NatsJetstreamMessageClientIT {
                     "Body of fetched message should match body of message sent. " +
                             "Something else is likely writing test data");
 
-            try {
-                // clean up test client
-                nc.jetStreamManagement().deleteConsumer(TEST_STREAM, subject);
-            } catch (Exception ignored) {}
-//            }
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);
         }
@@ -211,36 +232,40 @@ public class NatsJetstreamMessageClientIT {
         int testMessageCount = 5;
 
         try {
-            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
+            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetchMany-test-consumer");
             agaveMessageClient.getOrCreateStream(TEST_STREAM_SUBJECT);
 
             // test pushing of message for each message type
-            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_CREATED;
+            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_CREATED + ".fetchMultiple";
             List bodies = new ArrayList<String>();
             // push a message with a unique body to ensure we can get it back.
             for (int i=0; i<testMessageCount; i++) {
                 String testBody = UUID.randomUUID().toString();
                 bodies.add(testBody);
-                agaveMessageClient.push(subject, testBody);
+                try {
+                    agaveMessageClient.push(subject, testBody);
+                } catch (Exception e) {
+                    log.error("Failed to push message to subject {} in stream {}", subject, TEST_STREAM, e);
+                    fail(e);
+                }
             }
 
             nc.flush(Duration.ofSeconds(1));
 
-            List<org.iplantc.service.common.messaging.Message> messages =
-                    agaveMessageClient.fetch(subject, testMessageCount, 5);
-
+            List<org.iplantc.service.common.messaging.Message> messages = null;
+            try {
+                messages = agaveMessageClient.fetch(subject, testMessageCount, 5);
+            } catch (Exception e) {
+                log.error("Failed to fetch message for subject {} in stream {}", subject, TEST_STREAM, e);
+                fail(e);
+            }
             assertFalse(messages.isEmpty(), "Test message pushed to stream should be fetched ");
 
             assertEquals(testMessageCount, messages.size(),
                     "Exactly " + testMessageCount + " messages should be returned from test stream with when one is requested");
 
-            try {
-                // clean up test client
-                nc.jetStreamManagement().deleteConsumer(TEST_STREAM, subject);
-            } catch (Exception ignored) {}
-
         } catch (Exception e) {
-            fail("Failed to push a message to the message queue", e);
+            fail("Fetching multiple tasks should work", e);
         }
         finally {
             if (agaveMessageClient != null) agaveMessageClient.stop();
@@ -249,23 +274,34 @@ public class NatsJetstreamMessageClientIT {
 
     @Test
     @DisplayName("Pop single message from queue...")
+//    @Disabled
     public void pop() {
         NatsJetstreamMessageClient agaveMessageClient = null;
 
         try {
-            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
+            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "pop-test-consumer");
             agaveMessageClient.getOrCreateStream(TEST_STREAM_SUBJECT);
 
             // test pushing of message for each message type
 //            for (String messageType : MessageType.values()) {
                 String testBody = UUID.randomUUID().toString();
-                String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_DELETED;
+                String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_DELETED + ".pop";
 
-                // push a message with a unique body to ensure we can get it back.
-                agaveMessageClient.push(subject, testBody);
+                try {
+                    // push a message with a unique body to ensure we can get it back.
+                    agaveMessageClient.push(subject, testBody);
+                } catch (Exception e) {
+                    log.error("Failed to push {} message to stream {}", subject, TEST_STREAM, e);
+                    fail(e);
+                }
 
-                org.iplantc.service.common.messaging.Message popMessage =
-                        agaveMessageClient.pop(subject);
+                org.iplantc.service.common.messaging.Message popMessage = null;
+                try {
+                    popMessage = agaveMessageClient.pop(subject);
+                } catch (Exception e) {
+                    log.error("Failed to pop message for subject {} in stream {}", subject, TEST_STREAM, e);
+                    fail(e);
+                }
 
                 assertNotNull(popMessage, "Popped message should not be null.");
 
@@ -273,13 +309,8 @@ public class NatsJetstreamMessageClientIT {
                         "Body of fetched message should match body of message sent. " +
                                 "Something else is likely writing test data");
 
-                try {
-                    // clean up test client
-                    nc.jetStreamManagement().deleteConsumer(TEST_STREAM, subject);
-                } catch (Exception ignored) {}
-//            }
         } catch (Exception e) {
-            fail("Failed to push a message to the message queue", e);
+            fail("Popping message should succeed", e);
         }
         finally {
             if (agaveMessageClient != null) agaveMessageClient.stop();
@@ -293,7 +324,7 @@ public class NatsJetstreamMessageClientIT {
         int testMessageCount = 5;
 
         try {
-            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "fetch-test-consumer");
+            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, TEST_STREAM, "listen-test-consumer");
             agaveMessageClient.getOrCreateStream(TEST_STREAM_SUBJECT);
 
             CountDownLatch msgLatch = new CountDownLatch(testMessageCount);
@@ -317,7 +348,7 @@ public class NatsJetstreamMessageClientIT {
             };
 
             // test pushing of message for each message type
-            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_CREATED;
+            String subject = TEST_MESSAGE_SUBJECT_PREFIX + MessageType.TRANSFERTASK_CREATED + ".listen";
             List bodies = new ArrayList<String>();
             // push a message with a unique body to ensure we can get it back.
             for (int i=0; i<testMessageCount; i++) {
@@ -339,11 +370,6 @@ public class NatsJetstreamMessageClientIT {
 
             assertEquals(0, ignored.get(),
                     "No message should be ingored in the test");
-
-            try {
-                // clean up test client
-                nc.jetStreamManagement().deleteConsumer(TEST_STREAM, subject);
-            } catch (Exception e) {}
 
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);

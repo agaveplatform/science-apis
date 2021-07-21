@@ -1,7 +1,6 @@
 package org.iplantc.service.io.clients;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.exceptions.TaskException;
@@ -13,21 +12,24 @@ import java.net.URISyntaxException;
 
 import static org.testng.Assert.*;
 
-@Test(groups={"integration"})
+@Test(singleThreaded = true, groups={"integration.clients.transferService"}, dependsOnGroups = "integration.dao.logicalFileDao")
 public class TransferServiceIT extends BaseTestCase {
     String source;
     String dest;
     String transferUuid;
 
     @BeforeClass
-    public void beforeClass() throws URISyntaxException {
+    public void setUp() throws URISyntaxException {
+        clearQueues();
+        clearLogicalFiles();
+
         source = "https://httpd:8443/public/test_upload.bin";
         // Transfers api is an internal service. The destination must be a valid location.
         dest = "file:/dev/null";
     }
 
     @AfterClass
-    public void afterClass() throws Exception {
+    public void cleanUp() throws Exception {
         clearQueues();
         clearLogicalFiles();
     }

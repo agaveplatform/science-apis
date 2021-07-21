@@ -48,7 +48,7 @@ import static org.testng.Assert.*;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups={"integration"})
+@Test(singleThreaded=true, groups={"integration.notification.logicalFileNotification"}, dependsOnGroups = "integration.clients.transferService")
 public class LogicalFileNotificationIT extends BaseTestCase
 {
 	private static final Logger log = Logger.getLogger(LogicalFileNotificationIT.class);

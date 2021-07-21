@@ -17,7 +17,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
-@Test(groups={"integration"})
+@Test(singleThreaded = true, groups={"integration.dao.remotePermission"}, dependsOnGroups = "integration.dao.logicalFileDao")
 public class RemoteFilePermissionDaoIT extends BaseTestCase {
 
 	private LogicalFile file;

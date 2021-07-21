@@ -33,7 +33,7 @@ import java.io.IOException;
  * @author dooley
  *
  */
-@Test(groups={"integration"})
+@Test(singleThreaded = true, groups={"integration"})
 public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupIT<LogicalFile> {
 	
 	@BeforeClass

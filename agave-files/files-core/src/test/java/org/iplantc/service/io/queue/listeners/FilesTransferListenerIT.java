@@ -1,7 +1,6 @@
 package org.iplantc.service.io.queue.listeners;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.exceptions.MessagingException;
@@ -37,7 +36,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.fail;
 
-@Test(groups = {"integration"})
+@Test(singleThreaded = true, groups = {"integration.listeners.filesTransferListener"}, dependsOnGroups = "integration.clients.transferService")
 public class FilesTransferListenerIT extends BaseTestCase {
     private StorageSystem storageSystem;
     private LogicalFile file;
@@ -135,7 +134,7 @@ public class FilesTransferListenerIT extends BaseTestCase {
     }
 
 
-    @Test
+    @Test(priority = 0)
     public void testRunUpdatesStatus() throws MessagingException, MessageProcessingException, IOException, LogicalFileException, RemoteDataException, RemoteCredentialException {
         FilesTransferListener listener = getMockFilesTransferListener();
         doNothing().when(listener).updateSourceLogicalFile(anyString(), anyString(), any(FilesTransferListener.TransferTaskEventType.class), anyString());
@@ -154,7 +153,7 @@ public class FilesTransferListenerIT extends BaseTestCase {
 
             InOrder verifyOrder = inOrder(listener);
 
-            List<FilesTransferListener.TransferTaskEventType> eventTypes = List.of(FilesTransferListener.TransferTaskEventType.TRANSFERTASK_ASSIGNED,
+            List<FilesTransferListener.TransferTaskEventType> eventTypes = List.of(FilesTransferListener.TransferTaskEventType.TRANSFERTASK_CREATED, FilesTransferListener.TransferTaskEventType.TRANSFERTASK_ASSIGNED,
                     FilesTransferListener.TransferTaskEventType.TRANSFERTASK_FINISHED);
 
 
@@ -171,7 +170,7 @@ public class FilesTransferListenerIT extends BaseTestCase {
         }
     }
 
-    @Test(dependsOnMethods = "testRunUpdatesStatus")
+    @Test(dependsOnMethods = "testRunUpdatesStatus", priority = 1)
     public void testRun() throws RemoteCredentialException, MessageProcessingException, LogicalFileException, RemoteDataException, MessagingException, IOException {
         FilesTransferListener mockListener = getMockFilesTransferListener();
 
@@ -199,7 +198,7 @@ public class FilesTransferListenerIT extends BaseTestCase {
         }
     }
 
-    @Test
+    @Test(priority = 2)
     public void testMissingSourceLogicalFileRejectsMessage() throws RemoteCredentialException, MessageProcessingException, LogicalFileException, RemoteDataException, MessagingException, IOException {
         FilesTransferListener mockListener = getMockFilesTransferListener();
 
@@ -219,7 +218,7 @@ public class FilesTransferListenerIT extends BaseTestCase {
         }
     }
 
-    @Test
+    @Test(priority = 3)
     public void testUpdateDestinationLogicalFile() throws RemoteCredentialException, MessageProcessingException, LogicalFileException, RemoteDataException, MessagingException, IOException {
         FilesTransferListener listener = getMockFilesTransferListener();
         doCallRealMethod().when(listener).updateDestinationLogicalFile(anyString(), anyString(), any(), anyString());

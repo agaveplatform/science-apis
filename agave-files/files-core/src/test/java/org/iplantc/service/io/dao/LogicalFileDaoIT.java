@@ -20,7 +20,7 @@ import java.util.UUID;
 
 import static org.testng.Assert.*;
 
-@Test(singleThreaded = true, groups={"integration"})
+@Test(singleThreaded = true, groups={"integration.dao.logicalFileDao"}, dependsOnGroups = "integration")
 public class LogicalFileDaoIT extends BaseTestCase
 {
 	//	private LogicalFile file;

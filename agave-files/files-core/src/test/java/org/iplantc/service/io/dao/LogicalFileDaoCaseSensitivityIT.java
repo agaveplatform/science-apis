@@ -3,10 +3,11 @@ package org.iplantc.service.io.dao;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.HibernateException;
 import org.iplantc.service.io.BaseTestCase;
-import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.systems.model.StorageSystem;
+import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
@@ -14,18 +15,10 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
-@Test(groups={"integration"})
+@Test(singleThreaded = true, groups={"integration"})
 public class LogicalFileDaoCaseSensitivityIT extends BaseTestCase
 {
 	private LogicalFile file;
-	private LogicalFile sibling;
-	private LogicalFile cousin;
-	private LogicalFile parent;
-	private LogicalFile uncle;
-	private LogicalFile parentParent;
-	private LogicalFile parentParentParent;
-	private LogicalFile rootParent;
-	private final SystemDao systemDao = new SystemDao();
 	private StorageSystem system;
 	private String basePath;
 	private String otherPath;
@@ -33,20 +26,27 @@ public class LogicalFileDaoCaseSensitivityIT extends BaseTestCase
 	private URI httpUri;
 	
 	@BeforeClass
-	protected void beforeClass() throws Exception 
+	protected void setUp() throws Exception
 	{
 		super.beforeClass();
 		clearSystems();
 		clearLogicalFiles();
-		
-		system = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
+
+		JSONObject json = getSystemJson();
+		json.remove("id");
+		json.put("id", this.getClass().getSimpleName());
+		system = (StorageSystem) StorageSystem.fromJSON(json);
 		system.setOwner(SYSTEM_OWNER);
-		system.setPubliclyAvailable(true);
-		system.setGlobalDefault(true);
-		system.setAvailable(true);
-		
-		systemDao.persist(system);
-		
+		String homeDir = system.getStorageConfig().getHomeDir();
+		homeDir = org.apache.commons.lang.StringUtils.isEmpty(homeDir) ? "" : homeDir;
+		system.getStorageConfig().setHomeDir(
+				homeDir + "/" + getClass().getSimpleName() + "/" + UUID.randomUUID());
+		StorageConfig storageConfig = system.getStorageConfig();
+		SystemDao dao = new SystemDao();
+		if (dao.findBySystemId(system.getSystemId()) == null) {
+			dao.persist(system);
+		}
+
 		basePath = "/var/home/" + SYSTEM_OWNER + "/some";
 		otherPath = "/var/home/" + SYSTEM_OWNER + "/other";
 		destPath = String.format("/home/%s/%s/%s", SYSTEM_OWNER, UUID.randomUUID(), LOCAL_TXT_FILE_NAME);
@@ -56,24 +56,11 @@ public class LogicalFileDaoCaseSensitivityIT extends BaseTestCase
 	}
 	
 	@BeforeMethod
-	protected void setUp() throws Exception 
-	{	
+	protected void setUpBeforeMethod() throws Exception
+	{
+		clearLogicalFiles();
 		file = new LogicalFile(SYSTEM_OWNER, system, httpUri.toString().toLowerCase(), destPath.toLowerCase(), "originalFilename");
-		
-		//LogicalFileDao.persist(file);
-	}
-	
-	@AfterMethod
-	protected void tearDown() throws Exception
-	{
-		clearLogicalFiles();
-	}
-	
-	@AfterClass
-	protected void afterClass() throws Exception 
-	{
-		clearSystems();
-		clearLogicalFiles();
+//		LogicalFileDao.persist(file);
 	}
 
 	@DataProvider
@@ -86,7 +73,7 @@ public class LogicalFileDaoCaseSensitivityIT extends BaseTestCase
 		};
 	}
 
-	@Test(dataProvider="caseInsensitiveProvider")
+	@Test(dataProvider="caseInsensitiveProvider",priority = 0)
 	public void testFindBySystemCaseInsensitivePath(String originalPath, String caseInsensitivePath) {
 		try {
 			file.setPath(originalPath);
@@ -117,12 +104,13 @@ public class LogicalFileDaoCaseSensitivityIT extends BaseTestCase
 		};
 	}
 
-	@Test(dataProvider="caseInsensitiveSourceUriProvider", dependsOnMethods={"testFindBySystemCaseInsensitivePath"}, groups={"broken"})
+	@Test(dataProvider="caseInsensitiveSourceUriProvider", priority = 1)
 	public void testFindByCaseInsensitiveSourceUri(String originalUri, String caseInsensitiveUri) {
 		try {
+
 			file.setSourceUri(originalUri);
 			LogicalFileDao.save(file);
-			
+
 			LogicalFile caseInsensitiveFile = new LogicalFile(SYSTEM_OWNER, system, caseInsensitiveUri, file.getPath(), "originalFilename");
 			LogicalFileDao.save(caseInsensitiveFile);
 			
@@ -148,7 +136,7 @@ public class LogicalFileDaoCaseSensitivityIT extends BaseTestCase
 		};
 	}
 
-	@Test(dataProvider="caseInsensitiveOwnerProvider", dependsOnMethods={"testFindByCaseInsensitiveSourceUri"}, groups={"broken"})
+	@Test(dataProvider="caseInsensitiveOwnerProvider", priority = 2)
 	public void testFindByCaseInsensitiveOwner(String originalOwner, String caseInsensitiveOwner) {
 		try {
 			file.setOwner(originalOwner);

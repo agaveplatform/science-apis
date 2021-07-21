@@ -19,7 +19,7 @@ import java.util.UUID;
 import static org.testng.Assert.assertNull;
 import static org.testng.AssertJUnit.assertNotNull;
 
-@Test(groups={"integration"})
+@Test(groups={"broken"})
 public class QueueTaskDaoIT extends BaseTestCase {
 
 	private StorageSystem system;

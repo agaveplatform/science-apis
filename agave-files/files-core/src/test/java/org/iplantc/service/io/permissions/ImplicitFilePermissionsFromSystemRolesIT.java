@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-@Test(groups={"integration"})
+@Test(singleThreaded = true, groups={"integration"})
 public class ImplicitFilePermissionsFromSystemRolesIT extends AbstractPermissionManagerIT
 {
 	class PermissionPredicate implements Predicate {

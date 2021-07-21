@@ -26,6 +26,7 @@ import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -102,6 +103,12 @@ public class BaseTestCase {
 		clearSystems();
 		clearLogicalFiles();
 	}
+
+
+    protected JSONObject getSystemJson() throws JSONException, IOException {
+        return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/"
+                + "sftp.example.com.json");
+    }
 
     /**
      * Clears all systems and related entity tables from db

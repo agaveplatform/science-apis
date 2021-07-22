@@ -123,6 +123,7 @@ public class URLCopyIT extends BaseTestCase {
         RemoteTransferListenerImpl mockRemoteTransferListenerImpl = mock(RemoteTransferListenerImpl.class);
         when(mockRemoteTransferListenerImpl.getRetryRequestManager()).thenReturn(retryRequestManager);
         when(mockRemoteTransferListenerImpl.isCancelled()).thenReturn(false);
+        when(mockRemoteTransferListenerImpl.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
         when(mockRemoteTransferListenerImpl.getTransferTask()).thenReturn(transferTask);
         doCallRealMethod().when(mockRemoteTransferListenerImpl).started(anyLong(), anyString());
         doCallRealMethod().when(mockRemoteTransferListenerImpl).progressed(anyLong());
@@ -139,6 +140,7 @@ public class URLCopyIT extends BaseTestCase {
         when(mockRemoteTransferListenerImpl.getFirstRemoteFilepath()).thenCallRealMethod();
         when(mockRemoteTransferListenerImpl.getLastUpdated()).thenCallRealMethod();
         when(mockRemoteTransferListenerImpl.getBytesLastCheck()).thenCallRealMethod();
+        when(mockRemoteTransferListenerImpl.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
         doCallRealMethod().when(mockRemoteTransferListenerImpl)._doPublishEvent(anyString(), any(JsonObject.class));
         doCallRealMethod().when(mockRemoteTransferListenerImpl).setTransferTask(any(TransferTask.class));
         doCallRealMethod().when(mockRemoteTransferListenerImpl).setFirstRemoteFilepath(anyString());
@@ -159,6 +161,7 @@ public class URLCopyIT extends BaseTestCase {
         when(mockRemoteTransferListenerImpl.getFirstRemoteFilepath()).thenCallRealMethod();
         when(mockRemoteTransferListenerImpl.getLastUpdated()).thenCallRealMethod();
         when(mockRemoteTransferListenerImpl.getBytesLastCheck()).thenCallRealMethod();
+        when(mockRemoteTransferListenerImpl.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
         doCallRealMethod().when(mockRemoteTransferListenerImpl)._doPublishEvent(anyString(), any(JsonObject.class));
         doCallRealMethod().when(mockRemoteTransferListenerImpl).setTransferTask(any(TransferTask.class));
         doCallRealMethod().when(mockRemoteTransferListenerImpl).setFirstRemoteFilepath(anyString());
@@ -265,17 +268,17 @@ public class URLCopyIT extends BaseTestCase {
             ctx.verify(() -> {
                 //check that events are published correctly using the RetryRequestManager
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        eq(readStartedJson), eq(2));
+                        eq(readStartedJson));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        argThat(new IsSameJsonTransferTask(readInProgressJson)), eq(2));
+                        argThat(new IsSameJsonTransferTask(readInProgressJson)));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        argThat(new IsSameJsonTransferTask(readCompletedJson)), eq(2));
+                        argThat(new IsSameJsonTransferTask(readCompletedJson)));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        argThat(new IsSameJsonTransferTask(writeStartedJson)), eq(2));
+                        argThat(new IsSameJsonTransferTask(writeStartedJson)));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        argThat(new IsSameJsonTransferTask(writeInProgressJson)), eq(2));
+                        argThat(new IsSameJsonTransferTask(writeInProgressJson)));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        argThat(new IsSameJsonTransferTask(writeCompletedJson)), eq(2));
+                        argThat(new IsSameJsonTransferTask(writeCompletedJson)));
 
                 assertEquals(attempts + 1, copiedTransfer.getAttempts(), "TransferTask attempts should be incremented upon copy.");
                 assertEquals(copiedTransfer.getStatus(), TransferStatusType.WRITE_COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");
@@ -374,11 +377,11 @@ public class URLCopyIT extends BaseTestCase {
 
                 //check that events are published correctly using the RetryRequestManager
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        argThat(new IsSameJsonTransferTask(writeStartedJson)), eq(2));
+                        argThat(new IsSameJsonTransferTask(writeStartedJson)));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        argThat(new IsSameJsonTransferTask(writeInProgressJson)), eq(2));
+                        argThat(new IsSameJsonTransferTask(writeInProgressJson)));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        argThat(new IsSameJsonTransferTask(writeCompletedJson)), eq(2));
+                        argThat(new IsSameJsonTransferTask(writeCompletedJson)));
 
                 // original tt should only be updated once because there should only be one listener created
                 verify(mockCopy, times(1)).updateAggregateTaskFromChildTask(eq(tt), any());
@@ -561,7 +564,7 @@ public class URLCopyIT extends BaseTestCase {
                     assertEquals(TransferStatusType.CANCELLED, tt.getStatus(), "Expected transfer task status to be CANCELLED when copy is cancelled or killed.");
                     assertEquals(TransferStatusType.CANCELLED, destChildTransferTask.getStatus(), "Expected child transfer task status to be CANCELLED when copy is cancelled or killed.");
                     verify(mockRetryRequestManager, atLeast(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                            argThat(new IsSameJsonTransferTask(writeCancelledJson)), eq(2));
+                            argThat(new IsSameJsonTransferTask(writeCancelledJson)));
 
                     ctx.completeNow();
                 });
@@ -640,11 +643,11 @@ public class URLCopyIT extends BaseTestCase {
 
                 //check that events are published correctly using the RetryRequestManager
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        eq(streamCopyStartedJson), eq(2));
+                        eq(streamCopyStartedJson));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        argThat(new IsSameJsonTransferTask(streamInProgressJson)), eq(2));
+                        argThat(new IsSameJsonTransferTask(streamInProgressJson)));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        argThat(new IsSameJsonTransferTask(streamCompletedJson)), eq(2));
+                        argThat(new IsSameJsonTransferTask(streamCompletedJson)));
 
                 assertEquals(attempts + 1, copiedTransfer.getAttempts(), "TransferTask attempts should be incremented upon copy.");
                 assertEquals(copiedTransfer.getStatus(), TransferStatusType.STREAM_COPY_COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");

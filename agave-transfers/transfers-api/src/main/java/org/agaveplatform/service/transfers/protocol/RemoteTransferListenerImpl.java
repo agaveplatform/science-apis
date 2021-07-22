@@ -91,9 +91,9 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
      */
     public void _doPublishEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
         log.debug("_doPublishEvent({}, {})", eventName, body);
-        String subject = createPushMessageSubject(body.getString("tenant_id"),
-                body.getString("tenant_id"), body.getString("tenant_id"), eventName);
-        getRetryRequestManager().request(subject, body);
+//        String subject = createPushMessageSubject(body.getString("tenant_id"),
+//                body.getString("tenant_id"), body.getString("tenant_id"), eventName);
+        getRetryRequestManager().request(eventName, body);
     }
 
     /**

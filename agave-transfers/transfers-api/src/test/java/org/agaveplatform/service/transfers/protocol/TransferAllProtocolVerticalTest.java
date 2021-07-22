@@ -47,7 +47,6 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfer All tests")
-@Disabled
 class TransferAllProtocolVerticalTest  extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferAllProtocolVerticalTest.class);
 
@@ -213,10 +212,11 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 
 		// pull in the mock for TransferAllProtocolVertical
 		TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(vertx);
+		when(txfrAllVert.taskIsNotInterrupted(any())).thenReturn(true);
 		// mock out everything call, but not being tested in the method
 		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(srcUri)) ).thenReturn(srcRemoteDataClientMock);
 		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(destUri)) ).thenReturn(destRemoteDataClientMock);
-		when(txfrAllVert.getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock)).thenReturn(urlCopyMock);
+		when(txfrAllVert.getUrlCopy(any(), any())).thenReturn(urlCopyMock);
 		doNothing().when(txfrAllVert)._doPublishEvent(anyString(), any(JsonObject.class), any());
 
 		// make the actual call to our method under test

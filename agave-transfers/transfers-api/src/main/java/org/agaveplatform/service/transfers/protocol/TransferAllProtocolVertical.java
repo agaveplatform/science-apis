@@ -370,11 +370,9 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 		//   interrupts in this method upon updates from the transfer thread and interrupt it. Alternatively, we can
 		//   just run the transfer in an observable and interrupt it via a timer task started by vertx.
 		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
-
+		CallableUrlCopy callableUrlQuery = new CallableUrlCopy(urlCopy, transferTask);
 		getExecutor().executeBlocking(promise -> {
-
 			ExecutorService executorService = Executors.newSingleThreadExecutor();
-			CallableUrlCopy callableUrlQuery = new CallableUrlCopy(urlCopy, transferTask);
 			java.util.concurrent.Future<TransferTask> copyFuture = executorService.submit(callableUrlQuery);
 			try {
 				int i=-1;

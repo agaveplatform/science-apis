@@ -33,7 +33,7 @@ import static io.restassured.RestAssured.given;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TransferApplicationIT extends BaseTestCase {
 
-    private static final Logger log = LoggerFactory.getLogger(TransferApplicationTest.class);
+    private static final Logger log = LoggerFactory.getLogger(TransferApplicationIT.class);
     private TransferTaskDatabaseService dbService;
     private static RequestSpecification requestSpecification;
 

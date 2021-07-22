@@ -499,7 +499,7 @@ public class NatsJetstreamMessageClient {
             ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
                     .ackPolicy(AckPolicy.Explicit)
                     .ackWait(Duration.ofSeconds(60))
-                    .durable(this.getConsumerName())
+                    .durable(Slug.toSlug(getConsumerName() + "-" + subject, true))
                     .filterSubject(subject)
                     .deliverPolicy(DeliverPolicy.All)
                     .maxDeliver(10)
@@ -510,7 +510,7 @@ public class NatsJetstreamMessageClient {
             PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
                     .stream(getStreamName())
                     .configuration(consumerConfiguration)
-                    .durable(getConsumerName())
+                    .durable(Slug.toSlug(getConsumerName() + "-" + subject, true))
                     .build();
             if (queueName != null) {
                 //JetStreamSubscription jsm = getOrCreatePushGroupSubscription(queueName, subject);

@@ -81,9 +81,7 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 					promise -> {
 						try {
 							processEvent(body, promise);
-						} catch (IOException e) {
-							logger.error(e.getCause().toString());
-						} catch (InterruptedException e) {
+						} catch (IOException | InterruptedException e) {
 							logger.error(e.getCause().toString());
 						}
 					},

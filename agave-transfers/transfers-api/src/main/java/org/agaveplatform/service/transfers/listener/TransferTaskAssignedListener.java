@@ -76,29 +76,29 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
 
         try {
             //group subscription so each message only processed by this vertical type once
-            subscribeToSubjectGroup(EVENT_CHANNEL, this::handleCanceledSyncMessage);
+            subscribeToSubjectGroup(TRANSFERTASK_CANCELED_SYNC, this::handleCanceledSyncMessage);
         } catch (Exception e) {
-            log.error("TRANSFERTASK_ASSIGNED - Exception {}", e.getMessage());
+            log.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
         }
 
         try {
             //group subscription so each message only processed by this vertical type once
-            subscribeToSubjectGroup(EVENT_CHANNEL, this::handleCanceledCompletedMessage);
+            subscribeToSubjectGroup(TRANSFERTASK_CANCELED_COMPLETED, this::handleCanceledCompletedMessage);
         } catch (Exception e) {
-            log.error("TRANSFERTASK_ASSIGNED - Exception {}", e.getMessage());
+            log.error("TRANSFERTASK_CANCELED_COMPLETED - Exception {}", e.getMessage());
         }
         try {
             //group subscription so each message only processed by this vertical type once
-            subscribeToSubjectGroup(EVENT_CHANNEL, this::handlePausedSyncMessage);
+            subscribeToSubjectGroup(TRANSFERTASK_PAUSED_SYNC, this::handlePausedSyncMessage);
         } catch (Exception e) {
-            log.error("TRANSFERTASK_ASSIGNED - Exception {}", e.getMessage());
+            log.error("TRANSFERTASK_PAUSED_SYNC - Exception {}", e.getMessage());
         }
 
         try {
             //group subscription so each message only processed by this vertical type once
-            subscribeToSubjectGroup(EVENT_CHANNEL, this::handlePausedCompletedMessage);
+            subscribeToSubjectGroup(TRANSFERTASK_PAUSED_COMPLETED, this::handlePausedCompletedMessage);
         } catch (Exception e) {
-            log.error("TRANSFERTASK_ASSIGNED - Exception {}", e.getMessage());
+            log.error("TRANSFERTASK_PAUSED_COMPLETED - Exception {}", e.getMessage());
         }
 
     }
@@ -387,14 +387,14 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                         }
                     }
                 }
-            } else {
+            }
+            else {
                 // task was interrupted, so don't attempt a retry
                 log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
                 _doPublishEvent(TRANSFERTASK_CANCELED_ACK, body, tcaResp -> {
                     handler.handle(Future.succeededFuture(false));
                 });
             }
-            //}
         } catch (RemoteDataSyntaxException e) {
             String message = String.format("Failing transfer task %s due to invalid source syntax. %s", uuid, e.getMessage());
             log.error(message);

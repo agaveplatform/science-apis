@@ -37,17 +37,17 @@ public class TransferServiceIT extends BaseTestCase {
     @Test
     public void sendPost(){
         try {
-        TransferService service = new TransferService(SYSTEM_OWNER, TENANT_ID);
-        APIResponse postResponse = service.post(source, dest);
-            assertNotNull(postResponse, "Response from post request should return queued transfer task.");
-        transferUuid = postResponse.getResult().get("uuid").asText();
-        assertNotNull(transferUuid, "Response from successful request to transfer service should return valid uuid.");
+            TransferService service = new TransferService(SYSTEM_OWNER, TENANT_ID);
+            APIResponse postResponse = service.post(source, dest);
+                assertNotNull(postResponse, "Response from post request should return queued transfer task.");
+            transferUuid = postResponse.getResult().get("uuid").asText();
+            assertNotNull(transferUuid, "Response from successful request to transfer service should return valid uuid.");
 
-        JsonNode jsonResponse = postResponse.getResult();
+            JsonNode jsonResponse = postResponse.getResult();
 
-        assertEquals(jsonResponse.get("source").asText(), source, "Source from transfer api should match source from request");
-        assertEquals(jsonResponse.get("dest").asText(), dest, "Dest from transfer api should match dest from request");
-        assertEquals(jsonResponse.get("tenant_id").asText(), TENANT_ID, "Tenant id from transfer api should match tenant id from request");
+            assertEquals(jsonResponse.get("source").asText(), source, "Source from transfer api should match source from request");
+            assertEquals(jsonResponse.get("dest").asText(), dest, "Dest from transfer api should match dest from request");
+            assertEquals(jsonResponse.get("tenant_id").asText(), TENANT_ID, "Tenant id from transfer api should match tenant id from request");
         } catch (TaskException e){
             fail("TransferService should connect and send requests to " + Settings.IPLANT_TRANSFER_SERVICE + " without throwing an exception: " + e.getMessage());
         }

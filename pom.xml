@@ -1011,7 +1011,7 @@
 
                 <!-- ************************ Transfers service ********************** -->
 
-                <foundation.service.transfers>https://transfers:8085/api/transfers</foundation.service.transfers>
+                <foundation.service.transfers>http://transfers:8085/api/transfers</foundation.service.transfers>
                 <foundation.service.transfers.max.tasks>5</foundation.service.transfers.max.tasks>
                 <foundation.service.transfers.max.simultaneous>-1</foundation.service.transfers.max.simultaneous>
                 <foundation.service.transfers.same.server.timeout.secs>240</foundation.service.transfers.same.server.timeout.secs>

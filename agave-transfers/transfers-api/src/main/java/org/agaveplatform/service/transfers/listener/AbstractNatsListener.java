@@ -128,9 +128,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
     public String createConsumerName(String eventName, Class clazz){
         String consumerName = clazz.getSimpleName() + "-" + eventName;
-        consumerName = Slug.toSlug(consumerName);
-        this.consumerName = consumerName;
-        return consumerName;
+        return Slug.toSlug(consumerName);
     }
 
     public void setConsumerName(String consumerName){

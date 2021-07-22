@@ -62,7 +62,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             LOGGER.error("Failed to close connection", close.cause());
             readyHandler.handle(Future.failedFuture(close.cause()));
           } else {
-            LOGGER.error("Closed connection");
+            LOGGER.debug("Closed connection");
             readyHandler.handle(Future.succeededFuture(this));
           }
         });

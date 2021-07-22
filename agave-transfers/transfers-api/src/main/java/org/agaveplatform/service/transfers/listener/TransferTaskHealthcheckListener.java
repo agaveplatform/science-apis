@@ -8,7 +8,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.iplantc.service.common.messaging.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,8 +20,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.COMPLETED;
 
 public class TransferTaskHealthcheckListener extends AbstractNatsListener {
@@ -119,14 +117,14 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 					getDbService().updateStatus(tenantId, uuid, COMPLETED.name(), updateStatus -> {
 						if (updateStatus.succeeded()) {
 							logger.debug("Transfer task {} updated to {}", uuid, COMPLETED.name());
-							_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result(), handler);
+							_doPublishEvent(TRANSFERTASK_FINISHED, updateStatus.result(), handler);
 						} else {
 							logger.debug("Transfer task {} found completed, but was unable to update its final status to {}.", uuid, COMPLETED.name());
 							JsonObject json = new JsonObject()
 									.put("cause", updateStatus.cause().getClass().getName())
 									.put("message", updateStatus.cause().getMessage())
 									.mergeIn(body);
-							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+							_doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
 								handler.handle(Future.failedFuture(updateStatus.cause()));
 							});
 						}
@@ -146,14 +144,14 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 						getDbService().updateStatus(tenantId, uuid, TRANSFERTASK_ERROR, updateStatus -> {
 							if (updateStatus.succeeded()) {
 								logger.debug("Transfer task {} updated to {}.", uuid, TRANSFERTASK_ERROR);
-								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, updateStatus.result(), handler);
+								_doPublishEvent(TRANSFERTASK_ERROR, updateStatus.result(), handler);
 							} else {
 								logger.debug("Failed to update transfer task {} to {}.", uuid, TRANSFERTASK_ERROR);
 								JsonObject json = new JsonObject()
 										.put("cause", updateStatus.cause().getClass().getName())
 										.put("message", updateStatus.cause().getMessage())
 										.mergeIn(body);
-								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, publishEventResp -> {
+								_doPublishEvent(TRANSFERTASK_ERROR, json, publishEventResp -> {
 									handler.handle(Future.failedFuture(updateStatus.cause()));
 								});
 							}

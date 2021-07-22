@@ -1,14 +1,12 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.nats.client.Options;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.exception.MaxTransferTaskAttemptsExceededException;
@@ -34,7 +32,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
@@ -161,7 +158,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 											.put("message", updateBody.cause().getMessage())
 											.mergeIn(body);
 
-									_doPublishEvent( MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+									_doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
 										handler.handle(Future.succeededFuture(false));
 									});
 								}
@@ -302,7 +299,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 											if (StringUtils.isNotEmpty(retryTransferTask.getRootTaskId())) {
 												transferTask.setRootTaskId(retryTransferTask.getRootTaskId());
 											}
-											_doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson(), null);
+											_doPublishEvent(TRANSFERTASK_CREATED, transferTask.toJson(), null);
 										}
 										// if a directory, then create a new transfer task to repeat this process,
 										// keep the association between this transfer task, the original, and the children
@@ -319,7 +316,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 											if (StringUtils.isNotEmpty(retryTransferTask.getRootTaskId())) {
 												transferTask.setRootTaskId(retryTransferTask.getRootTaskId());
 											}
-											_doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson(), null);
+											_doPublishEvent(TRANSFERTASK_CREATED, transferTask.toJson(), null);
 										}
 									}
 									else {
@@ -327,11 +324,11 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 										log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", retryTransferTask.getUuid());
 										getDbService().updateStatus(retryTransferTask.getTenantId(), retryTransferTask.getUuid(), org.iplantc.service.transfer.model.enumerations.TransferStatusType.CANCELLED.name(), updateReply -> {
 											if (updateReply.succeeded()) {
-												_doPublishEvent( MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson(), errorResp -> {
+												_doPublishEvent( TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson(), errorResp -> {
 													handler.handle(Future.succeededFuture(false));
 												});
 											} else {
-												_doPublishEvent( MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson(), errorResp -> {
+												_doPublishEvent( TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson(), errorResp -> {
 													handler.handle(Future.failedFuture(updateReply.cause()));
 												});
 											}
@@ -347,7 +344,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 				else {
 					// task was interrupted, so don't attempt a retry
 					log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", retryTransferTask.getUuid());
-					_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson(), errorResp -> {
+					_doPublishEvent(TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson(), errorResp -> {
 						handler.handle(Future.succeededFuture(false));
 					});
 				}

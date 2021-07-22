@@ -4,7 +4,6 @@ import io.vertx.core.*;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.model.TransferTaskNotificationMessage;
@@ -43,7 +42,7 @@ import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public class TransferTaskAssignedListener extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(TransferTaskAssignedListener.class);
-    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ASSIGNED;
+    protected static final String EVENT_CHANNEL = TRANSFERTASK_ASSIGNED;
     private TransferTaskDatabaseService dbService;
 
     public TransferTaskAssignedListener() throws IOException, InterruptedException {
@@ -70,7 +69,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
 
         try {
             //group subscription so each message only processed by this vertical type once
-            subscribeToSubjectGroup(MessageType.TRANSFERTASK_ASSIGNED, this::handleMessage);
+            subscribeToSubjectGroup(TRANSFERTASK_ASSIGNED, this::handleMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_ASSIGNED - Exception {}", e.getMessage());
         }
@@ -198,9 +197,9 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                             _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson(), publishEventResp -> {
                                 if (publishEventResp.succeeded()) {
                                     TransferTaskNotificationMessage internalMessage =
-                                            new TransferTaskNotificationMessage(assignedTransferTask, MessageType.TRANSFERTASK_ASSIGNED);
+                                            new TransferTaskNotificationMessage(assignedTransferTask, TRANSFERTASK_ASSIGNED);
 
-                                    _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, internalMessage.toJson(), handler);
+                                    _doPublishEvent(TRANSFERTASK_NOTIFICATION, internalMessage.toJson(), handler);
                                 } else {
                                     handler.handle(Future.succeededFuture(true));
                                 }
@@ -229,9 +228,9 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                         _doPublishEvent(TRANSFER_COMPLETED, assignedTransferTask.toJson(), publishEventResp -> {
                                             if (publishEventResp.succeeded()) {
                                                 TransferTaskNotificationMessage internalMessage =
-                                                        new TransferTaskNotificationMessage(assignedTransferTask, MessageType.TRANSFERTASK_ASSIGNED);
+                                                        new TransferTaskNotificationMessage(assignedTransferTask, TRANSFERTASK_ASSIGNED);
 
-                                                _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, internalMessage.toJson(), handler);
+                                                _doPublishEvent(TRANSFERTASK_NOTIFICATION, internalMessage.toJson(), handler);
                                             } else {
                                                 handler.handle(Future.succeededFuture(true));
                                             }
@@ -360,9 +359,9 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                 // write to the completed event channel.
 //                                                _doPublishEvent(TRANSFER_COMPLETED, body);
                                                 TransferTaskNotificationMessage internalMessage =
-                                                        new TransferTaskNotificationMessage(assignedTransferTask, MessageType.TRANSFERTASK_ASSIGNED);
+                                                        new TransferTaskNotificationMessage(assignedTransferTask, TRANSFERTASK_ASSIGNED);
 
-                                                _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, internalMessage.toJson(), handler);
+                                                _doPublishEvent(TRANSFERTASK_NOTIFICATION, internalMessage.toJson(), handler);
                                             }
                                             // we couldn't update the transfer task value
                                             else {
@@ -391,7 +390,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             } else {
                 // task was interrupted, so don't attempt a retry
                 log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
-                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body, tcaResp -> {
+                _doPublishEvent(TRANSFERTASK_CANCELED_ACK, body, tcaResp -> {
                     handler.handle(Future.succeededFuture(false));
                 });
             }

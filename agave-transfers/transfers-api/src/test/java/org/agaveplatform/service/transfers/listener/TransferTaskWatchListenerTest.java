@@ -1,7 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
@@ -9,6 +8,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
+import org.agaveplatform.service.transfers.database.MockTransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
@@ -48,6 +48,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.config()).thenReturn(config);
+		when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
 		when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod ();
@@ -72,16 +73,9 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		doCallRealMethod().when(transferTaskWatchListener).processRootTaskEvent(any());
 
 		// mock out the db service so we can can isolate method logic rather than db
-		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-
-		// mock the handler passed into updateStatus
-		AsyncResult<JsonArray> getActiveRootTaskIdsHandler = getMockAsyncResult(new JsonArray());
-		doAnswer((Answer<AsyncResult<JsonArray>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonArray>> handler = arguments.getArgumentAt(0, Handler.class);
-			handler.handle(getActiveRootTaskIdsHandler);
-			return null;
-		}).when(dbService).getActiveRootTaskIds(any());
+		TransferTaskDatabaseService dbService = new MockTransferTaskDatabaseService.Builder()
+				.getActiveRootTaskIds(new JsonArray(), false)
+				.build();
 
 		when(transferTaskWatchListener.getDbService()).thenReturn(dbService);
 
@@ -107,21 +101,12 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		TransferTask tt = _createTestTransferTask();
 		activeTasks.add(new JsonObject()
 				.put("uuid", tt.getUuid())
-				.put("tenantId", tt.getTenantId())
-				.put("last_updated", tt.getLastUpdated()));
+				.put("tenantId", tt.getTenantId()));
 
 		// mock out the db service so we can can isolate method logic rather than db
-		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-
-		AsyncResult<JsonArray> getActiveRootTaskIdsHandler = getMockAsyncResult(activeTasks);
-
-		// mock the handler passed into updateStatus
-		doAnswer((Answer<AsyncResult<JsonArray>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonArray>> handler = arguments.getArgumentAt(0, Handler.class);
-			handler.handle(getActiveRootTaskIdsHandler);
-			return null;
-		}).when(dbService).getActiveRootTaskIds(any());
+		TransferTaskDatabaseService dbService = new MockTransferTaskDatabaseService.Builder()
+				.getActiveRootTaskIds(activeTasks, false)
+				.build();
 
 		when(transferTaskWatchListener.getDbService()).thenReturn(dbService);
 
@@ -149,21 +134,11 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		TransferTask tt = _createTestTransferTask();
 		activeTasks.add(new JsonObject()
 				.put("uuid", tt.getUuid())
-				.put("tenantId", tt.getTenantId())
-				.put("last_updated", tt.getLastUpdated()));
+				.put("tenantId", tt.getTenantId()));
 
-		// mock out the db service so we can can isolate method logic rather than db
-		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-
-		AsyncResult<JsonArray> getActiveRootTaskIdsHandler = getMockAsyncResult(activeTasks);
-
-		// mock the handler passed into updateStatus
-		doAnswer((Answer<AsyncResult<JsonArray>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonArray>> handler = arguments.getArgumentAt(0, Handler.class);
-			handler.handle(getActiveRootTaskIdsHandler);
-			return null;
-		}).when(dbService).getActiveRootTaskIds(any());
+		TransferTaskDatabaseService dbService = new MockTransferTaskDatabaseService.Builder()
+				.getActiveRootTaskIds(activeTasks, false)
+				.build();
 
 		when(transferTaskWatchListener.getDbService()).thenReturn(dbService);
 
@@ -203,28 +178,18 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 			TransferTask tt = _createTestTransferTask();
 			activeTasks.add(new JsonObject()
 					.put("uuid", tt.getUuid())
-					.put("tenantId", tt.getTenantId())
-					.put("last_updated", tt.getLastUpdated()));
+					.put("tenantId", tt.getTenantId()));
 		}
 
 		// mock out the db service so we can can isolate method logic rather than db
-		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-
-		AsyncResult<JsonArray> getActiveRootTaskIdsHandler = getMockAsyncResult(activeTasks);
-
-		// mock the handler passed into updateStatus
-		doAnswer((Answer<AsyncResult<JsonArray>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonArray>> handler = arguments.getArgumentAt(0, Handler.class);
-			handler.handle(getActiveRootTaskIdsHandler);
-			return null;
-		}).when(dbService).getActiveRootTaskIds(any());
+		TransferTaskDatabaseService dbService = new MockTransferTaskDatabaseService.Builder()
+				.getActiveRootTaskIds(activeTasks, false)
+				.build();
 
 		when(transferTaskWatchListener.getDbService()).thenReturn(dbService);
 
 		transferTaskWatchListener.processRootTaskEvent(resp -> ctx.verify(() -> {
-			assertTrue(resp.result(),
-					"Successful processing of a list of ids should return true");
+			assertTrue(resp.result(), "Successful processing of a list of ids should return true");
 
 			verify(transferTaskWatchListener, times(activeTasks.size()))._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), any(), any());
 
@@ -248,31 +213,22 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		TransferTask tt = _createTestTransferTask();
 		activeTasks.add(new JsonObject()
 				.put("uuid", tt.getUuid())
-				.put("tenantId", tt.getTenantId())
-				.put("last_updated", tt.getLastUpdated()));
+				.put("tenantId", tt.getTenantId()));
 
 		// mock out the db service so we can can isolate method logic rather than db
-		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-
-		AsyncResult<JsonArray> getActiveRootTaskIdsHandler = getMockAsyncResult(activeTasks);
-
-		// mock the handler passed into updateStatus
-		doAnswer((Answer<AsyncResult<JsonArray>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonArray>> handler = arguments.getArgumentAt(0, Handler.class);
-			handler.handle(getActiveRootTaskIdsHandler);
-			return null;
-		}).when(dbService).getActiveRootTaskIds(any());
+		TransferTaskDatabaseService dbService = new MockTransferTaskDatabaseService.Builder()
+				.getActiveRootTaskIds(null, true)
+				.build();
 
 		when(transferTaskWatchListener.getDbService()).thenReturn(dbService);
 
-		AsyncResult<Boolean> eventHandler = getBooleanFailureAsyncResult(new Exception("Testing getActiveRootTaskIds failure"));
-		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(0, Handler.class);
-			handler.handle(eventHandler);
-			return null;
-		}).when(dbService).getActiveRootTaskIds(any());
+//		AsyncResult<Boolean> eventHandler = getBooleanFailureAsyncResult(new Exception("Testing getActiveRootTaskIds failure"));
+//		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+//			@SuppressWarnings("unchecked")
+//			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(0, Handler.class);
+//			handler.handle(eventHandler);
+//			return null;
+//		}).when(dbService).getActiveRootTaskIds(any());
 
 
 		transferTaskWatchListener.processRootTaskEvent(resp -> ctx.verify(() -> {
@@ -301,8 +257,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		TransferTask tt = _createTestTransferTask();
 		activeTasks.add(new JsonObject()
 				.put("uuid", tt.getUuid())
-				.put("tenantId", tt.getTenantId())
-				.put("last_updated", tt.getLastUpdated()));
+				.put("tenantId", tt.getTenantId()));
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -335,8 +290,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		TransferTask tt = _createTestTransferTask();
 		activeTasks.add(new JsonObject()
 				.put("uuid", tt.getUuid())
-				.put("tenantId", tt.getTenantId())
-				.put("last_updated", tt.getLastUpdated()));
+				.put("tenantId", tt.getTenantId()));
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);

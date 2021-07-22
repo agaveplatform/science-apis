@@ -9,7 +9,6 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -29,8 +28,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.*;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_FAILED;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_RETRY;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
@@ -47,6 +45,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
         TransferTaskRetryListener listener = mock(TransferTaskRetryListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFER_RETRY);
         when(listener.getVertx()).thenReturn(vertx);
+        when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
         when(listener.taskIsNotInterrupted(any())).thenReturn(true);
         when(listener.getRetryRequestManager()).thenCallRealMethod();
         when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
@@ -239,7 +238,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
         ta.processRetry(tt, resp -> ctx.verify(() -> {
             assertTrue(resp.succeeded(), "processRetry should pass when retrying directory transfers");
-            verify(ta, atLeastOnce())._doPublishEvent(eq(MessageType.TRANSFERTASK_CREATED), any(JsonObject.class), any());
+            verify(ta, atLeastOnce())._doPublishEvent(eq(TRANSFERTASK_CREATED), any(JsonObject.class), any());
             verify(ta, never()).doHandleFailure(any(), anyString(), any(JsonObject.class), any());
             verify(ta, never()).doHandleError(any(), anyString(), any(JsonObject.class), any());
             ctx.completeNow();
@@ -304,7 +303,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
             assertEquals(processRetryResult.cause().getClass(), SystemUnknownException.class, "processRetry should propagate SystemUnknownException back to handler when thrown.");
             verify(ta, atLeastOnce()).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource())));
             verify(ta, atLeastOnce()).getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getDest())));
-            verify(ta, atLeastOnce())._doPublishEvent( eq(MessageType.TRANSFERTASK_ERROR), any(JsonObject.class), any() );
+            verify(ta, atLeastOnce())._doPublishEvent( eq(TRANSFERTASK_ERROR), any(JsonObject.class), any() );
             ctx.completeNow();
         }));
     }

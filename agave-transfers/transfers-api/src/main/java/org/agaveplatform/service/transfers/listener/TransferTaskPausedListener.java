@@ -27,7 +27,7 @@ import static org.agaveplatform.service.transfers.enumerations.TransferStatusTyp
 
 public class TransferTaskPausedListener extends AbstractNatsListener {
 	private static final Logger logger = LoggerFactory.getLogger(TransferTaskPausedListener.class);
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_PAUSED;
+	protected static final String EVENT_CHANNEL = TRANSFERTASK_PAUSED;
 
 	private TransferTaskDatabaseService dbService;
 	private final List<TransferTask> ttTree = new ArrayList<TransferTask>();
@@ -172,7 +172,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
                                                 TransferTaskNotificationMessage internalMessage =
                                                         new TransferTaskNotificationMessage(updatedTransferTask, MessageType.TRANSFERTASK_ASSIGNED);
 
-                                                _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, internalMessage.toJson(), handler);
+                                                _doPublishEvent(TRANSFERTASK_NOTIFICATION, internalMessage.toJson(), handler);
                                             } else {
                                                 handler.handle(Future.succeededFuture(true));
                                             }
@@ -186,7 +186,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 											.put("message", message)
 											.mergeIn(body);
 
-									_doPublishEvent( MessageType.TRANSFERTASK_PARENT_ERROR, json, errorResp -> {
+									_doPublishEvent( TRANSFERTASK_PARENT_ERROR, json, errorResp -> {
 										handler.handle(Future.succeededFuture(false));
 									});
 								}
@@ -241,7 +241,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 						logger.debug("Updated state of transfer task {} to PAUSED. Creating paused ack event.", uuid);
 						// this task and all its children are done, so we can send a complete event
 						// to safely clear out the uuid from all listener verticals' caches
-						_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_COMPLETED, body, pausedCompletedResp -> {
+						_doPublishEvent(TRANSFERTASK_PAUSED_COMPLETED, body, pausedCompletedResp -> {
 							// we can now also check the parent, if present, for completion of its tree.
 							// if the parent is empty, the root will be as well. For children of the root
 							// transfer task, the root == parent
@@ -256,7 +256,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 											getDbService().getByUuid(tenantId, parentTaskId, parentReply -> {
 												if (parentReply.succeeded()) {
 													logger.info("Sending pause ack event for parent transfer task {}", parentTaskId);
-													_doPublishEvent( MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result(), handler);
+													_doPublishEvent( TRANSFERTASK_PAUSED_ACK, parentReply.result(), handler);
 												} else {
 													String message = String.format("Unable to lookup parent task %s for transfer task %s while processing a pause event. %s",
 															parentTaskId, uuid, parentReply.cause().getMessage());
@@ -266,7 +266,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 															.put("message", message)
 															.mergeIn(body);
 
-													_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+													_doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
 														handler.handle(Future.failedFuture(parentReply.cause()));
 													});
 												}
@@ -283,7 +283,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 												.put("cause", siblingReply.cause().getClass().getName())
 												.put("message", message)
 												.mergeIn(body);
-										_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+										_doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
 											handler.handle(Future.failedFuture(siblingReply.cause()));
 										});
 									}
@@ -342,7 +342,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 									//logger.debug("All child tasks for parent transfer task {} are paused, cancelled or completed. " +
 									//		"A transfer.paused event will be created for this task.", parentTaskId);
 									// call to our publishing helper for easier testing.
-									_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_ACK, getTaskById.result(), resultHandler);
+									_doPublishEvent(TRANSFERTASK_PAUSED_ACK, getTaskById.result(), resultHandler);
 								} else {
 									//logger.debug("Parent transfer task {} has active children. " +
 									//		"Skipping further processing ", parentTaskId);
@@ -360,7 +360,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 						});
 					} else {
 						// the parent is not active. forward the ack anyway, just to ensure all ancestors get the message
-						_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_ACK, parentTask.toJson(), ackResp -> {
+						_doPublishEvent(TRANSFERTASK_PAUSED_ACK, parentTask.toJson(), ackResp -> {
 							resultHandler.handle(Future.succeededFuture(false));
 						});
 					}

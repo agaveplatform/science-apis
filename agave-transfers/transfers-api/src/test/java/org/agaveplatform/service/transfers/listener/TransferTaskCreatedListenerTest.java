@@ -44,6 +44,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		try {
 			when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
 			when(listener.getVertx()).thenReturn(vertx);
+			when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
 			when(listener.getRemoteSystemAO()).thenCallRealMethod();
 			when(listener.taskIsNotInterrupted(any())).thenReturn(true);
 			when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);

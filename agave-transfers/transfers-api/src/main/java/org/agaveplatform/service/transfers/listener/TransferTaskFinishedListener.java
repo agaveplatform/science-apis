@@ -1,35 +1,29 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Options;
-import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.messaging.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_FINISHED;
 
 public class TransferTaskFinishedListener extends AbstractNatsListener {
     private final static Logger log = LoggerFactory.getLogger(TransferTaskFinishedListener.class);
-    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_FINISHED;
+    protected static final String EVENT_CHANNEL = TRANSFERTASK_FINISHED;
 
     private TransferTaskDatabaseService dbService;
     protected List<String> parentList = new ArrayList();
@@ -69,7 +63,7 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
 
 //        Dispatcher d = getConnection().createDispatcher((msg) -> {});
 //        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-//        Subscription s = d.subscribe(MessageType.TRANSFERTASK_FINISHED, msg -> {
+//        Subscription s = d.subscribe(TRANSFERTASK_FINISHED, msg -> {
 //        //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 //        String response = new String(msg.getData(), StandardCharsets.UTF_8);
 //        JsonObject body = new JsonObject(response) ;
@@ -88,7 +82,7 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
 //                            } else {
 //                                log.error("Error with return from update event {}", uuid);
 //                                try {
-//                                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+//                                    _doPublishEvent(TRANSFERTASK_ERROR, body);
 //                                } catch (Exception e) {
 //                                    log.debug(e.getMessage());
 //                                }
@@ -100,14 +94,14 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
 //                } else {
 //                    log.debug("Error with retrieving Transfer Task {}", body.getString("id"));
 //                    try {
-//                        _doPublishEvent( MessageType.TRANSFERTASK_ERROR, body);
+//                        _doPublishEvent( TRANSFERTASK_ERROR, body);
 //                    } catch (Exception e) {
 //                        log.debug(e.getMessage());
 //                    }
 //                }
 //            });
 //        });
-//        d.subscribe(MessageType.TRANSFERTASK_FINISHED);
+//        d.subscribe(TRANSFERTASK_FINISHED);
 //        getConnection().flush(Duration.ofMillis(500));
 
     }
@@ -154,7 +148,7 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
 
         try {
             log.debug("Sending notification event");
-//          _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+//          _doPublishEvent(TRANSFERTASK_NOTIFICATION, body);
             handler.handle(Future.succeededFuture(true));
         } catch (Exception e) {
             log.debug(TransferTaskFinishedListener.class.getName() + " - exception caught");

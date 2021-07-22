@@ -15,8 +15,7 @@ import java.net.URI;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_FAILED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     private static final Logger logger = LoggerFactory.getLogger(AbstractTransferTaskListener.class);
@@ -238,7 +237,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
         logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
         JsonObject json = new JsonObject()
                 .put("message", msg);
-        _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, json, resp -> {
+        _doPublishEvent(TRANSFERTASK_CANCELED, json, resp -> {
             if (resp.succeeded()) {
                 if (handler != null) {
                     handler.handle(Future.succeededFuture(true));

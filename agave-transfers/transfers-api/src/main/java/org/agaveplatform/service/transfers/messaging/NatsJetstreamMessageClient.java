@@ -286,8 +286,9 @@ public class NatsJetstreamMessageClient {
      * @param subject    name of subject to which the message will be pushed
      * @param body  the message content to persist
      * @throws MessagingException if communication with Nats fails
+     * @throws IOException when unable to connect to the NATS server
      */
-    public void push(String subject, String body) throws Exception {
+    public void push(String subject, String body) throws MessagingException, IOException {
         // create a typical NATS message
         io.nats.client.Message natsMessage = NatsMessage.builder()
                 .subject(subject)
@@ -325,10 +326,8 @@ public class NatsJetstreamMessageClient {
 //                    }
                     return;
                 }
-            } catch (JetStreamApiException e) {
+            } catch (DuplicateMessageException|JetStreamApiException e) {
                 throw new MessagingException(e.getMessage(), e);
-            } catch (Exception e){
-                throw new Exception(e.getMessage(), e);
             }
         }
     }
@@ -342,7 +341,7 @@ public class NatsJetstreamMessageClient {
      * @throws MessagingException if communication with the subject fails
      * @throws IOException when unable to connect to the NATS server
      */
-    public void push(String subject, String body, int secondsToDelay) throws Exception {
+    public void push(String subject, String body, int secondsToDelay) throws MessagingException, IOException {
         log.debug("Delayed messages are not supported by NATS JetStream. Message will be added immediately");
         push(subject, body);
     }
@@ -356,7 +355,7 @@ public class NatsJetstreamMessageClient {
      * @throws MessagingException if communication with the NATS server fails
      * @throws IOException when unable to connect to the NATS server
      */
-    public void reject(String subject, Object messageId, String message) throws Exception {
+    public void reject(String subject, Object messageId, String message) throws MessagingException, IOException {
         log.info("Message rejection is not supported. The same message will instead be pushed back to the stream.");
         delete(messageId);
         push(subject, message);

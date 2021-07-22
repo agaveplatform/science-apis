@@ -7,6 +7,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
+import org.agaveplatform.service.transfers.database.MockTransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
@@ -22,7 +23,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -40,11 +40,11 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
 @DisplayName("👋 TransferTaskUpdateListenerTest test")
-@Disabled
+//@Disabled
 class TransferTaskUpdateListenerTest extends BaseTestCase {
 
     @AfterAll
-    public void finish(Vertx vertx, VertxTestContext ctx) {
+    public void tearDown(Vertx vertx, VertxTestContext ctx) {
         vertx.close(ctx.completing());
     }
 
@@ -58,6 +58,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         TransferTaskUpdateListener listener = mock(TransferTaskUpdateListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFERTASK_UPDATED);
         when(listener.getVertx()).thenReturn(vertx);
+        when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
         when(listener.taskIsNotInterrupted(any())).thenReturn(true);
         when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
         doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
@@ -65,6 +66,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).handleMessage(any());
         doNothing().when(listener)._doPublishEvent(any(), any(), any());
         doCallRealMethod().when(listener).processEvent(any(JsonObject.class), any());
+
         RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
         doNothing().when(mockRetryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
         when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
@@ -73,8 +75,8 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
 
     NatsJetstreamMessageClient getMockNats() throws Exception {
         NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
-        doNothing().when(natsClient).push(any(), any(), any());
-        return getMockNats();
+        doNothing().when(natsClient).push(any(), any(), anyInt());
+        return natsClient;
     }
 
     /**
@@ -180,13 +182,21 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         return remoteFileInfo;
     }
 
+    /**
+     * Tests transfer task update behavior. In reality, this is not implemented in the service because we need to
+     * ensure that we are not going to cause a race condition in the update, which is possible when the events
+     * come in asynchronously.
+     * @param vertx test vertx instance
+     * @param ctx test context
+     * @throws Exception the exception to thrown
+     */
     @Test
     @DisplayName("TransferTaskUpdateListener - processTransferTask updates single file transfer task")
-    @Disabled
+//    @Disabled
     public void processTransferTaskUpdatesSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws Exception {
         // mock out the test class
-        TransferTaskUpdateListener ta = getMockTransferUpdateListenerInstance(vertx);
-        NatsJetstreamMessageClient nats = getMockNats();
+        TransferTaskUpdateListener listener = getMockTransferUpdateListenerInstance(vertx);
+        NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
 
         // generate a fake transfer task
         TransferTask rootTransferTask = _createTestTransferTask();
@@ -195,46 +205,31 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
 
         JsonObject rootTransferTaskJson = rootTransferTask.toJson();
         // generate the expected updated JsonObject
-        JsonObject updatedTransferTaskJson = rootTransferTaskJson.copy().put("status", TransferStatusType.STREAM_COPY_STARTED.name());
+//        JsonObject updatedTransferTaskJson = rootTransferTaskJson.copy().put("status", TransferStatusType.STREAM_COPY_STARTED.name());
 
         // now mock out our db interactions. Here we
-        TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(rootTransferTaskJson);
-        AsyncResult<JsonObject> updatedStatusAsyncResult = getMockAsyncResult(updatedTransferTaskJson);
-        doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-            @SuppressWarnings("unchecked")
-            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
-            // returning the given transfer task, adding an id if it doesn't have one.
-//			handler.handle(Future.succeededFuture(arguments.getArgumentAt(1, TransferTask.class).toJson()));
-            handler.handle(updatedStatusAsyncResult);
-            return null;
-        }).when(dbService).updateStatus(any(), any(), any(), any(Handler.class));
+        TransferTaskDatabaseService dbService = new MockTransferTaskDatabaseService.Builder()
+//                .updateStatus(updatedTransferTaskJson, false)
+                .build();
 
         // assign the mock db service to the test listener
-        when(ta.getDbService()).thenReturn(dbService);
+        when(listener.getDbService()).thenReturn(dbService);
 
-        // get mock remote data clients to mock the remote src system interactions
-        URI srcUri = URI.create(rootTransferTask.getSource());
-        RemoteDataClient srcRemoteDataClient = getMockRemoteDataClient(srcUri.getPath(), false, false);
-
-        // get mock remote data clients to mock the remote dest system interactions
-        URI destUri = URI.create(rootTransferTask.getDest());
-        RemoteDataClient destRemoteDataClient = getMockRemoteDataClient(destUri.getPath(), false, false);
-
-        ta.processEvent(rootTransferTaskJson, result -> {
+        listener.processEvent(rootTransferTaskJson, result -> {
             ctx.verify(() -> {
                 assertTrue(result.succeeded(), "Task status update should return true on successful processing.");
                 assertTrue(result.result(), "Callback result should be true after successful assignment.");
 
                 //db status should be updated
-                verify(dbService, times(1)).updateStatus(
-                        eq(rootTransferTask.getTenantId()),
-                        eq(rootTransferTask.getUuid()),
-                        eq(rootTransferTask.getStatus().name()),
-                        any(Handler.class));
+//                verify(dbService, times(1)).updateStatus(
+//                        eq(rootTransferTask.getTenantId()),
+//                        eq(rootTransferTask.getUuid()),
+//                        eq(rootTransferTask.getStatus().name()),
+//                        any(Handler.class));
+                verify(dbService, never()).updateStatus(any(), any(), any(), any());
 
                 // no error event should have been raised
-                //verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-                verify(nats, never()).push(any(), any(), any());
+                verify(natsClient, never()).push(any(), any(), anyInt());
                 ctx.completeNow();
 
             });
@@ -243,7 +238,6 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("TransferTaskUpdateListener - taskIsNotInterrupted")
-    @Disabled
     void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
         TransferTask tt = _createTestTransferTask();
         tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());

@@ -48,6 +48,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 		TransferTaskErrorFailureHandler listener = mock(TransferTaskErrorFailureHandler.class );
 		when(listener.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
 		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
 		doCallRealMethod().when(listener).processFailure(any(JsonObject.class), any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any(), any());

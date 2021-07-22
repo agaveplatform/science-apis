@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_PAUSED;
 
 public class TransferTaskUpdateListener extends AbstractNatsListener {
     private final static Logger logger = LoggerFactory.getLogger(TransferTaskUpdateListener.class);
@@ -108,16 +107,16 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
 
         //TODO: cache transfer progress instead of directly updating the db for performance
         // writing update to db may occur after transfer is completed because of slow speeds
-//            getDbService().updateStatus(tenantId, uuid, status, reply -> {
-//                if (reply.succeeded()) {
-//                    logger.debug("Transfer task {} status updated to {}", uuid, status);
-//                    handler.handle(Future.succeededFuture(true));
-//                } else {
-//                    String msg = String.format("Failed to set status of transfer task %s to %s. error: %s",
-//                            uuid, status, reply.cause().getMessage());
-//                    doHandleError(reply.cause(), msg, body, handler);
-//                }
-//            });
+//        getDbService().updateStatus(tenantId, uuid, status, reply -> {
+//            if (reply.succeeded()) {
+//                logger.debug("Transfer task {} status updated to {}", uuid, status);
+//                handler.handle(Future.succeededFuture(true));
+//            } else {
+//                String msg = String.format("Failed to set status of transfer task %s to %s. error: %s",
+//                        uuid, status, reply.cause().getMessage());
+//                doHandleError(reply.cause(), msg, body, handler);
+//            }
+//        });
     }
 
     public TransferTaskDatabaseService getDbService() {

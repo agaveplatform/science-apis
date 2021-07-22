@@ -68,6 +68,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		when(listener.getMessageClient()).thenReturn(natsCleint);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
 		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
 		when(listener.taskIsNotInterrupted(any())).thenReturn(true);
 		when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());

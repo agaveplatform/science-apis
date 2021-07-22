@@ -42,7 +42,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Disabled
+//@Disabled
 public class TransferTaskSmokeTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskSmokeTest.class);
 

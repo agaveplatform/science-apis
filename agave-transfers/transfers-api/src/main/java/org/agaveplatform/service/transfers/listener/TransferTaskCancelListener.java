@@ -25,7 +25,7 @@ import static org.agaveplatform.service.transfers.enumerations.TransferStatusTyp
 
 public class TransferTaskCancelListener extends AbstractNatsListener {
     private static final Logger logger = LoggerFactory.getLogger(TransferTaskCancelListener.class);
-    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CANCELED;
+    protected static final String EVENT_CHANNEL = TRANSFERTASK_CANCELED;
     public Connection nc;
     private TransferTaskDatabaseService dbService;
     private final List<TransferTask> ttTree = new ArrayList<TransferTask>();
@@ -145,7 +145,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                             .put("message", "Cannot cancel non-root transfer tasks.")
                             .mergeIn(body);
 
-                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, resp -> {
+                    _doPublishEvent(TRANSFERTASK_ERROR, json, resp -> {
                         resultHandler.handle(Future.succeededFuture(false));
                     });
                 } else if (targetTransferTask.getStatus().isActive()) {
@@ -231,7 +231,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
 
                         // this task and all its children are done, so we can send a complete event
                         // to safely clear out the uuid from all listener verticals' caches
-                        _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_COMPLETED, body, cancelCompleteResp -> {
+                        _doPublishEvent(TRANSFERTASK_CANCELED_COMPLETED, body, cancelCompleteResp -> {
                             // we can now also check the parent, if present, for completion of its tree.
                             // if the parent is empty, the root will be as well. For children of the root
                             // transfer task, the root == parent
@@ -250,7 +250,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                                                 .put("cause", processParentResp.cause().getClass().getName())
                                                 .put("message", msg)
                                                 .mergeIn(body);
-                                        _doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json, parentErrResp -> {
+                                        _doPublishEvent(TRANSFERTASK_PARENT_ERROR, json, parentErrResp -> {
                                             resultHandler.handle(Future.succeededFuture(false));
                                         });
                                     }
@@ -270,7 +270,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                                 .put("message", msg)
                                 .mergeIn(body);
 
-                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+                        _doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
                             resultHandler.handle(Future.succeededFuture(false));
                         });
                     }
@@ -285,7 +285,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
                         .put("message", msg)
                         .mergeIn(body);
 
-                _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+                _doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
                     resultHandler.handle(Future.succeededFuture(false));
                 });
             }

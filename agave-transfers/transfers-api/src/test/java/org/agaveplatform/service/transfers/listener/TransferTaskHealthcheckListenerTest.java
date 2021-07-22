@@ -51,6 +51,7 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 		TransferTaskHealthcheckListener listener = Mockito.mock(TransferTaskHealthcheckListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
 		doCallRealMethod().when(listener).processAllChildrenCanceledEvent(any(), any());
 		when(listener.config()).thenReturn(config);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();

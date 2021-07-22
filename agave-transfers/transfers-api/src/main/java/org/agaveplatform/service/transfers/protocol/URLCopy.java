@@ -5,7 +5,6 @@ package org.agaveplatform.service.transfers.protocol;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -33,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferTaskEventType.STREAM_COPY_STARTED;
 
@@ -911,7 +911,7 @@ public class URLCopy{
                     getProtocolForClass(getDestClient().getClass())));
 
             listener.getTransferTask().setStatusString(STREAM_COPY_STARTED.name());
-            _doPublishEvent(MessageType.TRANSFER_STREAMING, ((TransferTask)listener.getTransferTask()).toJson());
+            _doPublishEvent(TRANSFER_STREAMING, ((TransferTask)listener.getTransferTask()).toJson());
 
             if (getSourceClient().isDirectory(srcPath)) {
                 throw new RemoteDataException("Cannot perform range query on directories");
@@ -1087,10 +1087,10 @@ public class URLCopy{
             TransferTask streamingTransferTask = (TransferTask)listener.getTransferTask();
 
             streamingTransferTask.setStatus(WRITE_COMPLETED);
-            _doPublishEvent(MessageType.TRANSFER_COMPLETED, streamingTransferTask.toJson());
+            _doPublishEvent(TRANSFER_COMPLETED, streamingTransferTask.toJson());
 
             streamingTransferTask.setStatus(TransferStatusType.COMPLETED);
-            _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, streamingTransferTask.toJson());
+            _doPublishEvent(TRANSFERTASK_FINISHED, streamingTransferTask.toJson());
 
             // and we're spent
             log.debug(String.format(

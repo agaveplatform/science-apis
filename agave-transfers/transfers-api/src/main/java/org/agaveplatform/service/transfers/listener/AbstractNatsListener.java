@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
@@ -239,12 +240,35 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     public void _doPublishEvent(String eventName, JsonObject body, Handler<AsyncResult<Boolean>> handler) {
         log.trace(this.getClass().getName() + ": _doPublishEvent({}, {})", eventName, body);
         try {
-            getMessageClient().push(eventName, body.toString());
+            URI target = null;
+            String host = null;
+
+            try { target = URI.create(body.getString("dest")); } catch (Exception ignored) {}
+
+            if (target == null || target.getScheme().equalsIgnoreCase("file")) {
+                try { target = URI.create(body.getString("source")); } catch (Exception ignored) {}
+            }
+
+            if (target == null || target.getScheme().equalsIgnoreCase("file")) {
+                host = "internal";
+            }
+            else {
+                host = target.getHost();
+            }
+
+            String subject = createPushMessageSubject(
+                    body.getString("tenant_id"),
+                    body.getString("owner", "agaveops"),
+                    host,
+                    eventName);
+
+            getMessageClient().push(subject, body.toString());
+
             if (handler != null) {
                 handler.handle(Future.succeededFuture(true));
             }
         } catch (Exception e) {
-            log.error("Error with _doPublishEvent:  {}", e.getMessage());
+            log.error("Error with _doPublishEvent:  {}", e.getMessage(), e);
             if (handler != null) {
                 handler.handle(Future.failedFuture(e));
             }

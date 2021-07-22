@@ -49,6 +49,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ERROR);
 			when(listener.getVertx()).thenReturn(vertx);
 			when(listener.config()).thenReturn(config);
+			when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
 			when(listener.getRecoverableExceptionsClassNames()).thenCallRealMethod();
 			when(listener.taskIsNotInterrupted(any())).thenReturn(true);
 			when(listener.getRecoverableExceptionsClassNames()).thenCallRealMethod();

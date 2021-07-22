@@ -4,9 +4,9 @@ import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
-import org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener;
+import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.transfer.AbstractRemoteTransferListener;
 import org.iplantc.service.transfer.RemoteTransferListener;
 import org.iplantc.service.transfer.exceptions.TransferException;
@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
@@ -43,21 +42,6 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
         super(transferTask);
         this.vertx = vertx;
         this.retryRequestManager = retryRequestManager;
-
-        getVertx().eventBus().<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
-            msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-
-            JsonObject body = msg.body();
-            String uuid = body.getString("uuid");
-
-            log.info("Transfer task {} cancel detected", uuid);
-            log.info("Child task {} cancel detected", transferTask.getUuid());
-            org.agaveplatform.service.transfers.model.TransferTask transfer = (org.agaveplatform.service.transfers.model.TransferTask)transferTask;
-            final List<String> uuids = List.of(transfer.getParentTaskId(), transfer.getRootTaskId());
-            if (uuid != null && uuids.contains(uuid)) {
-                    cancel();
-            }
-        });
     }
 
     /**
@@ -76,6 +60,28 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
     }
 
     /**
+     * Creates a subject using the context of the event being sent. All values in this subject should be concrete
+     * when pushing a message. When subscribing, they should leverage wildcards to the extent that a verticle serves
+     * more than one tenant, owner, etc.
+     * @param tenantId the id of the tenant
+     * @param owner the subject to whom this message is attributed
+     * @param sourceSystemId the id of the source system of the transfer event. TODO: remove this and disambiguate the system id in message subjects
+     * @param eventName the event being thrown.
+     * @return the derived subject with built in routing for downstream consumers.
+     */
+    protected String createPushMessageSubject(String tenantId, String owner, String sourceSystemId, String eventName){
+        String consumerName = "";
+        try {
+            consumerName = UUIDType.TRANSFER.name().toLowerCase() + "." + tenantId + "." + owner + "." + sourceSystemId + "." + eventName;
+            consumerName = consumerName.replaceAll("\\.{2,}", ".");
+            consumerName = StringUtils.stripEnd(consumerName, ".");
+        } catch (Exception e) {
+            return "";
+        }
+        return consumerName;
+    }
+
+    /**
      * Handles event creation and delivery across the existing event bus. Retry is handled by the
      * {@link RetryRequestManager} up to 3 times. The call will be made asynchronously, so this method
      * will return immediately.
@@ -85,7 +91,9 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
      */
     public void _doPublishEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
         log.debug("_doPublishEvent({}, {})", eventName, body);
-        getRetryRequestManager().request(eventName, body, 2);
+        String subject = createPushMessageSubject(body.getString("tenant_id"),
+                body.getString("tenant_id"), body.getString("tenant_id"), eventName);
+        getRetryRequestManager().request(subject, body);
     }
 
     /**

@@ -36,7 +36,7 @@ import java.util.TimeZone;
 import java.util.concurrent.*;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public class TransferAllProtocolVertical extends AbstractNatsListener {
 	private static final Logger log = LoggerFactory.getLogger(TransferAllProtocolVertical.class);
@@ -291,7 +291,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 											.put("cause", e.getClass().getName())
 											.put("message", e.getMessage())
 											.mergeIn(body);
-									_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(e.getMessage())));
+									_doPublishEvent(TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(e.getMessage())));
 //									promise.fail(e.getMessage());
 								}
 							} else {
@@ -305,7 +305,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 									.put("cause", getByUuidResp.cause())
 									.put("message", getByUuidResp.cause().getMessage())
 									.mergeIn(body);
-							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(getByUuidResp.cause())));
+							_doPublishEvent(TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(getByUuidResp.cause())));
 
 						}
 					});
@@ -314,7 +314,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			} else {
 				// task was interrupted, so don't attempt a retry
 				log.info("Skipping transfer of transfer tasks {} due to interrupt event.", tt.getUuid());
-				_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body, pubResp -> handler.handle(Future.failedFuture(new ClosedByInterruptException())));
+				_doPublishEvent(TRANSFERTASK_CANCELED_ACK, body, pubResp -> handler.handle(Future.failedFuture(new ClosedByInterruptException())));
 
 			}
 		} catch (RemoteDataException e){
@@ -323,21 +323,21 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 					.put("cause", e.getClass().getName())
 					.put("message", e.getMessage())
 					.mergeIn(body);
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(e)));
+			_doPublishEvent(TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(e)));
 		} catch (RemoteCredentialException e){
 			log.error("RemoteCredentialException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", e.getClass().getName())
 					.put("message", e.getMessage())
 					.mergeIn(body);
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(e)));
+			_doPublishEvent(TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(e)));
 		} catch (IOException e) {
 			log.error("IOException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", e.getClass().getName())
 					.put("message", e.getMessage())
 					.mergeIn(body);
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(e)));
+			_doPublishEvent(TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(e)));
 		} catch (Exception e){
 			log.error("Unexpected Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
@@ -345,7 +345,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 					.put("message", e.getMessage())
 					.mergeIn(body);
 
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(e)));
+			_doPublishEvent(TRANSFERTASK_ERROR, json, pubResp -> handler.handle(Future.failedFuture(e)));
 		}
 	}
 
@@ -356,8 +356,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 	 * @param destClient the remote data client to the destination of the transfer task
 	 * @param transferTask the transfer task to update with progress of the transfer.
 	 * @param handler the callback handler for the result
-	 * @return the completed transfer task.
-	 * @throws RemoteDataException when a connection cannot be made to the {@link RemoteSystem}
+	 * @throws InterruptedException when the transfer is interrupted from the outside
 	 * @throws IOException if unable to connect to the remote host.
 	 */
 	protected void processCopyRequest(RemoteDataClient srcClient, RemoteDataClient destClient, TransferTask transferTask, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
@@ -396,7 +395,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 				if (copyFuture.isCancelled()) {
 					// probably need to sync the transfer task since it's changed since the inital call to urlcopy
 					log.debug("Completed interrupt of Transfer Task {}, {}", transferTask.getUuid(), transferTask.toJSON() );
-					_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, transferTask.toJson(), pubResp -> {
+					_doPublishEvent(TRANSFERTASK_CANCELED_ACK, transferTask.toJson(), pubResp -> {
 						promise.fail(new InterruptedException("URLCopy interrupted by external process."));
 					});
 				} else {
@@ -438,7 +437,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 		public TransferTask call() throws Exception {
 			try {
 				TransferTask finishedTask = urlCopy.copy(transferTask);
-				_doPublishEvent(MessageType.TRANSFER_COMPLETED, finishedTask.toJson(), pubResp -> {
+				_doPublishEvent(TRANSFER_COMPLETED, finishedTask.toJson(), pubResp -> {
 					log.info("Completed copy of {} to {} for transfer task {} with status {}", finishedTask.getSource(),
 							finishedTask.getDest(), finishedTask.getUuid(), finishedTask);
 					});
@@ -452,7 +451,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 						.put("cause", e.getClass().getName())
 						.put("message", e.getMessage())
 						.mergeIn(transferTask.toJson());
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, null);
+				_doPublishEvent(TRANSFERTASK_ERROR, json, null);
 				throw e;
 			}
 		}

@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.CANCELED_ERROR;
 
 /**
@@ -159,7 +159,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
                     JsonObject updatedJson = updateStatus.result();
                     logger.info("Transfer task {} updated to completed.", updatedJson.getString("uuid"));
                     //parentList.remove(uuid);
-                    _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updatedJson, handler);
+                    _doPublishEvent(TRANSFERTASK_FINISHED, updatedJson, handler);
                 } else {
                     logger.error("Task completed, but unable to update status: {}",
                             id, updateStatus.cause());
@@ -167,7 +167,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
                             .put("cause", updateStatus.cause().getClass().getName())
                             .put("message", updateStatus.cause().getMessage())
                             .mergeIn(body);
-                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json, errorResp -> {
+                    _doPublishEvent(TRANSFERTASK_ERROR, json, errorResp -> {
                         // TODO: why is this a positive response?3
                         handler.handle(Future.succeededFuture(true));
                     });

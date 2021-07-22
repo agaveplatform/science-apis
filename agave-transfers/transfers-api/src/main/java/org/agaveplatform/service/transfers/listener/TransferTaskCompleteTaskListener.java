@@ -8,8 +8,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
 import org.iplantc.service.common.messaging.Message;
@@ -25,12 +23,12 @@ import java.util.TimeZone;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_PAUSED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 	private final static Logger logger = LoggerFactory.getLogger(TransferTaskCompleteTaskListener.class);
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_COMPLETED;
+	protected static final String EVENT_CHANNEL = TRANSFER_COMPLETED;
 
 	private TransferTaskDatabaseService dbService;
 	protected List<String>  parentList = new ArrayList<String>();
@@ -52,16 +50,6 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 		return EVENT_CHANNEL;
 	}
 
-//	public Connection getConnection(){return nc;}
-
-//	public void setConnection() throws IOException, InterruptedException {
-//		try {
-//			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
-//		} catch (IOException e) {
-//			//use default URL
-//			nc = _connect(Options.DEFAULT_URL);
-//		}
-//	}
 
 	@Override
 	public void start() throws IOException, InterruptedException, TimeoutException {
@@ -127,7 +115,7 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 				if (reply.succeeded()) {
 					logger.debug("Tenant ID is {}", tenantId);
 					logger.debug(TransferTaskCompleteTaskListener.class.getName() + ":Transfer task {} status updated to COMPLETED", uuid);
-					_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, reply.result(), finishedResp -> {
+					_doPublishEvent(TRANSFERTASK_FINISHED, reply.result(), finishedResp -> {
 						if (parentTaskId != null ) {
 							logger.debug("Checking parent task {} for completed transfer task {}.", parentTaskId, uuid);
 							processParentEvent(tenantId, parentTaskId, tt -> {
@@ -142,7 +130,7 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 											.mergeIn(body);
 									logger.debug("update failed. {}.  The message is {}", tt.cause().getClass().getName(), tt.cause().getMessage());
 
-									_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json, parentErrorResp -> {
+									_doPublishEvent(TRANSFERTASK_PARENT_ERROR, json, parentErrorResp -> {
 										handler.handle(Future.succeededFuture(false));
 									});
 								}
@@ -202,7 +190,7 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 								getDbService().getBytesTransferredForAllChildren(tenantId, parentTaskId, getBytesTransferred -> {
 									if (getBytesTransferred.succeeded()){
 										parentTask.setBytesTransferred(getBytesTransferred.result().getLong("bytes_transferred"));
-										_doPublishEvent(MessageType.TRANSFER_COMPLETED, TransferRateHelper.updateTransferRate(parentTask).toJson(), completeResp -> {
+										_doPublishEvent(TRANSFER_COMPLETED, TransferRateHelper.updateTransferRate(parentTask).toJson(), completeResp -> {
 											// return true indicating the parent event was processed
 											resultHandler.handle(isAllChildrenCancelledOrCompleted);
 										});

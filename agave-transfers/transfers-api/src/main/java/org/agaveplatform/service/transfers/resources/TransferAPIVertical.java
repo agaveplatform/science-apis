@@ -19,7 +19,6 @@ import io.vertx.ext.web.handler.impl.AgaveJWTAuthHandlerImpl;
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthProviderImpl;
 import io.vertx.ext.web.handler.impl.Wso2JwtUser;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.listener.AbstractNatsListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -40,7 +39,7 @@ import java.util.List;
 import java.util.TimeZone;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 /**
  * This is the user-facing vertical providing the http interface to internal services.
@@ -295,11 +294,11 @@ public class TransferAPIVertical extends AbstractNatsListener {
                 if (reply.succeeded()) {
                     TransferTask tt = new TransferTask(reply.result());
 
-                    String subject = createPushMessageSubject(
-                            tt.getTenantId(), tt.getOwner(), srcUri.getHost(),
-                            MessageType.TRANSFERTASK_CREATED);
+//                    String subject = createPushMessageSubject(
+//                            tt.getTenantId(), tt.getOwner(), srcUri.getHost(),
+//                            MessageType.TRANSFERTASK_CREATED);
 
-                    _doPublishEvent(subject, tt.toJson(), createdResp -> {
+                    _doPublishEvent(TRANSFERTASK_CREATED, tt.toJson(), createdResp -> {
                         if (createdResp.succeeded()) {
                             routingContext.response()
                                     .putHeader("content-type", "application/json")
@@ -356,11 +355,11 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                     TransferTask transferTask = new TransferTask(deleteReply.result());
                                     final URI srcUri = URI.create(transferTask.getSource());
 
-                                    String subject = createPushMessageSubject(
-                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
-                                            MessageType.TRANSFERTASK_CANCELED);
+//                                    String subject = createPushMessageSubject(
+//                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
+//                                            MessageType.TRANSFERTASK_CANCELED);
 
-                                    _doPublishEvent(subject, deleteReply.result(), cancelResp -> {
+                                    _doPublishEvent(TRANSFERTASK_CANCELED, deleteReply.result(), cancelResp -> {
                                         if (cancelResp.succeeded()) {
                                             routingContext.response()
                                                     .putHeader("content-type", "application/json")
@@ -440,11 +439,11 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                     JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
 
                                     // TODO: need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                    String subject = createPushMessageSubject(
-                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
-                                            MessageType.TRANSFERTASK_CANCELED);
+//                                    String subject = createPushMessageSubject(
+//                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
+//                                            MessageType.TRANSFERTASK_CANCELED);
 
-                                    _doPublishEvent(subject, jo, pubResp -> {
+                                    _doPublishEvent(TRANSFERTASK_CANCELED, jo, pubResp -> {
                                         if (pubResp.succeeded()) {
                                             routingContext.response()
                                                     .putHeader("content-type", "application/json")
@@ -508,11 +507,11 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                     TransferTask transferTask = new TransferTask(getByIdReply.result());
                                     final URI srcUri = URI.create(transferTask.getSource());
 
-                                    String subject = createPushMessageSubject(
-                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
-                                            MessageType.TRANSFERTASK_DELETED);
+//                                    String subject = createPushMessageSubject(
+//                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
+//                                            MessageType.TRANSFERTASK_DELETED);
 
-                                    _doPublishEvent(subject, transferTask.toJson(), deleteResp -> {
+                                    _doPublishEvent(TRANSFERTASK_DELETED, transferTask.toJson(), deleteResp -> {
                                         if (deleteResp.succeeded()) {
                                             routingContext.response()
                                                     .putHeader("content-type", "application/json")
@@ -585,15 +584,15 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 user.isAdminRoleExists()) {
                             dbService.deleteAll(tenantId, deleteReply -> {
                                 if (deleteReply.succeeded()) {
-                                   // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                                   // _doPublishEvent(TRANSFERTASK_DELETED, deleteReply.result());
                                     //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                    JsonObject jo = new JsonObject(String.valueOf(deleteReply.result()));
+                                    JsonObject jsonBody = new JsonObject(String.valueOf(deleteReply.result()));
 
-                                    String subject = createPushMessageSubject(
-                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
-                                            MessageType.TRANSFERTASK_DELETED);
+//                                    String subject = createPushMessageSubject(
+//                                            transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
+//                                            MessageType.TRANSFERTASK_DELETED);
 
-                                    _doPublishEvent(subject, jo, deleteResp -> {
+                                    _doPublishEvent(TRANSFERTASK_DELETED, jsonBody, deleteResp -> {
                                         if (deleteResp.succeeded()) {
                                             routingContext.response()
                                                     .putHeader("content-type", "application/json")
@@ -722,11 +721,11 @@ public class TransferAPIVertical extends AbstractNatsListener {
                             dbService.update(tenantId, uuid, tt, updateReply -> {
                                 if (updateReply.succeeded()) {
                                     try {
-                                        String subject = createPushMessageSubject(
-                                                transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
-                                                MessageType.TRANSFERTASK_UPDATED);
+//                                        String subject = createPushMessageSubject(
+//                                                transferTask.getTenantId(), transferTask.getOwner(), srcUri.getHost(),
+//                                                MessageType.TRANSFERTASK_UPDATED);
 
-                                        _doPublishEvent(subject, updateReply.result(), updateResp -> {
+                                        _doPublishEvent(TRANSFERTASK_UPDATED, updateReply.result(), updateResp -> {
                                             if (updateResp.succeeded()) {
                                                 routingContext.response().end(
                                                         AgaveResponseBuilder.getInstance(routingContext)

@@ -54,6 +54,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		TransferAllProtocolVertical listener = Mockito.mock(TransferAllProtocolVertical.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFER_ALL);
 		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
 		when(listener.getExecutor()).thenCallRealMethod();
 		return listener;
 	}
@@ -121,6 +122,8 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 
 		// pull in the mock for TransferAllProtocolVertical
 		TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(vertx);
+		when(txfrAllVert.taskIsNotInterrupted(any())).thenReturn(true);
+
 		// mock out everything call, but not being tested in the method
 		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(srcUri)) ).thenReturn(srcRemoteDataClientMock);
 		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(destUri)) ).thenReturn(destRemoteDataClientMock);
@@ -128,7 +131,6 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 
 		// make the actual call to our method under test
 		doCallRealMethod().when(txfrAllVert).processCopyRequest(any(), any(), any(), any());
-
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -248,7 +250,6 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAllVerticle - taskIsNotInterrupted")
-		//@Disabled
 	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());

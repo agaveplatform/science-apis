@@ -53,6 +53,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		TransferTaskPausedListener listener = mock(TransferTaskPausedListener.class);
 		when(listener.getEventChannel()).thenReturn(MessageType.TRANSFERTASK_PAUSED);
 		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());
 		//doNothing().when(listener)._doPublishEvent(any(), any(), any());

@@ -37,6 +37,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
 //    private static final Logger log = LoggerFactory.getLogger(TransferCompleteTaskListenerTest.class);
 
+
     @AfterAll
     public void tearDown(Vertx vertx, VertxTestContext ctx) {
         vertx.close(ctx.completing());
@@ -47,6 +48,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         when(listener.config()).thenReturn(config);
         when(listener.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
         when(listener.getVertx()).thenReturn(vertx);
+        when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
         doCallRealMethod().when(listener).processEvent(any(), any());
         when(listener.getRetryRequestManager()).thenCallRealMethod();
         doCallRealMethod().when(listener)._doPublishEvent(any(), any(), any());

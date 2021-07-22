@@ -1,27 +1,23 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.DeliveryContext;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
+import org.agaveplatform.service.transfers.database.MockTransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.uuid.UUIDType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.stubbing.Answer;
 
-import java.io.IOException;
-import java.util.concurrent.TimeoutException;
+import java.net.URI;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
 
@@ -30,7 +26,6 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
 @DisplayName("RetryRequestManager test")
-@Disabled
 public class RetryRequestManagerTest extends BaseTestCase {
 
     @AfterAll
@@ -39,49 +34,22 @@ public class RetryRequestManagerTest extends BaseTestCase {
     }
 
     /**
-     * Generates a mock of the vertical under test with the inherited methods stubbed out.
+     * Generates a mock of the class under test with the inherited methods stubbed out.
      *
-     * @param vertx the test vertx instance
-     * @return a mocked of {@link TransferTaskAssignedListener}
+     * @return a mocked of {@link RetryRequestManager}
      */
-    protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException {
-        TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
-        when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
-        when(listener.getVertx()).thenReturn(vertx);
-        when(listener.taskIsNotInterrupted(any())).thenReturn(true);
-        when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
-        doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
-        doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
-//		when(listener.getRetryRequestManager()).thenCallRealMethod();
-        doNothing().when(listener)._doPublishEvent(any(), any(), any());
-        doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
-
-        RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
-//		when(mockRetryRequestManager.getVertx()).thenReturn(vertx);
-        doNothing().when(mockRetryRequestManager).request(anyString(),any(JsonObject.class),anyInt());
-
-        when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
-        return listener;
+    protected RetryRequestManager getMockRetryRequestManager() throws Exception {
+        RetryRequestManager retryRequestManager = mock(RetryRequestManager.class);
+        doCallRealMethod().when(retryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
+        doCallRealMethod().when(retryRequestManager).request(anyString(), any(JsonObject.class));
+        return retryRequestManager;
     }
+
     NatsJetstreamMessageClient getMockNats() throws Exception {
         NatsJetstreamMessageClient natsClient = mock(NatsJetstreamMessageClient.class);
-        doNothing().when(natsClient).push(any(), any(), any());
-        return getMockNats();
-    }
-
-    /**
-     * Generates a mock of the vertical under test with the inherited methods stubbed out.
-     *
-     * @param vertx the test vertx instance
-     * @return a mocked of {@link TransferTaskAssignedListener}
-     */
-    protected TransferTaskErrorListener getMockTransferErrorListenerInstance(Vertx vertx) {
-        TransferTaskErrorListener listener = mock(TransferTaskErrorListener.class);
-        when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ERROR);
-        when(listener.getVertx()).thenReturn(vertx);
-        when(listener.taskIsNotInterrupted(any())).thenReturn(true);
-
-        return listener;
+        doNothing().when(natsClient).push(any(), any());
+        doNothing().when(natsClient).push(any(), any(), anyInt());
+        return natsClient;
     }
 
     /**
@@ -93,73 +61,32 @@ public class RetryRequestManagerTest extends BaseTestCase {
      */
     private TransferTaskDatabaseService getMockTranserTaskDatabaseService(JsonObject transferTaskToReturn) {
         // mock out the db service so we can can isolate method logic rather than db
-        TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-
-        // mock a successful outcome with updated json transfer task result from getById call to db
-        AsyncResult<JsonObject> getByAnyHandler = getMockAsyncResult(transferTaskToReturn);
-
-        // mock the handler passed into getById
-        doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-            @SuppressWarnings("unchecked")
-            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
-            handler.handle(getByAnyHandler);
-            return null;
-        }).when(dbService).getByUuid(any(), any(), any());
-
-        return dbService;
+        return new MockTransferTaskDatabaseService.Builder()
+                .getByUuid(transferTaskToReturn, false)
+                .build();
     }
 
-
     @Test
-    @DisplayName("RetryRequestManager - request and process TransferTaskAssignedListener")
-    @Disabled
-    public void requestTransferTaskAssignedEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
-        // generate a fake transfer task
-        TransferTask rootTransferTask = _createTestTransferTask();
-        rootTransferTask.setId(1L);
-        JsonObject rootTransferTaskJson = rootTransferTask.toJson();
-        rootTransferTaskJson.put("status", TRANSFERTASK_ASSIGNED);
+    @DisplayName("RetryRequestManager calls nats client with given address and body")
+    public void testRequest() throws Exception {
+        TransferTask transferTask = _createTestTransferTask();
+        JsonObject json = transferTask.toJson();
 
-        //mock TransferTaskAssignedListener
-        TransferTaskAssignedListener mockAssignedListener = mock(TransferTaskAssignedListener.class);
-        try {
-            doCallRealMethod().when(mockAssignedListener).start();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (TimeoutException e) {
-            e.printStackTrace();
-        }
-        when(mockAssignedListener.config()).thenReturn(config);
-        doReturn(getMockTranserTaskDatabaseService(rootTransferTaskJson)).when(TransferTaskDatabaseService.createProxy(any(Vertx.class), anyString()));
-        doNothing().when(vertx.eventBus()).registerDefaultCodec(any(), any());
+        String eventName = TRANSFERTASK_ERROR;
+        String subject = UUIDType.TRANSFER.name().toLowerCase() + "." + transferTask.getTenantId() + "." +
+                transferTask.getOwner() + "." + URI.create(TRANSFER_DEST).getHost() + "." + eventName;
 
-        //mock RetryRequestManager
-        RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
-        when(mockRetryRequestManager.getVertx()).thenReturn(vertx);
-        doCallRealMethod().when(mockRetryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
+        RetryRequestManager retryRequestManager = getMockRetryRequestManager();
 
-        //Mock request sent onto the event bus
-        Handler<DeliveryContext<Object>> inboundInterceptor = dc -> {
+        NatsJetstreamMessageClient natsClient = getMockNats();
+        when(retryRequestManager.getMessageClient()).thenReturn(natsClient);
+        when(retryRequestManager.createPushMessageSubject(eq(transferTask.getTenantId()), eq(transferTask.getOwner()),
+                    eq(URI.create(TRANSFER_DEST).getHost()), eq(eventName)))
+                .thenCallRealMethod();
 
-            try {
-                mockAssignedListener.start();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (TimeoutException e) {
-                e.printStackTrace();
-            }
-        };
+        retryRequestManager.request(eventName, json, 5);
 
-        vertx.eventBus().addInboundInterceptor(inboundInterceptor);
-
-        mockRetryRequestManager.request(TRANSFERTASK_ASSIGNED, rootTransferTaskJson, 3);
-
-        ctx.verify(() -> {
-            assertTrue(ctx.completed(), "Request should be completed.");
-        });
+        verify(retryRequestManager).request(eventName, json);
+        verify(natsClient).push(eq(subject), eq(json.toString()));
     }
 }

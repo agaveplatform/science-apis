@@ -308,11 +308,11 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         // continue assigning the task and return
                         try {
 
-                            String owner = updateResult.result().getString("owner");
-                            String host = srcUri.getHost();
-                            String subject = createPushMessageSubject(tenantId, owner, host, TRANSFERTASK_ASSIGNED);
+//                            String owner = updateResult.result().getString("owner");
+//                            String host = srcUri.getHost();
+//                            String subject = createPushMessageSubject(tenantId, owner, host, TRANSFERTASK_ASSIGNED);
 //                            Handler<AsyncResult<Boolean>> handle = null;
-                            _doPublishEvent(subject, updateResult.result(), handler);
+                            _doPublishEvent(TRANSFERTASK_ASSIGNED, updateResult.result(), handler);
 
                         } catch (Exception e) {
                             log.debug(e.getMessage());
@@ -328,8 +328,8 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                 });
             } else {
                 log.info("Skipping processing of child file items for transfer tasks in TransferTaskCreatedListener {} due to interrupt event.", uuid);
-                String subject = createPushMessageSubject(tenantId, username, srcUri.getHost(), TRANSFERTASK_CANCELED_ACK);
-                _doPublishEvent(subject, createdTransferTask.toJson(), resp -> {
+//                String subject = createPushMessageSubject(tenantId, username, srcUri.getHost(), TRANSFERTASK_CANCELED_ACK);
+                _doPublishEvent(TRANSFERTASK_CANCELED_ACK, createdTransferTask.toJson(), resp -> {
                     handler.handle(Future.succeededFuture(false));
                 });
 

@@ -49,6 +49,7 @@ class TransferTaskNotificationListenerTest extends BaseTestCase {
         TransferTaskNotificationListener listener = mock(TransferTaskNotificationListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFERTASK_NOTIFICATION);
         when(listener.getVertx()).thenReturn(vertx);
+        when(listener.createPushMessageSubject(any(), any(), any(), any())).thenCallRealMethod();
         doNothing().when(listener)._doPublishEvent(any(), any(), any());
         doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
         doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());

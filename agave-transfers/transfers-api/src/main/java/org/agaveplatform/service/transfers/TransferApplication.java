@@ -211,15 +211,15 @@ public class TransferApplication {
                                     });
 
                             // Deploy the TransferErrorListener vertical
-                            vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorListener"
-                                    localOptions, res11 -> {
-                                        if (res11.succeeded()){
-                                            log.info("TransferErrorListener Deployment id is " + res11.result());
-                                        }else{
-                                            log.error("TransferErrorListener Deployment failed ! {}", res11.cause());
-                                            httpVerticleDeployment.fail(res11.cause());
-                                        }
-                                    });
+//                            vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorListener"
+//                                    localOptions, res11 -> {
+//                                        if (res11.succeeded()){
+//                                            log.info("TransferErrorListener Deployment id is " + res11.result());
+//                                        }else{
+//                                            log.error("TransferErrorListener Deployment failed ! {}", res11.cause());
+//                                            httpVerticleDeployment.fail(res11.cause());
+//                                        }
+//                                    });
 
                             // Deploy the TransferHealthcheckListener vertical
                             vertx.deployVerticle(TransferTaskHealthcheckListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferHealthcheckListener",

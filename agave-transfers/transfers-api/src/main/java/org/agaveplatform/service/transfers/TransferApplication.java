@@ -86,6 +86,7 @@ public class TransferApplication {
                                             log.info("TransferTaskCreatedListener Deployment id is {}", res1.result());
                                         } else {
                                             log.error("TransferTaskCreatedListener Deployment failed ! {}", res1.result());
+                                            httpVerticleDeployment.fail(res1.cause());
                                         }
                                     });
 
@@ -97,6 +98,7 @@ public class TransferApplication {
                                             log.info("TransferTaskAssignedListener Deployment id is {}", res0.result());
                                         } else {
                                             log.error("TransferTaskAssignedListener Deployment failed ! {}", res0.result());
+                                            httpVerticleDeployment.fail(res0.cause());
                                         }
                                     });
 
@@ -107,6 +109,7 @@ public class TransferApplication {
                                             log.info("TransferRetryListener Deployment id is {}", res3.result());
                                         } else {
                                             log.error("TransferRetryListener Deployment failed ! ", res3.cause());
+                                            httpVerticleDeployment.fail(res3.cause());
                                         }
                                     });
 
@@ -126,6 +129,7 @@ public class TransferApplication {
                                             log.info("TransferAllProtocolVertical Deployment id is " + res4.result());
                                         } else {
                                             log.error("TransferAllProtocolVertical Deployment failed !", res4.cause());
+                                            httpVerticleDeployment.fail(res4.cause());
                                         }
                                     });
 
@@ -136,6 +140,7 @@ public class TransferApplication {
                                             log.info("TransferCompleteTaskListener Deployment id is " + res5.result());
                                         } else {
                                             log.error("TransferCompleteTaskListener Deployment failed !",res5.cause());
+                                            httpVerticleDeployment.fail(res5.cause());
                                         }
                                     });
 
@@ -147,6 +152,7 @@ public class TransferApplication {
                                             log.info("TransferTaskErrorTaskListener Deployment id is " + res6.result());
                                         } else {
                                             log.error("TransferTaskErrorTaskListener Deployment failed !", res6.cause());
+                                            httpVerticleDeployment.fail(res6.cause());
                                         }
                                     });
 
@@ -157,6 +163,7 @@ public class TransferApplication {
                                             log.info("TransferFailureHandler Deployment id is " + res7.result());
                                         } else {
                                             log.error("TransferFailureHandler Deployment failed !", res7.cause());
+                                            httpVerticleDeployment.fail(res7.cause());
                                         }
                                     });
 
@@ -167,6 +174,7 @@ public class TransferApplication {
                                             log.info("TransferTaskCancelListener Deployment id is " + res8.result());
                                         } else {
                                             log.error("TransferTaskCancelListener Deployment failed ! {}", res8.cause());
+                                            httpVerticleDeployment.fail(res8.cause());
                                         }
                                     });
 
@@ -177,6 +185,7 @@ public class TransferApplication {
                                             log.info("TransferTaskPausedListener Deployment id is " + res9.result());
                                         } else {
                                             log.error("TransferTaskPausedListener Deployment failed ! {}", res9.cause());
+                                            httpVerticleDeployment.fail(res9.cause());
                                         }
                                     });
 
@@ -197,6 +206,7 @@ public class TransferApplication {
                                             log.info("TransferTaskNotificationListener Deployment id is " + res10.result());
                                         } else {
                                             log.error("TransferTaskNotificationListener Deployment failed ! {}", res10.cause());
+                                            httpVerticleDeployment.fail(res10.cause());
                                         }
                                     });
 
@@ -207,6 +217,7 @@ public class TransferApplication {
                                             log.info("TransferErrorListener Deployment id is " + res11.result());
                                         }else{
                                             log.error("TransferErrorListener Deployment failed ! {}", res11.cause());
+                                            httpVerticleDeployment.fail(res11.cause());
                                         }
                                     });
 
@@ -217,6 +228,7 @@ public class TransferApplication {
                                             log.info("TransferHealthcheckListener Deployment id is " + res12.result());
                                         } else {
                                             log.error("TransferHealthcheckListener Deployment failed ! {}", res12.cause());
+                                            httpVerticleDeployment.fail(res12.cause());
                                         }
                                     });
 //                            // Deploy the TransferHealthParentcheckListener vertical
@@ -235,6 +247,7 @@ public class TransferApplication {
                                             log.info("TransferWatchListener Deployment id is " + res13.result());
                                         } else {
                                             log.error("TransferWatchListener Deployment failed ! {}", res13.cause());
+                                            httpVerticleDeployment.fail(res13.cause());
                                         }
                                     });
 
@@ -245,6 +258,7 @@ public class TransferApplication {
                                             log.info("TransferTaskUpdateListener Deployment id is " + res14.result());
                                         } else {
                                             log.error("TransferTaskUpdateListener Deployment failed ! {}", res14.cause());
+                                            httpVerticleDeployment.fail(res14.cause());
                                         }
                                     });
 
@@ -255,11 +269,13 @@ public class TransferApplication {
                                             log.info("TransferTaskFinishedListener Deployment id is " + res15.result());
                                         } else {
                                             log.error("TransferTaskFinishedListener Deployment failed !", res15.cause());
+                                            httpVerticleDeployment.fail(res15.cause());
                                         }
                                     });
                         }
                         else {
                             log.error("TransferAPIVertical deployment failed !", deployApiVerticle.cause());
+                            httpVerticleDeployment.fail(deployApiVerticle.cause());
                         }
                     });
 

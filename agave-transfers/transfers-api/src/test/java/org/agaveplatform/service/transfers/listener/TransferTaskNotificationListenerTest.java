@@ -1,6 +1,8 @@
 package org.agaveplatform.service.transfers.listener;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
@@ -144,6 +146,36 @@ class TransferTaskNotificationListenerTest extends BaseTestCase {
 		});
 
         ctx.completeNow();
+    }
+
+    @Test
+    @DisplayName("TransferTaskNotificationListener - promise should fail if exception is thrown during start")
+    public void testFailIfExceptionThrownDuringStart(Vertx vertx, VertxTestContext ctx) throws Exception {
+        TransferTaskNotificationListener listener = getMockNotificationListenerInstance(vertx);
+
+        doCallRealMethod().when(listener).start(any(Promise.class));
+
+        try {
+            doThrow(new InterruptedException("Promise should fail when exception is thrown during start")).when(listener).subscribeToSubjectGroup(eq(TRANSFERTASK_NOTIFICATION), any(Handler.class));
+        } catch (Exception e) {
+            try {
+                fail("Failed to initialize subscription during test setup.", e);
+            } catch (Throwable t) {
+                ctx.failNow(t);
+            }
+        }
+
+        Promise<Void> promise = Promise.promise();
+
+        listener.start(promise);
+        promise.future().onComplete(result -> {
+            if (result.succeeded()) {
+                fail("Promise should fail if the listener is unable to subscribe to any of the subject groups");
+            } else {
+                //pass
+                ctx.completeNow();
+            }
+        });
     }
 
 }

@@ -3,6 +3,7 @@ package org.agaveplatform.service.transfers.listener;
 import io.nats.client.Connection;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
@@ -507,4 +508,35 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
         });
     }
 
+    @Test
+    @DisplayName("TransferTaskRetryListener - promise should fail if exception is thrown during start")
+    public void testFailIfExceptionThrownDuringStart(Vertx vertx, VertxTestContext ctx) throws Exception {
+        TransferTaskRetryListener listener = getMockTransferRetryListenerInstance(vertx);
+
+        doCallRealMethod().when(listener).start(any(Promise.class));
+        TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(_createTestTransferTask().toJson());
+        when(listener.createDatabaseConnection()).thenReturn(dbService);
+
+        try {
+            doThrow(new InterruptedException("Promise should fail when exception is thrown during start")).when(listener).subscribeToSubjectGroup(eq(TRANSFER_RETRY), any(Handler.class));
+        } catch (Exception e) {
+            try {
+                fail("Failed to initialize subscription during test setup.", e);
+            } catch (Throwable t) {
+                ctx.failNow(t);
+            }
+        }
+
+        Promise<Void> promise = Promise.promise();
+
+        listener.start(promise);
+        promise.future().onComplete(result -> {
+            if (result.succeeded()) {
+                fail("Promise should fail if the listener is unable to subscribe to any of the subject groups");
+            } else {
+                //pass
+                ctx.completeNow();
+            }
+        });
+    }
 }

@@ -36,12 +36,20 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 		return EVENT_CHANNEL;
 	}
 
+	/**
+	 * Mockable method to initialize connection to the database from the pool
+	 * @return {@link TransferTaskDatabaseService} connection to the database
+	 */
+	public TransferTaskDatabaseService createDatabaseConnection(){
+		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+		return TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+	}
+
 	@Override
-	public void start() {
+	public void start(Promise<Void> startPromise) {
 
 		// init our db connection from the pool
-		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
-		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+		dbService = createDatabaseConnection();
 
 		int healthTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK_MILLIS, 600000);
 //		int healthParentTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK_PARENT_MILLIS, 600000);
@@ -52,6 +60,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 					log.trace("Periodic transfer task watch starting");
 				} else {
 					log.error("Failed to execute the periodic transfer watch task. {}", batchResp.cause().getMessage(), batchResp.cause());
+					startPromise.tryFail(batchResp.cause());
 				}
 			});
 		});

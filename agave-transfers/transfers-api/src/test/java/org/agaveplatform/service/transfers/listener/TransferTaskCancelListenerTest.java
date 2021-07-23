@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
@@ -1157,7 +1158,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCncelListener - processCancelAck message")
-	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) throws InterruptedException, TimeoutException, IOException, MessagingException {
+	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) throws Exception {
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -1314,4 +1315,36 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		});
 	}
 
+	@Test
+	@DisplayName("TransferTaskCancelListener - promise should fail if exception is thrown during start")
+	public void testFailIfExceptionThrownDuringStart(Vertx vertx, VertxTestContext ctx) throws Exception {
+		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
+
+		doCallRealMethod().when(listener).start(any(Promise.class));
+		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+		when(listener.createDatabaseConnection()).thenReturn(dbService);
+
+		try {
+			doThrow(new InterruptedException("Promise should fail when exception is thrown during start")).when(listener).subscribeToSubjectGroup(eq(TRANSFERTASK_CANCELED), any(Handler.class));
+		} catch (Exception e) {
+			try {
+				fail("Failed to initialize subscription during test setup.", e);
+			} catch (Throwable t) {
+				ctx.failNow(t);
+			}
+		}
+		doNothing().when(listener).subscribeToSubject(eq(TRANSFERTASK_CANCELED_ACK), any(Handler.class));
+
+		Promise<Void> promise = Promise.promise();
+
+		listener.start(promise);
+		promise.future().onComplete(result -> {
+			if (result.succeeded()) {
+				fail("Promise should fail if the listener is unable to subscribe to any of the subject groups");
+			} else {
+				//pass
+				ctx.completeNow();
+			}
+		});
+	}
 }

@@ -1,10 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -61,29 +58,26 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 		return EVENT_CHANNEL;
 	}
 
-//	public Connection getConnection(){return nc;}
-
-//	public void setConnection() throws IOException, InterruptedException {
-//		try {
-//			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
-//		} catch (IOException e) {
-//			//use default URL
-//			nc = _connect(Options.DEFAULT_URL);
-//		}
-//	}
+	/**
+	 * Mockable method to initialize connection to the database from the pool
+	 * @return {@link TransferTaskDatabaseService} connection to the database
+	 */
+	public TransferTaskDatabaseService createDatabaseConnection(){
+		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+		return TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+	}
 
 	@Override
-	public void start(){
+	public void start(Promise<Void> startPromise){
 		// init our db connection from the pool
-		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
-		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
-		//setConnection();
+		dbService = createDatabaseConnection();
 
 		try {
 			//group subscription so each message only processed by this vertical type once
 			subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
 		} catch (Exception e) {
 			log.error("TRANSFER_ALL - Exception {}", e.getMessage());
+			startPromise.tryFail(e);
 		}
 	}
 

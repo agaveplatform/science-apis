@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
@@ -28,8 +29,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CREATED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_PAUSED_COMPLETED;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -253,4 +254,41 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		});
 	}
 
+	@Test
+	@DisplayName("TransferTaskCreatedListener - promise should fail if exception is thrown during start")
+	public void testFailIfExceptionThrownDuringStart(Vertx vertx, VertxTestContext ctx) throws Exception {
+		TransferTaskCreatedListener listener = getMockListenerInstance(vertx);
+
+		doCallRealMethod().when(listener).start(any(Promise.class));
+		when(listener.config()).thenReturn(config);
+		when(listener.getDefaultEventChannel()).thenCallRealMethod();
+		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+		when(listener.createDatabaseConnection()).thenReturn(dbService);
+
+		try {
+			doThrow(new InterruptedException("Promise should fail when exception is thrown during start")).when(listener).subscribeToSubjectGroup(eq(TRANSFERTASK_CREATED), any(Handler.class));
+		} catch (Exception e) {
+			try {
+				fail("Failed to initialize subscription during test setup.", e);
+			} catch (Throwable t) {
+				ctx.failNow(t);
+			}
+		}
+		doNothing().when(listener).subscribeToSubject(eq(TRANSFERTASK_CANCELED_SYNC), any(Handler.class));
+		doNothing().when(listener).subscribeToSubject(eq(TRANSFERTASK_CANCELED_COMPLETED), any(Handler.class));
+		doNothing().when(listener).subscribeToSubject(eq(TRANSFERTASK_PAUSED_SYNC), any(Handler.class));
+		doNothing().when(listener).subscribeToSubject(eq(TRANSFERTASK_PAUSED_COMPLETED), any(Handler.class));
+
+		Promise<Void> promise = Promise.promise();
+
+		listener.start(promise);
+		promise.future().onComplete(result -> {
+			if (result.succeeded()) {
+				fail("Promise should fail if the listener is unable to subscribe to any of the subject groups");
+			} else {
+				//pass
+				ctx.completeNow();
+			}
+		});
+	}
 }

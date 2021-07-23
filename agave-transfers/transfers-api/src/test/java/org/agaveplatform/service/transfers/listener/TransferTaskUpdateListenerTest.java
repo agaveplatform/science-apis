@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
@@ -28,10 +29,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_UPDATED;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -271,6 +271,38 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
             ta.removePausedTask(tt.getRootTaskId());
 
             ctx.completeNow();
+        });
+    }
+
+    @Test
+    @DisplayName("TransferTaskUpdateListener - promise should fail if exception is thrown during start")
+    public void testFailIfExceptionThrownDuringStart(Vertx vertx, VertxTestContext ctx) throws Exception {
+        TransferTaskUpdateListener listener = getMockTransferUpdateListenerInstance(vertx);
+
+        doCallRealMethod().when(listener).start(any(Promise.class));
+        TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(_createTestTransferTask().toJson());
+        when(listener.createDatabaseConnection()).thenReturn(dbService);
+
+        try {
+            doThrow(new InterruptedException("Promise should fail when exception is thrown during start")).when(listener).subscribeToSubjectGroup(eq(TRANSFERTASK_UPDATED), any(Handler.class));
+        } catch (Exception e) {
+            try {
+                fail("Failed to initialize subscription during test setup.", e);
+            } catch (Throwable t) {
+                ctx.failNow(t);
+            }
+        }
+
+        Promise<Void> promise = Promise.promise();
+
+        listener.start(promise);
+        promise.future().onComplete(result -> {
+            if (result.succeeded()) {
+                fail("Promise should fail if the listener is unable to subscribe to any of the subject groups");
+            } else {
+                //pass
+                ctx.completeNow();
+            }
         });
     }
 }

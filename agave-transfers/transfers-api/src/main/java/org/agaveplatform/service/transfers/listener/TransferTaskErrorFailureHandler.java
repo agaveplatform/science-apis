@@ -1,10 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
@@ -55,22 +52,28 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 		log.info("failed: {}", throwable.getMessage());
 	}
 
+	/**
+	 * Mockable method to initialize connection to the database from the pool
+	 * @return {@link TransferTaskDatabaseService} connection to the database
+	 */
+	public TransferTaskDatabaseService createDatabaseConnection(){
+		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+		return TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+	}
+
 
 	@Override
-	public void start() throws IOException, InterruptedException, TimeoutException {
-		//EventBus bus = vertx.eventBus();
+	public void start(Promise<Void> startPromise) throws IOException, InterruptedException, TimeoutException {
 		// init our db connection from the pool
-		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
-		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
-
+		dbService = createDatabaseConnection();
 
 		try {
 			//group subscription so each message only processed by this vertical type once
 			subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
 		} catch (Exception e) {
 			log.error("TRANSFER_FAILED - Exception {}", e.getMessage());
+			startPromise.tryFail(e);
 		}
-
 	}
 
 	protected void handleMessage(Message message) {

@@ -1,10 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -60,14 +57,13 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 
 	private TransferTaskDatabaseService dbService;
 	@Override
-	public void start() throws IOException, InterruptedException, TimeoutException {
-		//EventBus bus = vertx.eventBus();
-
+	public void start(Promise<Void> startPromise) throws IOException, InterruptedException, TimeoutException {
 		try {
 			//group subscription so each message only processed by this vertical type once
 			subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
 		} catch (Exception e) {
 			log.error("TRANSFER_ALL - Exception {}", e.getMessage());
+			startPromise.tryFail(e);
 		}
 	}
 	protected void handleMessage(Message message) {

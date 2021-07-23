@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
@@ -23,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
@@ -654,4 +655,35 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			ctx.completeNow();
 		}));
 	}
+	@Test
+	@DisplayName("TransferTaskErrorListener - promise should fail if exception is thrown during start")
+	public void testFailIfExceptionThrownDuringStart(Vertx vertx, VertxTestContext ctx) throws Exception {
+		TransferTaskErrorListener listener = getMockTransferErrorListenerInstance(vertx);
+
+		doCallRealMethod().when(listener).start(any(Promise.class));
+		when(listener.config()).thenReturn(config);
+
+		try {
+			doThrow(new InterruptedException("Promise should fail when exception is thrown during start")).when(listener).subscribeToSubjectGroup(eq(TRANSFERTASK_ERROR), any(Handler.class));
+		} catch (Exception e) {
+			try {
+				fail("Failed to initialize subscription during test setup.", e);
+			} catch (Throwable t) {
+				ctx.failNow(t);
+			}
+		}
+
+		Promise<Void> promise = Promise.promise();
+
+		listener.start(promise);
+		promise.future().onComplete(result -> {
+			if (result.succeeded()) {
+				fail("Promise should fail if the listener is unable to subscribe to any of the subject groups");
+			} else {
+				//pass
+				ctx.completeNow();
+			}
+		});
+	}
+
 }

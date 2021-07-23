@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
@@ -700,6 +701,39 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 					ctx.completeNow();
 				})));
+	}
+
+	@Test
+	@DisplayName("TransferTaskPausedListener - promise should fail if exception is thrown during start")
+	public void testFailIfExceptionThrownDuringStart(Vertx vertx, VertxTestContext ctx) throws Exception {
+		TransferTaskPausedListener listener = getMockTransferPausedListenerInstance(vertx);
+
+		doCallRealMethod().when(listener).start(any(Promise.class));
+		TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(_createTestTransferTask().toJson());
+		when(listener.createDatabaseConnection()).thenReturn(dbService);
+
+		try {
+			doThrow(new InterruptedException("Promise should fail when exception is thrown during start")).when(listener).subscribeToSubjectGroup(eq(TRANSFERTASK_PAUSED), any(Handler.class));
+		} catch (Exception e) {
+			try {
+				fail("Failed to initialize subscription during test setup.", e);
+			} catch (Throwable t) {
+				ctx.failNow(t);
+			}
+		}
+		doNothing().when(listener).subscribeToSubject(eq(TRANSFERTASK_PAUSED_ACK), any(Handler.class));
+
+		Promise<Void> promise = Promise.promise();
+
+		listener.start(promise);
+		promise.future().onComplete(result -> {
+			if (result.succeeded()) {
+				fail("Promise should fail if the listener is unable to subscribe to any of the subject groups");
+			} else {
+				//pass
+				ctx.completeNow();
+			}
+		});
 	}
 
 //	@Test

@@ -1,6 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
@@ -68,13 +69,14 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
     }
 
     @Override
-	public void start() {
+	public void start(Promise<Void> startPromise) {
 
         try {
             //group subscription so each message only processed by this vertical type once
             subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
         } catch (Exception e) {
             logger.error("TRANSFER_ALL - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
     }
 

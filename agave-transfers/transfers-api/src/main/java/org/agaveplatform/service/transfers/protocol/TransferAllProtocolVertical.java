@@ -3,7 +3,6 @@ package org.agaveplatform.service.transfers.protocol;
 import io.nats.client.Connection;
 import io.vertx.core.Future;
 import io.vertx.core.*;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -72,35 +71,31 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 		return super.getMessageClient();
 	}
 
-//	public Connection getConnection(){return nc;}
-
-//	public void setConnection() throws IOException, InterruptedException {
-//		try {
-//			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
-//		} catch (IOException e) {
-//			//use default URL
-//			nc = _connect(Options.DEFAULT_URL);
-//		}
-//	}
+	/**
+	 * Mockable method to initialize connection to the database from the pool
+	 * @return {@link TransferTaskDatabaseService} connection to the database
+	 */
+	public TransferTaskDatabaseService createDatabaseConnection(){
+		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+		return TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+	}
 
 	@Override
-	public void start() throws IOException, InterruptedException, TimeoutException {
-		//EventBus bus = vertx.eventBus();
+	public void start(Promise<Void> startPromise) throws IOException, InterruptedException, TimeoutException {
 		DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
 		TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
 
-		EventBus bus = vertx.eventBus();
 		log.debug("Got into TransferAllProtocolVertical");
 
 		// init our db connection from the pool
-		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
-		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+		dbService = createDatabaseConnection();
 
 		try {
 			//group subscription so each message only processed by this vertical type once
 			subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
 		} catch (Exception e) {
 			log.error("TRANSFER_ALL - Exception {}", e.getMessage());
+			startPromise.tryFail(e);
 		}
 
 //

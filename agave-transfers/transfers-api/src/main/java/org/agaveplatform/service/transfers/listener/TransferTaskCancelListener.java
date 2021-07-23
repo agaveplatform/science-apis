@@ -44,17 +44,26 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
         return EVENT_CHANNEL;
     }
 
-    @Override
-    public void start() throws IOException, InterruptedException, TimeoutException {
-        // init our db connection from the pool
+    /**
+     * Mockable method to initialize connection to the database from the pool
+     * @return {@link TransferTaskDatabaseService} connection to the database
+     */
+    public TransferTaskDatabaseService createDatabaseConnection(){
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
-        dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+        return TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+    }
+
+    @Override
+    public void start(Promise<Void> startPromise) throws IOException, InterruptedException, TimeoutException {
+        // init our db connection from the pool
+        dbService = createDatabaseConnection();
 
         try {
             //group subscription so each message only processed by this vertical type once
             subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
         } catch (Exception e) {
             logger.error("{} - Exception {}",EVENT_CHANNEL, e.getMessage());
+            startPromise.tryFail(e);
         }
 
         try {
@@ -62,6 +71,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
             subscribeToSubject(TRANSFERTASK_CANCELED_ACK, this::handleCanceledAckMessage);
         } catch (Exception e) {
             logger.error("TRANSFERTASK_CANCELED_ACK - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
     }
 

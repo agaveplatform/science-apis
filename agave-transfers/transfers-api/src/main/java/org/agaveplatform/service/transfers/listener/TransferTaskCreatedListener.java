@@ -1,9 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -49,19 +46,28 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         return EVENT_CHANNEL;
     }
 
+    /**
+     * Mockable method to initialize connection to the database from the pool
+     * @return {@link TransferTaskDatabaseService} connection to the database
+     */
+    public TransferTaskDatabaseService createDatabaseConnection(){
+        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+        return TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+    }
+
+
     @Override
-    public void start() throws IOException, InterruptedException, TimeoutException {
+    public void start(Promise<Void> startPromise) throws IOException, InterruptedException, TimeoutException {
 
         // init our db connection from the pool
-        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
-        dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
-
+        dbService = createDatabaseConnection();
 
         try {
             //group subscription so each message only processed by this vertical type once
             subscribeToSubjectGroup(EVENT_CHANNEL, this::handleCreatedMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_CREATED - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
 
         try {
@@ -69,6 +75,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             subscribeToSubjectGroup(TRANSFERTASK_CANCELED_SYNC, this::handleCanceledAckMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
 
         try {
@@ -76,6 +83,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             subscribeToSubject(TRANSFERTASK_PAUSED_SYNC, this::handlePausedSyncMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
 
         try {
@@ -83,6 +91,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             subscribeToSubject(TRANSFERTASK_CANCELED_COMPLETED, this::handleCanceledCompletedMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_CANCELED_COMPLETED - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
 
         try {
@@ -90,6 +99,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             subscribeToSubject(TRANSFERTASK_PAUSED_COMPLETED, this::handlePausedCompletedMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_PAUSED_COMPLETED - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
     }
 

@@ -58,20 +58,29 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         return EVENT_CHANNEL;
     }
 
+    /**
+     * Mockable method to initialize connection to the database from the pool
+     * @return {@link TransferTaskDatabaseService} connection to the database
+     */
+    public TransferTaskDatabaseService createDatabaseConnection(){
+        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+        return TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+    }
+
     @Override
-    public void start() throws IOException, InterruptedException, TimeoutException {
+    public void start(Promise<Void> startPromise) throws IOException, InterruptedException, TimeoutException {
         DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
         TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
 
         // init our db connection from the pool
-        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
-        dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+        dbService = createDatabaseConnection();
 
         try {
             //group subscription so each message only processed by this vertical type once
-            subscribeToSubjectGroup(TRANSFERTASK_ASSIGNED, this::handleMessage);
+            subscribeToSubjectGroup(EVENT_CHANNEL, this::handleMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_ASSIGNED - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
 
         try {
@@ -79,6 +88,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             subscribeToSubjectGroup(TRANSFERTASK_CANCELED_SYNC, this::handleCanceledSyncMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_CANCELED_SYNC - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
 
         try {
@@ -86,12 +96,14 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             subscribeToSubjectGroup(TRANSFERTASK_CANCELED_COMPLETED, this::handleCanceledCompletedMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_CANCELED_COMPLETED - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
         try {
             //group subscription so each message only processed by this vertical type once
             subscribeToSubjectGroup(TRANSFERTASK_PAUSED_SYNC, this::handlePausedSyncMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_PAUSED_SYNC - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
 
         try {
@@ -99,8 +111,8 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             subscribeToSubjectGroup(TRANSFERTASK_PAUSED_COMPLETED, this::handlePausedCompletedMessage);
         } catch (Exception e) {
             log.error("TRANSFERTASK_PAUSED_COMPLETED - Exception {}", e.getMessage());
+            startPromise.tryFail(e);
         }
-
     }
 
     protected void handleMessage(Message message) {

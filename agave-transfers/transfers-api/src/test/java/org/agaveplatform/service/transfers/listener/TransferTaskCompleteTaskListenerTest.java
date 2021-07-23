@@ -1,9 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.junit5.Checkpoint;
@@ -26,6 +23,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import java.time.Instant;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(VertxExtension.class)
@@ -841,6 +839,38 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
             });
         });
 
+    }
+
+    @Test
+    @DisplayName("TransferTaskCompleteTaskListener - promise should fail if exception is thrown during start")
+    public void testFailIfExceptionThrownDuringStart(Vertx vertx, VertxTestContext ctx) throws Exception {
+        TransferTaskCompleteTaskListener listener = getMockTransferCompleteListenerInstance(vertx);
+
+        doCallRealMethod().when(listener).start(any(Promise.class));
+        TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+        when(listener.createDatabaseConnection()).thenReturn(dbService);
+
+        try {
+            doThrow(new InterruptedException("Promise should fail when exception is thrown during start")).when(listener).subscribeToSubjectGroup(eq(TRANSFER_COMPLETED), any(Handler.class));
+        } catch (Exception e) {
+            try {
+                fail("Failed to initialize subscription during test setup.", e);
+            } catch (Throwable t) {
+                ctx.failNow(t);
+            }
+        }
+
+        Promise<Void> promise = Promise.promise();
+
+        listener.start(promise);
+        promise.future().onComplete(result -> {
+            if (result.succeeded()) {
+                fail("Promise should fail if the listener is unable to subscribe to any of the subject groups");
+            } else {
+                //pass
+                ctx.completeNow();
+            }
+        });
     }
 }
 

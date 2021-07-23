@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
@@ -30,7 +31,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_COMPLETED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.FAILED;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
@@ -283,5 +284,37 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 			assertEquals(tt.toJson(), resp.result(), "processBody should return the Transfer Task as JsonObject");
 			ctx.completeNow();
 		}));
+	}
+
+	@Test
+	@DisplayName("TransferTaskErrorFailureHandler - promise should fail if exception is thrown during start")
+	public void testFailIfExceptionThrownDuringStart(Vertx vertx, VertxTestContext ctx) throws Exception {
+		TransferTaskErrorFailureHandler listener = getMockTransferFailureHandlerInstance(vertx);
+
+		doCallRealMethod().when(listener).start(any(Promise.class));
+		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+		when(listener.createDatabaseConnection()).thenReturn(dbService);
+
+		try {
+			doThrow(new InterruptedException("Promise should fail when exception is thrown during start")).when(listener).subscribeToSubjectGroup(eq(TRANSFER_FAILED), any(Handler.class));
+		} catch (Exception e) {
+			try {
+				fail("Failed to initialize subscription during test setup.", e);
+			} catch (Throwable t) {
+				ctx.failNow(t);
+			}
+		}
+
+		Promise<Void> promise = Promise.promise();
+
+		listener.start(promise);
+		promise.future().onComplete(result -> {
+			if (result.succeeded()) {
+				fail("Promise should fail if the listener is unable to subscribe to any of the subject groups");
+			} else {
+				//pass
+				ctx.completeNow();
+			}
+		});
 	}
 }
